@@ -13,11 +13,12 @@ import {
   ZAI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ProviderList } from "@/features/providers/components/list";
+import { HeaderChromeHarness } from "@/testing/header-chrome";
 import { filterProviders, PROVIDER_FILTERS, type ProviderFilter } from "../lib/filter";
 import { useProvidersKeyboard } from "./use-keyboard";
 
@@ -144,14 +145,27 @@ function Subject({
       >
         {selectedId}
       </div>
-      {/* Mirrors details.tsx: an unlabelled tabIndex={-1} wrapper around the action row.
-          Production gives it no role and no accessible name, so it is reached by test id. */}
-      <div ref={keyboard.focusFallbackRef} tabIndex={-1} data-testid="details-focus-park">
-        <ActionButtons
-          layout={layout}
-          isPending={isPending}
-          getButtonProps={keyboard.getActionButtonProps}
-        />
+      {/* Mirrors details.tsx: the focusable ScrollArea viewport wraps the
+          tabIndex={-1} focus park and the action row, so the cycle sees the
+          same nesting production renders. The park has no role and no
+          accessible name in production, so it is reached by test id. */}
+      {/* biome-ignore lint/a11y/useSemanticElements: mirrors the region div ScrollArea renders, which owns the pane ref. */}
+      <div
+        ref={keyboard.detailsPaneRef}
+        role="region"
+        aria-label="Provider details content"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: the tab stop is the behavior under test — ScrollArea's keyboard-scrollable region carries tabIndex 0.
+        tabIndex={0}
+      >
+        <div ref={keyboard.focusFallbackRef} tabIndex={-1} data-testid="details-focus-park">
+          <div ref={keyboard.actionRowRef}>
+            <ActionButtons
+              layout={layout}
+              isPending={isPending}
+              getButtonProps={keyboard.getActionButtonProps}
+            />
+          </div>
+        </div>
       </div>
     </>
   );
@@ -358,6 +372,84 @@ describe("useProvidersKeyboard", () => {
     expect(runControl).toHaveBeenCalledWith(expect.objectContaining({ id: "more" }));
   });
 
+  it("cycles Tab through the list, the details pane, and the action row like the TUI panes", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <Subject />
+      </KeyboardProvider>,
+    );
+
+    const providerList = screen.getByRole("listbox", { name: "Providers" });
+    const detailsPane = screen.getByRole("region", { name: "Provider details content" });
+    await waitFor(() => expect(providerList).toHaveFocus());
+
+    await user.tab();
+    await waitFor(() => expect(detailsPane).toHaveFocus());
+
+    await user.tab();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Select configuration/i })).toHaveFocus(),
+    );
+
+    await user.tab();
+    await waitFor(() => expect(providerList).toHaveFocus());
+
+    // Shift+Tab reverses the cycle; the hop from the action row back onto the
+    // pane that contains it must move real focus onto the scroll viewport.
+    await user.tab({ shift: true });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Select configuration/i })).toHaveFocus(),
+    );
+
+    await user.tab({ shift: true });
+    await waitFor(() => expect(detailsPane).toHaveFocus());
+
+    await user.tab({ shift: true });
+    await waitFor(() => expect(providerList).toHaveFocus());
+  });
+
+  it("stands the Tab cycle down while a mutation is pending so Tab stays native", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <Subject isPending />
+      </KeyboardProvider>,
+    );
+
+    const providerList = screen.getByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(providerList).toHaveFocus());
+
+    // Every action button is disabled, so a claimed Tab would flip the zone to
+    // "buttons" with nothing focusable and strand the list's arrows; native Tab
+    // must continue into the pane's own tab stop instead.
+    await user.tab();
+    expect(screen.getByRole("region", { name: "Provider details content" })).toHaveFocus();
+
+    await user.tab({ shift: true });
+    expect(providerList).toHaveFocus();
+  });
+
+  it("declines the Tab cycle outside the panes so the search box keeps native Tab", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <Subject />
+      </KeyboardProvider>,
+    );
+
+    const searchInput = screen.getByRole("textbox", { name: "Search providers" });
+    await user.click(searchInput);
+    expect(searchInput).toHaveFocus();
+
+    await user.tab();
+    // Native order continues into the filter buttons; the pane cycle never grabs it.
+    expect(screen.getByRole("button", { name: "all" })).toHaveFocus();
+  });
+
   it("runs every accelerator from the list zone, Delete included", async () => {
     const user = userEvent.setup();
     const runControl = vi.fn();
@@ -433,6 +525,25 @@ describe("useProvidersKeyboard", () => {
     expect(runControl).toHaveBeenCalledWith(expect.objectContaining({ task: "select" }));
   });
 
+  it("claims a bound accelerator while a mutation is pending without running it", async () => {
+    const runControl = vi.fn();
+
+    render(
+      <KeyboardProvider>
+        <Subject runControl={runControl} isPending />
+      </KeyboardProvider>,
+    );
+
+    const listbox = screen.getByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+
+    // fireEvent retained: the claim contract is the keydown's defaultPrevented verdict -- what
+    // keeps the letter from falling through to list typeahead -- which userEvent does not expose.
+    const propagates = fireEvent.keyDown(listbox, { key: "v" });
+    expect(propagates).toBe(false);
+    expect(runControl).not.toHaveBeenCalled();
+  });
+
   it("cycles real focus between the notice action and the search input", async () => {
     const user = userEvent.setup();
 
@@ -453,12 +564,14 @@ describe("useProvidersKeyboard", () => {
     expect(searchInput).toHaveFocus();
   });
 
-  it("ignores ArrowUp from search when no notice renders", async () => {
+  it("hands focus from search to the header Back button when no notice renders, then resumes native Tab", async () => {
     const user = userEvent.setup();
 
     render(
       <KeyboardProvider>
-        <Subject />
+        <HeaderChromeHarness>
+          <Subject />
+        </HeaderChromeHarness>
       </KeyboardProvider>,
     );
 
@@ -466,7 +579,92 @@ describe("useProvidersKeyboard", () => {
     await user.click(searchInput);
 
     await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Back" })).toHaveFocus();
+
+    // The containers-scoped Tab cycle declines on the chrome: native Tab
+    // re-enters at the search input instead of jumping to the list zone.
+    await user.tab();
     expect(searchInput).toHaveFocus();
+    expect(screen.getByRole("listbox", { name: "Providers" })).not.toHaveFocus();
+  });
+
+  it("keeps ArrowUp native in the search input until the caret sits at the start", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <HeaderChromeHarness>
+          <Subject />
+        </HeaderChromeHarness>
+      </KeyboardProvider>,
+    );
+
+    const searchInput = screen.getByRole<HTMLInputElement>("textbox", {
+      name: "Search providers",
+    });
+    await user.click(searchInput);
+    await user.keyboard("abc");
+
+    await user.keyboard("{ArrowUp}");
+
+    expect(searchInput).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Back" })).not.toHaveFocus();
+
+    searchInput.setSelectionRange(0, 0);
+    await user.keyboard("{ArrowUp}");
+
+    expect(screen.getByRole("button", { name: "Back" })).toHaveFocus();
+  });
+
+  it("keeps Escape leaving the page from the Back button after the search hand-off", async () => {
+    const user = userEvent.setup();
+    mockNavigate.mockClear();
+
+    render(
+      <KeyboardProvider>
+        <HeaderChromeHarness>
+          <Subject />
+        </HeaderChromeHarness>
+      </KeyboardProvider>,
+    );
+
+    const searchInput = screen.getByRole("textbox", { name: "Search providers" });
+    await user.click(searchInput);
+
+    // In the input itself Escape keeps its move to the filter row.
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("button", { name: "all" })).toHaveFocus();
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    await user.click(searchInput);
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Back" })).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
+  });
+
+  it("hands focus from the notice to the header Back button and keeps Escape leaving the page", async () => {
+    const user = userEvent.setup();
+    mockNavigate.mockClear();
+
+    render(
+      <KeyboardProvider>
+        <HeaderChromeHarness>
+          <Subject hasNotice />
+        </HeaderChromeHarness>
+      </KeyboardProvider>,
+    );
+
+    await user.click(screen.getByRole("textbox", { name: "Search providers" }));
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Back" })).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });
 
   it("falls back to the list zone when the notice disappears while focused", async () => {

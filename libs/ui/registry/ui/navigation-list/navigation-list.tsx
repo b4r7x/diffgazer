@@ -65,6 +65,13 @@ export interface NavigationListProps
   focused?: boolean;
   /** When true, arrow navigation wraps at list boundaries. */
   wrap?: boolean;
+  /**
+   * Enable type-ahead character search to jump to matching items. Disable when
+   * every printable key the list's screen advertises belongs to an external
+   * hotkey layer.
+   * @default true
+   */
+  typeahead?: boolean;
   /** Auto-focus the list on mount. */
   autoFocus?: boolean;
   /** NavigationList.Item children. */
@@ -89,6 +96,7 @@ export function NavigationList({
   indicator = "bar",
   focused = true,
   wrap = true,
+  typeahead = true,
   autoFocus = false,
   className,
   children,
@@ -192,7 +200,7 @@ export function NavigationList({
       idPrefix,
       autoFocus,
       onKeyDown: handleGroupKeyDown,
-      typeahead: true,
+      typeahead,
       items,
       getItemId: getEncodedListboxItemId,
       ref: composedRef,

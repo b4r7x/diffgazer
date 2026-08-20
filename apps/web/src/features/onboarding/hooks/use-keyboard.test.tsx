@@ -3,12 +3,13 @@
  */
 
 import { FooterProvider } from "@diffgazer/core/footer";
-import { getInitialWizardData } from "@diffgazer/core/onboarding";
+import { getInitialWizardData, type OnboardingStep } from "@diffgazer/core/onboarding";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { FooterView } from "@/testing/footer-view";
 import { useOnboardingKeyboard } from "./use-keyboard";
 
 const mockNavigate = vi.fn();
@@ -18,20 +19,22 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 function KeyboardHarness({
+  currentStep = "authentication",
   canProceed = true,
   isFirstStep = false,
 }: {
+  currentStep?: OnboardingStep;
   canProceed?: boolean;
   isFirstStep?: boolean;
 }) {
   const focusFallbackRef = useRef<HTMLDivElement>(null);
   const wizardData = getInitialWizardData("gemini");
   const { footer } = useOnboardingKeyboard({
-    currentStep: "authentication",
+    currentStep,
     wizardData,
     stepIndex: 2,
     isFirstStep,
-    isLastStep: false,
+    isLastStep: currentStep === "acknowledgement",
     canProceed,
     isSubmitting: false,
     isReconciling: false,
@@ -57,11 +60,16 @@ function KeyboardHarness({
   );
 }
 
-function renderHarness(options?: { canProceed?: boolean; isFirstStep?: boolean }) {
+function renderHarness(options?: {
+  currentStep?: OnboardingStep;
+  canProceed?: boolean;
+  isFirstStep?: boolean;
+}) {
   return render(
     <FooterProvider>
       <KeyboardProvider>
         <KeyboardHarness {...options} />
+        <FooterView />
       </KeyboardProvider>
     </FooterProvider>,
   );
@@ -83,5 +91,33 @@ describe("useOnboardingKeyboard", () => {
 
     await user.keyboard("{ArrowLeft}");
     expect(next).toHaveFocus();
+  });
+
+  it("advertises no navigation hint on the single-checkbox consent step", () => {
+    renderHarness({ currentStep: "acknowledgement", canProceed: false });
+
+    expect(screen.getByText("Accept Consent")).toBeInTheDocument();
+    expect(screen.getByText("Focus Actions")).toBeInTheDocument();
+    expect(screen.queryByText("Navigate")).not.toBeInTheDocument();
+    expect(screen.queryByText("Continue")).not.toBeInTheDocument();
+  });
+
+  it("keeps the navigation hint on steps with options to navigate", () => {
+    renderHarness({ currentStep: "authentication" });
+
+    expect(screen.getByText("Navigate Fields")).toBeInTheDocument();
+  });
+
+  it("advertises the consent Enter hint only once the step can proceed", () => {
+    renderHarness({ currentStep: "acknowledgement", canProceed: true });
+
+    expect(screen.getByText("Continue")).toBeInTheDocument();
+  });
+
+  it("advertises the quit key that stays live through setup", () => {
+    renderHarness();
+
+    expect(screen.getByText("Quit")).toBeInTheDocument();
+    expect(screen.getByText("q")).toBeInTheDocument();
   });
 });

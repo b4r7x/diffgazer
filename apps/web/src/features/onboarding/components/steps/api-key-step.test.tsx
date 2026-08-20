@@ -236,6 +236,98 @@ describe("ApiKeyStep", () => {
     expect(onBoundaryReached).toHaveBeenCalledWith("down");
   });
 
+  it("walks the arrow path through the local bearer token field", async () => {
+    const user = userEvent.setup();
+    const onBoundaryReached = vi.fn();
+    const local = getInitialWizardData("local-openai");
+    if (local.configurationInput.transportFamily !== "local-http") {
+      throw new Error("Expected local HTTP configuration");
+    }
+
+    function ControlledStep() {
+      const [configurationInput, setConfigurationInput] = useState(local.configurationInput);
+      return (
+        <KeyboardProvider>
+          <ApiKeyStep
+            configurationInput={configurationInput}
+            onChange={setConfigurationInput}
+            onBoundaryReached={onBoundaryReached}
+          />
+        </KeyboardProvider>
+      );
+    }
+
+    render(<ControlledStep />);
+    const checkbox = screen.getByRole("checkbox", { name: /bearer token/i });
+    await user.click(checkbox);
+
+    const token = screen.getByLabelText("Local bearer token");
+    checkbox.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(token).toHaveFocus();
+    expect(onBoundaryReached).not.toHaveBeenCalled();
+
+    await user.keyboard("{ArrowUp}");
+    expect(checkbox).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(token).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(onBoundaryReached).toHaveBeenCalledWith("down");
+  });
+
+  it("keeps horizontal arrows in the credential method group from reaching the footer", async () => {
+    const user = userEvent.setup();
+    const onBoundaryReached = vi.fn();
+    const hosted = getInitialWizardData("gemini");
+    if (hosted.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted configuration");
+    }
+
+    render(
+      <KeyboardProvider>
+        <ApiKeyStep
+          configurationInput={hosted.configurationInput}
+          onChange={vi.fn()}
+          onBoundaryReached={onBoundaryReached}
+        />
+      </KeyboardProvider>,
+    );
+
+    const literal = screen.getByRole("radio", { name: "Enter credential now" });
+    literal.focus();
+    await user.keyboard("{ArrowLeft}");
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("radio", { name: "Use environment reference" })).toHaveFocus();
+    await user.keyboard("{ArrowRight}");
+
+    expect(onBoundaryReached).not.toHaveBeenCalled();
+  });
+
+  it("shows no credential highlight while the footer owns the step", () => {
+    const hosted = getInitialWizardData("gemini");
+    if (hosted.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted configuration");
+    }
+
+    render(
+      <KeyboardProvider>
+        <ApiKeyStep
+          configurationInput={hosted.configurationInput}
+          onChange={vi.fn()}
+          enabled={false}
+        />
+      </KeyboardProvider>,
+    );
+
+    expect(screen.getByRole("radio", { name: "Enter credential now" })).not.toHaveAttribute(
+      "data-highlighted",
+    );
+    expect(screen.getByRole("radio", { name: "Use environment reference" })).not.toHaveAttribute(
+      "data-highlighted",
+    );
+  });
+
   it("offers the optional local bearer the setup plan advertises", async () => {
     const user = userEvent.setup();
     const local = getInitialWizardData("local-openai");

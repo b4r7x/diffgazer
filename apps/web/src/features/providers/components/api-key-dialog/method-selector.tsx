@@ -140,7 +140,9 @@ export function ApiKeyMethodSelector({
       <div
         className={cn(
           "space-y-2 transition-opacity",
-          method === "env" ? "opacity-100" : "opacity-60 hover:opacity-100",
+          method === "env"
+            ? "opacity-100"
+            : "opacity-60 hover:opacity-100 focus-within:opacity-100",
         )}
       >
         <RadioGroupItem

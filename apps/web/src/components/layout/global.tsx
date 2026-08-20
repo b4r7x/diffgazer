@@ -6,6 +6,7 @@ import { useKey, useKeyboardContext } from "@diffgazer/keys";
 import { useCanGoBack, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { type ReactNode, useRef, useState } from "react";
 import { useConfigData } from "@/hooks/use-config";
+import { isDialogScope } from "@/hooks/use-dialog-scope";
 import { usePointerFocusGuard } from "@/hooks/use-pointer-focus-guard";
 import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
 import { getMainContent, MAIN_CONTENT_ID } from "@/lib/main-content";
@@ -13,6 +14,8 @@ import { reportShutdownResult, shutdown } from "@/lib/shutdown";
 import { ConnectionStrip } from "./connection-strip";
 import { Footer } from "./footer";
 import { Header, type HeaderServerState } from "./header";
+import { HeaderChromeProvider, useHeaderBackButtonRef } from "./header-chrome";
+import { StreamingReviewProvider, useStreamingReviewCancelRef } from "./streaming-review";
 
 /**
  * Screens that open a section — home, help, the setup wizard — carry the full
@@ -77,6 +80,7 @@ function ConnectedHeader({ serverState }: { serverState: HeaderServerState }) {
   const canGoBack = useCanGoBack();
   const { pathname } = useLocation();
   const config = useConfigData();
+  const backButtonRef = useHeaderBackButtonRef();
 
   const { providerName, providerStatus } = resolveShellProviderIdentity(
     toShellProviderState(config),
@@ -93,6 +97,7 @@ function ConnectedHeader({ serverState }: { serverState: HeaderServerState }) {
       providerStatus={providerStatus}
       serverState={serverState}
       onBack={backAction.type === "none" ? undefined : onBack}
+      backButtonRef={backButtonRef}
       wordmark={getWordmarkTier(pathname)}
     />
   );
@@ -103,32 +108,39 @@ function ConnectedFooter() {
   return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
 }
 
-function isDialogScope(scope: string | null): boolean {
-  return scope === "dialog" || scope?.endsWith("-dialog") === true;
-}
-
 export function GlobalShortcuts() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { activeScope } = useKeyboardContext();
-  // Every dialog in the app pushes a `-dialog` scope while it is open, and a
-  // null scope registers no keys at all, so this is the single suppression rule.
-  const enabled = pathname !== "/onboarding" && !isDialogScope(activeScope);
-  const shortcutScope = enabled ? activeScope : null;
+  const streamingReviewCancel = useStreamingReviewCancelRef();
+  // Every dialog in the app registers its scope through use-dialog-scope while
+  // it is open, and a null scope registers no keys at all. Only open dialogs
+  // suppress quit — it stays live on onboarding, as in the TUI — while the
+  // section jumps also wait until setup completes.
+  const dialogOpen = isDialogScope(activeScope);
+  const quitScope = dialogOpen ? null : activeScope;
+  const sectionScope = dialogOpen || pathname === "/onboarding" ? null : activeScope;
 
   const navigateUnlessCurrent = (to: "/settings" | "/history" | "/help") => {
     if (pathname === to) return;
     void navigate({ to });
   };
 
+  // A streaming review owns q: cancel the run and keep the app alive, matching
+  // the TUI's quit interception while a review streams.
   const handleQuit = () => {
+    const cancelRun = streamingReviewCancel.current;
+    if (cancelRun) {
+      cancelRun();
+      return;
+    }
     void shutdown().then(reportShutdownResult);
   };
 
-  useKey("q", handleQuit, { scope: shortcutScope });
-  useKey("s", () => navigateUnlessCurrent("/settings"), { scope: shortcutScope });
-  useKey("h", () => navigateUnlessCurrent("/history"), { scope: shortcutScope });
-  useKey("shift+?", () => navigateUnlessCurrent("/help"), { scope: shortcutScope });
+  useKey("q", handleQuit, { scope: quitScope });
+  useKey("s", () => navigateUnlessCurrent("/settings"), { scope: sectionScope });
+  useKey("h", () => navigateUnlessCurrent("/history"), { scope: sectionScope });
+  useKey("shift+?", () => navigateUnlessCurrent("/help"), { scope: sectionScope });
 
   return null;
 }
@@ -140,35 +152,43 @@ interface GlobalLayoutProps {
 export function GlobalLayout({ children }: GlobalLayoutProps) {
   const transport = useTransportState();
   const mainRef = useRef<HTMLElement>(null);
+  const backButtonRef = useRef<HTMLButtonElement>(null);
+  const streamingReviewCancel = useRef<(() => void) | null>(null);
 
   usePointerFocusGuard(mainRef);
 
   return (
-    <div
-      className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] selection:bg-info selection:text-info-foreground"
-      data-layout="app-shell"
-    >
-      <a
-        href={`#${MAIN_CONTENT_ID}`}
-        onClick={() => getMainContent()?.focus()}
-        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:p-2 focus:bg-background focus:text-foreground focus:border focus:border-border"
-      >
-        Skip to main content
-      </a>
-      <ConnectedHeader serverState={transport.state} />
-      {transport.state === "live" ? null : (
-        <ConnectionStrip state={transport.state} onRetry={transport.retry} />
-      )}
-      <GlobalShortcuts />
-      <main
-        ref={mainRef}
-        id={MAIN_CONTENT_ID}
-        tabIndex={-1}
-        className="flex-1 flex flex-col overflow-hidden"
-      >
-        {children}
-      </main>
-      <ConnectedFooter />
-    </div>
+    <HeaderChromeProvider value={backButtonRef}>
+      <StreamingReviewProvider value={streamingReviewCancel}>
+        <div
+          className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] selection:bg-info selection:text-info-foreground"
+          data-layout="app-shell"
+        >
+          {/* focus: dialect, not the shared focus-visible grammar: the sr-only reveal
+            must trigger on any focus, so the outline rides the same condition. */}
+          <a
+            href={`#${MAIN_CONTENT_ID}`}
+            onClick={() => getMainContent()?.focus()}
+            className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:p-2 focus:bg-background focus:text-foreground focus:border focus:border-border focus:outline-2 focus:outline-ring focus:outline-offset-0"
+          >
+            Skip to main content
+          </a>
+          <ConnectedHeader serverState={transport.state} />
+          {transport.state === "live" ? null : (
+            <ConnectionStrip state={transport.state} onRetry={transport.retry} />
+          )}
+          <GlobalShortcuts />
+          <main
+            ref={mainRef}
+            id={MAIN_CONTENT_ID}
+            tabIndex={-1}
+            className="flex-1 flex flex-col overflow-hidden"
+          >
+            {children}
+          </main>
+          <ConnectedFooter />
+        </div>
+      </StreamingReviewProvider>
+    </HeaderChromeProvider>
   );
 }

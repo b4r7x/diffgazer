@@ -44,6 +44,9 @@ export function TimelineList({
       }}
       focused={keyboardEnabled}
       wrap={false}
+      // "/", l, and R are window-level shortcuts for this zone; list typeahead
+      // would claim those keystrokes before they arrive.
+      typeahead={false}
       autoFocus={keyboardEnabled}
       className={className}
     >

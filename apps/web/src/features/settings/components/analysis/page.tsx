@@ -53,6 +53,7 @@ export function SettingsAnalysisPage() {
           enabled={!footer.inActions}
           autoFocusList={!footer.inActions}
           disabled={isSaving}
+          onFocus={() => footer.reset()}
           required
           invalid={!hasLensSelection}
           descriptionId={lensSelectionMessageId}

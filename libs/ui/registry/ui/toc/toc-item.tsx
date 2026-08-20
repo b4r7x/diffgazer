@@ -6,6 +6,7 @@ import type {
   ReactNode,
   Ref,
 } from "react";
+import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { MARKER_RAIL_BASE, MARKER_RAIL_SELECTED } from "@/lib/marker-rail";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +17,7 @@ const INDENT_PER_LEVEL_PX = 12;
 export const tocItemVariants = cva(
   [
     "block py-1 text-xs font-mono transition-colors",
-    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+    FOCUS_OUTLINE,
     // The shared marker rail sits on top of TocList's 1px hairline. Toc is the
     // reference implementation of the library's "you are here" mark.
     MARKER_RAIL_BASE,

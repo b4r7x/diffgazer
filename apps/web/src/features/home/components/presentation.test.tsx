@@ -1,14 +1,15 @@
 import { createApi } from "@diffgazer/core/api";
-import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { ApiProvider, useProviderConsentGate } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { HomeContextInfo } from "@diffgazer/core/schemas/presentation";
-import { KeyboardProvider } from "@diffgazer/keys";
+import { KeyboardProvider, useKey } from "@diffgazer/keys";
 import { Toaster, toast } from "@diffgazer/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ProviderConsentDialog } from "@/components/shared/provider-consent-dialog";
 import type { ShutdownResult } from "@/lib/shutdown";
 
 import { FooterView } from "@/testing/footer-view";
@@ -64,6 +65,12 @@ function renderPresentation(props: HomePagePresentationProps) {
   return render(<HomePagePresentation {...props} />, { wrapper: Wrapper });
 }
 
+/** Stands in for the next handler home's declined keys have to reach. */
+function TrustKeyProbe({ onPress }: { onPress: () => void }) {
+  useKey("t", onPress, { scope: "home" });
+  return null;
+}
+
 function renderPresentationWithApi(props: HomePagePresentationProps) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -89,6 +96,51 @@ function renderPresentationWithApi(props: HomePagePresentationProps) {
       <ApiProvider value={api}>
         <HomePagePresentation {...props} />
         <FooterView />
+      </ApiProvider>
+    </QueryClientProvider>,
+    { wrapper: Wrapper },
+  );
+}
+
+// The real gate and notice, wired the way the app shell wires them, so the
+// consent-gated start path runs end to end: r opens the notice, Accept saves
+// the consent and continues the held start.
+function ConsentGatedHome(props: HomePagePresentationProps) {
+  const gate = useProviderConsentGate(null);
+  return (
+    <>
+      <HomePagePresentation {...props} requireProviderConsent={gate.require} />
+      <ProviderConsentDialog
+        open={gate.isOpen}
+        onOpenChange={(open) => {
+          if (!open) gate.decline();
+        }}
+        consent={gate.readBack}
+        continues={gate.continues}
+        isAccepting={gate.isAccepting}
+        error={gate.error}
+        onAccept={gate.accept}
+      />
+    </>
+  );
+}
+
+function renderConsentGatedHome(props: HomePagePresentationProps) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  const api = {
+    ...createApi({ baseUrl: "http://localhost" }),
+    saveSettings: vi.fn(async () => {}),
+  };
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ApiProvider value={api}>
+        <ConsentGatedHome {...props} />
       </ApiProvider>
     </QueryClientProvider>,
     { wrapper: Wrapper },
@@ -584,6 +636,68 @@ describe("HomePagePresentation — review-start pending state", () => {
     expect(liveRegion).toHaveTextContent("");
   });
 
+  it("hands focus from the sidebar to the menu when the start makes the sidebar inert", async () => {
+    const createReview = vi.fn(() => new Promise<{ reviewId: string }>(() => {}));
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ createReview }));
+
+    // Let the menu's autofocus rAF land first, or it steals the focus this
+    // test is about to rest on the sidebar row.
+    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
+
+    // Rest focus on the sidebar's provider row, the pane the start is about to
+    // turn inert; the click's own navigation lands in the prop mock.
+    const providerRow = screen.getByRole("button", { name: "Configure provider settings" });
+    await user.click(providerRow);
+    expect(providerRow).toHaveFocus();
+
+    await user.keyboard("r");
+
+    await waitFor(() => expect(createReview).toHaveBeenCalled());
+    // Focus custody: the menu takes the focus the inert sidebar would have
+    // dropped — the active element never falls to the body.
+    expect(screen.getByRole("menu")).toHaveFocus();
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it("keeps focus custody when the start from the sidebar is consent-gated", async () => {
+    const createReview = vi.fn(() => new Promise<{ reviewId: string }>(() => {}));
+    const user = userEvent.setup();
+    renderConsentGatedHome(buildProps({ createReview }));
+
+    // Let the menu's autofocus rAF land first, or it steals the focus this
+    // test is about to rest on the sidebar row.
+    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
+
+    const providerRow = screen.getByRole("button", { name: "Configure provider settings" });
+    await user.click(providerRow);
+    expect(providerRow).toHaveFocus();
+
+    await user.keyboard("r");
+
+    // Custody moved to the menu before the notice opened, so the notice
+    // captured the menu — not the sidebar row. Declining proves it: the row is
+    // still focusable (a dropped start turns nothing inert), so only the
+    // hand-off can explain the restore landing on the menu.
+    let notice = await screen.findByRole("alertdialog", { name: "Provider data notice" });
+    await user.click(within(notice).getByRole("button", { name: "Not now" }));
+
+    expect(createReview).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
+
+    // Accepting the re-raised notice continues the start, which turns the
+    // sidebar inert — focus still never drops to the body.
+    await user.keyboard("r");
+    notice = await screen.findByRole("alertdialog", { name: "Provider data notice" });
+    await user.click(within(notice).getByRole("button", { name: "Accept and continue" }));
+
+    await waitFor(() => expect(createReview).toHaveBeenCalledWith({ mode: "unstaged" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
   it("puts the run state on the started row, not on the highlighted one", async () => {
     const createReview = vi.fn(() => new Promise<{ reviewId: string }>(() => {}));
     const user = userEvent.setup();
@@ -750,6 +864,59 @@ describe("HomePagePresentation — menu jump keys", () => {
       to: "/review/{-$reviewId}",
       params: { reviewId: "rev-last" },
     });
+  });
+
+  it("opens provider settings from the advertised p key", async () => {
+    const navigateMock = createNavigateMock();
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ navigate: navigateMock.navigate }));
+
+    await user.keyboard("p");
+
+    expect(navigateMock.mock).toHaveBeenCalledWith({ to: "/settings/providers" });
+  });
+
+  it("opens trust permissions from the advertised t key while untrusted", async () => {
+    const navigateMock = createNavigateMock();
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ isTrusted: false, navigate: navigateMock.navigate }));
+
+    await user.keyboard("t");
+
+    expect(navigateMock.mock).toHaveBeenCalledWith({ to: "/settings/trust-permissions" });
+  });
+
+  it("holds the sidebar jump keys while a review is starting", async () => {
+    const createReview = vi.fn(() => new Promise<{ reviewId: string }>(() => {}));
+    const navigateMock = createNavigateMock();
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ createReview, navigate: navigateMock.navigate }));
+
+    await user.keyboard("r");
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/starting review/i));
+    await user.keyboard("p");
+
+    expect(navigateMock.mock).not.toHaveBeenCalled();
+  });
+
+  it("declines t once the repository is trusted instead of swallowing it", async () => {
+    const navigateMock = createNavigateMock();
+    const onFallthrough = vi.fn();
+    const user = userEvent.setup();
+    // Registered first, so it sits behind home's own binding in the dispatch
+    // order and only runs if home declines the key.
+    render(
+      <>
+        <TrustKeyProbe onPress={onFallthrough} />
+        <HomePagePresentation {...buildProps({ navigate: navigateMock.navigate })} />
+      </>,
+      { wrapper: Wrapper },
+    );
+
+    await user.keyboard("t");
+
+    expect(navigateMock.mock).not.toHaveBeenCalled();
+    expect(onFallthrough).toHaveBeenCalledOnce();
   });
 
   it("leaves o inert when there is no previous run", async () => {

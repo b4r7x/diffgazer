@@ -29,6 +29,7 @@ function Subject({
     focused,
     setFocused,
     getMethodOptionProps,
+    getCloseProps,
     getCancelProps,
     getConfirmProps,
     getAcknowledgementProps,
@@ -50,6 +51,7 @@ function Subject({
   const cancelProps = getCancelProps();
   const confirmProps = getConfirmProps();
   const acknowledgementProps = getAcknowledgementProps();
+  const closeProps = getCloseProps();
 
   return (
     <>
@@ -86,6 +88,15 @@ function Subject({
       >
         Save
       </button>
+      {/* Mirrors DialogCloseIcon: last in DOM so the [x] is the final tab stop. */}
+      <button
+        ref={closeProps.ref}
+        type="button"
+        onFocus={closeProps.onFocus}
+        aria-label="Close dialog"
+      >
+        ×
+      </button>
     </>
   );
 }
@@ -116,6 +127,25 @@ describe("useApiKeyDialogKeyboard hosted flow", () => {
     await user.keyboard("{Enter}");
     expect(env).toHaveAttribute("aria-checked", "true");
     expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it("joins the [x] to the arrow cycle: ArrowUp from the first method reaches it, ArrowDown returns", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <Subject />
+      </KeyboardProvider>,
+    );
+
+    const paste = screen.getByRole("radio", { name: "Paste Key Now" });
+    await waitFor(() => expect(paste).toHaveFocus());
+
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Close dialog" })).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(paste).toHaveFocus();
   });
 
   it("does not submit the env method while a submit is already in flight", async () => {
@@ -296,5 +326,24 @@ describe("useApiKeyDialogKeyboard local setup", () => {
 
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("button", { name: "Save" })).toHaveFocus();
+  });
+
+  it("reaches the [x] with ArrowUp from the acknowledgement and returns with ArrowDown", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <Subject canSubmit isHosted={false} />
+      </KeyboardProvider>,
+    );
+
+    const acknowledgement = screen.getByRole("button", { name: "Accept notice" });
+    await waitFor(() => expect(acknowledgement).toHaveFocus());
+
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Close dialog" })).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(acknowledgement).toHaveFocus();
   });
 });

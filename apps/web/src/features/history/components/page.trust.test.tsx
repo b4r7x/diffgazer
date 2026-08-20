@@ -8,6 +8,8 @@ const { mockNavigate } = vi.hoisted(() => ({
 vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({ pathname: "/history-page-test" }),
   useNavigate: () => mockNavigate,
+  useRouter: () => ({ history: { back: vi.fn() }, navigate: vi.fn() }),
+  useCanGoBack: () => false,
 }));
 
 import { HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";

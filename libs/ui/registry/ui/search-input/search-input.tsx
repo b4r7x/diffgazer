@@ -11,6 +11,7 @@ import {
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
+import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { inputSizeClasses } from "@/lib/input-variants";
 import { cn } from "@/lib/utils";
 
@@ -164,7 +165,7 @@ export function SearchInput({
           data-slot="search-input-clear"
           aria-label={clearLabel}
           disabled={disabled}
-          className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center text-base leading-none text-foreground/70 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed pointer-coarse:right-0 pointer-coarse:size-11"
+          className={`absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center text-base leading-none text-foreground/70 hover:text-foreground ${FOCUS_OUTLINE} disabled:cursor-not-allowed pointer-coarse:right-0 pointer-coarse:size-11`}
           onPointerDown={(event) => event.preventDefault()}
           onClick={() => {
             invalidatePendingReset();

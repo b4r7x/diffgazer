@@ -33,6 +33,12 @@ import { CheckboxGroupContext } from "./checkbox-group-context";
 // shared by every group in the process and reaches consumers through onChange.
 const EMPTY_VALUES = Object.freeze<string[]>([]) as string[];
 
+// k/j mirror ArrowUp/ArrowDown -- the vim contract RadioGroup lists already
+// follow. useNavigation ignores editable targets, so the aliases stay safe
+// next to nested inputs.
+const CHECKBOX_PREVIOUS_KEYS = ["ArrowUp", "k"] as const;
+const CHECKBOX_NEXT_KEYS = ["ArrowDown", "j"] as const;
+
 /** Props for checkbox group root. */
 type CheckboxGroupRootProps = Omit<
   ComponentPropsWithRef<"div">,
@@ -210,6 +216,8 @@ export function CheckboxGroup(props: CheckboxGroupProps) {
     onEnter: (itemValue) => toggle(itemValue),
     moveFocus: true,
     scopeToContainer: true,
+    upKeys: CHECKBOX_PREVIOUS_KEYS,
+    downKeys: CHECKBOX_NEXT_KEYS,
     ownerSelector: '[data-diffgazer-selectable-owner="checkbox"]',
   });
 

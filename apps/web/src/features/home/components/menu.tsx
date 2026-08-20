@@ -3,10 +3,12 @@ import type { MenuAction, NavItem } from "@diffgazer/core/schemas/presentation";
 import { Menu, MenuDivider, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { Spinner } from "@diffgazer/ui/components/spinner";
-import { Fragment } from "react";
+import { Fragment, type Ref } from "react";
 import { useFocusWithin } from "@/hooks/use-focus-within";
 
 interface HomeMenuProps {
+  /** The focusable menu container, for the page to hand focus to when another pane goes inert. */
+  menuRef?: Ref<HTMLDivElement>;
   highlighted: MenuAction | null;
   onHighlightChange: (id: MenuAction | null) => void;
   onSelect: (id: MenuAction) => void;
@@ -44,6 +46,7 @@ function StartingRowLabel({ label }: { label: string }) {
 }
 
 export function HomeMenu({
+  menuRef,
   highlighted,
   onHighlightChange,
   onSelect,
@@ -72,12 +75,17 @@ export function HomeMenu({
           the last row's highlight terminates into the bottom border, matching
           the settings hub. */}
       <div className="flex flex-col">
+        {/* Every printable key here is an advertised jump key owned by the
+            window-level hotkey layer (r/R/l/o on this page, h/s/?/q app-wide),
+            so typeahead stays off: one keystroke, one owner. */}
         <Menu
+          ref={menuRef}
           highlighted={highlighted}
           onHighlightChange={onHighlightChange}
           onSelect={onSelect}
           aria-labelledby={MENU_TITLE_ID}
           autoFocus
+          typeahead={false}
         >
           {annotated.map(({ item, showDividerBefore }) => {
             const isStarting = pendingAction === item.id;

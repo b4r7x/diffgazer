@@ -49,7 +49,14 @@ export function FixPlanChecklist({
             }
             highlighted={focusedStepIndex === step.completionIndex}
             strikethrough
-            className="w-full"
+            // One focus grammar at a time: while real DOM focus sits on the row
+            // its ring is the marker, so the collection highlight (fill, left
+            // bar, bold) yields. data-highlighted stays on as the remembered
+            // step position for when focus parks elsewhere.
+            className={cn(
+              "w-full",
+              "data-highlighted:focus:bg-transparent data-highlighted:focus:font-normal data-highlighted:focus:border-l-transparent",
+            )}
           />
         );
       })}

@@ -5,7 +5,7 @@ import {
   deriveDiagnosticsActions,
   type Shortcut,
 } from "@diffgazer/core/schemas/presentation";
-import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
+import { DECLINE, useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import { type RefObject, useEffect, useRef, useState } from "react";
 
@@ -125,6 +125,34 @@ export function useDiagnosticsKeyboard({
   );
 
   useKey("Escape", () => navigate({ to: "/settings" }), { scope: SETTINGS_DIAGNOSTICS_SCOPE });
+
+  // Focus never leaves the action row (canExitActions is off), so the snapshot
+  // pane scrolls through scope keys like r/R rather than a tab stop of its own.
+  const scrollSnapshot = (event: KeyboardEvent) => {
+    const el = focusFallbackRef.current;
+    if (!el || el.scrollHeight <= el.clientHeight) return DECLINE;
+    switch (event.key) {
+      case "PageUp":
+        el.scrollTop -= el.clientHeight * 0.8;
+        return;
+      case "PageDown":
+        el.scrollTop += el.clientHeight * 0.8;
+        return;
+      case "Home":
+        el.scrollTop = 0;
+        return;
+      case "End":
+        el.scrollTop = el.scrollHeight;
+        return;
+      default:
+        return DECLINE;
+    }
+  };
+
+  useKey(["PageUp", "PageDown", "Home", "End"], scrollSnapshot, {
+    scope: SETTINGS_DIAGNOSTICS_SCOPE,
+    preventDefault: true,
+  });
 
   return {
     focusedIndex,

@@ -76,6 +76,18 @@ export function getComposedEventTarget(event: Event): EventTarget | null {
 }
 
 /**
+ * Returns true when any of the four modifier keys was held. An unmodified key
+ * belongs to the widget; a modified one is a browser or OS gesture it must
+ * leave alone. Letter hotkeys that encode Shift in `event.key` (`?`, `R`) are
+ * not this guard's shape — they compare the key itself.
+ */
+export function hasModifierKey(
+  event: Pick<KeyboardEvent, "altKey" | "ctrlKey" | "metaKey" | "shiftKey">,
+): boolean {
+  return event.altKey || event.ctrlKey || event.metaKey || event.shiftKey;
+}
+
+/**
  * Returns true for form-like or editable elements that can own keyboard input,
  * including select and non-text input types.
  */

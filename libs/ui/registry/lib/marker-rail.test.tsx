@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { Checkbox } from "../ui/checkbox";
 import { NavigationList } from "../ui/navigation-list";
 import { Sidebar } from "../ui/sidebar";
 import { Toc } from "../ui/toc";
@@ -74,6 +75,24 @@ describe("marker rail", () => {
     const inverted = selected.hasAttribute("data-highlighted");
     expect(selected).toHaveClass(inverted ? MARKER_RAIL_ON_INVERTED : MARKER_RAIL_SELECTED);
     expect(selected).not.toHaveClass(inverted ? MARKER_RAIL_SELECTED : MARKER_RAIL_ON_INVERTED);
+  });
+
+  it("keeps selectable row label geometry identical between states", () => {
+    render(
+      <>
+        <Checkbox label="Apple" highlighted />
+        <Checkbox label="Banana" />
+      </>,
+    );
+
+    const highlighted = screen.getByRole("checkbox", { name: "Apple" });
+    const resting = screen.getByRole("checkbox", { name: "Banana" });
+    for (const row of [highlighted, resting]) {
+      expect(row).toHaveClass(...RAIL_BASE_CLASSES);
+    }
+    // The collection highlight wears the shared rail, not a private left bar.
+    expect(highlighted).toHaveClass(MARKER_RAIL_SELECTED);
+    expect(resting).not.toHaveClass(MARKER_RAIL_SELECTED);
   });
 
   it("keeps Sidebar bar-mode label geometry identical between states", () => {

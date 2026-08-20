@@ -135,6 +135,7 @@ const config = defineConfig((): ViteUserConfig => {
         "@/lib/fieldset-disabled": uiRegistryPath("lib/fieldset-disabled"),
         "@/lib/floating-position": uiRegistryPath("lib/floating-position"),
         "@/lib/floating-position-constants": uiRegistryPath("lib/floating-position-constants"),
+        "@/lib/focus-outline": uiRegistryPath("lib/focus-outline"),
         "@/lib/input-variants": uiRegistryPath("lib/input-variants"),
         "@/lib/listbox-children": uiRegistryPath("lib/listbox-children"),
         "@/lib/listbox-dom": uiRegistryPath("lib/listbox-dom"),

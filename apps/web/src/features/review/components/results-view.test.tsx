@@ -4,11 +4,12 @@ import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { MAIN_CONTENT_ID } from "@/lib/main-content";
 import { FooterView } from "@/testing/footer-view";
+import { HeaderChromeHarness } from "@/testing/header-chrome";
 
 // Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 const { backMock, navigateMock } = vi.hoisted(() => ({
@@ -663,6 +664,120 @@ describe("ReviewResultsView keyboard regression", () => {
     expect(detailsScroll.scrollTop).toBeLessThan(afterDown);
   });
 
+  it("hands DOM focus to the patch diff region with Enter from the details zone", async () => {
+    const user = userEvent.setup();
+    renderView([
+      createReviewIssue("issue-1", "Issue one", {
+        suggestedPatch:
+          "--- a/src/example.ts\n+++ b/src/example.ts\n@@ -1 +1 @@\n-const a = 1;\n+const a = 2;",
+      }),
+    ]);
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
+
+    await user.keyboard("4");
+    expect(screen.getByRole("tab", { name: "Patch" })).toHaveAttribute("aria-selected", "true");
+
+    // The diff region advertises j/k/Home/End via aria-keyshortcuts; Enter is
+    // what makes them reachable by handing the region real DOM focus.
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("region", { name: "Unified diff" })).toHaveFocus();
+  });
+
+  it("parks focus on the details scroll body when a tab switch hides the Enter-focused diff", async () => {
+    const user = userEvent.setup();
+    renderView([
+      createReviewIssue("issue-1", "Issue one", {
+        suggestedPatch:
+          "--- a/src/example.ts\n+++ b/src/example.ts\n@@ -1 +1 @@\n-const a = 1;\n+const a = 2;",
+      }),
+    ]);
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
+
+    await user.keyboard("4");
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("region", { name: "Unified diff" })).toHaveFocus();
+
+    // jsdom never blurs hidden elements, so the observable contract is that
+    // the switch parks focus on the scroll body before the patch panel hides.
+    await user.keyboard("1");
+    expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus();
+
+    await user.keyboard("4");
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("region", { name: "Unified diff" })).toHaveFocus();
+
+    await user.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("tab", { name: "Trace" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus();
+  });
+
+  it("advertises Enter to focus the diff only while the patch tab shows a diff view", async () => {
+    const user = userEvent.setup();
+    renderView([
+      createReviewIssue("issue-1", "Issue one", {
+        suggestedPatch:
+          "--- a/src/example.ts\n+++ b/src/example.ts\n@@ -1 +1 @@\n-const a = 1;\n+const a = 2;",
+      }),
+    ]);
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    await user.keyboard("{ArrowRight}");
+
+    expect(await screen.findByText("Switch Tab")).toBeInTheDocument();
+    expect(screen.queryByText("Focus Diff")).not.toBeInTheDocument();
+
+    await user.keyboard("4");
+    expect(await screen.findByText("Focus Diff")).toBeInTheDocument();
+
+    await user.keyboard("1");
+    expect(screen.queryByText("Focus Diff")).not.toBeInTheDocument();
+  });
+
+  it("keeps the Enter diff hint off when the patch falls back to the plain code block", async () => {
+    const user = userEvent.setup();
+    renderView([
+      createReviewIssue("issue-1", "Issue one", {
+        suggestedPatch: "-const a = 1;\n+const a = 2;",
+      }),
+    ]);
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    await user.keyboard("{ArrowRight}");
+    await user.keyboard("4");
+
+    expect(screen.getByRole("tab", { name: "Patch" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByText("Focus Diff")).not.toBeInTheDocument();
+  });
+
+  it("labels the Escape hint with the summary it returns to when one exists", async () => {
+    render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <ReviewResultsView
+            issues={[createReviewIssue("issue-1", "Issue one")]}
+            reviewId="review-1"
+            onBackToSummary={() => undefined}
+          />
+          <FooterView />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    expect(await screen.findByText("Summary")).toBeInTheDocument();
+    expect(screen.queryByText("Back")).not.toBeInTheDocument();
+  });
+
   it("moves from focused severity filters back to the issue list with ArrowDown", async () => {
     const user = userEvent.setup();
     renderView();
@@ -937,5 +1052,99 @@ describe("ReviewResultsView mobile pane-swap", () => {
     await user.keyboard("{ArrowLeft}");
     await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
     expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "list");
+  });
+});
+
+describe("ReviewResultsView chrome hand-off", () => {
+  function renderViewWithChrome() {
+    return render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <HeaderChromeHarness>
+            <ReviewResultsView
+              issues={[
+                createReviewIssue("issue-1", "Issue one"),
+                createReviewIssue("issue-2", "Issue two"),
+              ]}
+              reviewId="review-1"
+            />
+            <FooterView />
+          </HeaderChromeHarness>
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+  }
+
+  async function focusFilters(user: ReturnType<typeof userEvent.setup>) {
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    await user.keyboard("{ArrowUp}");
+    const filterGroup = screen.getByRole("group", { name: "Severity filter" });
+    await waitFor(() =>
+      expect(filterGroup).toContainElement(document.activeElement as HTMLElement | null),
+    );
+    return filterGroup;
+  }
+
+  it("hands focus to the header Back button with ArrowUp from the severity filters and keeps Escape leaving the screen", async () => {
+    const user = userEvent.setup();
+    navigateMock.mockClear();
+    renderViewWithChrome();
+
+    await focusFilters(user);
+    await user.keyboard("{ArrowUp}");
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Back" })).toHaveFocus());
+
+    await user.keyboard("{Escape}");
+    expect(navigateMock).toHaveBeenCalledWith({ to: "/" });
+  });
+
+  it("leaves modified arrows native on the severity filters", async () => {
+    const user = userEvent.setup();
+    renderViewWithChrome();
+
+    const filterGroup = await focusFilters(user);
+
+    // The hand-off contract keeps modified arrows native (history pins the
+    // same on its warnings region), so these must not reach the chrome.
+    await user.keyboard("{Shift>}{ArrowUp}{/Shift}");
+    await user.keyboard("{Control>}{ArrowUp}{/Control}");
+
+    expect(filterGroup).toContainElement(document.activeElement as HTMLElement | null);
+    expect(screen.getByRole("button", { name: "Back" })).not.toHaveFocus();
+  });
+
+  it("parks the filters zone on the chrome so one focus mark paints and the footer follows", async () => {
+    const user = userEvent.setup();
+    renderViewWithChrome();
+
+    await focusFilters(user);
+    const blocker = screen.getByRole("button", { name: /blocker severity/i });
+    expect(blocker).toHaveAttribute("data-highlighted");
+    const footer = within(screen.getByRole("contentinfo"));
+    expect(footer.getByText("Move Filter")).toBeInTheDocument();
+
+    await user.keyboard("{ArrowUp}");
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Back" })).toHaveFocus());
+    expect(blocker).not.toHaveAttribute("data-highlighted");
+    expect(footer.queryByText("Move Filter")).not.toBeInTheDocument();
+    expect(footer.getByText("Back")).toBeInTheDocument();
+  });
+
+  it("declines the pane Tab cycle on the Back button so native Tab re-enters the page", async () => {
+    const user = userEvent.setup();
+    renderViewWithChrome();
+
+    const filterGroup = await focusFilters(user);
+    await user.keyboard("{ArrowUp}");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Back" })).toHaveFocus());
+
+    await user.tab();
+
+    // A claimed Tab would cycle the zone into the issue list; native Tab lands
+    // on the filter chip that kept the roving tab stop.
+    expect(filterGroup).toContainElement(document.activeElement as HTMLElement | null);
+    expect(screen.getByRole("listbox")).not.toHaveFocus();
   });
 });

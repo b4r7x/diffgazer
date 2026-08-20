@@ -200,6 +200,13 @@ export const navigationListDoc: ComponentDoc = {
         defaultValue: "true",
         description: "When true, arrow navigation wraps at list boundaries.",
       },
+      typeahead: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description:
+          "Enable type-ahead character search to jump to matching items. Disable when every printable key the list's screen advertises belongs to an external hotkey layer.",
+      },
       indicator: {
         type: '"bar" | "bar-thick" | "arrow" | "bracket"',
         required: false,

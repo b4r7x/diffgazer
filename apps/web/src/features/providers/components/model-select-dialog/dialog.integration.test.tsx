@@ -299,6 +299,38 @@ describe("ModelSelectDialog configuration-bound discovery", () => {
   });
 });
 
+describe("ModelSelectDialog search escape staging", () => {
+  it("clears the query on the first Esc and releases the empty-query press to the dialog cancel", async () => {
+    const user = userEvent.setup();
+    const { onOpenChange } = renderDialog();
+
+    await screen.findByRole("radio", { name: /gemini-2\.5-flash/ });
+    const search = screen.getByRole("searchbox", { name: "Search models" });
+    await user.click(search);
+    await user.keyboard("flash");
+    expect(search).toHaveValue("flash");
+
+    // fireEvent retained: the assertion is the keydown's defaultPrevented verdict -- what
+    // decides whether the native <dialog> cancel may fire -- which userEvent does not expose.
+    const clearingPressPropagates = fireEvent.keyDown(search, { key: "Escape" });
+    expect(clearingPressPropagates).toBe(false);
+    expect(search).toHaveValue("");
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    // fireEvent retained: same defaultPrevented verdict for the empty-query press.
+    const emptyPressPropagates = fireEvent.keyDown(search, { key: "Escape" });
+    expect(emptyPressPropagates).toBe(true);
+
+    // The browser answers the unprevented Escape with the native cancel.
+    // fireEvent retained: dialog cancel is a native Event; userEvent has no cancel dispatch.
+    fireEvent(
+      screen.getByRole("dialog"),
+      new Event("cancel", { bubbles: false, cancelable: true }),
+    );
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
+
 describe("ModelSelectDialog discovery states", () => {
   it("shows the skipped catalog reason with checkedAt and retries discovery", async () => {
     const user = userEvent.setup();
@@ -320,6 +352,42 @@ describe("ModelSelectDialog discovery states", () => {
 
     await user.click(screen.getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(getConfigurationModels).toHaveBeenCalledTimes(2));
+  });
+
+  it("retries discovery from r outside the search box and teaches the key in the footer", async () => {
+    const user = userEvent.setup();
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(skippedModelsResponse(GEMINI_CONFIGURATION));
+    renderDialog({ getConfigurationModels });
+
+    await screen.findByRole("button", { name: "Retry" });
+    const legend = screen.getByText("Navigate").closest('[data-slot="overlay-hints"]');
+    expect(within(legend as HTMLElement).getByText("Retry")).toBeInTheDocument();
+
+    await user.keyboard("r");
+    await waitFor(() => expect(getConfigurationModels).toHaveBeenCalledTimes(2));
+
+    // The search box keeps the letter for typing.
+    await user.keyboard("/");
+    const search = screen.getByRole("searchbox", { name: "Search models" });
+    await waitFor(() => expect(search).toHaveFocus());
+    await user.keyboard("r");
+    expect(search).toHaveValue("r");
+    expect(getConfigurationModels).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps r out of the legend and quiet while discovery has nothing to retry", async () => {
+    const user = userEvent.setup();
+    const { getConfigurationModels } = renderDialog();
+
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByRole("radio", { name: /gemini-2\.5-flash/ });
+    const legend = within(dialog).getByText("Navigate").closest('[data-slot="overlay-hints"]');
+    expect(within(legend as HTMLElement).queryByText("Retry")).not.toBeInTheDocument();
+
+    await user.keyboard("r");
+    expect(getConfigurationModels).toHaveBeenCalledTimes(1);
   });
 
   it("renders the failed discovery message exactly once when the models query rejects", async () => {

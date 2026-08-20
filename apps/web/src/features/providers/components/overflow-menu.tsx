@@ -5,6 +5,7 @@ import {
   type ProviderRowControl,
 } from "@diffgazer/core/providers";
 import { Button } from "@diffgazer/ui/components/button";
+import { Chevron } from "@diffgazer/ui/components/icons";
 import { Menu, MenuDivider, MenuItem } from "@diffgazer/ui/components/menu";
 import { Popover } from "@diffgazer/ui/components/popover";
 import { Fragment, type KeyboardEvent, type RefCallback } from "react";
@@ -78,11 +79,17 @@ export function ProviderOverflowMenu({
             disabled={isPending}
             // The row's ring is a virtual-focus cue; while the menu owns focus,
             // aria-expanded and the menu's highlighted item carry the state, and
-            // the ring would only sit 4px outside the edge the panel aligns to.
+            // the ring would only recolor the edge the panel aligns to.
             highlighted={highlighted && !overflowMenu.open}
             aria-label="More actions"
           >
-            {control.label} <span aria-hidden="true">▾</span>
+            {/* One inline-flex child: the button's min-w-0 content span may
+                shrink below content width, which wrapped the chevron under the
+                label; nowrap + explicit gap keep [More ⌄] on one line. */}
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              {control.label}
+              <Chevron direction="down" size="sm" className="shrink-0" />
+            </span>
           </Button>
         )}
       </Popover.Trigger>

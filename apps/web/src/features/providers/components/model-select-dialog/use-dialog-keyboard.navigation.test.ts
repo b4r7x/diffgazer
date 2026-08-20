@@ -55,8 +55,6 @@ function TestInteractiveModelDialogKeyboard({
     models,
     filteredModels: models,
     discoveryStatus: resolvedDiscoveryStatus,
-    searchQuery,
-    setSearchQuery,
     cycleTierFilter: vi.fn(),
     resetFilters: vi.fn(),
     searchInputRef,

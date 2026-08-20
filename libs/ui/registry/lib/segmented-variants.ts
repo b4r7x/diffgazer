@@ -1,4 +1,5 @@
 import { cva } from "class-variance-authority";
+import { FOCUS_OUTLINE, HIGHLIGHT_OUTLINE } from "@/lib/focus-outline";
 
 /** Visual style shared by segmented controls such as Tabs and ToggleGroup. */
 export const SEGMENTED_VARIANTS = ["default", "bracket", "pill", "underline"] as const;
@@ -65,7 +66,7 @@ export const segmentedItemVariants = cva(
   [
     "relative inline-flex items-center justify-center whitespace-nowrap font-mono",
     "cursor-pointer select-none bg-transparent transition-colors motion-reduce:transition-none",
-    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+    FOCUS_OUTLINE,
     "disabled:cursor-not-allowed disabled:opacity-50",
     // Tabs emit data-state="active"; ToggleGroup emits data-state="on" — one
     // shared selected-state style reads both per the data-attribute vocabulary.
@@ -105,8 +106,10 @@ export const segmentedItemVariants = cva(
         sm: "min-h-9 px-3 text-xs pointer-coarse:min-h-11",
         md: "min-h-11 px-4 text-sm",
       },
+      // Virtual focus from a parent collection wears the same outside ring as
+      // real focus (one focus grammar, one token), just without focus-visible.
       highlighted: {
-        true: "",
+        true: HIGHLIGHT_OUTLINE,
       },
       wrapped: {
         true: "max-w-full min-w-0 shrink-0 whitespace-normal break-words",
@@ -124,11 +127,6 @@ export const segmentedItemVariants = cva(
       // without dropping the touch-target height.
       { variant: "underline", size: "sm", className: "px-1 pb-2" },
       { variant: "underline", size: "md", className: "px-1 pb-3" },
-      // Highlighted-but-not-active focus state for variants that wear a
-      // background fill on hover. Pill and underline manage their own highlight
-      // via the indicator/border so they opt out.
-      { variant: "default", highlighted: true, className: "bg-secondary" },
-      { variant: "bracket", highlighted: true, className: "text-foreground" },
       {
         variant: "pill",
         wrapped: true,

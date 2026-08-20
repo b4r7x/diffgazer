@@ -62,12 +62,16 @@ export const checkboxDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "CheckboxGroup includes arrow-key navigation with wrapping and real focus movement. Control highlighted/onHighlightChange when external state coordination is needed, use autoFocus when activating a composite region, use keyboardNavigation to suspend only arrow handling, and use onNavigationBoundaryReached for composite focus handoff. Standalone Checkbox responds to Space when focused.",
+      "CheckboxGroup includes arrow-key navigation — with the vim aliases j/k — with wrapping and real focus movement. Control highlighted/onHighlightChange when external state coordination is needed, use autoFocus when activating a composite region, use keyboardNavigation to suspend only arrow handling, and use onNavigationBoundaryReached for composite focus handoff. Standalone Checkbox responds to Space when focused.",
     keys: [
       { keys: "Space", action: "Toggles a focused standalone Checkbox or CheckboxItem." },
       {
-        keys: "ArrowUp / ArrowDown",
-        action: "Moves focus to the previous or next enabled CheckboxItem inside CheckboxGroup.",
+        keys: "ArrowUp / k",
+        action: "Moves focus to the previous enabled CheckboxItem inside CheckboxGroup.",
+      },
+      {
+        keys: "ArrowDown / j",
+        action: "Moves focus to the next enabled CheckboxItem inside CheckboxGroup.",
       },
       { keys: "Home / End", action: "Moves focus to the first or last enabled item." },
       { keys: "Enter", action: "Toggles the focused/highlighted enabled group item." },

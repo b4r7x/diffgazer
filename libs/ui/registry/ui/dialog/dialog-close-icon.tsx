@@ -1,6 +1,7 @@
 "use client";
 
 import type { ComponentProps, Ref } from "react";
+import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 import { useDialogDismiss } from "./dialog-context";
 
@@ -37,7 +38,7 @@ export function DialogCloseIcon({
         "absolute top-[var(--dialog-close-btn-inset)] right-[var(--dialog-close-btn-inset)] z-10",
         "inline-flex items-center justify-center w-7 h-7 rounded-sm font-mono text-base leading-none",
         "text-muted-foreground hover:text-foreground transition-colors cursor-pointer",
-        "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+        FOCUS_OUTLINE,
         className,
       )}
       onClick={handleClick}

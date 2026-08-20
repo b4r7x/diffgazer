@@ -4,7 +4,7 @@ import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { FloatingPanel, useFloatingPanelContext } from "@/components/ui/floating-panel";
 
 const TRIGGER_CLASS =
-  "border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2";
+  "border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0";
 
 export default function FloatingPanelCollisionExample() {
   return (
@@ -94,7 +94,7 @@ function CollisionDialogContent({
         ref={dismissRef}
         type="button"
         onClick={onDismiss}
-        className="mt-3 border border-foreground/30 px-2 py-1 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+        className="mt-3 border border-foreground/30 px-2 py-1 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0"
       >
         close panel
       </button>

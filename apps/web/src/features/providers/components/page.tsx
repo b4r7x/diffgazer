@@ -42,6 +42,15 @@ function getProvidersFooter(
   const hasActions = layout.overflow.length > 0;
   const primary = layout.primary && !layout.primary.disabledReason ? layout.primary : null;
 
+  // Parked on the header Back button: the zone keys are gone with the zone, and
+  // only the screen-wide accelerators and Escape are still live.
+  if (focusZone === "chrome") {
+    return {
+      shortcuts: [...hotkeys, { key: "/", label: "Search" }],
+      rightShortcuts: [BACK_SHORTCUT],
+    };
+  }
+
   if (focusZone === "notice") {
     return {
       shortcuts: [
@@ -83,6 +92,13 @@ function getProvidersFooter(
         ...hotkeys,
         { key: "/", label: "Search" },
       ],
+      rightShortcuts: [BACK_SHORTCUT],
+    };
+  }
+
+  if (focusZone === "details") {
+    return {
+      shortcuts: [{ key: "↑/↓", label: "Scroll" }, ...hotkeys, { key: "/", label: "Search" }],
       rightShortcuts: [BACK_SHORTCUT],
     };
   }
@@ -239,6 +255,8 @@ export function ProvidersPage() {
             consentRequired={consent.required}
             onReviewConsent={consent.review}
             focusFallbackRef={keyboard.focusFallbackRef}
+            actionRowRef={keyboard.actionRowRef}
+            detailsPaneRef={keyboard.detailsPaneRef}
             focusedButtonIndex={
               keyboard.focusZone === "buttons" && hasSelection ? keyboard.buttonIndex : undefined
             }

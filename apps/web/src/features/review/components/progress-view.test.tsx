@@ -72,6 +72,28 @@ function makeLogEvents(count: number, agent: ThinkingAgent = "detective"): Revie
   return Array.from({ length: count }, (_, index) => makeLogEvent(index, agent));
 }
 
+function makeContextSnapshot() {
+  return {
+    text: "context",
+    markdown: "# Context",
+    graph: {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      root: "/repo",
+      packages: [],
+      edges: [],
+      fileTree: [],
+      changedFiles: [],
+    },
+    meta: {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      root: "/repo",
+      statusHash: "hash",
+      statusHashKind: "full" as const,
+      charCount: 7,
+    },
+  };
+}
+
 function renderView(props: Partial<ReviewProgressViewProps> = {}) {
   return render(
     <KeyboardProvider>
@@ -219,6 +241,21 @@ describe("ReviewProgressView", () => {
     await user.keyboard("c");
 
     expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  // q cancels through the global quit interception while streaming, so the
+  // footer teaches both keys together.
+  it("advertises c/q Cancel in the footer while streaming", () => {
+    renderView({ isRunning: true, onCancel: vi.fn() });
+
+    const hint = screen.getByText("c/q");
+    expect(hint.parentElement).toHaveTextContent("Cancel");
+  });
+
+  it("drops the Cancel hint while a cancel is pending", () => {
+    renderView({ isRunning: true, onCancel: vi.fn(), cancelDisabled: true });
+
+    expect(screen.queryByText("c/q")).not.toBeInTheDocument();
   });
 
   it("announces the mid-run partial-analysis warning when it appears", () => {
@@ -500,6 +537,72 @@ describe("ReviewProgressView", () => {
     );
   });
 
+  it("keeps vertical arrows off the agent chips: ArrowUp stays put, ArrowDown enters the log", async () => {
+    const user = userEvent.setup();
+    renderView({ data: makeProgressData({ agents: [makeAgent()] }) });
+
+    await user.keyboard("f");
+    const allChip = screen.getByRole("radio", { name: "All" });
+    await waitFor(() => expect(allChip).toHaveFocus());
+
+    await user.keyboard("{ArrowUp}");
+    expect(allChip).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
+  });
+
+  it("reaches the snapshot download buttons with Tab and roams them with arrows", async () => {
+    const user = userEvent.setup();
+    renderView({
+      isRunning: false,
+      data: makeProgressData({ agents: [makeAgent()], contextSnapshot: makeContextSnapshot() }),
+    });
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+
+    await user.keyboard("{Tab}");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Download .txt" })).toHaveFocus(),
+    );
+
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "Download .md" })).toHaveFocus();
+
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "Download .json" })).toHaveFocus();
+
+    await user.keyboard("{ArrowLeft}");
+    await user.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("button", { name: "Download .txt" })).toHaveFocus();
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
+  });
+
+  it("moves focus off the downloads with Shift+Tab so arrows switch panes again", async () => {
+    const user = userEvent.setup();
+    renderView({
+      isRunning: false,
+      data: makeProgressData({ agents: [makeAgent()], contextSnapshot: makeContextSnapshot() }),
+    });
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+
+    await user.keyboard("{Tab}");
+    const txtButton = screen.getByRole("button", { name: "Download .txt" });
+    await waitFor(() => expect(txtButton).toHaveFocus());
+
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    await waitFor(() => expect(txtButton).not.toHaveFocus());
+    expect(progressPane.matches(":focus-within")).toBe(true);
+
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
+  });
+
   it("advertises the Filter shortcut while running", async () => {
     renderView({ isRunning: true, onCancel: vi.fn() });
 
@@ -621,27 +724,7 @@ describe("ReviewProgressView", () => {
     renderView({
       isRunning: false,
       contextRefreshError: null,
-      data: makeProgressData({
-        contextSnapshot: {
-          text: "context",
-          markdown: "# Context",
-          graph: {
-            generatedAt: "2026-01-01T00:00:00.000Z",
-            root: "/repo",
-            packages: [],
-            edges: [],
-            fileTree: [],
-            changedFiles: [],
-          },
-          meta: {
-            generatedAt: "2026-01-01T00:00:00.000Z",
-            root: "/repo",
-            statusHash: "hash",
-            statusHashKind: "full",
-            charCount: 7,
-          },
-        },
-      }),
+      data: makeProgressData({ contextSnapshot: makeContextSnapshot() }),
     });
 
     expect(screen.getByText("Context Snapshot")).toBeInTheDocument();
@@ -841,5 +924,96 @@ describe("ReviewProgressView stream liveness", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+// r mirrors the TUI's retry grammar: it fires the recovery affordance the pane
+// currently shows, and the footer only advertises it while one is live.
+describe("ReviewProgressView r retry grammar", () => {
+  it("retries the context refresh with r and advertises the shortcut", async () => {
+    const user = userEvent.setup();
+    const onRetryContextRefresh = vi.fn();
+    renderView({
+      isRunning: false,
+      contextRefreshError: "Failed to refresh the review context snapshot.",
+      onRetryContextRefresh,
+    });
+
+    const hint = await screen.findByText("r");
+    expect(hint.parentElement).toHaveTextContent("Retry");
+
+    await user.keyboard("r");
+
+    expect(onRetryContextRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not run the r retry when focus is on a button", async () => {
+    const user = userEvent.setup();
+    const onRetryContextRefresh = vi.fn();
+    renderView({
+      isRunning: false,
+      contextRefreshError: "Failed to refresh the review context snapshot.",
+      onRetryContextRefresh,
+    });
+
+    (await screen.findByRole("button", { name: "Retry" })).focus();
+    await user.keyboard("r");
+
+    expect(onRetryContextRefresh).not.toHaveBeenCalled();
+  });
+
+  it("keeps r dead and unadvertised while the stream is healthy", async () => {
+    const user = userEvent.setup();
+    const onRetry = vi.fn();
+    renderView({
+      isRunning: true,
+      reviewId: "review-1",
+      onRetry,
+      data: makeProgressData({ agents: [makeAgent()], events: makeLogEvents(1) }),
+    });
+
+    await user.keyboard("r");
+
+    expect(onRetry).not.toHaveBeenCalled();
+    expect(screen.queryByText("r")).not.toBeInTheDocument();
+  });
+
+  it("reconnects the stalled stream with r", () => {
+    vi.useFakeTimers();
+    const onRetry = vi.fn();
+    try {
+      renderView({
+        isRunning: true,
+        reviewId: "review-1",
+        onRetry,
+        data: makeProgressData({ agents: [makeAgent()], events: makeLogEvents(1) }),
+      });
+
+      act(() => vi.advanceTimersByTime(46_000));
+      expect(screen.getByRole("button", { name: "Reconnect" })).toBeVisible();
+      const hint = screen.getByText("r");
+      expect(hint.parentElement).toHaveTextContent("Retry");
+
+      // fireEvent retained: fake timers drive the stall clock; userEvent waits on the same timer queue.
+      fireEvent.keyDown(document.body, { key: "r" });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(onRetry).toHaveBeenCalledWith("review-1");
+  });
+});
+
+describe("log focus custody", () => {
+  it("keeps the log out of the tab order while the zone cycle owns focus", () => {
+    renderView({ data: makeProgressData({ events: makeLogEvents(1) }) });
+
+    expect(screen.getByRole("log", { name: "Activity log" })).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("returns the log to the tab order in the error layout, where Tab moves naturally", () => {
+    renderView({ error: "boom", data: makeProgressData({ events: makeLogEvents(1) }) });
+
+    expect(screen.getByRole("log", { name: "Activity log" })).toHaveAttribute("tabindex", "0");
   });
 });

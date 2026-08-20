@@ -4,13 +4,16 @@ import { pluralize } from "@diffgazer/core/strings";
 import { Button } from "@diffgazer/ui/components/button";
 import { CodeBlock } from "@diffgazer/ui/components/code-block";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import type { Ref } from "react";
 import { downloadAsFile } from "@/utils/download";
 
 interface ContextSnapshotPreviewProps {
   snapshot: ReviewContextResponse;
+  /** Container ref for the keyboard focus zone that reaches the download row. */
+  downloadsRef?: Ref<HTMLFieldSetElement>;
 }
 
-export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps) {
+export function ContextSnapshotPreview({ snapshot, downloadsRef }: ContextSnapshotPreviewProps) {
   const view = buildContextSnapshotView(snapshot);
 
   return (
@@ -51,12 +54,13 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
           {view.previewTruncated ? "\n... (preview)" : ""}
         </CodeBlock.Content>
       </CodeBlock>
-      <fieldset className="mt-3 flex flex-wrap gap-2">
+      <fieldset ref={downloadsRef} className="mt-3 flex flex-wrap gap-2">
         <legend className="sr-only">Download context snapshot</legend>
         <Button
           variant="secondary"
           size="sm"
           bracket
+          data-value="txt"
           onClick={() => downloadAsFile(snapshot.text, "context.txt", "text/plain")}
         >
           Download .txt
@@ -65,6 +69,7 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
           variant="secondary"
           size="sm"
           bracket
+          data-value="md"
           onClick={() => downloadAsFile(snapshot.markdown, "context.md", "text/markdown")}
         >
           Download .md
@@ -73,6 +78,7 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
           variant="secondary"
           size="sm"
           bracket
+          data-value="json"
           onClick={() =>
             downloadAsFile(
               JSON.stringify(snapshot.graph, null, 2),

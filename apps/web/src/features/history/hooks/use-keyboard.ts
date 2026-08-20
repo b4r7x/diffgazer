@@ -1,12 +1,26 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import { useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
-import { useNavigate } from "@tanstack/react-router";
+import { useCanGoBack, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import type { RefObject } from "react";
+import type { CHROME_ZONE } from "@/components/layout/header-chrome";
 import { getHistoryFooter } from "@/features/history/lib/footer";
 import type { HistoryFocusZone } from "@/features/history/types";
+import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
 import { getMainContent } from "@/lib/main-content";
 
-const ZONES = ["warnings", "timeline", "runs", "load-more", "insights", "retry", "search"] as const;
+const ZONES = [
+  "warnings",
+  "list-retry",
+  "timeline",
+  "runs",
+  "load-more",
+  "insights",
+  "retry",
+  "search",
+  // Last: an unknown zone falls back to the first entry, which must be a zone
+  // inside the page rather than the parked chrome.
+  "chrome",
+] as const;
 const HISTORY_SCOPE = "history";
 type KeyboardHistoryFocusZone = (typeof ZONES)[number];
 
@@ -17,11 +31,14 @@ interface UseHistoryKeyboardOptions {
   activeRunId: string | null;
   hasRuns: boolean;
   hasMore: boolean;
+  isLoadingMore: boolean;
   hasInsights: boolean;
   hasRetry: boolean;
+  hasListRetry: boolean;
   hasWarnings: boolean;
   searchInputRef: RefObject<HTMLInputElement | null>;
   warningsRef: RefObject<HTMLDivElement | null>;
+  listRetryRef: RefObject<HTMLButtonElement | null>;
   timelineRef: RefObject<HTMLElement | null>;
   runsListRef: RefObject<HTMLDivElement | null>;
   loadMoreRef: RefObject<HTMLButtonElement | null>;
@@ -29,6 +46,8 @@ interface UseHistoryKeyboardOptions {
   retryRef: RefObject<HTMLButtonElement | null>;
   highlightedIssueId: string | null;
   onHighlightIssue: (id: string | null) => void;
+  onLoadMore: () => void;
+  onRetryList: () => void;
 }
 
 function buildTabCycle({
@@ -36,16 +55,19 @@ function buildTabCycle({
   hasMore,
   hasInsights,
   hasRetry,
+  hasListRetry,
   hasWarnings,
 }: {
   hasRuns: boolean;
   hasMore: boolean;
   hasInsights: boolean;
   hasRetry: boolean;
+  hasListRetry: boolean;
   hasWarnings: boolean;
 }): KeyboardHistoryFocusZone[] {
   const cycle: KeyboardHistoryFocusZone[] = [];
   if (hasWarnings) cycle.push("warnings");
+  if (hasListRetry) cycle.push("list-retry");
   cycle.push("search", "timeline");
   if (hasRuns) cycle.push("runs");
   if (hasMore) cycle.push("load-more");
@@ -67,6 +89,7 @@ function resolveFocusZone({
   hasMore,
   hasInsights,
   hasRetry,
+  hasListRetry,
   hasWarnings,
 }: {
   zone: HistoryFocusZone;
@@ -74,11 +97,13 @@ function resolveFocusZone({
   hasMore: boolean;
   hasInsights: boolean;
   hasRetry: boolean;
+  hasListRetry: boolean;
   hasWarnings: boolean;
 }): HistoryFocusZone {
   const targetGone =
     (zone === "load-more" && !hasMore) ||
     (zone === "retry" && !hasRetry) ||
+    (zone === "list-retry" && !hasListRetry) ||
     (zone === "runs" && !hasRuns) ||
     (zone === "insights" && !hasInsights) ||
     (zone === "warnings" && !hasWarnings);
@@ -94,11 +119,14 @@ export function useHistoryKeyboard({
   activeRunId,
   hasRuns,
   hasMore,
+  isLoadingMore,
   hasInsights,
   hasRetry,
+  hasListRetry,
   hasWarnings,
   searchInputRef,
   warningsRef,
+  listRetryRef,
   timelineRef,
   runsListRef,
   loadMoreRef,
@@ -106,21 +134,41 @@ export function useHistoryKeyboard({
   retryRef,
   highlightedIssueId,
   onHighlightIssue,
+  onLoadMore,
+  onRetryList,
 }: UseHistoryKeyboardOptions) {
   const navigate = useNavigate();
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
+  const { pathname } = useLocation();
 
-  const tabCycle = buildTabCycle({ hasRuns, hasMore, hasInsights, hasRetry, hasWarnings });
+  const tabCycle = buildTabCycle({
+    hasRuns,
+    hasMore,
+    hasInsights,
+    hasRetry,
+    hasListRetry,
+    hasWarnings,
+  });
   const effectiveFocusZone = resolveFocusZone({
     zone: focusZone,
     hasRuns,
     hasMore,
     hasInsights,
     hasRetry,
+    hasListRetry,
     hasWarnings,
   });
 
-  const zoneTargets: Record<KeyboardHistoryFocusZone, RefObject<HTMLElement | null>> = {
+  // The chrome is deliberately absent: it owns no target the page repairs focus
+  // to, and a registered container there would let the pane Tab cycle claim Tab
+  // from the Back button instead of letting native Tab re-enter the page.
+  const zoneTargets: Record<
+    Exclude<KeyboardHistoryFocusZone, typeof CHROME_ZONE>,
+    RefObject<HTMLElement | null>
+  > = {
     warnings: warningsRef,
+    "list-retry": listRetryRef,
     search: searchInputRef,
     timeline: timelineRef,
     runs: runsListRef,
@@ -149,7 +197,10 @@ export function useHistoryKeyboard({
       else if (hasRetry) insightsZone = "retry";
 
       const left: Record<KeyboardHistoryFocusZone, KeyboardHistoryFocusZone | null> = {
+        // The chrome is left by Tab or by activating Back, never by an arrow.
+        chrome: null,
         warnings: null,
+        "list-retry": null,
         timeline: null,
         runs: "timeline",
         "load-more": "runs",
@@ -158,7 +209,9 @@ export function useHistoryKeyboard({
         search: hasWarnings ? "warnings" : "runs",
       };
       const right: Record<KeyboardHistoryFocusZone, KeyboardHistoryFocusZone | null> = {
+        chrome: null,
         warnings: "search",
+        "list-retry": null,
         timeline: "runs",
         runs: hasMore ? "load-more" : insightsZone,
         "load-more": insightsZone,
@@ -202,23 +255,32 @@ export function useHistoryKeyboard({
     }
   };
 
-  // Space belongs to the runs listbox, which routes it to onSelect and gives an
-  // in-progress typeahead query precedence; a window-level duplicate would fire
-  // on the same keystroke and navigate mid-query.
+  // Space belongs to the runs listbox, which routes it to onSelect; a
+  // window-level duplicate would fire on the same keystroke. o stays free for
+  // this binding because the runs list opts out of typeahead.
   useKey("o", navigateToSelectedRun, {
     scope: HISTORY_SCOPE,
     enabled: enabled && effectiveFocusZone === "runs",
   });
 
+  // The TUI's list accelerators: R retries a failed list refresh, l loads the
+  // next page. The TUI's w (toggle warning IDs) has no web binding on purpose —
+  // the web warnings region is always visible.
+  useKey("R", onRetryList, { scope: HISTORY_SCOPE, enabled: enabled && hasListRetry });
+  useKey("l", onLoadMore, { scope: HISTORY_SCOPE, enabled: enabled && hasMore && !isLoadingMore });
+
   useKey(
     "Escape",
     () => {
-      navigate({ to: "/" });
+      performBackAction(router, resolveBackAction(pathname, canGoBack));
     },
     { scope: HISTORY_SCOPE, enabled },
   );
 
-  const { shortcuts, rightShortcuts } = getHistoryFooter(effectiveFocusZone);
+  const { shortcuts, rightShortcuts } = getHistoryFooter(effectiveFocusZone, {
+    hasMore,
+    hasListRetry,
+  });
 
   // The error branch renders its own FailureView footer; publishing history
   // shortcuts here would overwrite it, since parent effects run last.

@@ -116,6 +116,8 @@ export const REVIEW_CONSENT_SHORTCUT: Shortcut = { key: "c", label: "Review" };
 // Canonical help-screen shortcut table, consumed by both surfaces' Help screens.
 // Every entry has a live handler on at least one surface (web: q/s/h/shift+?,
 // list/menu navigation, `/` history search; TUI: q/s/?, `/` history search).
+// The history l/R entries are bound on both surfaces; they read the same there
+// as on the home screen's r/R/l, which are menu items rather than list actions.
 // The home entries are the r/R/l menu bindings both surfaces resolve through
 // MENU_ITEMS; the providers entries are the m/e/v/d accelerators both surfaces
 // resolve through PROVIDER_ACTION_HOTKEYS, plus REVIEW_CONSENT_SHORTCUT.
@@ -144,6 +146,8 @@ export const HELP_SHORTCUTS: ContextualShortcut[] = [
   { key: "PgUp/PgDn", label: "Page up or down", context: "review" },
   { key: "Home/End", label: "Jump to start or end", context: "review" },
   { key: "/", label: "Search Runs", context: "history" },
+  { key: "l", label: "Load Older Runs", context: "history" },
+  { key: "R", label: "Retry History", context: "history" },
 ];
 
 // Only the permission controls are shared. Each surface appends its own trailing

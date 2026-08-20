@@ -1,6 +1,7 @@
 "use client";
 
 import { lazy, Suspense } from "react";
+import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 import { CountdownBar } from "./countdown";
 import type { ToastPosition, Toast as ToastType } from "./toast-store";
@@ -110,7 +111,7 @@ function CloseButton({
         "min-h-6 min-w-6 p-1 pointer-coarse:min-h-11 pointer-coarse:min-w-11 flex items-center justify-center text-xs leading-none shrink-0",
         "rounded-[var(--radius)] cursor-pointer transition-colors",
         "text-muted-foreground hover:text-foreground hover:bg-foreground/5",
-        "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+        FOCUS_OUTLINE,
       )}
       aria-label={dismissLabel ?? `Dismiss: ${title}`}
     >

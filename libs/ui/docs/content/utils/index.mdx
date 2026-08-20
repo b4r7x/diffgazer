@@ -41,5 +41,6 @@ The registry ships more `registry:lib` helpers without standalone pages here. Th
 
 - `utils` — `cn()` class-name merge (`clsx` + `tailwind-merge`), imported by every component.
 - `aria`, `typeahead`, `search` — ARIA and keyboard-interaction helpers shared across form and listbox composites.
+- `focus-outline`, `marker-rail` — the keyboard-focus outline and the selected-row left rail as plain class-name constants, so every component draws the same two marks. Importable from the package as `@diffgazer/ui/lib/focus-outline` and `@diffgazer/ui/lib/marker-rail`.
 - `selectable-variants`, `segmented-variants`, `input-variants`, `stepper-variants` — CVA variant definitions that live in the shared `registry/lib/` directory. See [Variants](/ui/patterns/variants) for which components consume each.
 - `sidebar-variants` — a `registry:ui` item, not `registry:lib`: its CVA definitions are colocated in `registry/ui/sidebar/` because only `Sidebar` uses them.

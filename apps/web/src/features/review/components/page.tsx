@@ -164,6 +164,8 @@ export function ReviewPage() {
           initialIssueId={savedIssueId}
           droppedDuplicates={savedOutcome.data.droppedDuplicates}
           lensStats={savedOutcome.data.lensStats}
+          // A deep link skipped the summary, so there is nothing to return to.
+          onBackToSummary={savedIssueId ? undefined : () => setSavedResultsOpen(false)}
         />
       );
     }
@@ -207,6 +209,9 @@ export function ReviewPage() {
           initialIssueId={resolveValidIssueId(currentLiveState.reviewData.issues, initialIssueId)}
           droppedDuplicates={currentLiveState.reviewData.droppedDuplicates}
           lensStats={currentLiveState.reviewData.lensStats}
+          onBackToSummary={() =>
+            setLiveState({ phase: "summary", reviewData: currentLiveState.reviewData })
+          }
         />
       );
   }

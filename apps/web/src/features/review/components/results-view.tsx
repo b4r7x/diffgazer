@@ -17,6 +17,7 @@ interface ReviewResultsViewProps {
   initialIssueId?: string | null;
   droppedDuplicates?: number;
   lensStats?: LensStat[];
+  onBackToSummary?: () => void;
 }
 
 export function ReviewResultsView({
@@ -25,6 +26,7 @@ export function ReviewResultsView({
   initialIssueId,
   droppedDuplicates,
   lensStats,
+  onBackToSummary,
 }: ReviewResultsViewProps) {
   const {
     filteredIssues,
@@ -49,7 +51,7 @@ export function ReviewResultsView({
     setFocusedStepIndex,
     mobilePane,
     backToList,
-  } = useReviewResultsKeyboard({ issues, initialIssueId });
+  } = useReviewResultsKeyboard({ issues, initialIssueId, onBackToSummary });
   const detailsEmptyKind = selectDetailsEmptyKind(issues.length, filteredIssues.length);
   const duplicateNotice = buildDuplicateCollapseNotice(droppedDuplicates, issues.length);
   // A run that lost lenses must say so wherever it is opened, not only in the

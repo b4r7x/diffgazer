@@ -1,4 +1,4 @@
-import { useKey } from "@diffgazer/keys";
+import { DECLINE, useKey } from "@diffgazer/keys";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type RefCallback,
@@ -122,10 +122,21 @@ export function useProvidersListNavigation({
     allowInInput: true,
     preventDefault: true,
   });
-  useKey("Escape", moveToFilters, {
-    enabled: !dialogOpen && zone === "input",
-    allowInInput: true,
-  });
+  useKey(
+    "Escape",
+    (event) => {
+      // Input-only by intent: on any other target (the Back button after the
+      // chrome hand-off) decline so the page-level Escape leaves the screen,
+      // whatever order the two bindings registered in.
+      if (event.target !== inputRef.current) return DECLINE;
+      moveToFilters();
+      return;
+    },
+    {
+      enabled: !dialogOpen && zone === "input",
+      allowInInput: true,
+    },
+  );
 
   useKey("ArrowUp", moveToSearch, {
     enabled: !dialogOpen && zone === "filters",

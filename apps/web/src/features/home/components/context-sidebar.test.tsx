@@ -96,6 +96,33 @@ describe("ContextSidebar last run", () => {
     expect(screen.queryByText("None")).not.toBeInTheDocument();
   });
 
+  it("advertises the trust and provider jump keys on their rows", () => {
+    render(
+      <ContextSidebar
+        context={{ providerName: "openrouter" }}
+        navigate={createNavigateMock().navigate}
+        isTrusted={false}
+      />,
+    );
+
+    expect(screen.getByText("[t]")).toBeVisible();
+    expect(screen.getByText("[p]")).toBeVisible();
+  });
+
+  it("drops the trust chip once the repository is trusted", () => {
+    render(
+      <ContextSidebar
+        context={lastRunContext}
+        navigate={createNavigateMock().navigate}
+        isTrusted
+        onOpenLastRun={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("[t]")).not.toBeInTheDocument();
+    expect(screen.getByText("[p]")).toBeVisible();
+  });
+
   it("routes the provider and trust rows to their settings pages", async () => {
     const user = userEvent.setup();
     const { navigate, mock } = createNavigateMock();

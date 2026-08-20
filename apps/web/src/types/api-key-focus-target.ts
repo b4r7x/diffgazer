@@ -1,4 +1,5 @@
 export type ApiKeyFocusTarget =
+  | "close"
   | "paste"
   | "input"
   | "env"

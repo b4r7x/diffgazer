@@ -1,4 +1,5 @@
 import { cva } from "class-variance-authority";
+import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import type { StepStatus } from "./step-status";
 
 /** Visual style for vertical stepper indicators. */
@@ -146,7 +147,7 @@ export const stepperTriggerVariants = cva(
   "flex items-start gap-2.5 appearance-none bg-transparent border-0 text-left w-full " +
     "px-0 py-2 -my-2 pointer-coarse:my-0 pointer-coarse:min-h-11 " +
     "font-[inherit] cursor-pointer rounded-none " +
-    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 " +
+    `${FOCUS_OUTLINE} ` +
     "disabled:cursor-not-allowed " +
     "aria-disabled:cursor-not-allowed aria-disabled:opacity-60",
 );

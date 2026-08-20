@@ -78,6 +78,19 @@ function getReadFilesOption() {
 }
 
 describe("TrustPermissionsContent", () => {
+  it("keeps the action bracket glyphs out of the accessible button names", () => {
+    render(
+      <KeyboardProvider>
+        <TrustPermissionsTestHarness />
+      </KeyboardProvider>,
+    );
+
+    const saveButton = screen.getByRole("button", { name: "Save Changes" });
+    const revokeButton = screen.getByRole("button", { name: "Revoke Trust" });
+    expect(saveButton).toHaveTextContent("[ Save Changes ]");
+    expect(revokeButton).toHaveTextContent("[ Revoke Trust ]");
+  });
+
   it("moves real keyboard focus between permissions and action buttons", async () => {
     const user = userEvent.setup();
     render(

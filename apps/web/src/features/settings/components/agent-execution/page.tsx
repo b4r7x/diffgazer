@@ -7,10 +7,11 @@ import {
   SETTINGS_SCREEN_COPY,
 } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
-import { toVerticalBoundaryDirection, useKey, useScope } from "@diffgazer/keys";
+import { toVerticalBoundaryDirection, useScope } from "@diffgazer/keys";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useRef, useState } from "react";
+import { SELECTED_OPTION_ROW } from "@/lib/selected-option-row";
 import { useSettingsFormActions } from "../../hooks/use-form-actions";
 import { SettingsFormPage } from "../form-page";
 
@@ -49,8 +50,6 @@ export function SettingsAgentExecutionPage() {
     setFocusedMode(value);
     setModeChoice(value);
   };
-
-  useKey("Enter", () => onExecutionChange(effectiveFocusedMode), { enabled: navigationEnabled });
 
   return (
     <SettingsFormPage
@@ -92,6 +91,11 @@ export function SettingsAgentExecutionPage() {
               value={option.value}
               label={option.label}
               description={option.description}
+              className={SELECTED_OPTION_ROW}
+              onFocus={() => {
+                setFocusedMode(option.value);
+                footer.reset();
+              }}
             />
           ))}
         </RadioGroup>

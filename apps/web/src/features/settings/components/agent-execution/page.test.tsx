@@ -95,6 +95,59 @@ describe("SettingsAgentExecutionPage", () => {
     expect(save).not.toHaveFocus();
   });
 
+  it("keeps radio focus and ArrowDown navigation after pointer re-entry from footer actions", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const modeGroup = screen.getByRole("radiogroup", { name: /agent execution mode/i });
+    const sequential = within(modeGroup).getByRole("radio", { name: /sequential/i });
+    const parallel = within(modeGroup).getByRole("radio", { name: /parallel/i });
+    await waitFor(() => expect(sequential).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+
+    await user.click(sequential);
+    expect(sequential).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(parallel).toHaveFocus();
+  });
+
+  it("commits the highlighted execution mode with Enter inside the radio group", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const modeGroup = screen.getByRole("radiogroup", { name: /agent execution mode/i });
+    await waitFor(() =>
+      expect(within(modeGroup).getByRole("radio", { name: /sequential/i })).toHaveFocus(),
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+
+    await user.keyboard("{ArrowDown}{Enter}");
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
+
+  it("does not change the execution mode on Enter when focus is outside the radio group", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const modeGroup = screen.getByRole("radiogroup", { name: /agent execution mode/i });
+    const parallel = within(modeGroup).getByRole("radio", { name: /parallel/i });
+    await waitFor(() =>
+      expect(within(modeGroup).getByRole("radio", { name: /sequential/i })).toHaveFocus(),
+    );
+
+    await user.keyboard("{ArrowDown}");
+    expect(parallel).toHaveFocus();
+
+    parallel.blur();
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
   it("enables Save once a different execution mode is selected", async () => {
     const user = userEvent.setup();
     renderPage();

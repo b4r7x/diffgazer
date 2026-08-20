@@ -430,6 +430,47 @@ describe("Select keyboard navigation", () => {
     );
   });
 
+  it("claims a buffered typeahead key on the open listbox so window-level hotkey layers skip it", async () => {
+    const windowKeys: Array<{ key: string; defaultPrevented: boolean }> = [];
+    const recordKey = (event: KeyboardEvent) =>
+      windowKeys.push({ key: event.key, defaultPrevented: event.defaultPrevented });
+    const user = userEvent.setup();
+    renderSelect({ variant: "default", defaultOpen: true });
+    screen.getByRole("listbox").focus();
+
+    window.addEventListener("keydown", recordKey);
+    await user.keyboard("b");
+    window.removeEventListener("keydown", recordKey);
+
+    expect(screen.getByRole("listbox")).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: /banana/i }).id,
+    );
+    // The KeyboardProvider in @diffgazer/keys ignores defaultPrevented window
+    // keydowns, so a buffered key must arrive at the window already claimed.
+    expect(windowKeys).toEqual([{ key: "b", defaultPrevented: true }]);
+  });
+
+  it("claims the printable key that opens a typeahead query from the closed trigger", async () => {
+    const windowKeys: Array<{ key: string; defaultPrevented: boolean }> = [];
+    const recordKey = (event: KeyboardEvent) =>
+      windowKeys.push({ key: event.key, defaultPrevented: event.defaultPrevented });
+    const user = userEvent.setup();
+    renderSelect();
+    getSelectTrigger().focus();
+
+    window.addEventListener("keydown", recordKey);
+    await user.keyboard("b");
+    window.removeEventListener("keydown", recordKey);
+
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("listbox")).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: /banana/i }).id,
+    );
+    expect(windowKeys).toEqual([{ key: "b", defaultPrevented: true }]);
+  });
+
   it("scrolls the selected option into view when the dropdown opens", async () => {
     const user = userEvent.setup();
     const originalScrollIntoView = Element.prototype.scrollIntoView;

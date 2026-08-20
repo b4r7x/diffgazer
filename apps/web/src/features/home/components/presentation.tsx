@@ -9,7 +9,7 @@ import {
   TRUST_PERMISSION_SHORTCUTS,
 } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import { useKey, useScope } from "@diffgazer/keys";
+import { DECLINE, useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { toast } from "@diffgazer/ui/components/toast";
 import type { useNavigate } from "@tanstack/react-router";
@@ -103,6 +103,8 @@ export function HomePagePresentation({
   const hasResumableSession = resumableSession != null || isResumeUnavailable;
   const isMountedRef = useIsMountedRef();
   const invalidIdReportedRef = useRef(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (searchError !== "invalid-review-id") {
@@ -189,9 +191,20 @@ export function HomePagePresentation({
     const decision = resolveHomeMenuActivation(id, { isTrusted, hasResumableSession });
 
     switch (decision.kind) {
-      case "start-review":
+      case "start-review": {
+        // The start turns the sidebar inert — at once, or after the consent
+        // notice this may first open. Focus resting on one of its actions would
+        // be dropped onto the body when that happens (and the notice would
+        // capture the doomed row as its restore target), so the menu takes
+        // custody before either. Focus sitting anywhere else was placed
+        // deliberately and is left alone.
+        const sidebar = sidebarRef.current;
+        if (sidebar?.contains(sidebar.ownerDocument.activeElement)) {
+          menuRef.current?.focus();
+        }
         requireProviderConsent(() => void startReview(decision.mode, id));
         return;
+      }
       case "resume":
         resumeReview();
         return;
@@ -249,12 +262,26 @@ export function HomePagePresentation({
     });
   };
 
+  // The sidebar's settings rows carry the same jump treatment as [o]: t and p
+  // reach them without Tab-walking the panel, behind the guards a click on the
+  // row goes through. t follows the trust row — inert once the repo is trusted.
+  const openSettingsRow = (to: "/settings/providers" | "/settings/trust-permissions") => {
+    if (isStartingReview) return;
+    void navigate({ to });
+  };
+
   useKey(
     {
       r: () => activateShortcut("review-unstaged"),
       R: () => activateShortcut("review-staged"),
       l: () => activateShortcut("resume-review"),
       o: openLastRun,
+      p: () => openSettingsRow("/settings/providers"),
+      t: () => {
+        if (isTrusted) return DECLINE;
+        openSettingsRow("/settings/trust-permissions");
+        return;
+      },
     },
     { enabled: !showsTrustPanel },
   );
@@ -277,6 +304,7 @@ export function HomePagePresentation({
             full width. */}
         <div className="flex w-full flex-col gap-8 lg:flex-row lg:items-start">
           <HomeMenu
+            menuRef={menuRef}
             highlighted={highlighted}
             onHighlightChange={onHighlightChange}
             onSelect={handleActivate}
@@ -288,6 +316,7 @@ export function HomePagePresentation({
           {/* Menu first in source order so the actionable pane leads the stacked
               layout; the context column returns to the left at desktop. */}
           <ContextSidebar
+            ref={sidebarRef}
             context={context}
             navigate={navigate}
             isTrusted={isTrusted}

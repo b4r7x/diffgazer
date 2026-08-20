@@ -86,12 +86,14 @@ export function OnboardingWizard() {
 
   // The radio steps focus their selected item through RadioGroup autoFocus;
   // the notice checkbox has no self-focusing group, so step entry places focus
-  // on it here or arrows would only reach the footer. The step components key
-  // entry focus on their own active flag; this one keys on the step.
+  // on it here or arrows would only reach the footer. Keyed on the footer zone
+  // too, so ArrowUp out of the actions lands back on the checkbox instead of
+  // the invisible fallback div.
   // biome-ignore lint/correctness/useExhaustiveDependencies: currentStep is never read in the body; it is the intentional re-trigger above.
   useEffect(() => {
+    if (footer.inActions) return;
     stepCheckboxRef.current?.focus();
-  }, [currentStep]);
+  }, [currentStep, footer.inActions]);
 
   const renderRunnableStep = () => {
     const { configurationInput, selectedModelId, acknowledgement, plan } = wizardData;
@@ -166,6 +168,11 @@ export function OnboardingWizard() {
                   acknowledgement: checked ? acceptNotice(notice) : { status: "required" },
                 })
               }
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                handleStepCommit();
+              }}
               label="I accept"
             />
           </div>
@@ -180,6 +187,7 @@ export function OnboardingWizard() {
     <CardLayout
       title={STEP_TITLES[currentStep]}
       readout="Setup"
+      contentInactive={footer.inActions}
       footer={
         <>
           {!isFirstStep && (

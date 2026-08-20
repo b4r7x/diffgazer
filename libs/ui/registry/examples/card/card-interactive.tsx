@@ -15,7 +15,7 @@ const FORCED_HOVER = {
   glow: "border-border outline-foreground/70 bg-[color-mix(in_oklab,var(--foreground)_4%,var(--background))]",
 } as const;
 
-const FORCED_FOCUS = "outline-2 outline-ring outline-offset-2";
+const FORCED_FOCUS = "outline-2 outline-ring outline-offset-0";
 
 const SURFACES = [
   { surface: "flat", delta: "border brightens" },

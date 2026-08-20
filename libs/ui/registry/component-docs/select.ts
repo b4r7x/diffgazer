@@ -59,7 +59,7 @@ export const selectDoc: ComponentDoc = {
     {
       title: "Card Variant",
       content:
-        "Set variant='card' on Select for a settings-panel layout with checkbox-style indicators and a thick border treatment. The list still respects open/defaultOpen — pass defaultOpen to render the inline list immediately, or pair with open/onOpenChange to control expansion. The card trigger is an inverted --foreground header, so it takes its keyboard focus indicator as an outside outline (outline-2 outline-ring outline-offset-2) drawn on the page background; the default trigger keeps the inset Input focus ring.",
+        "Set variant='card' on Select for a settings-panel layout with checkbox-style indicators and a thick border treatment. The list still respects open/defaultOpen — pass defaultOpen to render the inline list immediately, or pair with open/onOpenChange to control expansion. The card trigger is an inverted --foreground header, so it takes its keyboard focus indicator as an outside outline (outline-2 outline-ring outline-offset-0) drawn on the page background; the default trigger keeps the inset Input focus ring.",
     },
     {
       title: "Multiple Selection",

@@ -257,6 +257,24 @@ async function clickNext(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: /^next$/i }));
 }
 
+async function walkToModel(user: ReturnType<typeof userEvent.setup>) {
+  await expectStep(/select product/i);
+  await clickNext(user);
+  await expectStep(/configure endpoint/i);
+  await clickNext(user);
+  await expectStep(/configure authentication/i);
+  await user.click(screen.getByRole("radio", { name: /environment reference/i }));
+  await clickNext(user);
+  await expectStep(/select model/i);
+}
+
+async function walkToConsent(user: ReturnType<typeof userEvent.setup>) {
+  await walkToModel(user);
+  await user.click(await screen.findByRole("radio", { name: /gemini-2\.5-pro/i }));
+  await clickNext(user);
+  await expectStep(/provider consent/i);
+}
+
 describe("OnboardingWizard", () => {
   beforeEach(async () => {
     vi.resetModules();
@@ -306,14 +324,7 @@ describe("OnboardingWizard", () => {
     const user = userEvent.setup();
     renderWizard();
 
-    await expectStep(/select product/i);
-    await clickNext(user);
-    await expectStep(/configure endpoint/i);
-    await clickNext(user);
-    await expectStep(/configure authentication/i);
-    await user.click(screen.getByRole("radio", { name: /environment reference/i }));
-    await clickNext(user);
-    await expectStep(/select model/i);
+    await walkToModel(user);
     // The model step lists exactly what discovery returned for the draft
     // record, never a client-side guess derived from the product policy.
     await user.click(await screen.findByRole("radio", { name: /gemini-2\.5-pro/i }));
@@ -383,6 +394,57 @@ describe("OnboardingWizard", () => {
     expect(screen.getByRole("checkbox")).toHaveFocus();
   });
 
+  it("returns focus to the consent checkbox when ArrowUp leaves the footer actions", async () => {
+    const user = userEvent.setup();
+    renderWizard();
+    await walkToConsent(user);
+
+    const checkbox = screen.getByRole("checkbox", { name: /i accept/i });
+    await user.click(checkbox);
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: /complete setup/i })).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(checkbox).toHaveFocus();
+  });
+
+  it("commits the accepted consent with Enter by moving focus to Complete Setup", async () => {
+    const user = userEvent.setup();
+    renderWizard();
+    await walkToConsent(user);
+
+    const checkbox = screen.getByRole("checkbox", { name: /i accept/i });
+    expect(checkbox).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("button", { name: /complete setup/i })).toBeDisabled();
+    expect(checkbox).toHaveFocus();
+
+    await user.keyboard(" ");
+    expect(checkbox).toBeChecked();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("button", { name: /complete setup/i })).toHaveFocus();
+  });
+
+  it("dims the step content while the footer actions hold focus", async () => {
+    const user = userEvent.setup();
+    const { container } = renderWizard();
+    await walkToConsent(user);
+    await user.click(screen.getByRole("checkbox", { name: /i accept/i }));
+
+    // opacity-60 is CardLayout's documented contentInactive treatment; jsdom
+    // cannot compute Tailwind styles, so the class is the observable contract.
+    const content = container.querySelector('[data-slot="panel-content"]');
+    expect(content).not.toHaveClass("opacity-60");
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: /complete setup/i })).toHaveFocus();
+    expect(content).toHaveClass("opacity-60");
+
+    await user.keyboard("{ArrowUp}");
+    expect(content).not.toHaveClass("opacity-60");
+  });
+
   it("pre-accepts the consent step when provider consent is already on record", async () => {
     const user = userEvent.setup();
     const acceptedAt = "2026-08-01T09:00:00.000Z";
@@ -396,17 +458,7 @@ describe("OnboardingWizard", () => {
     );
     renderWizard();
 
-    await expectStep(/select product/i);
-    await clickNext(user);
-    await expectStep(/configure endpoint/i);
-    await clickNext(user);
-    await expectStep(/configure authentication/i);
-    await user.click(screen.getByRole("radio", { name: /environment reference/i }));
-    await clickNext(user);
-    await expectStep(/select model/i);
-    await user.click(await screen.findByRole("radio", { name: /gemini-2\.5-pro/i }));
-    await clickNext(user);
-    await expectStep(/provider consent/i);
+    await walkToConsent(user);
 
     expect(screen.getByRole("checkbox", { name: /i accept/i })).toBeChecked();
     await user.click(screen.getByRole("button", { name: /complete setup/i }));
@@ -446,17 +498,7 @@ describe("OnboardingWizard", () => {
     });
     renderWizard();
 
-    await expectStep(/select product/i);
-    await clickNext(user);
-    await expectStep(/configure endpoint/i);
-    await clickNext(user);
-    await expectStep(/configure authentication/i);
-    await user.click(screen.getByRole("radio", { name: /environment reference/i }));
-    await clickNext(user);
-    await expectStep(/select model/i);
-    await user.click(await screen.findByRole("radio", { name: /gemini-2\.5-pro/i }));
-    await clickNext(user);
-    await expectStep(/provider consent/i);
+    await walkToConsent(user);
     await user.click(screen.getByRole("checkbox"));
     await user.click(screen.getByRole("button", { name: /complete setup/i }));
 

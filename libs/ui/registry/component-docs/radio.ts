@@ -65,14 +65,14 @@ export const radioDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "All four arrow keys move focus and select items in automatic activation mode (per WAI-ARIA APG). Manual activation mode moves focus and emits onNavigate without changing value. Space selects the focused item. Enter commit via onEnter is a Diffgazer extension for preview/commit flows. Home/End jump to first/last item. Composite UIs can opt into initial focus with autoFocus, suspend RadioGroup-managed key handling with keyboardNavigation, and listen for onNavigationBoundaryReached(direction, event, key).",
+      "All four arrow keys, plus the vim aliases j/k, move focus and select items in automatic activation mode (per WAI-ARIA APG). Manual activation mode moves focus and emits onNavigate without changing value. Space selects the focused item. Enter commit via onEnter is a Diffgazer extension for preview/commit flows. Home/End jump to first/last item. Composite UIs can opt into initial focus with autoFocus, suspend RadioGroup-managed key handling with keyboardNavigation, and listen for onNavigationBoundaryReached(direction, event, key).",
     keys: [
       {
-        keys: "ArrowUp / ArrowLeft",
+        keys: "ArrowUp / ArrowLeft / k",
         action: "Moves focus to the previous enabled radio; automatic mode also selects it.",
       },
       {
-        keys: "ArrowDown / ArrowRight",
+        keys: "ArrowDown / ArrowRight / j",
         action: "Moves focus to the next enabled radio; automatic mode also selects it.",
       },
       {

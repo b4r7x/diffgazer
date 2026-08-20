@@ -7,6 +7,7 @@ import {
   getTrustButtonLabel,
 } from "@diffgazer/core/schemas/config";
 import { TRUST_PERMISSION_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
+import { hasModifierKey } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { toast } from "@diffgazer/ui/components/toast";
 import { type KeyboardEvent, useRef, useState } from "react";
@@ -32,8 +33,9 @@ export function TrustPanel({ directory }: TrustPanelProps) {
   const handleListBoundaryNext = () => buttonRef.current?.focus();
   const hasRepoAccess = capabilities.readFiles;
 
+  // Modified arrows stay native, as every other hand-off on the screen keeps them.
   const handleButtonKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key !== "ArrowUp" || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key !== "ArrowUp" || hasModifierKey(e)) return;
     e.preventDefault();
     listFocusRef.current?.focus();
   };

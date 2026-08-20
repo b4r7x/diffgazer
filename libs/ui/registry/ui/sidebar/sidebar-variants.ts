@@ -1,4 +1,5 @@
 import { cva } from "class-variance-authority";
+import { FOCUS_OUTLINE_INSET } from "@/lib/focus-outline";
 import { MARKER_RAIL_BASE } from "@/lib/marker-rail";
 
 /** Allowed sidebar variant values. */
@@ -42,7 +43,10 @@ export const sidebarItemVariants = cva(
     // contiguous trunk and a pseudo overhang would be clipped by the scroller.
     "pointer-coarse:min-h-11",
     "cursor-pointer transition-colors motion-reduce:transition-none",
-    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+    // Inset, not outset: rows live in SidebarContent's scroller, and the
+    // inverted variant's selected row reaches both shell edges, where an
+    // outside outline would be clipped.
+    FOCUS_OUTLINE_INSET,
     "disabled:cursor-not-allowed",
     // Disabled rows keep the dimmed resting look on hover so they never invite
     // a click; each variant re-states its own resting text tone below.

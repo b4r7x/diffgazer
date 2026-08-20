@@ -29,7 +29,6 @@ import {
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { createToggleGroup } from "@diffgazer/ui/components/toggle-group";
-import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from "react";
 import { PROVIDER_FILTER_LABELS, PROVIDER_FILTERS, type ProviderFilter } from "../lib/filter";
 import { PROVIDER_STATUS_TONE } from "../lib/status-tone";
@@ -128,14 +127,7 @@ export function ProviderList({
     const subtitle = (modelId && findCatalogModel(row)?.name) || modelId;
 
     return (
-      <NavigationListItem
-        key={rowId}
-        id={rowId}
-        className={cn(
-          "border-l-2 border-l-transparent",
-          !isFocused && selectedId === rowId && "border-l-info/60 text-foreground",
-        )}
-      >
+      <NavigationListItem key={rowId} id={rowId}>
         <NavigationListTitle>{row.product.name}</NavigationListTitle>
         <NavigationListStatus
           role="img"
@@ -177,14 +169,7 @@ export function ProviderList({
   // show, so the row carries its id — the one thing that ties it to the file on
   // disk — and the details pane explains it.
   const renderUnrecognizedRow = ({ configurationId }: UnrecognizedConfiguration) => (
-    <NavigationListItem
-      key={configurationId}
-      id={configurationId}
-      className={cn(
-        "border-l-2 border-l-transparent",
-        !isFocused && selectedId === configurationId && "border-l-info/60 text-foreground",
-      )}
-    >
+    <NavigationListItem key={configurationId} id={configurationId}>
       <NavigationListTitle>{UNRECOGNIZED_CONFIGURATION_COPY.label}</NavigationListTitle>
       <div className="col-span-full row-start-2 flex min-w-0 items-center gap-2">
         <NavigationListSubtitle className="min-w-0 truncate font-mono group-data-[highlighted]:text-primary-foreground/85">

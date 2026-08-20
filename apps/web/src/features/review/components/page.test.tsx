@@ -287,6 +287,70 @@ describe("ReviewPage saved review loading", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
+  it("returns a saved review to its summary with Escape from the results list", async () => {
+    const user = userEvent.setup();
+    const issue = makeIssue({ id: "issue-1", title: "Saved result issue" });
+    routeState.params = { reviewId: "review-saved" };
+    routeState.search = { mode: "staged" };
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        status: "success",
+        data: {
+          review: {
+            metadata: { id: "review-saved" },
+            result: { issues: [issue] },
+          },
+        },
+      }),
+    );
+
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: /view results/i }));
+    expect(await screen.findByText(`Review ${formatRunId("review-saved")}`)).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    expect(
+      await screen.findByText(`Review Complete ${formatRunId("review-saved")}`),
+    ).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  it("keeps Escape leaving the screen for a summary-less issue deep link", async () => {
+    const user = userEvent.setup();
+    const issue = makeIssue({ id: "issue-1", title: "Linked saved issue" });
+    routeState.params = { reviewId: "review-saved" };
+    routeState.search = { mode: "staged", issueId: "issue-1" };
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        status: "success",
+        data: {
+          review: {
+            metadata: { id: "review-saved" },
+            result: { issues: [issue] },
+          },
+        },
+      }),
+    );
+
+    renderPage();
+
+    expect(await screen.findByRole("option", { name: /linked saved issue/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    // A deep link opens in the details zone; the first Escape steps to the list.
+    await user.keyboard("{Escape}");
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    // The deep link skipped the summary, so the next Escape leaves the screen.
+    await user.keyboard("{Escape}");
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+  });
+
   it("opens a valid saved-review issue deep link directly in results", async () => {
     const firstIssue = makeIssue({
       id: "issue-1",
@@ -798,6 +862,22 @@ describe("ReviewPage live review phase transitions", () => {
 
     expect(mockBack).toHaveBeenCalledTimes(1);
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("returns live results to the summary with Escape instead of leaving the route", async () => {
+    routeState.canGoBack = true;
+    const user = await openSummary();
+
+    await user.click(screen.getByRole("button", { name: /view results/i }));
+    expect(await screen.findByText(`Review ${formatRunId(LIVE_REVIEW_ID)}`)).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    expect(
+      await screen.findByText(`Review Complete ${formatRunId(LIVE_REVIEW_ID)}`),
+    ).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockBack).not.toHaveBeenCalled();
   });
 
   it("offers View Results beside a single Back button that runs the Escape handler", async () => {

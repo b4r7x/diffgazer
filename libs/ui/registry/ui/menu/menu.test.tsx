@@ -1,10 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createRef } from "react";
+import { createRef, useState } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { requireAttribute } from "../../testing/assertions";
+import { Popover } from "../popover/index";
 import { Menu, type MenuItemProps, MenuLabel, type MenuProps } from "./index";
 
 type MenuRenderProps = Partial<MenuProps> & Partial<Record<`data-${string}`, string>>;
@@ -18,6 +19,27 @@ function renderMenu(props: MenuRenderProps = {}) {
         Three
       </Menu.Item>
     </Menu>,
+  );
+}
+
+/** Menu in the shape it ships in: portaled behind a trigger that owns focus restore. */
+function PortaledMenu() {
+  const [open, setOpen] = useState(true);
+  return (
+    <Popover triggerMode="click" open={open} onOpenChange={setOpen}>
+      <Popover.Trigger>Open menu</Popover.Trigger>
+      <Popover.Content aria-label="Menu popover" autoFocus={false}>
+        <Menu
+          aria-label="Test menu"
+          autoFocus
+          onClose={() => setOpen(false)}
+          defaultHighlighted="one"
+        >
+          <Menu.Item id="one">One</Menu.Item>
+          <Menu.Item id="two">Two</Menu.Item>
+        </Menu>
+      </Popover.Content>
+    </Popover>
   );
 }
 
@@ -396,7 +418,7 @@ describe("Menu", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("calls onClose on Tab and lets focus leave the menu", async () => {
+  it("calls onClose on Tab and claims the key instead of tabbing on", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     const onKeyDown = vi.fn();
@@ -424,8 +446,32 @@ describe("Menu", () => {
 
     expect(onClose).toHaveBeenCalled();
     expect(onKeyDown).toHaveBeenCalled();
-    expect(menu).not.toHaveFocus();
-    expect(screen.getByRole("button", { name: "After" })).toHaveFocus();
+    // Closing owns where focus goes; native Tab must not race it to the next
+    // tabbable, which for a portaled menu is a DOM accident anyway.
+    expect(screen.getByRole("button", { name: "After" })).not.toHaveFocus();
+  });
+
+  it("restores focus to the trigger when Tab closes a portaled menu", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <PortaledMenu />
+        <button type="button">After</button>
+      </>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Open menu" });
+    const menu = screen.getByRole("menu", { name: "Test menu" });
+    await waitFor(() => {
+      expect(menu).toHaveFocus();
+    });
+
+    await user.keyboard("{Tab}");
+
+    expect(screen.queryByRole("menu", { name: "Test menu" })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(trigger).toHaveFocus();
+    });
   });
 
   it("focuses the container on mount when autoFocus is true", async () => {

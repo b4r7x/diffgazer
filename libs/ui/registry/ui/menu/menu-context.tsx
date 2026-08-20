@@ -34,6 +34,8 @@ export interface MenuContextValue {
   variant: "default" | "detail";
   idPrefix: string;
   itemRole: "menuitem" | "menuitemradio";
+  /** Root typeahead setting, inherited by submenu flyouts so the opt-out covers the whole compound. */
+  typeahead: boolean;
   /**
    * `registrationId` is the mount identity (a useId), so two items sharing a `value` still
    * register and unregister independently; `value` is what navigation and selection compare.

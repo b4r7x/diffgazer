@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
 import { applyReducedMotionFixture } from "../../../testing/prefers-reduced-motion";
+import { FOCUS_OUTLINE } from "../../lib/focus-outline";
 import { Field } from "../field/index";
 import { Select } from "./index";
 import {
@@ -388,11 +389,7 @@ describe("Select dropdown width", () => {
 // it must carry the outside outline and must not fall back to the inset field ring.
 describe("Select trigger focus indicator", () => {
   const INSET_RING = ["focus:border-ring", "focus:ring-1", "focus:ring-ring"];
-  const OUTSIDE_OUTLINE = [
-    "focus-visible:outline-2",
-    "focus-visible:outline-ring",
-    "focus-visible:outline-offset-2",
-  ];
+  const OUTSIDE_OUTLINE = FOCUS_OUTLINE.split(" ");
 
   it("draws the card trigger focus indicator outside the inverted header", async () => {
     const user = userEvent.setup();

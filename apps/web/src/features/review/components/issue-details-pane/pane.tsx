@@ -5,6 +5,7 @@ import {
 } from "@diffgazer/core/review";
 import { isIssueTab, type IssueTab as TabId } from "@diffgazer/core/schemas/presentation";
 import { hasSuggestedPatch, type ReviewIssue } from "@diffgazer/core/schemas/review";
+import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
@@ -189,13 +190,14 @@ function DetailsPanel({
         Details
       </Panel.Label>
       {onBackToList ? (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onBackToList}
-          className="mx-3 mt-2 inline-flex w-fit items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground md:hidden"
+          className="mx-3 mt-2 w-fit md:hidden"
         >
           <span aria-hidden="true">←</span> Issues
-        </button>
+        </Button>
       ) : null}
       {children}
     </Panel>

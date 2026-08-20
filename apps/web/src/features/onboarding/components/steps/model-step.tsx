@@ -1,9 +1,10 @@
 import { getModelTierBadge, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { useModelSource } from "@diffgazer/core/providers/hooks";
 import type { ClientConfigurationSummary, ModelInfo } from "@diffgazer/core/schemas/config";
-import { toVerticalBoundaryDirection } from "@diffgazer/keys";
+import { toVerticalBoundaryDirection, useKey } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
+import { Kbd } from "@diffgazer/ui/components/kbd";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { useEffect, useRef, useState } from "react";
@@ -120,6 +121,12 @@ function DiscoveredModels({
   const canFocusRecoveryRef = useRef(false);
   const product = PRODUCT_REGISTRY[configuration.productId];
   const discovery = useModelSource(true, configuration);
+  const isRecovery =
+    discovery.status === "error" ||
+    discovery.status === "skipped" ||
+    (discovery.status === "passed" && discovery.models.length === 0);
+
+  useKey("r", discovery.retry, { enabled: isRecovery });
 
   useEffect(() => {
     if (discovery.status !== "loading") return;
@@ -141,13 +148,23 @@ function DiscoveredModels({
   useEffect(() => {
     if (discovery.status === "loading" || !wasLoadingRef.current) return;
     wasLoadingRef.current = false;
-    const isRecovery =
-      discovery.status === "error" ||
-      discovery.status === "skipped" ||
-      (discovery.status === "passed" && discovery.models.length === 0);
     if (isRecovery && canFocusRecoveryRef.current) retryButtonRef.current?.focus();
     canFocusRecoveryRef.current = false;
-  }, [discovery.status, discovery.models.length]);
+  }, [discovery.status, isRecovery]);
+
+  // Step re-entry focus: the recovery branches have no self-focusing group, so
+  // a footer round-trip must put focus back on Retry on the rising edge of
+  // `enabled`, the same way MissingConfiguration does.
+  useEffect(() => {
+    if (!enabled) return;
+    retryButtonRef.current?.focus();
+  }, [enabled]);
+
+  const retryHint = (
+    <p className="text-xs text-muted-foreground font-mono">
+      <Kbd size="sm">r</Kbd> retry discovery
+    </p>
+  );
 
   if (discovery.status === "loading" || discovery.status === "idle") {
     return (
@@ -168,6 +185,7 @@ function DiscoveredModels({
         <Button ref={retryButtonRef} type="button" variant="secondary" onClick={discovery.retry}>
           Retry
         </Button>
+        {retryHint}
       </div>
     );
   }
@@ -179,6 +197,7 @@ function DiscoveredModels({
         <Button ref={retryButtonRef} type="button" variant="secondary" onClick={discovery.retry}>
           Retry
         </Button>
+        {retryHint}
       </div>
     );
   }
@@ -190,6 +209,7 @@ function DiscoveredModels({
         <Button ref={retryButtonRef} type="button" variant="secondary" onClick={discovery.retry}>
           Retry
         </Button>
+        {retryHint}
       </div>
     );
   }

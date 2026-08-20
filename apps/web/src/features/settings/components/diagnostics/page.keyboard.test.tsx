@@ -50,6 +50,31 @@ describe("SettingsDiagnosticsPage diagnostics keyboard", () => {
     expect(panel).not.toHaveAttribute("data-state");
   });
 
+  it("scrolls the snapshot pane with page and edge keys while focus stays on the actions", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await waitForDiagnosticsActions();
+
+    const pane = screen.getByRole("region", { name: "Diagnostic snapshot" });
+    // jsdom has no layout; pin the metrics that make the pane overflow.
+    Object.defineProperty(pane, "clientHeight", { value: 100, configurable: true });
+    Object.defineProperty(pane, "scrollHeight", { value: 1000, configurable: true });
+
+    await user.keyboard("{PageDown}");
+    expect(pane.scrollTop).toBe(80);
+
+    await user.keyboard("{End}");
+    expect(pane.scrollTop).toBe(1000);
+
+    await user.keyboard("{PageUp}");
+    expect(pane.scrollTop).toBe(920);
+
+    await user.keyboard("{Home}");
+    expect(pane.scrollTop).toBe(0);
+
+    expect(screen.getByRole("button", { name: "Refresh Diagnostics" })).toHaveFocus();
+  });
+
   it.each(["r", "R"])("refreshes all diagnostics sources when %s is pressed", async (key) => {
     const user = userEvent.setup();
     renderPage();

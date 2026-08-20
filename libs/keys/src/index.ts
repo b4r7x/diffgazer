@@ -20,6 +20,7 @@ export { DECLINE } from "./core/normalize-key-input.js";
 export {
   composedClosest,
   composedContains,
+  hasModifierKey,
   isEditableElement,
   isInputElement,
 } from "./dom/element-guards.js";

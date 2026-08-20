@@ -10,13 +10,14 @@ import type {
   Ref,
 } from "react";
 import { lazy, Suspense } from "react";
+import { FOCUS_OUTLINE, HIGHLIGHT_OUTLINE } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 
 const LazySpinner = lazy(() => import("../spinner/spinner").then((m) => ({ default: m.Spinner })));
 
 /** Class variants for button. */
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center wrap-break-word text-center font-mono transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 cursor-pointer disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40",
+  `inline-flex items-center justify-center wrap-break-word text-center font-mono transition-colors ${FOCUS_OUTLINE} cursor-pointer disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40`,
   {
     variants: {
       // One filled voice (primary, on the --action pair) so a screen never
@@ -70,7 +71,7 @@ export const buttonVariants = cva(
       // Virtual focus from a parent collection wears the same outside ring as
       // real focus (one focus grammar, one token), just without focus-visible.
       highlighted: {
-        true: "outline-2 outline-ring outline-offset-2",
+        true: HIGHLIGHT_OUTLINE,
       },
     },
     defaultVariants: {

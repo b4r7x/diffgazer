@@ -1,6 +1,7 @@
 import type { IssueTab } from "@diffgazer/core/schemas/presentation";
 import { type ReviewIssue, SavedReviewSchema } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
+import { FOCUS_OUTLINE } from "@diffgazer/ui/lib/focus-outline";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -729,5 +730,38 @@ describe("IssueDetailsPane tab stops", () => {
       "tabindex",
       "-1",
     );
+  });
+});
+
+describe("mobile back to issues", () => {
+  it("renders nothing without onBackToList", () => {
+    renderPane(makeIssue());
+
+    expect(screen.queryByRole("button", { name: "Issues" })).not.toBeInTheDocument();
+  });
+
+  it("hands the tap back to the list through a Button wearing the shared focus grammar", async () => {
+    const user = userEvent.setup();
+    const onBackToList = vi.fn();
+    render(
+      <IssueDetailsPane
+        issue={makeIssue()}
+        activeTab="details"
+        onTabChange={vi.fn()}
+        completedSteps={new Set<number>()}
+        onToggleStep={vi.fn()}
+        onBackToList={onBackToList}
+      />,
+    );
+
+    const back = screen.getByRole("button", { name: "Issues" });
+    // The grammar is libs/ui's documented class contract, imported from the
+    // package: a revert to a bespoke <button> without the shared focus mark
+    // fails here.
+    expect(back).toHaveClass(...FOCUS_OUTLINE.split(" "));
+
+    await user.click(back);
+
+    expect(onBackToList).toHaveBeenCalledTimes(1);
   });
 });

@@ -53,6 +53,19 @@ describe("HELP_SHORTCUTS", () => {
     });
   });
 
+  it("advertises the history list accelerators both surfaces bind", () => {
+    expect(HELP_SHORTCUTS).toContainEqual({
+      key: "l",
+      label: "Load Older Runs",
+      context: "history",
+    });
+    expect(HELP_SHORTCUTS).toContainEqual({
+      key: "R",
+      label: "Retry History",
+      context: "history",
+    });
+  });
+
   it("gives ↑/↓ and j/k one shared label so the two list rows collapse", () => {
     const listShortcuts = HELP_SHORTCUTS.filter((shortcut) => shortcut.context === "list");
     expect(listShortcuts.map((shortcut) => shortcut.key)).toEqual(["↑/↓", "j/k"]);

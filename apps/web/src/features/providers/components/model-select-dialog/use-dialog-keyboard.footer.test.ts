@@ -47,8 +47,6 @@ function TestModelFooterKeyboard({
     models,
     filteredModels,
     discoveryStatus: discoveryStatusForTest(isSaving, filteredModels),
-    searchQuery: "",
-    setSearchQuery: vi.fn(),
     cycleTierFilter: vi.fn(),
     resetFilters: vi.fn(),
     searchInputRef,

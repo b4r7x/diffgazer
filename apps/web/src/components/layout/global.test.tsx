@@ -25,6 +25,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 import { GlobalLayout, getWordmarkTier } from "./global";
+import { useHeaderBackButtonRef } from "./header-chrome";
 
 let queryClient: QueryClient;
 let mockApi: BoundApi;
@@ -160,6 +161,26 @@ describe("GlobalLayout", () => {
 
     expect(backSpy).toHaveBeenCalledOnce();
     expect(navigateSpy).not.toHaveBeenCalled();
+  });
+
+  it("lets page content focus the header Back button through the chrome hand-off ref", async () => {
+    const user = userEvent.setup();
+    routerState.pathname = "/history";
+    routerState.canGoBack = true;
+
+    function ChromeConsumer() {
+      const backButtonRef = useHeaderBackButtonRef();
+      return (
+        <button type="button" onClick={() => backButtonRef.current?.focus()}>
+          Focus chrome
+        </button>
+      );
+    }
+
+    renderShell(<ChromeConsumer />);
+    await user.click(screen.getByRole("button", { name: "Focus chrome" }));
+
+    expect(screen.getByRole("button", { name: /back/i })).toHaveFocus();
   });
 
   it("offers no back affordance during onboarding, which has nowhere to go back to", () => {

@@ -192,6 +192,13 @@ export const menuDoc: ComponentDoc = {
         defaultValue: "true",
         description: "When true, arrow navigation wraps from last item to first and vice versa.",
       },
+      typeahead: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description:
+          "Enable type-ahead character search to jump to matching items. Submenus inherit this setting. Disable when every printable key the menu advertises belongs to an external hotkey layer.",
+      },
       autoFocus: {
         type: "boolean",
         required: false,

@@ -1,6 +1,7 @@
 "use client";
 
 import type { AnchorHTMLAttributes, ReactNode, Ref } from "react";
+import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 import { useBreadcrumbsContext } from "./breadcrumbs-context";
 
@@ -35,7 +36,7 @@ export function BreadcrumbsLink({ children, className, ref, ...props }: Breadcru
       // line and must not overlap their separators.
       "inline-flex items-center py-2 -my-2 px-1 pointer-coarse:my-0 pointer-coarse:min-h-11",
       "transition-colors hover:text-foreground hover:underline hover:underline-offset-2",
-      "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+      FOCUS_OUTLINE,
       className,
     ),
     "aria-current": current ? "page" : undefined,

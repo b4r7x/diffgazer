@@ -390,6 +390,7 @@ export function MenuSubContent({
         aria-label={ariaLabel}
         aria-labelledby={resolvedAriaLabelledBy}
         autoFocus={open}
+        typeahead={parentMenu.typeahead}
         // No onClose: handleSubmenuKeyDown owns Escape/Tab dismissal and also
         // restores focus and the parent highlight. Wiring both would call the
         // public onOpenChange twice for one keystroke.

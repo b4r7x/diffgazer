@@ -86,7 +86,11 @@ export interface UseListboxOptions<TId extends string = string> {
   /**
    * Enable type-ahead character search to jump to matching items. j and k are
    * reserved as vim navigation keys: they move the highlight instead of starting
-   * a query, but still extend a query already in progress. @default false
+   * a query, but still extend a query already in progress. A key is
+   * defaultPrevented — so window-level hotkey layers skip it — only when its
+   * query matched an item or a query was already in progress; an unmatched first
+   * press falls through. Keys typed into an owned editable element always keep
+   * their default so the character still inserts. @default false
    */
   typeahead?: boolean;
   /** Optional metadata array describing each item. DOM lookup is still used for mounted item text and typeahead. */
@@ -153,6 +157,7 @@ export function useListbox<TId extends string = string>({
   const autoFocusInitialized = useRef(false);
   const [domActiveDescendant, setDomActiveDescendant] = useState<string | null>(null);
   const readTypeaheadQuery = useTypeaheadBuffer();
+  const queryOwnsKey = useRef(false);
 
   const query = {
     itemRole,
@@ -349,7 +354,15 @@ export function useListbox<TId extends string = string>({
     });
     if (queryText === null) return false;
 
-    if (typeaheadItems.length === 0) return true;
+    // A query is live when it already owned the keyboard and the buffer has not
+    // since timed out — an empty buffer folds to exactly the key just typed, so
+    // a longer result means the previous keystroke is still part of this query.
+    const isLiveQuery = queryOwnsKey.current && queryText !== event.key.toLocaleLowerCase();
+
+    if (typeaheadItems.length === 0) {
+      queryOwnsKey.current = false;
+      return true;
+    }
 
     const currentValue = highlighted ?? selectedId;
     const currentIndex =
@@ -363,6 +376,17 @@ export function useListbox<TId extends string = string>({
       currentIndex,
       getLabel: (item) => getAccessibleText(item).trim(),
     });
+
+    // The buffered key has one owner, but only once the query earns it. A query
+    // that matched an item claims the keystroke so window-level hotkey layers
+    // (which skip defaultPrevented events) do not also fire, and keeps claiming
+    // while the user narrows it — including the key that narrows it to nothing.
+    // A query that never matched owns nothing: those keys fall through. Owned
+    // editables keep their default so the character still inserts.
+    queryOwnsKey.current = match !== null || isLiveQuery;
+    if (queryOwnsKey.current && !isEditableElement(composedTarget)) {
+      event.preventDefault();
+    }
 
     if (match) {
       const value = match.dataset.value;

@@ -97,7 +97,15 @@ export function useOnboardingKeyboard({
   };
 
   usePageFooter({
-    shortcuts: getStepShortcuts(currentStep, footer.inActions, footer.isFocusedActionDisabled),
+    shortcuts: getStepShortcuts(
+      currentStep,
+      footer.inActions,
+      footer.isFocusedActionDisabled,
+      canProceed,
+    ),
+    // q stays live through setup, as in the TUI, so the wizard has to advertise
+    // it: the steps have no editable focus to swallow a stray press.
+    rightShortcuts: [{ key: "q", label: "Quit" }],
   });
 
   const focusFooterActions = () => {

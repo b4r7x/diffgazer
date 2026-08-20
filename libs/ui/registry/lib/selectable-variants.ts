@@ -1,4 +1,5 @@
 import { cva } from "class-variance-authority";
+import { MARKER_RAIL_BASE, MARKER_RAIL_SELECTED } from "@/lib/marker-rail";
 
 /** Size shared by checkbox and radio standalone controls. */
 export type SelectableSize = "sm" | "md" | "lg";
@@ -31,13 +32,12 @@ export const checkboxIndicators = {
   bullet: { checked: "[*]", unchecked: "[ ]", indeterminate: "[-]" },
 } satisfies Record<SelectableVariant, Record<string, string>>;
 
-const selectableHighlightClass =
-  "bg-secondary text-foreground font-bold before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-foreground";
+const selectableHighlightClass = `bg-secondary text-foreground font-bold ${MARKER_RAIL_SELECTED}`;
 
 /**
  * Root selectable-control variants for highlighted and disabled states.
  * Focus uses the inset field grammar (hairline --ring hugging the control, no
- * offset); the highlight bar stays reserved for collection highlight.
+ * offset); the marker rail stays reserved for collection highlight.
  *
  * `focus:` rather than `focus-visible:` is deliberate: these are fields, and a field shows
  * its focus state however focus arrived. The accepted consequence is that clicking the
@@ -48,7 +48,7 @@ const selectableHighlightClass =
  * back as the transparent one forced-colors repaints.
  */
 export const selectableVariants = cva(
-  "group/selectable flex cursor-pointer select-none font-mono relative focus:outline-hidden focus:ring-1 focus:ring-ring aria-invalid:ring-1 aria-invalid:ring-error aria-invalid:focus:ring-error",
+  `group/selectable flex cursor-pointer select-none font-mono relative ${MARKER_RAIL_BASE} focus:outline-hidden focus:ring-1 focus:ring-ring aria-invalid:ring-1 aria-invalid:ring-error aria-invalid:focus:ring-error`,
   {
     variants: {
       highlighted: {

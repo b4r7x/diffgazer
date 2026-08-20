@@ -11,7 +11,7 @@ import {
   summarizeHistoryWarnings,
 } from "@diffgazer/core/review";
 import { pluralize } from "@diffgazer/core/strings";
-import { isListNavigationKey } from "@diffgazer/keys";
+import { hasModifierKey, isListNavigationKey } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { Kbd } from "@diffgazer/ui/components/kbd";
@@ -21,6 +21,7 @@ import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { useNavigate } from "@tanstack/react-router";
 import type { KeyboardEvent, RefObject } from "react";
+import { useChromeBackHandoff } from "@/components/layout/header-chrome";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { FailureView } from "@/components/shared/failure-view";
@@ -40,16 +41,30 @@ function HistoryWarnings({
   targetIds,
   warningRef,
   onFocus,
+  onHandOffToChrome,
 }: {
   summary: HistoryWarningSummary;
   runIdLookup: RunIdLookup;
   targetIds: readonly string[];
   warningRef: RefObject<HTMLDivElement | null>;
   onFocus: () => void;
+  onHandOffToChrome: () => void;
 }) {
   const messages = buildHistoryWarningMessages(summary, runIdLookup, {
     maxTargetIds: HISTORY_WARNING_TARGET_SAMPLE_SIZE,
   });
+
+  // The region is the top of the page, so an ArrowUp that cannot scroll any
+  // further hands focus to the header Back button; below the top the key keeps
+  // scrolling the region. Modified arrows stay native, mirroring the
+  // ScrollArea's own scrolling guard.
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (hasModifierKey(event)) return;
+    if (event.key === "ArrowUp" && event.currentTarget.scrollTop === 0) {
+      event.preventDefault();
+      onHandOffToChrome();
+    }
+  };
 
   // Keep the live copy separate from the scrollable detail so screen readers do
   // not announce every ID in a large warning batch.
@@ -71,6 +86,7 @@ function HistoryWarnings({
           aria-describedby={HISTORY_WARNING_SCROLL_HINT_ID}
           className="max-h-24 space-y-1"
           onFocus={onFocus}
+          onKeyDown={handleKeyDown}
         >
           <p id={HISTORY_WARNING_SCROLL_HINT_ID} className="sr-only">
             Focus this region to scroll warnings with Arrow Up, Arrow Down, Page Up, Page Down,
@@ -113,6 +129,7 @@ function HistoryPageContent() {
     searchQuery,
     searchInputRef,
     warningsRef,
+    listRetryRef,
     timelineRef,
     runsListRef,
     loadMoreRef,
@@ -147,6 +164,7 @@ function HistoryPageContent() {
     setHighlightedIssueId,
   } = useHistoryPage();
   const navigate = useNavigate();
+  const handOffToChrome = useChromeBackHandoff(setFocusZone);
   const hasLoadedReviews = reviewsQuery.data !== undefined;
   const warnings = reviewsQuery.data?.warnings ?? [];
   const warningSummary = summarizeHistoryWarnings(warnings);
@@ -158,6 +176,14 @@ function HistoryPageContent() {
     refetch: reviewDetailQuery.refetch,
   });
 
+  const listFetchError =
+    hasLoadedReviews &&
+    reviewsQuery.error &&
+    !reviewsQuery.isFetchingNextPage &&
+    !reviewsQuery.isFetchNextPageError
+      ? reviewsQuery.error.message
+      : null;
+
   useHistoryKeyboard({
     enabled: hasLoadedReviews,
     focusZone,
@@ -165,11 +191,14 @@ function HistoryPageContent() {
     activeRunId: selectedRunId,
     hasRuns: mappedRuns.length > 0,
     hasMore: hasMoreReviews,
+    isLoadingMore: isLoadingMoreReviews,
     hasInsights: insightsDetailState.status === "ready" && sortedIssues.length > 0,
     hasRetry: insightsDetailState.status === "error",
+    hasListRetry: listFetchError !== null,
     hasWarnings: warningSummaryTargetIds.length > 0,
     searchInputRef,
     warningsRef,
+    listRetryRef,
     timelineRef,
     runsListRef,
     loadMoreRef,
@@ -177,6 +206,8 @@ function HistoryPageContent() {
     retryRef,
     highlightedIssueId,
     onHighlightIssue: setHighlightedIssueId,
+    onLoadMore: () => void loadMoreReviews(),
+    onRetryList: () => void reviewsQuery.refetch(),
   });
 
   // Pane chrome follows real DOM focus, not the keyboard zone: the zone is
@@ -186,8 +217,7 @@ function HistoryPageContent() {
   const runsFocus = useFocusWithin<HTMLElement>();
   const insightsFocus = useFocusWithin<HTMLElement>();
 
-  // Space is deliberately absent: NavigationList already routes it to onSelect,
-  // and pre-empting it here would break the primitive's multi-word typeahead.
+  // Space is deliberately absent: NavigationList already routes it to onSelect.
   const handleRunsKeyDown = (event: KeyboardEvent) => {
     if (focusZone !== "runs" && isListNavigationKey(event.key)) event.preventDefault();
   };
@@ -199,6 +229,7 @@ function HistoryPageContent() {
       targetIds={warningSummaryTargetIds}
       warningRef={warningsRef}
       onFocus={() => setFocusZone("warnings")}
+      onHandOffToChrome={handOffToChrome}
     />
   );
   const guard = hasLoadedReviews
@@ -226,13 +257,6 @@ function HistoryPageContent() {
     );
   }
 
-  const listFetchError =
-    hasLoadedReviews &&
-    reviewsQuery.error &&
-    !reviewsQuery.isFetchingNextPage &&
-    !reviewsQuery.isFetchNextPageError
-      ? reviewsQuery.error.message
-      : null;
   const salvagedRunIds = new Set(warningSummary.droppedIssueReviewIds);
   const selectedRunDisplayId = selectedRun ? (runIdLookup.get(selectedRun.id) ?? null) : null;
 
@@ -244,6 +268,7 @@ function HistoryPageContent() {
         <div role="alert" className="shrink-0 mb-2 text-sm text-error-text">
           <p>Could not refresh the review list. {listFetchError}</p>
           <Button
+            ref={listRetryRef}
             variant="outline"
             size="sm"
             bracket
@@ -268,6 +293,16 @@ function HistoryPageContent() {
           } else if (event.key === "ArrowDown") {
             event.preventDefault();
             handleSearchArrowDown();
+          } else if (event.key === "ArrowUp") {
+            // Only an unmodified ArrowUp the caret cannot use leaves for the
+            // header Back button; anywhere else in the value it keeps its
+            // native move, and modified arrows stay native everywhere.
+            if (hasModifierKey(event)) return;
+            const { selectionStart, selectionEnd } = event.currentTarget;
+            if (selectionStart === 0 && selectionEnd === 0) {
+              event.preventDefault();
+              handOffToChrome();
+            }
           }
         }}
         placeholder={HISTORY_SEARCH_PLACEHOLDER}
@@ -363,12 +398,13 @@ function HistoryPageContent() {
                 onSelect={handleRunSelect}
                 onEnter={handleRunActivate}
                 onHighlightChange={setSelectedRunId}
-                onNavigationBoundaryReached={(direction) => {
-                  if (direction === "previous") handleRunsBoundary();
-                }}
+                onNavigationBoundaryReached={handleRunsBoundary}
                 onKeyDown={handleRunsKeyDown}
                 wrap={false}
                 focused={focusZone === "runs"}
+                // "/" and o are window-level shortcuts for this zone; list
+                // typeahead would claim those keystrokes before they arrive.
+                typeahead={false}
               >
                 {mappedRuns.map((run) => (
                   <NavigationList.Item

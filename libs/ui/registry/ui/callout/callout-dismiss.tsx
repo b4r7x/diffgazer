@@ -2,6 +2,7 @@
 
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { hasAccessibleTextContent } from "@/lib/accessible-text";
+import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 import { useCalloutContext } from "./callout-context";
 
@@ -43,7 +44,7 @@ export function CalloutDismiss({
         // callout's top edge with the title's own padding beside it.
         "relative pointer-coarse:before:absolute pointer-coarse:before:-inset-2.5 pointer-coarse:before:content-['']",
         "text-muted-foreground hover:text-foreground hover:bg-foreground/5",
-        "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+        FOCUS_OUTLINE,
         "transition-colors",
         className,
       )}

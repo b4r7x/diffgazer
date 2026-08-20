@@ -4,7 +4,6 @@ import {
   useActionRowNavigation,
   useFocusZone,
   useKey,
-  useScope,
 } from "@diffgazer/keys";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -15,9 +14,10 @@ import {
   useRef,
   useState,
 } from "react";
+import { useDialogScope } from "@/hooks/use-dialog-scope";
 import type { ApiKeyFocusTarget } from "@/types/api-key-focus-target";
 
-type FocusZone = "radios" | "input" | "acknowledgement" | "footer";
+type FocusZone = "close" | "radios" | "input" | "acknowledgement" | "footer";
 
 interface ApiKeyDialogKeyboardOptions {
   open: boolean;
@@ -50,6 +50,10 @@ interface ApiKeyDialogKeyboardReturn {
   getMethodOptionProps: (method: InputMethod) => {
     ref: RefCallback<HTMLDivElement>;
   };
+  getCloseProps: () => {
+    ref: RefCallback<HTMLButtonElement>;
+    onFocus: () => void;
+  };
   getCancelProps: () => FooterButtonProps;
   getConfirmProps: () => FooterButtonProps;
   getAcknowledgementProps: () => AcknowledgementFocusProps;
@@ -61,6 +65,7 @@ interface ApiKeyDialogKeyboardReturn {
 }
 
 function getZoneForElement(element: ApiKeyFocusTarget, isHosted: boolean): FocusZone {
+  if (element === "close") return "close";
   if (isHosted && (element === "paste" || element === "env")) return "radios";
   if (isHosted && element === "input") return "input";
   if (element === "acknowledgement") return "acknowledgement";
@@ -73,10 +78,10 @@ function getZones(
 ): readonly [FocusZone, ...FocusZone[]] {
   if (isHosted) {
     return hasAcknowledgement
-      ? ["radios", "input", "acknowledgement", "footer"]
-      : ["radios", "input", "footer"];
+      ? ["radios", "input", "acknowledgement", "footer", "close"]
+      : ["radios", "input", "footer", "close"];
   }
-  return hasAcknowledgement ? ["acknowledgement", "footer"] : ["footer"];
+  return hasAcknowledgement ? ["acknowledgement", "footer", "close"] : ["footer", "close"];
 }
 
 function getEffectiveFocused({
@@ -113,13 +118,14 @@ export function useApiKeyDialogKeyboard({
   onClose,
 }: ApiKeyDialogKeyboardOptions): ApiKeyDialogKeyboardReturn {
   const methodOptionRefs = useRef(new Map<InputMethod, HTMLDivElement>());
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const zones = getZones(isHosted, hasAcknowledgement);
   const [focused, setFocusedInternal] = useState<ApiKeyFocusTarget>(() => {
     if (isHosted) return "paste";
     return hasAcknowledgement ? "acknowledgement" : "cancel";
   });
 
-  useScope("api-key-dialog", { enabled: open });
+  useDialogScope("api-key-dialog", { enabled: open });
 
   const { setZone, isZone } = useFocusZone<FocusZone>({
     initial: zones[0],
@@ -168,9 +174,15 @@ export function useApiKeyDialogKeyboard({
     acknowledgementRef.current?.focus();
   };
 
+  const focusCloseButton = () => {
+    setFocused("close");
+    closeButtonRef.current?.focus();
+  };
+
   const focusAboveFooter = () => {
     if (hasAcknowledgement) focusAcknowledgement();
     else if (isHosted) focusMethodOption("env");
+    else focusCloseButton();
   };
 
   const getMethodOptionProps = (nextMethod: InputMethod) => ({
@@ -212,6 +224,12 @@ export function useApiKeyDialogKeyboard({
     if (direction === "up" && focusedMethod === "env") {
       event.preventDefault();
       focusMethodOption("paste");
+      return;
+    }
+
+    if (direction === "up" && focusedMethod === "paste") {
+      event.preventDefault();
+      focusCloseButton();
     }
   };
 
@@ -232,13 +250,26 @@ export function useApiKeyDialogKeyboard({
     focused,
   });
 
+  // The [x] tops the arrow cycle like the model dialog's close zone: ArrowUp
+  // from the first control reaches it, ArrowDown returns below.
   useKey(
     "ArrowUp",
     () => {
       if (effectiveFocused === "env") focusMethodOption("paste");
+      else if (effectiveFocused === "paste") focusCloseButton();
       else if (effectiveFocused === "acknowledgement" && isHosted) focusMethodOption("env");
+      else if (effectiveFocused === "acknowledgement") focusCloseButton();
     },
     { enabled: open && (isZone("radios") || isZone("acknowledgement")) },
+  );
+
+  useKey(
+    "ArrowDown",
+    () => {
+      if (isHosted) focusMethodOption("paste");
+      else focusAcknowledgement();
+    },
+    { enabled: open && isZone("close") },
   );
 
   useKey(
@@ -303,6 +334,12 @@ export function useApiKeyDialogKeyboard({
     focused: effectiveFocused,
     setFocused,
     getMethodOptionProps,
+    getCloseProps: () => ({
+      ref: (node: HTMLButtonElement | null) => {
+        closeButtonRef.current = node;
+      },
+      onFocus: () => setFocused("close"),
+    }),
     getCancelProps: () => wrapFooterButton(0),
     getConfirmProps: () => wrapFooterButton(1),
     getAcknowledgementProps: () => ({

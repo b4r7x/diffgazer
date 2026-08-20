@@ -3,6 +3,7 @@
 import { getRestorableFocusTarget, isEditableElement, restoreFocus } from "@diffgazer/keys";
 import { type FocusEvent, useEffect, useEffectEvent, useRef, useState } from "react";
 import { useTopLayerPosition } from "@/hooks/use-top-layer-position";
+import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { createTopLayerStack } from "@/lib/top-layer-stack";
 import { cn } from "@/lib/utils";
 import { Toast } from "./toast";
@@ -271,8 +272,8 @@ export function Toaster({
         // backdrop survive when popover mode activates.
         // The hotkey focuses this region programmatically, so it needs a visible
         // focus indicator; mouse interaction never matches :focus-visible.
-        "fixed z-[var(--z-toast)] flex gap-2 pointer-events-none outline-none",
-        "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+        "fixed z-[var(--z-toast)] flex gap-2 pointer-events-none",
+        FOCUS_OUTLINE,
         "[&[popover]]:m-0 [&[popover]]:p-0 [&[popover]]:max-w-none [&[popover]]:max-h-none [&[popover]]:w-auto [&[popover]]:h-auto",
         "[&[popover]]:bg-transparent [&[popover]]:border-0 [&[popover]]:overflow-visible",
         toastPositionVariants({ position }),

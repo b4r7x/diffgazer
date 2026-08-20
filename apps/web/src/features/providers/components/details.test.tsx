@@ -5,6 +5,7 @@ import {
 } from "@diffgazer/core/providers";
 import { buildProviderSettingsRows } from "@diffgazer/core/schemas/config";
 import { buildProviderRows } from "@diffgazer/core/testing/provider-fixtures";
+import { FOCUS_OUTLINE_INSET } from "@diffgazer/ui/lib/focus-outline";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axeCore from "axe-core";
@@ -200,6 +201,37 @@ describe("ProviderDetails", () => {
     focusFallbackRef.current?.focus();
     expect(focusFallbackRef.current).toHaveFocus();
     expect(focusFallbackRef.current).toHaveAttribute("tabindex", "-1");
+  });
+
+  it("wears libs/ui's inset focus grammar on the parking surface", () => {
+    const focusFallbackRef = createRef<HTMLDivElement>();
+    renderDetails(GEMINI_ROW, { focusFallbackRef });
+
+    // The grammar constant is libs/ui's documented class contract, imported
+    // from the package: a parking surface that stops composing it, or restates
+    // it by hand, fails here rather than drifting silently.
+    expect(focusFallbackRef.current).toHaveClass(...FOCUS_OUTLINE_INSET.split(" "));
+  });
+
+  it("scrolls the details pane with the keyboard when the pane itself is focused", async () => {
+    const user = userEvent.setup();
+    renderDetails(GEMINI_ROW);
+
+    const pane = screen.getByRole("region", { name: "Provider details content" });
+    expect(pane).toHaveAttribute("tabindex", "0");
+    // jsdom has no layout; pin the metrics that make the pane overflow.
+    Object.defineProperty(pane, "clientHeight", { value: 100, configurable: true });
+    Object.defineProperty(pane, "scrollHeight", { value: 1000, configurable: true });
+
+    pane.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(pane.scrollTop).toBe(40);
+
+    await user.keyboard("{PageDown}");
+    expect(pane.scrollTop).toBe(120);
+
+    await user.keyboard("{ArrowUp}");
+    expect(pane.scrollTop).toBe(80);
   });
 
   it("offers to review the provider data notice while consent is outstanding", async () => {

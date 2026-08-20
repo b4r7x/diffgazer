@@ -1,5 +1,5 @@
 import { DELETE_CONFIGURATION_CONFIRM } from "@diffgazer/core/providers";
-import { useScope } from "@diffgazer/keys";
+import { useActionRowNavigation } from "@diffgazer/keys";
 import {
   Dialog,
   DialogAction,
@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@diffgazer/ui/components/dialog";
 import { useRef } from "react";
+import { useDialogScope } from "@/hooks/use-dialog-scope";
 
 export interface DeleteConfigurationDialogProps {
   open: boolean;
@@ -33,7 +34,22 @@ export function DeleteConfigurationDialog({
   onConfirm,
 }: DeleteConfigurationDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
-  useScope("delete-configuration-dialog", { enabled: open });
+  useDialogScope("delete-configuration-dialog", { enabled: open });
+
+  const actionRow = useActionRowNavigation({
+    enabled: open,
+    actionCount: 2,
+    onAction: (index) => {
+      if (index === 1) onConfirm();
+      onOpenChange(false);
+    },
+    wrap: false,
+    defaultZone: "actions",
+    defaultIndex: 0,
+    canExitActions: false,
+  });
+  const cancelProps = actionRow.getActionProps(0);
+  const deleteProps = actionRow.getActionProps(1);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -52,10 +68,25 @@ export function DeleteConfigurationDialog({
           <p className="text-sm leading-relaxed">{DELETE_CONFIGURATION_CONFIRM.body(name)}</p>
         </DialogBody>
         <DialogFooter hints={[{ key: "Esc", label: "Cancel" }]}>
-          <DialogClose ref={cancelRef} variant="ghost" bracket>
+          <DialogClose
+            ref={(node) => {
+              cancelRef.current = node;
+              cancelProps.ref(node);
+            }}
+            variant="ghost"
+            bracket
+            highlighted={actionRow.inActions && actionRow.focusedIndex === 0}
+            onFocus={cancelProps.onFocus}
+          >
             Cancel
           </DialogClose>
-          <DialogAction variant="destructive" onClick={onConfirm}>
+          <DialogAction
+            ref={deleteProps.ref}
+            variant="destructive"
+            highlighted={actionRow.inActions && actionRow.focusedIndex === 1}
+            onClick={onConfirm}
+            onFocus={deleteProps.onFocus}
+          >
             Delete
           </DialogAction>
         </DialogFooter>

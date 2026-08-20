@@ -16,6 +16,7 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
+import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import {
   selectableContainerClass,
   selectableDescriptionVariants,
@@ -72,7 +73,7 @@ const trackVariants = cva(
     "font-mono cursor-pointer select-none",
     "border border-border rounded-sm",
     "transition-colors duration-150 motion-reduce:transition-none",
-    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+    FOCUS_OUTLINE,
     "aria-invalid:border-error aria-invalid:ring-1 aria-invalid:ring-error aria-invalid:focus:ring-error",
   ],
   {

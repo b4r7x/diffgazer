@@ -1,3 +1,4 @@
+import { KeyboardProvider } from "@diffgazer/keys";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -49,5 +50,25 @@ describe("RootLayout retry wiring", () => {
     expect(screen.getByRole("button", { name: /retry connection/i })).toBeInTheDocument();
 
     window.removeEventListener("unhandledrejection", onUnhandledRejection);
+  });
+
+  it("focuses Retry Connection on the disconnect gate and retries on r", async () => {
+    const user = userEvent.setup();
+    retryMock.mockResolvedValue(undefined);
+
+    render(
+      <KeyboardProvider>
+        <RootLayout />
+      </KeyboardProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: /retry connection/i })).toHaveFocus();
+    // The gate renders outside the shell, so the hint beside the button is the
+    // only place r is advertised.
+    expect(screen.getByText("r")).toBeInTheDocument();
+
+    await user.keyboard("r");
+
+    expect(retryMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -16,6 +16,7 @@ import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { FOCUS_OUTLINE_INSET } from "@diffgazer/ui/lib/focus-outline";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { ReactNode, RefCallback, RefObject } from "react";
 import { PROVIDER_STATUS_TONE } from "../lib/status-tone";
@@ -39,6 +40,10 @@ export interface ProviderDetailsProps {
   onReviewConsent?: () => void;
   /** Keyboard focus parks here while a pending mutation disables every action button. */
   focusFallbackRef?: RefObject<HTMLDivElement | null>;
+  /** The action row container: the Tab cycle's action-row target. */
+  actionRowRef?: RefObject<HTMLDivElement | null>;
+  /** The scrollable pane viewport: the Tab cycle's details-zone target. */
+  detailsPaneRef?: RefObject<HTMLDivElement | null>;
   focusedButtonIndex?: number;
   isFocused?: boolean;
   getButtonProps?: (index: number) => {
@@ -57,10 +62,17 @@ const STATUS_RAIL: Record<BadgeVariant, string> = {
 };
 
 /** One scroll/layout contract for the pane, shared by the empty and populated states. */
-function ProviderDetailsPane({ children }: { children: ReactNode }) {
+function ProviderDetailsPane({
+  paneRef,
+  children,
+}: {
+  paneRef?: RefObject<HTMLDivElement | null>;
+  children: ReactNode;
+}) {
   return (
     <ScrollArea
-      keyboardScrollable={false}
+      ref={paneRef}
+      aria-label="Provider details content"
       className="@container flex min-h-0 flex-1 flex-col max-md:overflow-x-visible max-md:overflow-y-visible"
     >
       {children}
@@ -74,6 +86,7 @@ type ProviderActionRowProps = Pick<
   | "onAction"
   | "overflowMenu"
   | "isPending"
+  | "actionRowRef"
   | "focusedButtonIndex"
   | "isFocused"
   | "getButtonProps"
@@ -85,6 +98,7 @@ function ProviderActionRow({
   onAction,
   overflowMenu,
   isPending = false,
+  actionRowRef,
   focusedButtonIndex,
   isFocused = false,
   getButtonProps,
@@ -95,6 +109,7 @@ function ProviderActionRow({
   return (
     // biome-ignore lint/a11y/useSemanticElements: <fieldset> groups form controls and expects a <legend>; this is a labelled action row, and the group role is what makes "exactly one action row" observable.
     <div
+      ref={actionRowRef}
       role="group"
       aria-label="Provider actions"
       className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
@@ -154,6 +169,8 @@ export function ProviderDetails({
   consentRequired = false,
   onReviewConsent,
   focusFallbackRef,
+  actionRowRef,
+  detailsPaneRef,
   focusedButtonIndex,
   isFocused = false,
   getButtonProps,
@@ -164,6 +181,7 @@ export function ProviderDetails({
       onAction={onAction}
       overflowMenu={overflowMenu}
       isPending={isPending}
+      actionRowRef={actionRowRef}
       focusedButtonIndex={focusedButtonIndex}
       isFocused={isFocused}
       getButtonProps={getButtonProps}
@@ -172,12 +190,12 @@ export function ProviderDetails({
 
   if (unrecognized) {
     return (
-      <ProviderDetailsPane>
+      <ProviderDetailsPane paneRef={detailsPaneRef}>
         {/* No status readout above this pane, so the padding is even all round. */}
         <div
           ref={focusFallbackRef}
           tabIndex={-1}
-          className="flex flex-col gap-6 p-6 focus:outline-none"
+          className={cn("flex flex-col gap-6 p-6", FOCUS_OUTLINE_INSET)}
         >
           {actionRow}
           <div className="border-l-2 border-border pl-3">
@@ -195,7 +213,7 @@ export function ProviderDetails({
 
   if (!row) {
     return (
-      <ProviderDetailsPane>
+      <ProviderDetailsPane paneRef={detailsPaneRef}>
         <EmptyState className="flex-1">{PROVIDER_DETAIL_EMPTY_LABEL}</EmptyState>
       </ProviderDetailsPane>
     );
@@ -210,7 +228,7 @@ export function ProviderDetails({
   const proseRows = settingsRows.filter(({ kind }) => kind === "prose");
 
   return (
-    <ProviderDetailsPane>
+    <ProviderDetailsPane paneRef={detailsPaneRef}>
       {/* Readiness readout seated under the pane chip, data-styled like the
           history RUNS ordering readout rather than a bracketed control. */}
       <div className="flex justify-end px-6 pt-3">
@@ -225,10 +243,13 @@ export function ProviderDetails({
         </span>
       </div>
 
+      {/* Keyboard focus parks here after a row action removes its own target; the
+          ring names the pane it landed in. Inset because the pane is a scroller,
+          which would clip an outside outline. */}
       <div
         ref={focusFallbackRef}
         tabIndex={-1}
-        className="flex flex-col gap-6 p-6 pt-3 focus:outline-none"
+        className={cn("flex flex-col gap-6 p-6 pt-3", FOCUS_OUTLINE_INSET)}
       >
         {actionRow}
 

@@ -99,6 +99,27 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
     expect(save).not.toHaveFocus();
   });
 
+  it("keeps checkbox focus and ArrowDown navigation after pointer re-entry from footer actions", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const lensGroup = screen.getByRole("group", { name: /active lenses/i });
+    const [firstLens, secondLens] = within(lensGroup).getAllByRole("checkbox");
+    if (!firstLens || !secondLens) throw new Error("Expected at least two analysis lenses");
+    await waitFor(() => expect(firstLens).toHaveFocus());
+
+    await moveFromSelectedLensToFooter(user);
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+    expect(lensGroup).not.toHaveAttribute("aria-disabled");
+
+    await user.click(firstLens);
+    expect(firstLens).toHaveAttribute("aria-checked", "false");
+    expect(firstLens).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(secondLens).toHaveFocus();
+  });
+
   it("uses every lens as the untouched fallback when persisted defaults are empty", () => {
     mockSettingsQuery.current = {
       data: { defaultLenses: [] },

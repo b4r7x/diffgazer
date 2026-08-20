@@ -33,6 +33,11 @@ interface SettingsMenuItem {
   description: string;
 }
 
+// Both home menus render these rows with the shared isMenuActionDisabled
+// rules, with one deliberate divergence: the web menu keeps disabled rows
+// focusable so they stay discoverable to assistive tech (APG guidance on
+// focusable disabled controls), while the TUI menu skips them during
+// navigation — a terminal highlight on a row that cannot run reads as broken.
 export const MENU_ITEMS: NavItem[] = [
   { id: "review-unstaged", label: "Review Unstaged", shortcut: "r", group: "review" },
   { id: "review-staged", label: "Review Staged", shortcut: "R", group: "review" },

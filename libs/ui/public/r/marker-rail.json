@@ -13,8 +13,7 @@
     }
   ],
   "meta": {
-    "client": false,
-    "hidden": true
+    "client": false
   },
   "type": "registry:lib"
 }

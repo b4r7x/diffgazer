@@ -11,7 +11,7 @@ export default function ChevronAnimated() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-fit items-center gap-2 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+        className="flex w-fit items-center gap-2 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0"
       >
         <Chevron open={open} />
         <span>Click to toggle ({open ? "open" : "closed"})</span>

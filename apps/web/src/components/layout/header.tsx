@@ -5,6 +5,7 @@ import {
   type StatusIndicatorStatus,
 } from "@diffgazer/ui/components/status-indicator";
 import { cn } from "@diffgazer/ui/lib/utils";
+import type { Ref } from "react";
 import { DiffgazerWordmark, type WordmarkTier } from "./wordmark";
 
 /**
@@ -19,6 +20,8 @@ interface HeaderProps {
   providerStatus: ProviderDisplayStatus;
   serverState?: HeaderServerState;
   onBack?: () => void;
+  /** Shell-owned ref to the Back button, the target of in-page chrome hand-offs. */
+  backButtonRef?: Ref<HTMLButtonElement>;
   wordmark?: WordmarkTier;
 }
 
@@ -63,6 +66,7 @@ export function Header({
   providerStatus,
   serverState = "live",
   onBack,
+  backButtonRef,
   wordmark = "hero",
 }: HeaderProps) {
   const server = SERVER_STATE[serverState];
@@ -103,12 +107,15 @@ export function Header({
         <div className="col-start-1 sm:row-start-1 sm:self-start">
           {onBack ? (
             <Button
+              ref={backButtonRef}
               variant="ghost"
               size="sm"
               onClick={onBack}
               className="text-muted-foreground hover:text-foreground pointer-coarse:min-h-11"
             >
-              ← Back
+              {/* The glyph is decoration: the five in-page hand-offs land here, and
+                  the accessible name must be "Back", not "left arrow Back". */}
+              <span aria-hidden="true">←</span> Back
             </Button>
           ) : null}
         </div>

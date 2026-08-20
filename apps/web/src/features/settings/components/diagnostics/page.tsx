@@ -135,6 +135,8 @@ export function SettingsDiagnosticsPage() {
         <Panel.Content
           ref={focusFallbackRef}
           tabIndex={-1}
+          role="region"
+          aria-label="Diagnostic snapshot"
           spacing="none"
           className="min-h-0 flex-1 overflow-y-auto focus:outline-none"
         >

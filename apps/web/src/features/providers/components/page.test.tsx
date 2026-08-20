@@ -25,8 +25,10 @@ import { GlobalShortcuts } from "@/components/layout/global";
 import { ConfigProvider } from "@/hooks/use-config";
 import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
+import { shutdown } from "@/lib/shutdown";
 import { createConfigurationActionMocks } from "@/testing/configuration-action-mocks";
 import { FooterView } from "@/testing/footer-view";
+import { HeaderChromeHarness } from "@/testing/header-chrome";
 import { ProvidersPage } from "./page";
 
 const navigateMock = vi.hoisted(() => vi.fn());
@@ -35,6 +37,11 @@ vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({ pathname: "/providers-page-test" }),
   useNavigate: () => navigateMock,
   useSearch: () => ({}),
+}));
+
+vi.mock("@/lib/shutdown", () => ({
+  shutdown: vi.fn().mockResolvedValue({ status: "closed" as const }),
+  reportShutdownResult: vi.fn(),
 }));
 
 // No configuration is active, so the ready row keeps Select configuration as its primary.
@@ -106,8 +113,14 @@ function getPane(container: HTMLElement, pane: "provider-list" | "provider-detai
   return element;
 }
 
-function renderProvidersPage({ footer = false, globalShortcuts = false } = {}) {
+function renderProvidersPage({ footer = false, globalShortcuts = false, chrome = false } = {}) {
   const { Wrapper, queryClient } = createTestQueryWrapper({ api: mockApi });
+  const page = (
+    <>
+      <ProvidersPage />
+      {footer ? <FooterView /> : null}
+    </>
+  );
   const view = render(
     <Wrapper>
       <FooterProvider>
@@ -115,8 +128,7 @@ function renderProvidersPage({ footer = false, globalShortcuts = false } = {}) {
           {globalShortcuts ? <GlobalShortcuts /> : null}
           <ConfigProvider>
             <ProviderConsentProvider>
-              <ProvidersPage />
-              {footer ? <FooterView /> : null}
+              {chrome ? <HeaderChromeHarness>{page}</HeaderChromeHarness> : page}
             </ProviderConsentProvider>
           </ConfigProvider>
         </KeyboardProvider>
@@ -481,6 +493,43 @@ describe("ProvidersPage", () => {
     await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: "/history" }));
   });
 
+  it("lands on the More trigger when Tab closes the open menu", async () => {
+    const user = userEvent.setup();
+    renderProvidersPage();
+
+    const listbox = await screen.findByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+    await user.click(screen.getByRole("option", { name: "Google Gemini" }));
+    const trigger = screen.getByRole("button", { name: "More actions" });
+    await user.click(trigger);
+    await waitFor(() => expect(screen.getByRole("menu", { name: "More actions" })).toHaveFocus());
+
+    await user.tab();
+
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+    expect(listbox).not.toHaveFocus();
+  });
+
+  it("parks the page zone on the chrome so the footer drops the search-zone hints", async () => {
+    const user = userEvent.setup();
+    renderProvidersPage({ footer: true, chrome: true });
+
+    const listbox = await screen.findByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+    const search = screen.getByRole("searchbox", { name: "Search providers" });
+    await user.click(search);
+    const footer = screen.getByRole("contentinfo");
+    await waitFor(() => expect(footer).toHaveTextContent("Clear / Exit Search"));
+
+    await user.keyboard("{ArrowUp}");
+
+    const back = screen.getByRole("button", { name: "Back" });
+    await waitFor(() => expect(back).toHaveFocus());
+    expect(footer).not.toHaveTextContent("Clear / Exit Search");
+    expect(footer).toHaveTextContent("Back");
+  });
+
   it("hands the footer to the More menu while it is open", async () => {
     const user = userEvent.setup();
     renderProvidersPage({ footer: true });
@@ -504,6 +553,48 @@ describe("ProvidersPage", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
     expect(footer).toHaveTextContent("Verify");
+  });
+
+  // Typeahead claims a printable key only when it matches a row, so the keys
+  // the page and the shell advertise stay live on every miss.
+  it("opens the search box from / while the list holds focus", async () => {
+    const user = userEvent.setup();
+    renderProvidersPage();
+
+    const listbox = await screen.findByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+
+    await user.keyboard("/");
+
+    await waitFor(() =>
+      expect(screen.getByRole("searchbox", { name: "Search providers" })).toHaveFocus(),
+    );
+  });
+
+  // The APG-correct other half: a letter that does match a row belongs to the
+  // list while it has focus, even when the shell binds the same letter.
+  it("keeps a matched typeahead letter on the list instead of quitting the app", async () => {
+    const user = userEvent.setup();
+    renderProvidersPage({ globalShortcuts: true });
+
+    const listbox = await screen.findByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+
+    await user.keyboard("q");
+
+    expect(screen.getByRole("option", { name: "Qwen International" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(shutdown).not.toHaveBeenCalled();
+
+    // Control: the same key quits once the list no longer owns the keys, so the
+    // assertion above is a claim and not a dead binding.
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() => expect(listbox).not.toHaveFocus());
+    await user.keyboard("q");
+
+    expect(shutdown).toHaveBeenCalledTimes(1);
   });
 
   it("keeps a bound letter the state cannot run from moving the list", async () => {
@@ -555,6 +646,33 @@ describe("ProvidersPage", () => {
     expect(screen.getByRole("button", { name: /Select configuration/i })).toHaveFocus();
     expect(getPane(container, "provider-details")).toHaveAttribute("data-state", "focused");
     expect(getPane(container, "provider-list")).not.toHaveAttribute("data-state");
+  });
+
+  it("cycles Tab through the scrollable details pane between the list and the actions", async () => {
+    const user = userEvent.setup();
+    renderProvidersPage({ footer: true });
+
+    const listbox = await screen.findByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+    await user.click(screen.getByRole("option", { name: "Google Gemini" }));
+
+    const pane = screen.getByRole("region", { name: "Provider details content" });
+    await user.tab();
+    await waitFor(() => expect(pane).toHaveFocus());
+    // The pane zone teaches its own keys while the scroll region holds focus.
+    expect(screen.getByRole("contentinfo")).toHaveTextContent("Scroll");
+
+    await user.tab();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Select configuration/i })).toHaveFocus(),
+    );
+
+    // Shift+Tab must return onto the pane even though the action row nests inside it.
+    await user.tab({ shift: true });
+    await waitFor(() => expect(pane).toHaveFocus());
+
+    await user.tab({ shift: true });
+    await waitFor(() => expect(listbox).toHaveFocus());
   });
 
   it("rests both panes once focus leaves them", async () => {

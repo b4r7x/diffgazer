@@ -20,6 +20,11 @@ import {
 } from "@diffgazer/ui/components/dialog";
 import { composeRefs } from "@diffgazer/ui/lib/compose-refs";
 import { useEffectEvent, useLayoutEffect, useRef } from "react";
+import { dialogScope } from "@/hooks/use-dialog-scope";
+
+// Registered as a dialog scope at module level: the scope is pushed
+// imperatively below, so no useDialogScope call would mark it.
+const CONSENT_SCOPE = dialogScope("provider-consent-dialog");
 
 export interface ProviderConsentDialogProps {
   open: boolean;
@@ -55,12 +60,12 @@ export function ProviderConsentDialog({
   const primaryRef = useRef<HTMLButtonElement>(null);
   const keyboard = useKeyboardContext();
   // The page's own accelerators and the global q/s/h stand down while the
-  // notice owns the keys (a `-dialog` scope is what GlobalShortcuts suppresses
+  // notice owns the keys (a dialog scope is what GlobalShortcuts suppresses
   // on). Pushed imperatively: the notice mounts with the app shell, before any
   // routed page, so a declarative useScope — ranked by mount order — would sit
   // below every page mounted after it. The public pushScope is re-created per
   // render, hence the effect event rather than a dependency.
-  const pushNoticeScope = useEffectEvent(() => keyboard.pushScope("provider-consent-dialog"));
+  const pushNoticeScope = useEffectEvent(() => keyboard.pushScope(CONSENT_SCOPE));
   useLayoutEffect(() => {
     if (!open) return;
     return pushNoticeScope();
@@ -71,7 +76,7 @@ export function ProviderConsentDialog({
   // below the routed page (see above).
   const footer = useActionRowNavigation({
     enabled: open && consent === null,
-    scope: "provider-consent-dialog",
+    scope: CONSENT_SCOPE,
     actionCount: 2,
     disabledActions: [isAccepting, false],
     defaultZone: "actions",

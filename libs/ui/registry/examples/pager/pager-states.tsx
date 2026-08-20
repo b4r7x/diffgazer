@@ -3,7 +3,7 @@ import { Pager, PagerLink } from "@/components/ui/pager";
 // The interactive classes are applied statically so both treatments stay visible
 // in a screenshot. In real usage `hover:` / `focus-visible:` apply them for you.
 const HOVER = "text-foreground";
-const FOCUS_RING = "text-foreground outline-2 outline-ring outline-offset-2";
+const FOCUS_RING = "text-foreground outline-2 outline-ring outline-offset-0";
 
 const rows = [
   { label: "Resting", className: "", pagerLabel: "Resting page navigation" },

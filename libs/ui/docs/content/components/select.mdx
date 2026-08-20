@@ -26,7 +26,7 @@ component: "select"
 
 <AccessibilityNotes />
 
-Keyboard focus on the trigger is variant-owned. The default trigger uses the inset field ring shared with `Input` (`focus:border-ring focus:ring-1 focus:ring-ring`). The card trigger is an inverted `--foreground` header, where an inset `--ring` resolves to the same value as the surface it sits on and disappears — so it draws its indicator outside instead (`focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2`), on the page background where it keeps full contrast in both themes.
+Keyboard focus on the trigger is variant-owned. The default trigger uses the inset field ring shared with `Input` (`focus:border-ring focus:ring-1 focus:ring-ring`). The card trigger is an inverted `--foreground` header, where an inset `--ring` resolves to the same value as the surface it sits on and disappears — so it draws its indicator outside instead (`focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0`), on the page background where it keeps full contrast in both themes.
 
 The card-variant selected-state indicator pulses via the `motion-safe:animate-pulse` Tailwind class. The `motion-safe:` prefix gates the animation behind the user's `prefers-reduced-motion` setting — the class is part of the public CSS contract for the card variant. When `prefers-reduced-motion: reduce` is active, the pulse never plays.
 

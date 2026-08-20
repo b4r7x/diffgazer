@@ -246,6 +246,7 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
             <Button
               data-value="save"
               variant="success"
+              bracket
               onClick={() => activateAction("save")}
               onFocus={() => handleActionFocus("save")}
               disabled={isLoading}
@@ -256,11 +257,12 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
                 !isLoading
               }
             >
-              {isLoading ? "[ Saving... ]" : "[ Save Changes ]"}
+              {isLoading ? "Saving..." : "Save Changes"}
             </Button>
             <Button
               data-value="revoke"
               variant="destructive"
+              bracket
               onClick={() => activateAction("revoke")}
               onFocus={() => handleActionFocus("revoke")}
               disabled={isLoading}
@@ -271,7 +273,7 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
                 !isLoading
               }
             >
-              {isLoading ? "[ Revoking... ]" : "[ Revoke Trust ]"}
+              {isLoading ? "Revoking..." : "Revoke Trust"}
             </Button>
           </div>
         </div>

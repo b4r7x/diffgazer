@@ -80,6 +80,21 @@ describe("HomeMenu — Resume Last Review gating", () => {
     }
   });
 
+  it("leaves advertised jump keys to the hotkey layer instead of menu typeahead", async () => {
+    const user = userEvent.setup();
+    const { onHighlightChange } = renderHomeMenu({ highlighted: "review-unstaged" });
+    const menu = screen.getByRole("menu", { name: /main menu/i });
+    menu.focus();
+
+    // h is the advertised History jump key, bound at the window layer; the menu
+    // must not also consume it as a typeahead query for the History row.
+    await user.keyboard("h");
+    expect(onHighlightChange).not.toHaveBeenCalledWith("history");
+
+    await user.keyboard("{ArrowDown}");
+    expect(onHighlightChange).toHaveBeenCalledWith("review-staged");
+  });
+
   it("keeps the menu usable and announces the pending start while a review is starting", () => {
     renderHomeMenu({ pendingAction: "review-unstaged", hasResumableSession: true });
     expect(screen.getByRole("status")).toHaveTextContent(/starting review/i);

@@ -68,6 +68,15 @@ const defaultItems = [
   { id: "c", label: "Charlie" },
 ];
 
+/** Captures how each keydown reaches the window, claimed or not. */
+function recordWindowKeys() {
+  const keys: Array<{ key: string; defaultPrevented: boolean }> = [];
+  const record = (event: globalThis.KeyboardEvent) =>
+    keys.push({ key: event.key, defaultPrevented: event.defaultPrevented });
+  window.addEventListener("keydown", record);
+  return { keys, stop: () => window.removeEventListener("keydown", record) };
+}
+
 type EditableControlKind = "input" | "textarea" | "contenteditable";
 
 function EditableControl({ kind }: { kind: EditableControlKind }) {
@@ -397,6 +406,96 @@ describe("useListbox", () => {
 
     expect(onHighlight).toHaveBeenLastCalledWith("a");
     expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "a"));
+  });
+
+  it("claims a matched typeahead key so window-level hotkey layers skip it", async () => {
+    const windowKeys = recordWindowKeys();
+    const user = userEvent.setup();
+    render(<Listbox items={defaultItems} typeahead />);
+
+    const listbox = screen.getByRole("listbox");
+    listbox.focus();
+    await user.keyboard("b");
+
+    windowKeys.stop();
+    expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "b"));
+    // The KeyboardProvider in @diffgazer/keys ignores defaultPrevented window
+    // keydowns, so a matched key must arrive at the window already claimed.
+    expect(windowKeys.keys).toEqual([{ key: "b", defaultPrevented: true }]);
+  });
+
+  it("leaves a printable key unclaimed when no typeahead items are mounted", async () => {
+    const windowKeys = recordWindowKeys();
+    const user = userEvent.setup();
+    render(<Listbox items={[]} typeahead />);
+
+    screen.getByRole("listbox").focus();
+    await user.keyboard("b");
+
+    windowKeys.stop();
+    // With nothing to match, the query cannot own the key; window-level hotkey
+    // layers must still see it unclaimed.
+    expect(windowKeys.keys).toEqual([{ key: "b", defaultPrevented: false }]);
+  });
+
+  it("leaves an unmatched key unclaimed and does not move the highlight", async () => {
+    const windowKeys = recordWindowKeys();
+    const onHighlight = vi.fn();
+    const user = userEvent.setup();
+    render(<Listbox items={defaultItems} typeahead onHighlightChange={onHighlight} />);
+
+    const listbox = screen.getByRole("listbox");
+    listbox.focus();
+    await user.keyboard("q");
+
+    windowKeys.stop();
+    expect(windowKeys.keys).toEqual([{ key: "q", defaultPrevented: false }]);
+    expect(onHighlight).not.toHaveBeenCalled();
+    expect(listbox).not.toHaveAttribute("aria-activedescendant");
+  });
+
+  it.each(["1", "?", "/"])("leaves an unmatched %s to the window hotkey layers", async (key) => {
+    const windowKeys = recordWindowKeys();
+    const user = userEvent.setup();
+    render(<Listbox items={defaultItems} typeahead />);
+
+    screen.getByRole("listbox").focus();
+    await user.keyboard(key);
+
+    windowKeys.stop();
+    expect(windowKeys.keys).toEqual([{ key, defaultPrevented: false }]);
+  });
+
+  it("keeps claiming keys while a matched query is narrowed to nothing", async () => {
+    const windowKeys = recordWindowKeys();
+    const user = userEvent.setup();
+    render(<Listbox items={defaultItems} typeahead />);
+
+    screen.getByRole("listbox").focus();
+    // "b" matches Beta and takes ownership; "z" narrows the live query to no
+    // match, and the user is still typing — the list keeps the key.
+    await user.keyboard("bz");
+
+    windowKeys.stop();
+    expect(windowKeys.keys).toEqual([
+      { key: "b", defaultPrevented: true },
+      { key: "z", defaultPrevented: true },
+    ]);
+  });
+
+  it("does not let an unmatched key hand the buffer ownership of the next one", async () => {
+    const windowKeys = recordWindowKeys();
+    const user = userEvent.setup();
+    render(<Listbox items={defaultItems} typeahead />);
+
+    screen.getByRole("listbox").focus();
+    await user.keyboard("q?");
+
+    windowKeys.stop();
+    expect(windowKeys.keys).toEqual([
+      { key: "q", defaultPrevented: false },
+      { key: "?", defaultPrevented: false },
+    ]);
   });
 
   it("extends the typeahead query with Space and does not select while the buffer is non-empty", async () => {
@@ -743,13 +842,21 @@ describe("useListbox", () => {
 
   it("retains typeahead when the editable target is itself an owned option", async () => {
     const onHighlight = vi.fn();
+    const windowKeys: Array<{ key: string; defaultPrevented: boolean }> = [];
+    const recordKey = (event: globalThis.KeyboardEvent) =>
+      windowKeys.push({ key: event.key, defaultPrevented: event.defaultPrevented });
+    window.addEventListener("keydown", recordKey);
     render(<ListboxWithEditableItem onHighlightChange={onHighlight} />);
     const editableOption = screen.getByRole("option", { name: "Beta" });
     editableOption.focus();
 
     await userEvent.setup().keyboard("b");
 
+    window.removeEventListener("keydown", recordKey);
     expect(onHighlight).toHaveBeenCalledWith("beta");
+    // The key feeds typeahead but keeps its default so the character still
+    // inserts into the editable option instead of being swallowed.
+    expect(windowKeys).toEqual([{ key: "b", defaultPrevented: false }]);
   });
 
   it("retains typeahead for an editable open-shadow descendant of an owned option", async () => {
@@ -763,6 +870,7 @@ describe("useListbox", () => {
     await userEvent.setup().keyboard("b");
 
     expect(onHighlight).toHaveBeenCalledWith("beta");
+    expect(input).toHaveValue("b");
   });
 
   it("ignores typeahead from an editable open-shadow non-item", async () => {

@@ -141,6 +141,7 @@ export function ApiKeyDialog({
     getMethodOptionProps,
     handleMethodKeyDown,
     handleMethodCommit,
+    getCloseProps,
     getCancelProps,
     getConfirmProps,
     getAcknowledgementProps,
@@ -284,7 +285,7 @@ export function ApiKeyDialog({
 
         {/* Composed manually, last in DOM like the built-in one, so the submit gate that
             already blocks Escape and backdrop clicks is visible on the [x] too. */}
-        <DialogCloseIcon disabled={entry.isSubmitting} />
+        <DialogCloseIcon {...getCloseProps()} disabled={entry.isSubmitting} />
       </DialogContent>
     </Dialog>
   );

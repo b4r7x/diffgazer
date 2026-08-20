@@ -15,6 +15,7 @@ interface AnalysisSelectorContentProps {
   required?: boolean;
   invalid?: boolean;
   descriptionId?: string;
+  onFocus?: (value: LensId) => void;
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
@@ -28,6 +29,7 @@ export function AnalysisSelectorContent({
   required = false,
   invalid = false,
   descriptionId,
+  onFocus,
   onBoundaryReached,
 }: AnalysisSelectorContentProps) {
   const labelId = useId();
@@ -61,7 +63,8 @@ export function AnalysisSelectorContent({
           onBoundaryReached?.(direction === "previous" ? "up" : "down");
         }}
         wrap={false}
-        disabled={disabled || !enabled}
+        keyboardNavigation={navigationEnabled}
+        disabled={disabled}
         autoFocus={autoFocusReady}
         required={required}
         aria-invalid={invalid || undefined}
@@ -81,6 +84,10 @@ export function AnalysisSelectorContent({
               </span>
             }
             description={option.description}
+            onFocus={() => {
+              setFocusedLens(option.id);
+              onFocus?.(option.id);
+            }}
           />
         ))}
       </CheckboxGroup>

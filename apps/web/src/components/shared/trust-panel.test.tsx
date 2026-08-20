@@ -162,6 +162,26 @@ describe("TrustPanel", () => {
     expect(repoAccess).toHaveFocus();
   });
 
+  it("leaves a modified ArrowUp on the trust button native", async () => {
+    const user = userEvent.setup();
+    const api = { ...createApi({ baseUrl: "http://localhost" }), saveTrust } satisfies BoundApi;
+
+    renderTrustPanel(api);
+
+    const repoAccess = screen.getByRole("checkbox", { name: /repository access/i });
+    await waitFor(() => expect(repoAccess).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+    const trustButton = screen.getByRole("button", { name: /trust & continue/i });
+    expect(trustButton).toHaveFocus();
+
+    await user.keyboard("{Shift>}{ArrowUp}{/Shift}");
+    expect(trustButton).toHaveFocus();
+
+    await user.keyboard("{Control>}{ArrowUp}{/Control}");
+    expect(trustButton).toHaveFocus();
+  });
+
   it("registers its own permission footer so trust-gated branches drop stale page hints", async () => {
     const api = { ...createApi({ baseUrl: "http://localhost" }), saveTrust } satisfies BoundApi;
 

@@ -7,6 +7,8 @@ const { mockNavigate } = vi.hoisted(() => ({
 vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({ pathname: "/history-page-test" }),
   useNavigate: () => mockNavigate,
+  useRouter: () => ({ history: { back: vi.fn() }, navigate: vi.fn() }),
+  useCanGoBack: () => false,
 }));
 
 import type { BoundApi } from "@diffgazer/core/api";

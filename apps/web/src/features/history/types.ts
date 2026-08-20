@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 
 export type HistoryFocusZone =
+  | "chrome"
   | "warnings"
+  | "list-retry"
   | "timeline"
   | "runs"
   | "load-more"

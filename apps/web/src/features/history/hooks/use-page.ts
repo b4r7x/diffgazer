@@ -1,6 +1,7 @@
 import { useHistoryScreenState } from "@diffgazer/core/review";
 import { useNavigate } from "@tanstack/react-router";
 import { type RefObject, useRef, useState } from "react";
+import { useHeaderBackButtonRef } from "@/components/layout/header-chrome";
 import { getRunSummary } from "@/features/history/components/run-summary";
 import type { HistoryFocusZone, Run } from "@/features/history/types";
 import {
@@ -18,15 +19,19 @@ export function useHistoryPage() {
     searchQuery: useState(""),
   });
 
+  const backButtonRef = useHeaderBackButtonRef();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const warningsRef = useRef<HTMLDivElement>(null);
+  const listRetryRef = useRef<HTMLButtonElement>(null);
   const timelineRef = useRef<HTMLElement>(null);
   const runsListRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLButtonElement>(null);
   const insightsListRef = useRef<HTMLDivElement>(null);
   const retryRef = useRef<HTMLButtonElement>(null);
   const zoneRefs: Record<HistoryFocusZone, RefObject<HTMLElement | null>> = {
+    chrome: backButtonRef,
     warnings: warningsRef,
+    "list-retry": listRetryRef,
     search: searchInputRef,
     timeline: timelineRef,
     runs: runsListRef,
@@ -77,14 +82,10 @@ export function useHistoryPage() {
     setFocusZone("runs");
   };
 
-  // Two-stage, matching the footer's "Esc Clear Search" promise: the first Escape
-  // clears a non-empty filter in place, the second leaves the search box. With no
-  // runs list rendered there is nothing to leave to, so the field keeps focus.
+  // SearchInput clears a non-empty filter itself and only calls this once the
+  // field is empty, so this stage just leaves the search box. With no runs list
+  // rendered there is nothing to leave to, so the field keeps focus.
   const handleSearchEscape = () => {
-    if (history.searchQuery) {
-      history.setSearchQuery("");
-      return;
-    }
     if (mappedRuns.length === 0) return;
     searchInputRef.current?.blur();
     setFocusZone("runs");
@@ -108,8 +109,12 @@ export function useHistoryPage() {
     history.setSelectedRunId(runId);
   };
 
-  const handleRunsBoundary = () => {
-    setFocusZone("search");
+  const handleRunsBoundary = (direction: "previous" | "next") => {
+    if (direction === "previous") {
+      setFocusZone("search");
+      return;
+    }
+    if (history.hasMoreReviews) setFocusZone("load-more");
   };
 
   const handleIssueClick = (issueId: string) => {
@@ -131,6 +136,7 @@ export function useHistoryPage() {
     searchQuery: history.searchQuery,
     searchInputRef,
     warningsRef,
+    listRetryRef,
     timelineRef,
     runsListRef,
     loadMoreRef,

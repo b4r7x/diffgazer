@@ -99,6 +99,28 @@ describe("Checkbox.Group", () => {
     expect(banana).toHaveFocus();
   });
 
+  it("navigates items with the j/k vim aliases", async () => {
+    const user = userEvent.setup();
+    const onHighlight = vi.fn();
+    render(
+      <Checkbox.Group label="Fruits" onHighlightChange={onHighlight}>
+        <Checkbox.Item value="apple" label="Apple" />
+        <Checkbox.Item value="banana" label="Banana" />
+      </Checkbox.Group>,
+    );
+    const apple = screen.getByRole("checkbox", { name: /apple/i });
+    const banana = screen.getByRole("checkbox", { name: /banana/i });
+    apple.focus();
+
+    await user.keyboard("j");
+    expect(onHighlight).toHaveBeenCalledWith("banana");
+    expect(banana).toHaveFocus();
+
+    await user.keyboard("k");
+    expect(onHighlight).toHaveBeenCalledWith("apple");
+    expect(apple).toHaveFocus();
+  });
+
   it("autoFocus focuses the highlighted item when navigation is active", async () => {
     const onHighlight = vi.fn();
     render(

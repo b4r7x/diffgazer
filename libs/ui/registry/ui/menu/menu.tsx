@@ -66,6 +66,13 @@ export interface MenuProps<TId extends string = string>
   variant?: "default" | "detail";
   /** When true, arrow navigation wraps from last item to first and vice versa. */
   wrap?: boolean;
+  /**
+   * Enable type-ahead character search to jump to matching items. Submenus
+   * inherit this setting. Disable when every printable key the menu advertises
+   * belongs to an external hotkey layer.
+   * @default true
+   */
+  typeahead?: boolean;
   /** MenuItem and MenuDivider children. */
   children: ReactNode;
   /** Auto-focus the menu container on mount so arrow keys work without an explicit click. */
@@ -90,6 +97,7 @@ export function Menu<TId extends string = string>({
   onClose,
   variant = "default",
   wrap = true,
+  typeahead = true,
   className,
   "aria-label": ariaLabel,
   autoFocus,
@@ -200,12 +208,19 @@ export function Menu<TId extends string = string>({
           e.preventDefault();
           onClose();
         }
-        if (e.key === "Tab") onClose?.();
+        if (e.key === "Tab" && onClose) {
+          // Consume the Tab as well: a menu is normally portaled, so "the next
+          // tabbable after the menu" is a DOM accident, and letting native Tab
+          // run against the closing tree races whatever restores focus to the
+          // trigger. Closing lands focus on the trigger; Tab again moves on.
+          e.preventDefault();
+          onClose();
+        }
         onKeyDown?.(e);
       },
       role: "menu",
       itemRole,
-      typeahead: true,
+      typeahead,
       autoFocus,
       items,
       getItemId: getEncodedListboxItemId,
@@ -252,6 +267,7 @@ export function Menu<TId extends string = string>({
       variant,
       idPrefix,
       itemRole,
+      typeahead,
       registerItem: handleRegisterItem,
       unregisterItem,
       registerActivator,
@@ -270,6 +286,7 @@ export function Menu<TId extends string = string>({
       variant,
       idPrefix,
       itemRole,
+      typeahead,
       handleRegisterItem,
       unregisterItem,
       registerActivator,

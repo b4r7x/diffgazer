@@ -32,12 +32,14 @@
      --primary-foreground are a pair: highlighted rows read dark-on-info
      (GitHub-style selection), not the lib's white-on-highlight. --action
      tracks that same blue: primary CTAs are blue app-wide and violet stays a
-     passive editorial accent, reachable only through --accent. */
+     passive editorial accent, reachable only through --accent. --ring is
+     deliberately NOT remapped onto that blue: the focus outline hugs the
+     control edge, so a blue ring on a blue --action fill is invisible. The
+     lib's --base-fg ring stays the one mark that reads on every surface. */
   --primary: var(--base-info);
   --primary-foreground: var(--base-bg);
   --accent: var(--base-accent);
   --accent-foreground: var(--base-bg);
-  --ring: var(--base-info);
   --action: var(--base-info);
   --action-foreground: var(--base-bg);
   --muted-foreground: var(--base-muted);
@@ -90,7 +92,7 @@
   --base-muted: #656d76;
 
   /* Semantic remaps that diverge from the lib light block, mirroring the dark
-     block above: the lib maps --primary/--ring/--accent to its near-black
+     block above: the lib maps --primary/--accent to its near-black
      highlight role and --action to violet, which would flip the app's
      selection, CTA, and accent vocabulary to a different hue family in light
      than in dark. --primary-foreground and --accent-foreground need no
@@ -100,7 +102,6 @@
      place. */
   --primary: var(--base-info);
   --accent: var(--base-accent);
-  --ring: var(--base-info);
   --action: var(--base-info);
   --action-foreground: #ffffff;
   --muted-foreground: var(--base-muted);

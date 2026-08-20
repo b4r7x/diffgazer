@@ -1,5 +1,6 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentPropsWithRef, ElementType } from "react";
+import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 
 /** Class variants for card. */
@@ -21,7 +22,7 @@ export const cardVariants = cva("w-full relative rounded-sm bg-background", {
       lg: "max-w-lg",
     },
     interactive: {
-      true: "cursor-pointer transition-[border-color,background-color,box-shadow,outline-color] duration-150 ease-out hover:border-border hover:bg-[color-mix(in_oklab,var(--foreground)_4%,var(--background))] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+      true: `cursor-pointer transition-[border-color,background-color,box-shadow,outline-color] duration-150 ease-out hover:border-border hover:bg-[color-mix(in_oklab,var(--foreground)_4%,var(--background))] ${FOCUS_OUTLINE}`,
       false: "",
     },
   },

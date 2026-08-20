@@ -6,6 +6,7 @@ import {
   getComposedEventTarget,
   getOwnerView,
   getShadowHost,
+  hasModifierKey,
   isEditableElement,
   isHTMLElement,
   isHTMLInputElement,
@@ -251,5 +252,22 @@ describe("getComposedEventTarget", () => {
   it("falls back to event.target when composedPath is empty", () => {
     const event = new KeyboardEvent("keydown");
     expect(getComposedEventTarget(event)).toBe(event.target);
+  });
+});
+
+describe("hasModifierKey", () => {
+  it("returns false for an unmodified key", () => {
+    expect(hasModifierKey(new KeyboardEvent("keydown", { key: "ArrowDown" }))).toBe(false);
+  });
+
+  it.each([
+    "altKey",
+    "ctrlKey",
+    "metaKey",
+    "shiftKey",
+  ] as const)("returns true when %s is held", (modifier) => {
+    expect(
+      hasModifierKey(new KeyboardEvent("keydown", { key: "ArrowDown", [modifier]: true })),
+    ).toBe(true);
   });
 });

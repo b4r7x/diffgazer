@@ -15,7 +15,8 @@
         "icons",
         "@diffgazer-keys/navigation",
         "utils",
-        "composed-refs"
+        "composed-refs",
+        "focus-outline"
       ],
       "meta": {
         "client": true,
@@ -62,7 +63,7 @@
       "title": "Button",
       "description": "Terminal-inspired button with variants",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "spinner", "utils"],
+      "registryDependencies": ["theme", "spinner", "utils", "focus-outline"],
       "meta": {
         "client": true
       },
@@ -254,7 +255,8 @@
         "@diffgazer-keys/focus-restore",
         "@diffgazer-keys/focusable",
         "utils",
-        "composed-refs"
+        "composed-refs",
+        "focus-outline"
       ],
       "meta": {
         "client": true,
@@ -580,7 +582,7 @@
       "title": "Scroll Area",
       "description": "Custom scrollable area with styled scrollbars",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "utils"],
+      "registryDependencies": ["theme", "utils", "focus-outline"],
       "meta": {
         "client": true
       },
@@ -601,7 +603,7 @@
       "title": "Card",
       "description": "Simple bordered card primitives with floating border labels and semantic HTML support",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "corner-label-variants", "utils"],
+      "registryDependencies": ["theme", "corner-label-variants", "utils", "focus-outline"],
       "meta": {
         "client": false
       },
@@ -867,7 +869,8 @@
         "composed-refs",
         "trigger-interop",
         "overlay-surface",
-        "overlay-hints"
+        "overlay-hints",
+        "focus-outline"
       ],
       "meta": {
         "client": true,
@@ -1022,7 +1025,8 @@
         "segmented-variants",
         "selectable-collection",
         "utils",
-        "composed-refs"
+        "composed-refs",
+        "focus-outline"
       ],
       "meta": {
         "client": true,
@@ -1225,7 +1229,8 @@
         "utils",
         "@diffgazer-keys/focus-restore",
         "@diffgazer-keys/navigation",
-        "top-layer-stack"
+        "top-layer-stack",
+        "focus-outline"
       ],
       "meta": {
         "client": true,
@@ -1344,7 +1349,8 @@
         "form-reset",
         "input-variants",
         "utils",
-        "composed-refs"
+        "composed-refs",
+        "focus-outline"
       ],
       "meta": {
         "client": true
@@ -1652,7 +1658,8 @@
         "utils",
         "composed-refs",
         "dom-id",
-        "overlay-surface"
+        "overlay-surface",
+        "focus-outline"
       ],
       "meta": {
         "client": true,
@@ -1859,7 +1866,7 @@
       "title": "Pager",
       "description": "Previous/next page navigation for sequential content",
       "dependencies": [],
-      "registryDependencies": ["theme", "utils"],
+      "registryDependencies": ["theme", "utils", "focus-outline"],
       "meta": {
         "client": true
       },
@@ -1949,7 +1956,7 @@
       "title": "Breadcrumbs",
       "description": "Compound breadcrumb navigation with auto-separator and composable parts",
       "dependencies": [],
-      "registryDependencies": ["theme", "utils"],
+      "registryDependencies": ["theme", "utils", "focus-outline"],
       "meta": {
         "client": true
       },
@@ -1986,7 +1993,7 @@
       "title": "TOC",
       "description": "Headless-friendly table of contents primitives for section navigation",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "utils", "marker-rail"],
+      "registryDependencies": ["theme", "utils", "marker-rail", "focus-outline"],
       "meta": {
         "client": false
       },
@@ -2034,7 +2041,7 @@
       "name": "controllable-state",
       "type": "registry:hook",
       "title": "Controllable State",
-      "description": "Controlled/uncontrolled state hook — manages value, defaultValue, and onChange for any component that supports both modes.",
+      "description": "Controlled/uncontrolled state hook \u2014 manages value, defaultValue, and onChange for any component that supports both modes.",
       "dependencies": [],
       "registryDependencies": [],
       "meta": {
@@ -2278,7 +2285,7 @@
       "name": "copy-to-clipboard",
       "type": "registry:hook",
       "title": "Copy to Clipboard",
-      "description": "Copy-to-clipboard state machine: writes text to the clipboard and exposes an idle → copied | failed status that resets after a delay (default 2000ms), with timer cleanup on unmount.",
+      "description": "Copy-to-clipboard state machine: writes text to the clipboard and exposes an idle \u2192 copied | failed status that resets after a delay (default 2000ms), with timer cleanup on unmount.",
       "registryDependencies": [],
       "meta": {
         "client": true
@@ -2380,7 +2387,7 @@
       "title": "Selectable Variants",
       "description": "Shared CVA variant definitions for selectable items (checkbox, radio, etc.)",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": [],
+      "registryDependencies": ["marker-rail"],
       "meta": {
         "client": false,
         "hidden": true
@@ -2418,12 +2425,28 @@
       "dependencies": [],
       "registryDependencies": [],
       "meta": {
-        "client": false,
-        "hidden": true
+        "client": false
       },
       "files": [
         {
           "path": "registry/lib/marker-rail.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "focus-outline",
+      "type": "registry:lib",
+      "title": "Focus Outline",
+      "description": "Shared keyboard-focus outline mark, with inset and virtual-highlight variants",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": false
+      },
+      "files": [
+        {
+          "path": "registry/lib/focus-outline.ts",
           "type": "registry:lib"
         }
       ]
@@ -2452,7 +2475,7 @@
       "title": "Segmented Variants",
       "description": "Shared CVA + sliding-indicator class names and bracket markers for segmented controls (Tabs, ToggleGroup).",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": [],
+      "registryDependencies": ["focus-outline"],
       "meta": {
         "client": false,
         "hidden": true
@@ -2570,7 +2593,7 @@
       "title": "Stepper Variants",
       "description": "Shared CVA visual contracts, indicator glyph dictionaries, and keyframe CSS for vertical and horizontal stepper variants.",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["step-status"],
+      "registryDependencies": ["step-status", "focus-outline"],
       "meta": {
         "client": false,
         "hidden": true
@@ -2611,7 +2634,7 @@
       "title": "Sidebar Variants",
       "description": "Shared CVA visual contracts for the Sidebar primitive (container + item, five active-marker variants).",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["marker-rail"],
+      "registryDependencies": ["marker-rail", "focus-outline"],
       "meta": {
         "client": false,
         "hidden": true
@@ -2947,7 +2970,8 @@
         "fieldset-disabled",
         "selectable-variants",
         "utils",
-        "composed-refs"
+        "composed-refs",
+        "focus-outline"
       ],
       "meta": {
         "client": true

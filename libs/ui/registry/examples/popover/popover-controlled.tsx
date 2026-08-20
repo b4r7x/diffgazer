@@ -14,7 +14,7 @@ export default function PopoverControlledExample() {
             <button
               {...triggerProps}
               type="button"
-              className="border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+              className="border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0"
             >
               {open ? "close" : "open"}
             </button>
@@ -24,7 +24,7 @@ export default function PopoverControlledExample() {
           Controlled popover
           <button
             type="button"
-            className="mt-2 block border border-foreground/30 px-2 py-0.5 text-xs focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+            className="mt-2 block border border-foreground/30 px-2 py-0.5 text-xs focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0"
             onClick={() => setOpen(false)}
           >
             dismiss

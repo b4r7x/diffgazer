@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "focus-outline",
+  "title": "Focus Outline",
+  "description": "Shared keyboard-focus outline mark, with inset and virtual-highlight variants",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/lib/focus-outline.ts",
+      "content": "/**\n * The library's single keyboard-focus mark.\n *\n * One grammar, one token: a 2px `--ring` outline hugging the control edge, so\n * focus recolors the control's frame instead of floating a halo around it.\n *\n * Scope: controls — buttons, rows, scroll regions, triggers. Fields do not use\n * it: inputs and the div-based selectable controls keep the inset field grammar\n * (`focus:border-ring` plus `focus:ring-1`), which recolors the border a field\n * already has instead of adding a second frame. See `input-variants` and\n * `selectable-variants`.\n *\n * - `FOCUS_OUTLINE` — real keyboard focus, drawn just outside the border box.\n * - `FOCUS_OUTLINE_INSET` — the same mark pulled inside the box for surfaces\n *   whose outside edge an enclosing scroller would clip.\n * - `HIGHLIGHT_OUTLINE` — the same mark minus `focus-visible`, for virtual\n *   focus handed down by a parent collection.\n *\n * Written out in full rather than composed so Tailwind's source scanner sees\n * every candidate.\n */\n\n/** Real keyboard focus: a 2px --ring outline hugging the control edge. */\nexport const FOCUS_OUTLINE =\n  \"focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0\";\n\n/** Keyboard focus on a clipped surface: the same mark drawn inside the box. */\nexport const FOCUS_OUTLINE_INSET =\n  \"focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-[-2px]\";\n\n/** Virtual focus from a parent collection: the same mark without focus-visible. */\nexport const HIGHLIGHT_OUTLINE = \"outline-2 outline-ring outline-offset-0\";\n",
+      "type": "registry:lib"
+    }
+  ],
+  "meta": {
+    "client": false
+  },
+  "type": "registry:lib"
+}

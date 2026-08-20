@@ -259,9 +259,9 @@ export function useSelectContentNavigation({
     // empty buffer both decline the query and fall through to navigation.
     const isVimKey = isVimNavigationKey(e.key);
     const typeaheadFirst = e.key === " " || isVimKey;
-    if (typeaheadFirst && !isModified && handleTypeahead(e.key, { extendOnly: isVimKey })) return;
+    if (typeaheadFirst && !isModified && handleTypeahead(e, { extendOnly: isVimKey })) return;
     navKeyDown(e);
-    if (!typeaheadFirst && !isModified) handleTypeahead(e.key);
+    if (!typeaheadFirst && !isModified) handleTypeahead(e);
   };
 
   const activeDescendant = isActiveOptionVisible(options, highlighted, searchQuery)

@@ -31,6 +31,7 @@ export const KEYS_PACKAGE_IMPORT_TARGETS = new Map<string, string>([
   ["isReachable", "utils/focusable"],
   ["composedClosest", "utils/element-guards"],
   ["composedContains", "utils/element-guards"],
+  ["hasModifierKey", "utils/element-guards"],
   ["isEditableElement", "utils/element-guards"],
   ["isInputElement", "utils/element-guards"],
   ["getRestorableFocusTarget", "utils/focus-restore"],

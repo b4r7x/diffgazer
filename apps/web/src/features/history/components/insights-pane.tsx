@@ -108,6 +108,9 @@ export function HistoryInsightsPane({
               }}
               focused={isFocused}
               wrap={false}
+              // "/", l, and R are window-level shortcuts for this zone; list
+              // typeahead would claim those keystrokes before they arrive.
+              typeahead={false}
               className="mt-3"
             >
               {issues.map((issue) => (

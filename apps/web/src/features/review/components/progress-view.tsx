@@ -24,7 +24,7 @@ import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { type KeyboardEvent, useState } from "react";
 import { useFocusWithin } from "@/hooks/use-focus-within";
 import { ReviewClockProvider, useReviewClock } from "../hooks/use-clock";
 import {
@@ -77,15 +77,18 @@ function AgentFilterBar({
   agents,
   active,
   onChange,
+  onKeyDown,
 }: {
   agents: AgentOption[];
   active: string | null;
   onChange: (v: string | null) => void;
+  onKeyDown: (event: KeyboardEvent) => void;
 }) {
   return (
     <ToggleGroup
       value={active ?? "all"}
       onChange={(value) => onChange(value === "all" ? null : value)}
+      onKeyDown={onKeyDown}
       label="Agent filter"
       className="items-center pb-2"
     >
@@ -242,14 +245,28 @@ export function ReviewProgressView({
 
   const progressPaneFocus = useFocusWithin<HTMLElement>();
   const logPaneFocus = useFocusWithin<HTMLElement>();
-  const { progressPaneRef, progressScrollRef, agentFilterRef, logContentRef } =
-    useReviewProgressKeyboard({
-      onViewResults,
-      onBack,
-      onCancel: isRunning ? onCancel : undefined,
-      cancelDisabled,
-      hasError,
-    });
+  const liveness = useStreamLiveness({ events, isRunning });
+
+  const reconnect = reviewId && onRetry ? () => onRetry(reviewId) : undefined;
+  const stalledReconnect = isRunning && liveness.state === "stalled" ? reconnect : undefined;
+  const contextRetry = contextRefreshError ? onRetryContextRefresh : undefined;
+
+  const {
+    progressPaneRef,
+    progressScrollRef,
+    agentFilterRef,
+    logContentRef,
+    snapshotDownloadsRef,
+    handleFilterKeyDown,
+  } = useReviewProgressKeyboard({
+    onViewResults,
+    onBack,
+    onCancel: isRunning ? onCancel : undefined,
+    onRetryRecovery: stalledReconnect ?? contextRetry,
+    cancelDisabled,
+    hasError,
+    hasSnapshotDownloads: !isRunning && contextSnapshot != null,
+  });
 
   const errorGuidance = error ? classifyReviewStreamError(error, errorCode, transportFamily) : null;
 
@@ -261,7 +278,6 @@ export function ReviewProgressView({
   }));
 
   const partialFailure = getPartialFailureWarning(agents, error ?? null, lensStats);
-  const liveness = useStreamLiveness({ events, isRunning });
 
   return (
     <ReviewClockProvider running={isRunning}>
@@ -291,7 +307,7 @@ export function ReviewProgressView({
               <StreamLivenessNotice
                 state={liveness.state}
                 lastEventAt={liveness.lastEventAt}
-                onReconnect={reviewId && onRetry ? () => onRetry(reviewId) : undefined}
+                onReconnect={reconnect}
               />
             )}
 
@@ -309,7 +325,10 @@ export function ReviewProgressView({
             ) : null}
 
             {contextSnapshot && !isRunning ? (
-              <ContextSnapshotPreview snapshot={contextSnapshot} />
+              <ContextSnapshotPreview
+                snapshot={contextSnapshot}
+                downloadsRef={snapshotDownloadsRef}
+              />
             ) : null}
           </ScrollArea>
 
@@ -349,7 +368,12 @@ export function ReviewProgressView({
             ref={agentFilterRef}
             className="flex flex-wrap items-start justify-between gap-3 px-4 pt-3"
           >
-            <AgentFilterBar agents={agentOptions} active={agentFilter} onChange={setAgentFilter} />
+            <AgentFilterBar
+              agents={agentOptions}
+              active={agentFilter}
+              onChange={setAgentFilter}
+              onKeyDown={handleFilterKeyDown}
+            />
             <span className="shrink-0 text-2xs text-muted-foreground font-mono max-sm:hidden">
               tail -f agent.log
             </span>
@@ -392,11 +416,20 @@ export function ReviewProgressView({
               agents={agents}
               startTime={startTime}
               lastEventAt={liveness.lastEventAt}
+              // While the zone cycle is active the pane brackets carry the focus
+              // signal, so the log drops its own tab stop and inset outline — the
+              // same treatment the progress pane's scroller gets above. The error
+              // layout has no zone cycle: Tab reaches the log there, so it keeps
+              // both.
+              tabIndex={hasError ? undefined : -1}
               // Below md the page scroller owns the whole stack: the log opts out of
               // scrolling on both axes (one axis left non-visible forces the other back
               // to auto) and grows with its content, floored at the height that keeps
               // the pane reading as a log when the run has barely started.
-              className="flex-1 min-h-0 px-2 pb-2 max-md:min-h-[45dvh] max-md:flex-none max-md:overflow-x-visible max-md:overflow-y-visible"
+              className={cn(
+                "flex-1 min-h-0 px-2 pb-2 max-md:min-h-[45dvh] max-md:flex-none max-md:overflow-x-visible max-md:overflow-y-visible",
+                !hasError && "focus:outline-none",
+              )}
             />
           </div>
         </Panel>

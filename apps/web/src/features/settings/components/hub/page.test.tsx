@@ -8,9 +8,11 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { GlobalShortcuts } from "@/components/layout/global";
 import { ConfigProvider } from "@/hooks/use-config";
 import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { shutdown } from "@/lib/shutdown";
 import { expectSingleReticle } from "@/testing/reticle";
 import {
   makeShellApiOverrides,
@@ -23,6 +25,11 @@ const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
   useLocation: () => ({ pathname: "/settings" }),
+}));
+
+vi.mock("@/lib/shutdown", () => ({
+  shutdown: vi.fn().mockResolvedValue({ status: "closed" as const }),
+  reportShutdownResult: vi.fn(),
 }));
 
 import { SettingsHubPage } from "./page";
@@ -68,7 +75,7 @@ function createTestApi(init = shellInit): BoundApi {
 }
 
 /** The one provider stack for this suite; every test renders through it. */
-function renderWithProviders(api: BoundApi) {
+function renderWithProviders(api: BoundApi, { globalShortcuts = false } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -81,6 +88,7 @@ function renderWithProviders(api: BoundApi) {
             <ThemeProvider>
               <FooterProvider>
                 <KeyboardProvider>
+                  {globalShortcuts ? <GlobalShortcuts /> : null}
                   <ProviderConsentProvider>{children}</ProviderConsentProvider>
                 </KeyboardProvider>
               </FooterProvider>
@@ -94,8 +102,8 @@ function renderWithProviders(api: BoundApi) {
   return render(<SettingsHubPage />, { wrapper: Wrapper });
 }
 
-function renderPage(init = shellInit) {
-  return renderWithProviders(createTestApi(init));
+function renderPage(init = shellInit, options?: { globalShortcuts?: boolean }) {
+  return renderWithProviders(createTestApi(init), options);
 }
 
 describe("SettingsHubPage", () => {
@@ -297,6 +305,21 @@ describe("SettingsHubPage", () => {
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
     expect(screen.queryByText("Not trusted")).not.toBeInTheDocument();
     expect(screen.queryByText("Not configured")).not.toBeInTheDocument();
+  });
+
+  // The hub Menu takes focus on mount, so every printable key lands on a list
+  // that runs typeahead. No row starts with q, so the miss must leave the event
+  // unclaimed and fall through to the window layer that owns quit.
+  it("lets q reach the app quit shortcut while the autofocused menu holds focus", async () => {
+    const user = userEvent.setup();
+    renderPage(shellInit, { globalShortcuts: true });
+
+    const menu = await screen.findByRole("menu", { name: /settings/i });
+    await waitFor(() => expect(menu).toHaveFocus());
+
+    await user.keyboard("q");
+
+    expect(shutdown).toHaveBeenCalledTimes(1);
   });
 
   it("renders no legacy provider status fields in the hub tree", async () => {

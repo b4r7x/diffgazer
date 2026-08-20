@@ -86,7 +86,7 @@ The following components expose keyboard integration points:
 | `Select` + `SelectContent` | controlled `highlighted`/`onHighlightChange` + `onKeyDown` on content |
 | `CommandPalette` stack | controlled `highlighted`/`onHighlightChange` + `onKeyDown` on input |
 
-- **`j` / `k`** -- vim aliases for ArrowDown/ArrowUp in the list composites that own the whole keyboard: `Menu`, `NavigationList`, `RadioGroup`, `DiffView`, and an open `Select` option list. Where typeahead is enabled, `j`/`k` never start a query -- they move the highlight on an empty buffer and extend a query already in progress, so first-letter jumps to items starting with j or k are unavailable. Composites whose focus lives in a text field (`CommandPalette` input, `Select`'s search input) stay arrows-only so the characters type.
+- **`j` / `k`** -- vim aliases for ArrowDown/ArrowUp in the list composites that own the whole keyboard: `Menu`, `NavigationList`, `CheckboxGroup`, `RadioGroup`, `DiffView`, and an open `Select` option list. Where typeahead is enabled, `j`/`k` never start a query -- they move the highlight on an empty buffer and extend a query already in progress, so first-letter jumps to items starting with j or k are unavailable. Composites whose focus lives in a text field (`CommandPalette` input, `Select`'s search input) stay arrows-only so the characters type.
 - **highlight state / `highlighted`** -- controls which item appears highlighted
 - **`onKeyDown`** -- receives keyboard events for app-level handlers
 - **`selectedId`** -- the currently selected item; for `CommandPalette`, use `highlighted` because command palettes track highlight rather than selection

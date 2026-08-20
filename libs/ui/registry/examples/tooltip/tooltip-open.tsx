@@ -7,7 +7,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 // example. Real tooltips open on hover/focus — do not pin `open` in product
 // code.
 const TRIGGER =
-  "border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2";
+  "border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0";
 
 export default function TooltipOpenExample() {
   return (

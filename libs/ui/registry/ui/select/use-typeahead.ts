@@ -27,14 +27,19 @@ export function useSelectTypeahead({
   // can suppress a competing Space-select or vim-navigation move for the same
   // keystroke. `extendOnly` keys are declined on an empty buffer.
   return function handleTypeahead(
-    key: string,
+    event: { key: string; preventDefault: () => void },
     { extendOnly = false }: { extendOnly?: boolean } = {},
   ): boolean {
-    const query = readTypeaheadQuery(key, { extendOnly });
+    const query = readTypeaheadQuery(event.key, { extendOnly });
     if (query === null) return false;
 
     const visibleOptions = getVisibleEnabledOptionEntries(options, searchQuery);
     if (visibleOptions.length === 0) return true;
+
+    // The buffered key has one owner: claim it so window-level hotkey layers
+    // (which skip defaultPrevented events) do not also fire mid-query. An empty
+    // list claims nothing — its query has no options to match.
+    event.preventDefault();
 
     const currentIndex =
       highlighted === null

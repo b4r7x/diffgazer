@@ -1,6 +1,6 @@
 import { isProviderControlDisabled, type ProviderRowControl } from "@diffgazer/core/providers";
 import { DECLINE, useActionRowNavigation, useKey } from "@diffgazer/keys";
-import { type RefCallback, type RefObject, useRef } from "react";
+import type { RefCallback, RefObject } from "react";
 import type { ProvidersFocusZone } from "./use-keyboard";
 
 interface UseProvidersActionButtonsOptions {
@@ -15,6 +15,8 @@ interface UseProvidersActionButtonsOptions {
   /** True while a provider mutation is in flight; the rendered buttons disable on it. */
   isPending: boolean;
   inButtons: boolean;
+  /** Content element focus parks on while every action is disabled mid-mutation. */
+  focusFallbackRef: RefObject<HTMLDivElement | null>;
   setZone: (zone: ProvidersFocusZone) => void;
   focusProviderList: () => void;
   /** The page layer's single control dispatcher, shared with the rendered action row. */
@@ -24,8 +26,6 @@ interface UseProvidersActionButtonsOptions {
 interface UseProvidersActionButtonsResult {
   buttonIndex: number;
   enterButtons: (index?: number) => void;
-  /** Content element focus parks on while every action is disabled mid-mutation. */
-  focusFallbackRef: RefObject<HTMLDivElement | null>;
   getActionButtonProps: (index: number) => {
     ref: RefCallback<HTMLElement>;
     onFocus: () => void;
@@ -38,11 +38,11 @@ export function useProvidersActionButtons({
   dialogOpen,
   isPending,
   inButtons,
+  focusFallbackRef,
   setZone,
   focusProviderList,
   runControl,
 }: UseProvidersActionButtonsOptions): UseProvidersActionButtonsResult {
-  const focusFallbackRef = useRef<HTMLDivElement>(null);
   // Shares isProviderControlDisabled with the rendered row so focus custody sees what the DOM does.
   const disabledActions = controls.map((control) => isProviderControlDisabled(control, isPending));
 
@@ -117,7 +117,6 @@ export function useProvidersActionButtons({
   return {
     buttonIndex: focusedIndex,
     enterButtons,
-    focusFallbackRef,
     getActionButtonProps,
   };
 }

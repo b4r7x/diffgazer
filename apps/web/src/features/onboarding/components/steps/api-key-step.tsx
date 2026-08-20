@@ -1,7 +1,11 @@
 import type { OnboardingConfigurationDraft } from "@diffgazer/core/onboarding";
 import { type ConfigurationField, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { LocalHttpProductId, WriteOnlySecretInput } from "@diffgazer/core/schemas/config";
-import { findNavigationItemByValue, getVerticalArrowDirection } from "@diffgazer/keys";
+import {
+  findNavigationItemByValue,
+  getVerticalArrowDirection,
+  toVerticalBoundaryDirection,
+} from "@diffgazer/keys";
 import { Checkbox } from "@diffgazer/ui/components/checkbox";
 import { Field } from "@diffgazer/ui/components/field";
 import { InputGroup } from "@diffgazer/ui/components/input";
@@ -45,6 +49,7 @@ export function ApiKeyStep({
   const methodGroupRef = useRef<HTMLDivElement>(null);
   const localCheckboxRef = useRef<HTMLDivElement>(null);
   const localInputRef = useRef<HTMLInputElement>(null);
+  const bearerInputRef = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState<CredentialFocus>("literal");
   const isHosted = configurationInput.transportFamily === "hosted-api";
   const method = isHosted ? resolveCredentialMethod(configurationInput.credential) : "literal";
@@ -145,6 +150,11 @@ export function ApiKeyStep({
             ref={localCheckboxRef}
             checked={bearerEnabled}
             onChange={setLocalBearerEnabled}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowDown" || !bearerEnabled) return;
+              event.preventDefault();
+              bearerInputRef.current?.focus();
+            }}
             value="local-bearer"
             label="This server requires a bearer token"
           />
@@ -154,6 +164,7 @@ export function ApiKeyStep({
             <Field.Label>Bearer token (write-only)</Field.Label>
             <Field.Control>
               <InputGroup
+                ref={bearerInputRef}
                 type="password"
                 autoComplete="off"
                 value={
@@ -171,6 +182,11 @@ export function ApiKeyStep({
                   if (event.key === "Enter") {
                     event.preventDefault();
                     onCommit?.();
+                    return;
+                  }
+                  if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    localCheckboxRef.current?.focus();
                     return;
                   }
                   handleFieldBoundaryKeyDown(event);
@@ -239,14 +255,15 @@ export function ApiKeyStep({
             nextMethod === "environment" ? { kind: "environment" } : { kind: "literal", value: "" },
           );
         }}
-        highlighted={focused === "input" ? null : focused}
+        highlighted={enabled && focused !== "input" ? focused : null}
         onHighlightChange={(nextMethod) => {
           if (nextMethod === "literal" || nextMethod === "environment") setFocused(nextMethod);
         }}
         onEnter={() => onCommit?.()}
         onKeyDown={handleMethodKeyDown}
-        onNavigationBoundaryReached={(direction) => {
-          onBoundaryReached?.(direction === "next" ? "down" : "up");
+        onNavigationBoundaryReached={(direction, event) => {
+          const verticalDirection = toVerticalBoundaryDirection(direction, event.key);
+          if (verticalDirection !== null) onBoundaryReached?.(verticalDirection);
         }}
         autoFocus={enabled}
         keyboardNavigation={enabled}

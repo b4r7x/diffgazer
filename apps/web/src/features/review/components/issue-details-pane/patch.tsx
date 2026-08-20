@@ -2,6 +2,14 @@ import type { EvidenceRef } from "@diffgazer/core/schemas/review";
 import { CodeBlock, type CodeBlockLineState } from "@diffgazer/ui/components/code-block";
 import { DiffView, type ParsedDiff, parseDiff } from "@diffgazer/ui/components/diff-view";
 
+/**
+ * The focusable rows region DiffView renders (unified or split). It advertises
+ * j/k/Home/End but only receives them once focused, so the details keyboard
+ * hook Enter-focuses it through this selector.
+ */
+export const PATCH_DIFF_REGION_SELECTOR =
+  '[data-slot="diff-view-rows"], [data-slot="diff-view-split"]';
+
 /** The single structured file DiffView can render, or null when the patch is not one. */
 function parseStructuredPatch(patch: string): ParsedDiff | null {
   const files = parseDiff(patch);
@@ -29,6 +37,38 @@ function getPlainSnippetBeforeSide(patch: string, targetFile: string, evidence: 
     .find((excerpt) => excerpt.split(/\r?\n/).some((line) => patchLines.has(line)));
 }
 
+type PatchRendering =
+  | { kind: "structured"; file: ParsedDiff }
+  | { kind: "before-after"; before: string }
+  | { kind: "plain" };
+
+function resolvePatchRendering(
+  patch: string,
+  targetFile: string,
+  evidence: EvidenceRef[],
+): PatchRendering {
+  const structured = parseStructuredPatch(patch);
+  if (structured) return { kind: "structured", file: structured };
+  if (!DIFF_MARKER_RE.test(patch)) {
+    const before = getPlainSnippetBeforeSide(patch, targetFile, evidence);
+    if (before) return { kind: "before-after", before };
+  }
+  return { kind: "plain" };
+}
+
+/**
+ * Whether the patch tab renders the focusable DiffView region rather than the
+ * plain CodeBlock fallback, so keyboard hints only advertise Enter when the
+ * diff region exists to receive it.
+ */
+export function patchRendersDiffView(
+  patch: string,
+  targetFile: string,
+  evidence: EvidenceRef[],
+): boolean {
+  return resolvePatchRendering(patch, targetFile, evidence).kind !== "plain";
+}
+
 export function PatchTabContent({
   patch,
   targetFile,
@@ -38,16 +78,13 @@ export function PatchTabContent({
   targetFile: string;
   evidence: EvidenceRef[];
 }) {
-  const structured = parseStructuredPatch(patch);
-  if (structured) {
-    return <DiffView diff={structured} label="Suggested patch" />;
+  const rendering = resolvePatchRendering(patch, targetFile, evidence);
+  if (rendering.kind === "structured") {
+    return <DiffView diff={rendering.file} label="Suggested patch" />;
   }
 
-  if (!DIFF_MARKER_RE.test(patch)) {
-    const original = getPlainSnippetBeforeSide(patch, targetFile, evidence);
-    if (original) {
-      return <DiffView before={original} after={patch} label="Suggested patch" />;
-    }
+  if (rendering.kind === "before-after") {
+    return <DiffView before={rendering.before} after={patch} label="Suggested patch" />;
   }
 
   return (

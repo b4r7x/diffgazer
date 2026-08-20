@@ -10,7 +10,7 @@ export default function PopoverBasicExample() {
           <button
             {...triggerProps}
             type="button"
-            className="border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+            className="border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0"
           >
             click me
           </button>
@@ -20,7 +20,7 @@ export default function PopoverBasicExample() {
         <p className="text-foreground">Popover content with interactive elements.</p>
         <button
           type="button"
-          className="mt-2 border border-foreground/30 px-2 py-0.5 text-xs focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+          className="mt-2 border border-foreground/30 px-2 py-0.5 text-xs focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0"
         >
           action
         </button>

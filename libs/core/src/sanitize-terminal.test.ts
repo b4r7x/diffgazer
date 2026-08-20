@@ -148,7 +148,9 @@ describe("@diffgazer/core/sanitize-terminal entry", () => {
     expect([...collectPackageImports(entry)]).toEqual([]);
   });
 
-  it("is not reachable through the React review barrel", async () => {
+  // The barrel's first dynamic import transforms the whole review tree; under
+  // a full parallel turbo run that can exceed the default 5s.
+  it("is not reachable through the React review barrel", { timeout: 20_000 }, async () => {
     const reviewBarrel = await import("./review/index.js");
 
     expect(Object.keys(reviewBarrel)).not.toContain("sanitizeTerminalText");

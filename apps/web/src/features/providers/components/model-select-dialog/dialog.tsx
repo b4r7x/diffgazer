@@ -3,6 +3,7 @@ import { getRetainedModelNotice } from "@diffgazer/core/providers";
 import { useModelFilter, useModelSource } from "@diffgazer/core/providers/hooks";
 import type { ClientConfigurationSummary, ExactModelId } from "@diffgazer/core/schemas/config";
 import { pluralize } from "@diffgazer/core/strings";
+import { useKey } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import {
   Dialog,
@@ -84,7 +85,6 @@ export function ModelSelectDialog({
     handleConfirm,
     handleFilterKeyDown,
     handleSearchFocus,
-    handleSearchEscape,
     handleSearchArrowDown,
     handleListHighlightChange,
     handleListBoundaryReached,
@@ -100,8 +100,6 @@ export function ModelSelectDialog({
     models: source.models,
     filteredModels,
     discoveryStatus,
-    searchQuery,
-    setSearchQuery,
     cycleTierFilter,
     resetFilters,
     searchInputRef,
@@ -109,6 +107,11 @@ export function ModelSelectDialog({
     onSelect,
     onOpenChange: handleOpenChange,
   });
+
+  // The TUI answers r with a fresh discovery run; the search box keeps the
+  // letter for typing, so the binding stands down there like f does.
+  const showRetry = Boolean(discoveryMessage) && !isSaving;
+  useKey("r", source.retry, { enabled: open && showRetry && focusZone !== "search" });
 
   const checkedAtLabel = source.checkedAt ? getDateLabel(source.checkedAt) : null;
   const retainedModelNotice = isSaving ? null : getRetainedModelNotice(currentModel, source.models);
@@ -142,7 +145,6 @@ export function ModelSelectDialog({
             value={searchQuery}
             onChange={setSearchQuery}
             onFocus={handleSearchFocus}
-            onEscape={handleSearchEscape}
             onArrowDown={handleSearchArrowDown}
             disabled={isSaving || loading}
           />
@@ -203,7 +205,9 @@ export function ModelSelectDialog({
           />
         </DialogBody>
 
-        <DialogFooter hints={FOOTER_HINTS}>
+        <DialogFooter
+          hints={showRetry ? [...FOOTER_HINTS, { key: "r", label: "Retry" }] : FOOTER_HINTS}
+        >
           <DialogClose
             {...getFooterButtonProps(0)}
             variant="ghost"

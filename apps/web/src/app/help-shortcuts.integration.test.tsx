@@ -17,7 +17,7 @@ import {
   SHORTCUT_CONTEXT_LABELS,
   type Shortcut,
 } from "@diffgazer/core/schemas/presentation";
-import { makeIssue } from "@diffgazer/core/testing/factories";
+import { makeIssue, makeReviewMetadata } from "@diffgazer/core/testing/factories";
 import { buildProviderRows } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider, useFocusZone, useScope } from "@diffgazer/keys";
 import {
@@ -25,7 +25,7 @@ import {
   NavigationListItem,
   NavigationListTitle,
 } from "@diffgazer/ui/components/navigation-list";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,7 +33,9 @@ import { GlobalShortcuts } from "@/components/layout/global";
 import { HelpPage } from "@/features/help/components/page";
 import { HistoryPage } from "@/features/history/components/page";
 import {
+  defaultReviewsResponse,
   focusRunsList,
+  mockGetReviews,
   renderHistoryPage,
   setupApiMocks,
   trustedProject,
@@ -69,10 +71,17 @@ vi.mock("@/lib/shutdown", () => ({
 
 type ShortcutRow = { key: string; label: string };
 
+// A real page cursor: the runs list only offers "load older" while the response
+// carries one.
+const NEXT_REVIEWS_CURSOR =
+  "dg1_WyIyMDI2LTAyLTA4VDA5OjAwOjAwLjAwMFoiLCIyMjIyMjIyMi0yMjIyLTQyMjItODIyMi0yMjIyMjIyMjIyMjIiXQ";
+
 const WEB_SHORTCUTS: Shortcut[] = [
   ...HELP_SHORTCUTS,
   { key: "h", label: "Open History", context: "global" },
   { key: "o", label: "Open Last Run", context: "home" },
+  { key: "t", label: "Grant Trust Permissions", context: "home" },
+  { key: "p", label: "Open Provider Settings", context: "home" },
 ];
 
 // The screen renders the canonical table grouped by context, so the expected
@@ -546,6 +555,25 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
     );
   },
 
+  // t mirrors the sidebar trust row: live only while the repo is untrusted.
+  "t → Grant Trust Permissions": async () => {
+    const user = userEvent.setup();
+    renderGlobalHome({ isTrusted: false });
+    await user.keyboard("t");
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/settings/trust-permissions" }),
+    );
+  },
+
+  "p → Open Provider Settings": async () => {
+    const user = userEvent.setup();
+    renderGlobalHome();
+    await user.keyboard("p");
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/settings/providers" }),
+    );
+  },
+
   "/ → Search Runs": async () => {
     const user = userEvent.setup();
     setupApiMocks(trustedProject());
@@ -555,6 +583,45 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
     await user.keyboard("/");
 
     expect(screen.getByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER)).toHaveFocus();
+  },
+
+  "l → Load Older Runs": async () => {
+    const user = userEvent.setup();
+    setupApiMocks(trustedProject());
+    mockGetReviews.mockImplementation(async (cursor) =>
+      cursor
+        ? {
+            reviews: [makeReviewMetadata({ id: "33333333-3333-4333-8333-333333333333" })],
+            nextCursor: null,
+          }
+        : { reviews: defaultReviewsResponse().reviews, nextCursor: NEXT_REVIEWS_CURSOR },
+    );
+    renderHistoryPage(<HistoryPage />);
+
+    await screen.findByRole("button", { name: "Load older runs" });
+    await focusRunsList();
+    await user.keyboard("l");
+
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Load older runs" })).not.toBeInTheDocument(),
+    );
+  },
+
+  "R → Retry History": async () => {
+    const user = userEvent.setup();
+    setupApiMocks(trustedProject());
+    const { queryClient } = renderHistoryPage(<HistoryPage />);
+
+    await focusRunsList();
+    mockGetReviews.mockRejectedValueOnce(new Error("background refresh failed"));
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ["review", "list"], exact: true });
+    });
+    await screen.findByRole("alert");
+
+    await user.keyboard("{Shift>}R{/Shift}");
+
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
   },
 };
 

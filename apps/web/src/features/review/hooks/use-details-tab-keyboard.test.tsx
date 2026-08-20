@@ -55,9 +55,11 @@ type HarnessZone = "list" | "details";
 function FixPlanFocusHarness({
   onToggleStep,
   onZoneChange,
+  onScroll,
 }: {
   onToggleStep: (stepIndex: number) => void;
   onZoneChange: (zone: HarnessZone) => void;
+  onScroll: (delta: number) => void;
 }) {
   const [issue] = useState(() =>
     makeIssue({
@@ -111,7 +113,7 @@ function FixPlanFocusHarness({
     availableTabs: FIXTURE_AVAILABLE_TABS,
     detailsScrollRef: scrollRef,
     moveTab: () => "no-change",
-    scrollDetails: () => undefined,
+    scrollDetails: onScroll,
     setActiveTab,
     enterList: () => setZone("list"),
     onToggleStep: handleToggleStep,
@@ -140,6 +142,44 @@ function FixPlanFocusHarness({
           </div>
         </ScrollArea>
       </div>
+    </>
+  );
+}
+
+/**
+ * The patch tab as the pane renders it: the mobile back-to-issues button above
+ * the details scroll body, which holds the diff region Enter hands focus to.
+ */
+function PatchTabHarness({ onBackToList }: { onBackToList: () => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useScope(DETAILS_KEYBOARD_SCOPE);
+  useReviewDetailsTabKeyboard({
+    scope: DETAILS_KEYBOARD_SCOPE,
+    enabled: true,
+    selectedIssue: makeIssue({}),
+    activeTab: "patch",
+    availableTabs: ["details", "patch"],
+    detailsScrollRef: scrollRef,
+    moveTab: () => "no-change",
+    scrollDetails: () => undefined,
+    setActiveTab: () => undefined,
+    enterList: () => undefined,
+    onToggleStep: () => undefined,
+  });
+
+  return (
+    <>
+      <button type="button" onClick={onBackToList}>
+        <span aria-hidden="true">←</span> Issues
+      </button>
+      <ScrollArea
+        ref={scrollRef}
+        aria-label="Issue details"
+        keyboardScrollable={false}
+        tabIndex={-1}
+      >
+        <figure data-slot="diff-view-rows" tabIndex={-1} aria-label="Suggested patch" />
+      </ScrollArea>
     </>
   );
 }
@@ -191,12 +231,17 @@ describe("fix-plan checklist focus custody", () => {
   function renderHarness() {
     const onToggleStep = vi.fn();
     const onZoneChange = vi.fn();
+    const onScroll = vi.fn();
     render(
       <KeyboardProvider>
-        <FixPlanFocusHarness onToggleStep={onToggleStep} onZoneChange={onZoneChange} />
+        <FixPlanFocusHarness
+          onToggleStep={onToggleStep}
+          onZoneChange={onZoneChange}
+          onScroll={onScroll}
+        />
       </KeyboardProvider>,
     );
-    return { onToggleStep, onZoneChange };
+    return { onToggleStep, onZoneChange, onScroll };
   }
 
   function step(name: RegExp): HTMLElement {
@@ -227,6 +272,32 @@ describe("fix-plan checklist focus custody", () => {
     expect(onZoneChange).not.toHaveBeenCalled();
   });
 
+  it("steps checklist focus with vertical arrows only while focus sits inside the checklist", async () => {
+    const user = userEvent.setup();
+    const { onScroll } = renderHarness();
+
+    // Focus parked on the scroll body: arrows scroll the details pane.
+    expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(onScroll).toHaveBeenCalledWith(80);
+
+    await user.keyboard("j");
+    expect(step(/2\. Add regression test/)).toHaveFocus();
+
+    // Focus inside the checklist: arrows step like j/k instead of scrolling.
+    await user.keyboard("{ArrowDown}");
+    expect(step(/3\. Document behavior/)).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    await user.keyboard("{ArrowUp}");
+    expect(step(/1\. Validate input/)).toHaveFocus();
+
+    // The boundary clamps instead of handing the key back to scrolling.
+    await user.keyboard("{ArrowUp}");
+    expect(step(/1\. Validate input/)).toHaveFocus();
+    expect(onScroll).toHaveBeenCalledTimes(1);
+  });
+
   it("toggles the step that owns DOM focus with Space and Enter, keeping focus on it", async () => {
     const user = userEvent.setup();
     const { onToggleStep, onZoneChange } = renderHarness();
@@ -249,6 +320,35 @@ describe("fix-plan checklist focus custody", () => {
     expect(onZoneChange).not.toHaveBeenCalled();
   });
 
+  it("ignores checklist markers outside the details scroll body when gating arrows", async () => {
+    const user = userEvent.setup();
+    const onToggleStep = vi.fn();
+    const onZoneChange = vi.fn();
+    const onScroll = vi.fn();
+    render(
+      <KeyboardProvider>
+        <FixPlanFocusHarness
+          onToggleStep={onToggleStep}
+          onZoneChange={onZoneChange}
+          onScroll={onScroll}
+        />
+        <div data-checklist="fix-plan">
+          <button type="button">decoy step</button>
+        </div>
+      </KeyboardProvider>,
+    );
+
+    const decoy = screen.getByRole("button", { name: "decoy step" });
+    await user.click(decoy);
+    expect(decoy).toHaveFocus();
+
+    // Arrows from the decoy must not steal focus into the details checklist.
+    await user.keyboard("{ArrowDown}");
+
+    expect(onScroll).toHaveBeenCalledWith(80);
+    expect(decoy).toHaveFocus();
+  });
+
   it("parks focus on the details scroll body when a tab switch hides the checklist", async () => {
     const user = userEvent.setup();
     const { onZoneChange } = renderHarness();
@@ -263,5 +363,40 @@ describe("fix-plan checklist focus custody", () => {
     await user.keyboard("1");
     await user.keyboard("j");
     expect(step(/3\. Document behavior/)).toHaveFocus();
+  });
+});
+
+describe("patch-tab Enter custody", () => {
+  function renderPatchHarness() {
+    const onBackToList = vi.fn();
+    render(
+      <KeyboardProvider>
+        <PatchTabHarness onBackToList={onBackToList} />
+      </KeyboardProvider>,
+    );
+    return { onBackToList };
+  }
+
+  it("hands the details zone to the diff region on Enter", async () => {
+    const user = userEvent.setup();
+    renderPatchHarness();
+
+    screen.getByRole("region", { name: "Issue details" }).focus();
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByRole("figure", { name: "Suggested patch" })).toHaveFocus();
+  });
+
+  it("leaves Enter to the back-to-issues button instead of yanking focus into the pane", async () => {
+    const user = userEvent.setup();
+    const { onBackToList } = renderPatchHarness();
+
+    const backToIssues = screen.getByRole("button", { name: "Issues" });
+    backToIssues.focus();
+    await user.keyboard("{Enter}");
+
+    expect(onBackToList).toHaveBeenCalledOnce();
+    expect(backToIssues).toHaveFocus();
+    expect(screen.getByRole("figure", { name: "Suggested patch" })).not.toHaveFocus();
   });
 });

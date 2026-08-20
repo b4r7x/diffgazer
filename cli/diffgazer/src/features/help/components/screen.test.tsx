@@ -27,9 +27,10 @@ describe("HelpScreen", () => {
 
   // Tall enough to show every group at once: the table has grown past what a
   // 30-row terminal fits without scrolling, and the alignment check needs the
-  // first and last group on one screen.
-  test("renders every group with one aligned key column at 100x36", async () => {
-    const { lastFrame } = renderRootFrame(100, 36, <HelpScreen />);
+  // first and last group on one screen. The height tracks the table: the history
+  // group gained its l/R rows.
+  test("renders every group with one aligned key column at 100x38", async () => {
+    const { lastFrame } = renderRootFrame(100, 38, <HelpScreen />);
 
     await vi.waitFor(() => expect(lastFrame()).toContain("IN HISTORY"));
     const frame = stripAnsi(lastFrame() ?? "");
@@ -55,7 +56,7 @@ describe("HelpScreen", () => {
   });
 
   test("keeps a shortcut row for every distinct key and label pair", async () => {
-    const { lastFrame } = renderRootFrame(100, 36, <HelpScreen />);
+    const { lastFrame } = renderRootFrame(100, 38, <HelpScreen />);
 
     await vi.waitFor(() => expect(lastFrame()).toContain("IN HISTORY"));
     const frame = stripAnsi(lastFrame() ?? "");

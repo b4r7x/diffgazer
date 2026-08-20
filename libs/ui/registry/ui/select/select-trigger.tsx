@@ -4,6 +4,7 @@ import { cva } from "class-variance-authority";
 import type { ComponentPropsWithRef, KeyboardEvent, ReactNode } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
+import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { OVERLAY_TRIGGER_PROPS } from "@/lib/overlay-dismiss-stack";
 import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
@@ -26,7 +27,7 @@ const selectTriggerVariants = cva(
       variant: {
         default:
           "border border-border bg-background text-foreground hover:bg-secondary focus:outline-hidden focus:border-ring focus:ring-1 focus:ring-ring aria-invalid:focus:border-error aria-invalid:focus:ring-error",
-        card: "bg-foreground text-background border-b border-foreground font-bold text-xs uppercase tracking-wider focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+        card: `bg-foreground text-background border-b border-foreground font-bold text-xs uppercase tracking-wider ${FOCUS_OUTLINE}`,
       },
     },
     defaultVariants: { variant: "default" },
@@ -132,7 +133,7 @@ export function SelectTrigger({
 
     if (e.key.length === 1 && e.key !== " " && !e.ctrlKey && !e.metaKey && !e.altKey) {
       onOpenChange(true);
-      handleTypeahead(e.key);
+      handleTypeahead(e);
     }
   };
 

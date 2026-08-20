@@ -170,6 +170,68 @@ describe("ModelStep", () => {
     expect(await screen.findByRole("radio", { name: /gemini-2\.5-flash/i })).toBeInTheDocument();
   });
 
+  it("refocuses Retry when the step re-enables after a footer round-trip", async () => {
+    const api = apiWithModels(
+      vi
+        .fn<BoundApi["getConfigurationModels"]>()
+        .mockRejectedValue(new Error("catalog unavailable")),
+    );
+    const step = (enabled: boolean) => (
+      <ModelStep
+        configuration={GEMINI_CONFIGURATION}
+        isPreparing={false}
+        onRetry={vi.fn()}
+        value={null}
+        onChange={vi.fn()}
+        onCommit={vi.fn()}
+        enabled={enabled}
+      />
+    );
+
+    const { rerender } = render(step(true), { wrapper: makeWrapper(api) });
+
+    const retry = await screen.findByRole("button", { name: "Retry" });
+    await waitFor(() => expect(retry).toHaveFocus());
+
+    rerender(step(false));
+    retry.blur();
+    expect(retry).not.toHaveFocus();
+
+    rerender(step(true));
+    expect(retry).toHaveFocus();
+  });
+
+  it("retries discovery with the r shortcut while a recovery branch is mounted", async () => {
+    const user = userEvent.setup();
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockRejectedValueOnce(new Error("catalog unavailable"))
+      .mockResolvedValue(geminiModelsResponse());
+
+    render(
+      <ModelStep
+        configuration={GEMINI_CONFIGURATION}
+        isPreparing={false}
+        onRetry={vi.fn()}
+        value={null}
+        onChange={vi.fn()}
+        onCommit={vi.fn()}
+      />,
+      { wrapper: makeWrapper(apiWithModels(getConfigurationModels)) },
+    );
+
+    await screen.findByRole("button", { name: "Retry" });
+    // The chip is the contract: an advertised uppercase R would need Shift to
+    // match the binding, so the hint has to name the key this press sends.
+    const hint = screen.getByText(/retry discovery/i);
+    expect(within(hint).getByText("r")).toBeInTheDocument();
+
+    await user.keyboard("r");
+
+    expect(await screen.findByRole("radio", { name: /gemini-2\.5-flash/i })).toBeInTheDocument();
+    expect(screen.queryByText(/retry discovery/i)).not.toBeInTheDocument();
+  });
+
   it("commits the selected exact model when Enter is pressed", async () => {
     const user = userEvent.setup();
     const onCommit = vi.fn();

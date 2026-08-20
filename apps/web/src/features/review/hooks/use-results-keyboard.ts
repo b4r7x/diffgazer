@@ -9,12 +9,15 @@ import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import {
   findNavigationItemByValue,
   getNavigationItems,
+  hasModifierKey,
   useFocusZone,
   useKey,
   useScopedNavigation,
 } from "@diffgazer/keys";
 import { useCanGoBack, useLocation, useRouter } from "@tanstack/react-router";
 import { type KeyboardEvent, useRef, useState } from "react";
+import { CHROME_ZONE, useChromeBackHandoff } from "@/components/layout/header-chrome";
+import { patchRendersDiffView } from "@/features/review/components/issue-details-pane/patch";
 import { RESET_FILTER_VALUE } from "@/features/review/components/severity-filter-group";
 import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
 import { useReviewDetailsTabKeyboard } from "./use-details-tab-keyboard";
@@ -23,9 +26,11 @@ import { useIssueSelection } from "./use-issue-selection";
 import { useSeverityFilter } from "./use-severity-filter";
 import { useReviewSeverityFilterKeyboard } from "./use-severity-filter-keyboard";
 
-type FocusZone = "filters" | "list" | "details";
+type FocusZone = "filters" | "list" | "details" | "chrome";
 
-const ZONES = ["filters", "list", "details"] as const;
+// "chrome" is last: an unknown zone falls back to the first entry, which must be
+// a zone inside the page.
+const ZONES = ["filters", "list", "details", "chrome"] as const;
 const REVIEW_SCOPE = "review";
 const TAB_KEY_BY_ID: Record<IssueTab, string> = {
   details: "1",
@@ -37,6 +42,11 @@ const TAB_KEY_BY_ID: Record<IssueTab, string> = {
 interface UseReviewResultsKeyboardOptions {
   issues: ReviewIssue[];
   initialIssueId?: string | null;
+  /**
+   * Returns to the summary this results screen was entered from. Absent on
+   * summary-less deep links, where Escape leaves the route instead.
+   */
+  onBackToSummary?: () => void;
 }
 
 function getReviewResultsFooter(
@@ -45,7 +55,19 @@ function getReviewResultsFooter(
   availableTabs: readonly IssueTab[],
   isFilterActive: boolean,
   hasFixPlanSteps: boolean,
+  hasPatchDiff: boolean,
+  hasSummaryBack: boolean,
 ): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
+  // From the filters/list zones Escape returns to the summary when the screen
+  // was entered from one; the hint must name where the key actually goes.
+  const backShortcut: Shortcut = hasSummaryBack ? { key: "Esc", label: "Summary" } : BACK_SHORTCUT;
+
+  // Parked on the header Back button: every zone key stood down with the zone,
+  // so Escape is all that is still live.
+  if (focusZone === "chrome") {
+    return { shortcuts: [], rightShortcuts: [backShortcut] };
+  }
+
   if (focusZone === "filters") {
     const shortcuts: Shortcut[] = [
       SWITCH_PANE_SHORTCUT,
@@ -56,7 +78,7 @@ function getReviewResultsFooter(
     shortcuts.push({ key: "j", label: "Issue List" });
     return {
       shortcuts,
-      rightShortcuts: [BACK_SHORTCUT],
+      rightShortcuts: [backShortcut],
     };
   }
 
@@ -78,6 +100,7 @@ function getReviewResultsFooter(
         { key: "Enter/Space", label: "Toggle Step" },
       );
     }
+    if (hasPatchDiff) shortcuts.push({ key: "Enter", label: "Focus Diff" });
     shortcuts.push({ key: "←", label: "Issue List" });
     return {
       shortcuts,
@@ -91,7 +114,7 @@ function getReviewResultsFooter(
       { key: "j/k", label: "Select Issue" },
       { key: "→", label: "Issue Details" },
     ],
-    rightShortcuts: [BACK_SHORTCUT],
+    rightShortcuts: [backShortcut],
   };
 }
 
@@ -110,6 +133,7 @@ function severityFilterToKey(filter: ReadonlySet<ReviewIssue["severity"]>): stri
 export function useReviewResultsKeyboard({
   issues,
   initialIssueId,
+  onBackToSummary,
 }: UseReviewResultsKeyboardOptions) {
   const router = useRouter();
   const canGoBack = useCanGoBack();
@@ -136,8 +160,13 @@ export function useReviewResultsKeyboard({
   // reveals details while keeping list-zone focus for j/k browsing.
   const changeFocusZone = (zone: FocusZone) => {
     setFocusZone(zone);
+    // The chrome park leaves the panes as they were: the visible pane belongs to
+    // the zone the keyboard comes back to.
+    if (zone === CHROME_ZONE) return;
     setMobilePane(zone === "details" ? "details" : "list");
   };
+
+  const handOffToChrome = useChromeBackHandoff(changeFocusZone);
 
   const {
     severityFilter,
@@ -211,6 +240,9 @@ export function useReviewResultsKeyboard({
         // filter chip (focus repair skips containers that already hold focus).
         list: { container: listBodyRef, target: listRef },
         details: { container: detailsPaneRef, target: detailsScrollRef },
+        // The chrome is deliberately absent: it owns no target the page repairs
+        // focus to, and a registered container there would let this Tab cycle
+        // claim Tab from the Back button instead of letting native Tab re-enter.
       },
     },
     transitions: ({ zone, key }) => {
@@ -259,8 +291,11 @@ export function useReviewResultsKeyboard({
 
   // The severity ToggleGroup claims vertical arrows as extra horizontal moves,
   // so they must be intercepted before its navigation handler: ArrowDown stays
-  // a zone move into the list and ArrowUp stays inert instead of moving chips.
+  // a zone move into the list and ArrowUp, at the screen's topmost boundary,
+  // hands focus to the header Back button. Modified arrows stay native, as the
+  // history screen's hand-offs keep them.
   const handleFilterKeyDown = (event: KeyboardEvent) => {
+    if (hasModifierKey(event)) return;
     if (event.key === "ArrowDown") {
       event.preventDefault();
       changeFocusZone("list");
@@ -268,16 +303,23 @@ export function useReviewResultsKeyboard({
     }
     if (event.key === "ArrowUp") {
       event.preventDefault();
+      handOffToChrome();
     }
   };
 
   // Escape layering: from the details zone Escape steps back to the issue
-  // list; from the list/filters zones it leaves the screen.
+  // list; from the list/filters zones it returns to the summary the screen
+  // was entered from (TUI parity), or leaves the screen when a deep link
+  // skipped the summary.
   useKey(
     "Escape",
     () => {
       if (focusZone === "details") {
         changeFocusZone("list");
+        return;
+      }
+      if (onBackToSummary) {
+        onBackToSummary();
         return;
       }
       performBackAction(router, resolveBackAction(pathname, canGoBack));
@@ -331,12 +373,21 @@ export function useReviewResultsKeyboard({
   const hasFixPlanSteps =
     focusZone === "details" && activeTab === "details" && (selectedIssue?.fixPlan?.length ?? 0) > 0;
 
+  const hasPatchDiff =
+    focusZone === "details" &&
+    activeTab === "patch" &&
+    selectedIssue !== null &&
+    selectedIssue.suggested_patch !== null &&
+    patchRendersDiffView(selectedIssue.suggested_patch, selectedIssue.file, selectedIssue.evidence);
+
   const footer = getReviewResultsFooter(
     focusZone,
     selectedIssue !== null,
     availableTabs,
     isFilterActive,
     hasFixPlanSteps,
+    hasPatchDiff,
+    onBackToSummary !== undefined,
   );
 
   usePageFooter({ shortcuts: footer.shortcuts, rightShortcuts: footer.rightShortcuts });

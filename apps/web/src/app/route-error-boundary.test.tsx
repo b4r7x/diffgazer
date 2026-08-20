@@ -10,6 +10,7 @@ import {
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { FooterView } from "@/testing/footer-view";
 import { RouteOutletBoundary, RouteRecoveryPage } from "./route-error-boundary";
 import { RouteModuleImportError } from "./route-import";
 
@@ -42,6 +43,7 @@ describe("RouteRecoveryPage", () => {
         <FooterProvider initialShortcuts={[]}>
           <KeyboardProvider>
             <RouteOutletBoundary />
+            <FooterView />
           </KeyboardProvider>
         </FooterProvider>
       ),
@@ -74,6 +76,15 @@ describe("RouteRecoveryPage", () => {
     expect(screen.getByRole("heading", { name: "Something went wrong" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /go to home/i })).toBeInTheDocument();
+  });
+
+  it("advertises Escape as Home only, since that is the one thing it does", async () => {
+    const { router } = createRecoveryRouter();
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    expect(screen.getByText("Home")).toBeInTheDocument();
+    expect(screen.queryByText("Back")).not.toBeInTheDocument();
   });
 
   it("hides raw error detail in production", async () => {
@@ -119,6 +130,7 @@ describe("RouteRecoveryPage", () => {
         <FooterProvider initialShortcuts={[]}>
           <KeyboardProvider>
             <RouteOutletBoundary />
+            <FooterView />
           </KeyboardProvider>
         </FooterProvider>
       ),
@@ -161,5 +173,32 @@ describe("RouteRecoveryPage", () => {
     expect(screen.getByRole("heading", { name: "Something went wrong" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /go to home/i })).not.toBeInTheDocument();
+  });
+
+  it("focuses Try again on the root recovery page and retries on r", async () => {
+    const user = userEvent.setup();
+    const reloadDocument = vi.fn();
+    render(
+      <KeyboardProvider>
+        <RouteRecoveryPage
+          error={
+            new RouteModuleImportError(new TypeError("Failed to fetch dynamically imported module"))
+          }
+          clearFooter={false}
+          reloadDocument={reloadDocument}
+          reset={() => {}}
+          info={{ componentStack: "" }}
+        />
+      </KeyboardProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: /try again/i })).toHaveFocus();
+    // The gate renders outside the shell, so the hint beside the button is the
+    // only place r is advertised.
+    expect(screen.getByText("r")).toBeInTheDocument();
+
+    await user.keyboard("r");
+
+    expect(reloadDocument).toHaveBeenCalledOnce();
   });
 });

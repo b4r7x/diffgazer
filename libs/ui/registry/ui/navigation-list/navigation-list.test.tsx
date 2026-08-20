@@ -496,6 +496,28 @@ describe("NavigationList", () => {
     expect(onHighlightChange).toHaveBeenCalledWith("charlie");
   });
 
+  it("leaves printable keys unclaimed with typeahead false while arrows still navigate", async () => {
+    const windowKeys: Array<{ key: string; defaultPrevented: boolean }> = [];
+    const recordKey = (event: KeyboardEvent) =>
+      windowKeys.push({ key: event.key, defaultPrevented: event.defaultPrevented });
+    window.addEventListener("keydown", recordKey);
+    const user = userEvent.setup();
+    renderList({ typeahead: false, defaultHighlighted: "one" });
+
+    const listbox = screen.getByRole("listbox");
+    listbox.focus();
+    await user.keyboard("t");
+
+    // No buffering: the highlight stays put and the key reaches the window
+    // unclaimed so an external hotkey layer can own it.
+    expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-one"));
+    expect(windowKeys).toEqual([{ key: "t", defaultPrevented: false }]);
+    window.removeEventListener("keydown", recordKey);
+
+    await user.keyboard("{ArrowDown}");
+    expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("-two"));
+  });
+
   it("skips disabled options and reports non-wrapping boundaries", async () => {
     const user = userEvent.setup();
     const onNavigationBoundaryReached = vi.fn();

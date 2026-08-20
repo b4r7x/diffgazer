@@ -2,6 +2,7 @@
 
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentPropsWithRef, KeyboardEvent } from "react";
+import { FOCUS_OUTLINE_INSET } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 
 /** Class variants for scroll area. */
@@ -56,6 +57,8 @@ export function ScrollArea({
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(e);
     if (e.defaultPrevented) return;
+    // Inline on purpose: importing @diffgazer/keys here would make every
+    // scroll-area-dependent item demand a keys integration at install time.
     if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     if (e.target !== e.currentTarget) return;
 
@@ -140,8 +143,7 @@ export function ScrollArea({
         // Inset offset, not outset: this element is the scroll container, so an outline
         // drawn outside its padding box is clipped by whatever encloses it — the keyboard
         // focus indicator would vanish exactly where it is needed.
-        canKeyboardScroll &&
-          "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-[-2px]",
+        canKeyboardScroll && FOCUS_OUTLINE_INSET,
         className,
       )}
       {...props}

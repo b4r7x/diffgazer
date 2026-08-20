@@ -15,7 +15,8 @@
         "https://r.b4r7.dev/r/ui/icons.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/composed-refs.json"
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": true,
@@ -73,7 +74,8 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/spinner.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": true
@@ -316,7 +318,8 @@
         "https://r.b4r7.dev/r/keys/focus-restore.json",
         "https://r.b4r7.dev/r/keys/focusable.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/composed-refs.json"
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": true,
@@ -599,7 +602,8 @@
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": true
@@ -626,7 +630,8 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/corner-label-variants.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": false
@@ -947,7 +952,8 @@
         "https://r.b4r7.dev/r/ui/composed-refs.json",
         "https://r.b4r7.dev/r/ui/trigger-interop.json",
         "https://r.b4r7.dev/r/ui/overlay-surface.json",
-        "https://r.b4r7.dev/r/ui/overlay-hints.json"
+        "https://r.b4r7.dev/r/ui/overlay-hints.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": true,
@@ -1097,7 +1103,8 @@
         "https://r.b4r7.dev/r/ui/segmented-variants.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/composed-refs.json"
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": true,
@@ -1333,7 +1340,8 @@
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/keys/focus-restore.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
-        "https://r.b4r7.dev/r/ui/top-layer-stack.json"
+        "https://r.b4r7.dev/r/ui/top-layer-stack.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": true,
@@ -1471,7 +1479,8 @@
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/ui/input-variants.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/composed-refs.json"
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": true
@@ -1808,7 +1817,8 @@
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json",
         "https://r.b4r7.dev/r/ui/dom-id.json",
-        "https://r.b4r7.dev/r/ui/overlay-surface.json"
+        "https://r.b4r7.dev/r/ui/overlay-surface.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": true,
@@ -2046,7 +2056,8 @@
       "dependencies": [],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": true
@@ -2103,7 +2114,8 @@
       "dependencies": [],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": true
@@ -2150,7 +2162,8 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/marker-rail.json"
+        "https://r.b4r7.dev/r/ui/marker-rail.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": false
@@ -2433,6 +2446,40 @@
       ]
     },
     {
+      "name": "marker-rail",
+      "type": "registry:lib",
+      "title": "Marker Rail",
+      "description": "Shared left-rail mark for the selected row, with an inverted-row variant",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": false
+      },
+      "files": [
+        {
+          "path": "registry/lib/marker-rail.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "focus-outline",
+      "type": "registry:lib",
+      "title": "Focus Outline",
+      "description": "Shared keyboard-focus outline mark, with inset and virtual-highlight variants",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": false
+      },
+      "files": [
+        {
+          "path": "registry/lib/focus-outline.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "selectable-collection",
       "type": "registry:lib",
       "title": "Selectable Collection",
@@ -2645,7 +2692,8 @@
         "https://r.b4r7.dev/r/ui/fieldset-disabled.json",
         "https://r.b4r7.dev/r/ui/selectable-variants.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/composed-refs.json"
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/focus-outline.json"
       ],
       "meta": {
         "client": true

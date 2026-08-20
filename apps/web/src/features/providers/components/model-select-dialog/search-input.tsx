@@ -4,17 +4,20 @@ interface ModelSearchInputProps {
   value: string;
   onChange: (value: string) => void;
   onFocus: () => void;
-  onEscape: () => void;
   onArrowDown: () => void;
   disabled?: boolean;
   ref?: React.Ref<HTMLInputElement>;
 }
 
+/**
+ * Esc staging is SearchInput's own contract: a press with a query clears it and
+ * consumes the event; an empty-query press propagates to the dialog cancel, so
+ * clearing-then-closing takes two presses like the TUI.
+ */
 export function ModelSearchInput({
   value,
   onChange,
   onFocus,
-  onEscape,
   onArrowDown,
   disabled = false,
   ref,
@@ -28,13 +31,6 @@ export function ModelSearchInput({
         onFocus={onFocus}
         disabled={disabled}
         onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            onEscape();
-            // Stop the native <dialog> cancel event so the dialog stays open
-            // when the user just wants to clear/escape the search field.
-            e.stopPropagation();
-            e.preventDefault();
-          }
           if (e.key === "ArrowDown") {
             onArrowDown();
             e.preventDefault();

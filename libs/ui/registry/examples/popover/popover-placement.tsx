@@ -14,7 +14,7 @@ export default function PopoverPlacementExample() {
               <button
                 {...triggerProps}
                 type="button"
-                className="border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+                className="border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-0"
               >
                 {side}
               </button>

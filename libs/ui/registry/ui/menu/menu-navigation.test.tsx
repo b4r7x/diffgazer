@@ -81,6 +81,71 @@ describe("Menu typeahead", () => {
     expect(onSelect).toHaveBeenCalledWith("zulu");
   });
 
+  it("leaves printable keys unclaimed with typeahead false while arrows and Enter still work", async () => {
+    const onSelect = vi.fn();
+    const windowKeys: Array<{ key: string; defaultPrevented: boolean }> = [];
+    const recordKey = (event: KeyboardEvent) =>
+      windowKeys.push({ key: event.key, defaultPrevented: event.defaultPrevented });
+    window.addEventListener("keydown", recordKey);
+    const user = userEvent.setup();
+    render(
+      <Menu aria-label="Test menu" typeahead={false} onSelect={onSelect}>
+        <Menu.Item id="alpha">Alpha</Menu.Item>
+        <Menu.Item id="beta">Beta</Menu.Item>
+      </Menu>,
+    );
+
+    const menu = screen.getByRole("menu");
+    menu.focus();
+    await user.keyboard("b");
+
+    // No buffering: the highlight stays put and the key reaches the window
+    // unclaimed so an external hotkey layer can own it.
+    expect(menu).not.toHaveAttribute("aria-activedescendant");
+    expect(windowKeys).toEqual([{ key: "b", defaultPrevented: false }]);
+    window.removeEventListener("keydown", recordKey);
+
+    await user.keyboard("{ArrowDown}{Enter}");
+    expect(menu).toHaveAttribute("aria-activedescendant", getMenuItem("Alpha").id);
+    expect(onSelect).toHaveBeenCalledWith("alpha");
+  });
+
+  it("carries typeahead false into an open submenu so printable keys stay unclaimed", async () => {
+    const windowKeys: Array<{ key: string; defaultPrevented: boolean }> = [];
+    const recordKey = (event: KeyboardEvent) =>
+      windowKeys.push({ key: event.key, defaultPrevented: event.defaultPrevented });
+    const user = userEvent.setup();
+    render(
+      <Menu aria-label="Test menu" typeahead={false}>
+        <Menu.Sub>
+          <Menu.SubTrigger id="edit">Edit</Menu.SubTrigger>
+          <Menu.SubContent>
+            <Menu.Item id="undo">Undo</Menu.Item>
+            <Menu.Item id="redo">Redo</Menu.Item>
+          </Menu.SubContent>
+        </Menu.Sub>
+      </Menu>,
+    );
+
+    const menu = screen.getByRole("menu");
+    menu.focus();
+    await user.keyboard("{ArrowDown}{ArrowRight}");
+    const submenu = await screen.findByRole("menu", { name: "Edit" });
+    await waitFor(() => expect(submenu).toHaveFocus());
+    await waitFor(() =>
+      expect(submenu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-undo")),
+    );
+
+    window.addEventListener("keydown", recordKey);
+    await user.keyboard("r");
+    window.removeEventListener("keydown", recordKey);
+
+    // The nested flyout inherits the root's opt-out: no jump to Redo, and the
+    // key reaches the window unclaimed so an external hotkey layer can own it.
+    expect(submenu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-undo"));
+    expect(windowKeys).toEqual([{ key: "r", defaultPrevented: false }]);
+  });
+
   it("navigates with j on an empty buffer instead of jumping to a j-item", async () => {
     const user = userEvent.setup();
     render(

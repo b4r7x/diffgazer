@@ -2,6 +2,7 @@
 
 import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentPropsWithRef, MouseEvent, ReactNode } from "react";
+import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
 import {
@@ -12,7 +13,7 @@ import {
 
 /** Class variants for trigger. */
 export const accordionTriggerVariants = cva(
-  "flex w-full items-center gap-2 font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:cursor-not-allowed disabled:hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring py-2 -mt-2 -mb-2 pointer-coarse:mt-0 pointer-coarse:mb-0 pointer-coarse:min-h-11",
+  `flex w-full items-center gap-2 font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:cursor-not-allowed disabled:hover:text-muted-foreground ${FOCUS_OUTLINE} py-2 -mt-2 -mb-2 pointer-coarse:mt-0 pointer-coarse:mb-0 pointer-coarse:min-h-11`,
   {
     variants: {
       variant: {

@@ -294,6 +294,14 @@
       "types": "./dist/lib/compose-refs.d.ts",
       "import": "./dist/lib/compose-refs.js"
     },
+    "./lib/focus-outline": {
+      "types": "./dist/lib/focus-outline.d.ts",
+      "import": "./dist/lib/focus-outline.js"
+    },
+    "./lib/marker-rail": {
+      "types": "./dist/lib/marker-rail.d.ts",
+      "import": "./dist/lib/marker-rail.js"
+    },
     "./lib/selectable-collection": {
       "types": "./dist/lib/selectable-collection.d.ts",
       "import": "./dist/lib/selectable-collection.js"

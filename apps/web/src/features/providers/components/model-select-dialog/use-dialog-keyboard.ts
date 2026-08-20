@@ -29,8 +29,6 @@ interface ModelDialogKeyboardOptions {
   models: ModelInfo[];
   filteredModels: ModelInfo[];
   discoveryStatus: DiscoveryStatus;
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
   cycleTierFilter: () => void;
   resetFilters: () => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
@@ -60,7 +58,6 @@ interface ModelDialogKeyboardReturn {
   handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
   handleConfirm: (modelId?: string) => void;
   handleSearchFocus: () => void;
-  handleSearchEscape: () => void;
   handleSearchArrowDown: () => void;
   handleListHighlightChange: (modelId: string | null) => void;
   handleListBoundaryReached: (direction: "previous" | "next") => void;
@@ -88,8 +85,6 @@ export function useModelDialogKeyboard({
   models,
   filteredModels,
   discoveryStatus,
-  searchQuery,
-  setSearchQuery,
   cycleTierFilter,
   resetFilters,
   searchInputRef,
@@ -315,19 +310,10 @@ export function useModelDialogKeyboard({
     // disabled input cannot take focus, stranding the post-save repair.
     open: open && !isSaving,
     inSearch: isZone("search"),
-    searchQuery,
-    setSearchQuery,
     blurSearchInput,
     focusSearchInput,
     focusCloseButton,
     focusZoneBelowSearch,
-    escapeSearchZone: () => {
-      if (listInteractive) {
-        enterListFromBoundary("first");
-        return;
-      }
-      focusZoneBelowSearch();
-    },
   });
 
   const resetDialogState = useEffectEvent(() => {
@@ -454,7 +440,6 @@ export function useModelDialogKeyboard({
     handleFilterKeyDown: filters.handleFilterKeyDown,
     handleConfirm,
     handleSearchFocus,
-    handleSearchEscape: search.handleSearchEscape,
     handleSearchArrowDown: search.handleSearchArrowDown,
     handleListHighlightChange,
     handleListBoundaryReached,

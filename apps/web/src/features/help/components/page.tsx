@@ -16,12 +16,14 @@ import { useEffect, useRef } from "react";
 import { useFocusWithin } from "@/hooks/use-focus-within";
 import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
 
-// "h → History" and "o → Open Last Run" are web-only live bindings, so they stay
-// appended here per F-242 per-surface-extras scoping.
+// "h → History" and the home sidebar jumps (o/t/p) are web-only live bindings,
+// so they stay appended here per F-242 per-surface-extras scoping.
 const SHORTCUTS: Shortcut[] = [
   ...HELP_SHORTCUTS,
   { key: "h", label: "Open History", context: "global" },
   { key: "o", label: "Open Last Run", context: "home" },
+  { key: "t", label: "Grant Trust Permissions", context: "home" },
+  { key: "p", label: "Open Provider Settings", context: "home" },
 ];
 
 const TOUCH_GESTURES = [

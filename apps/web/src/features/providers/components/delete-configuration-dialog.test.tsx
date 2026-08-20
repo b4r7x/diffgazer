@@ -63,6 +63,27 @@ describe("DeleteConfigurationDialog", () => {
     expect(props.onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it("moves between Cancel and Delete with Left/Right and activates the focused action", async () => {
+    const user = userEvent.setup();
+    const props = renderDialog();
+
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    const del = screen.getByRole("button", { name: "Delete" });
+    await waitFor(() => expect(cancel).toHaveFocus());
+
+    await user.keyboard("{ArrowRight}");
+    expect(del).toHaveFocus();
+    await user.keyboard("{ArrowLeft}");
+    expect(cancel).toHaveFocus();
+    // The row does not wrap: Left on the safe action stays put.
+    await user.keyboard("{ArrowLeft}");
+    expect(cancel).toHaveFocus();
+
+    await user.keyboard("{ArrowRight}{Enter}");
+    expect(props.onConfirm).toHaveBeenCalledOnce();
+    expect(props.onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it("closes on Escape without deleting", () => {
     const props = renderDialog();
 

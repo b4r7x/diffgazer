@@ -10,6 +10,7 @@ import {
   composedContains,
   getComposedEventTarget,
   getOwnerView,
+  hasModifierKey,
   isEditableElement,
   isNode,
 } from "../dom/element-guards.js";
@@ -129,7 +130,7 @@ export function useNavigation<TValue extends string = string>(
     const isMoveKey = matchedUpKey !== null || matchedDownKey !== null;
     // A configured hotkey states its own modifiers; anything else modified is a
     // browser or OS gesture the list must leave alone.
-    if (!isMoveKey && (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey)) return;
+    if (!isMoveKey && hasModifierKey(event)) return;
 
     const isActivationKey = (key === "Enter" && handlesEnter) || (key === " " && handlesSpace);
     const isSpecialKey = key === "Home" || key === "End" || isActivationKey;

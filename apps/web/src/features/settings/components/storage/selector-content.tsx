@@ -7,6 +7,7 @@ import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { useId, useState } from "react";
+import { SELECTED_OPTION_ROW } from "@/lib/selected-option-row";
 
 interface StorageSelectorContentProps {
   value: SecretsStorage | null;
@@ -76,6 +77,7 @@ export function StorageSelectorContent({
             value={option.value}
             label={option.label}
             description={option.description}
+            className={SELECTED_OPTION_ROW}
             onFocus={() => {
               setFocusedStorage(option.value);
               onFocus?.(option.value);
