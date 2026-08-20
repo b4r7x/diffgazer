@@ -5,12 +5,15 @@ import {
 } from "@diffgazer/core/providers";
 import { buildProviderSettingsRows } from "@diffgazer/core/schemas/config";
 import { buildProviderRows } from "@diffgazer/core/testing/provider-fixtures";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { FOCUS_OUTLINE_INSET } from "@diffgazer/ui/lib/focus-outline";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axeCore from "axe-core";
 import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { useFocusWithin } from "@/hooks/use-focus-within";
+import { expectSingleReticle } from "@/testing/reticle";
 import { ProviderDetails, type ProviderDetailsProps } from "./details";
 
 const ROWS = buildProviderRows();
@@ -43,6 +46,21 @@ function Harness({ row, unrecognized, activeConfigurationId = null, ...props }: 
       layout={layout}
       overflowMenu={{ open: menuOpen, onOpenChange: setMenuOpen }}
     />
+  );
+}
+
+/** Composes the pane the way the providers page does: the Panel reticle driven by focus within. */
+function PanelHarness(props: HarnessProps) {
+  const detailsPane = useFocusWithin<HTMLDivElement>();
+  return (
+    <Panel
+      {...detailsPane.props}
+      focused={detailsPane.focusWithin}
+      as="section"
+      aria-label="Provider details"
+    >
+      <Harness {...props} />
+    </Panel>
   );
 }
 
@@ -153,13 +171,25 @@ describe("ProviderDetails", () => {
     }
   });
 
-  it("attaches each description to its own row and keeps the value scalar", () => {
+  it("pairs each fact term with the definition that answers it", () => {
     renderDetails(GEMINI_ROW);
 
+    const term = screen.getByText("Product");
+    // getByText matches an element's own text, so this also pins the value slot
+    // to the scalar: the description nests inside it as a block of its own.
+    const value = screen.getByText(GEMINI_ROW.product.name, { selector: "dd" });
     const description = screen.getByText(GEMINI_ROW.product.description);
-    const productLabel = screen.getByText("Product");
-    expect(description.closest("div")).toBe(productLabel.closest("div"));
-    expect(screen.getByText(GEMINI_ROW.product.name, { selector: "dd" })).toBeInTheDocument();
+
+    // Description-list semantics, not visual adjacency: assistive tech announces
+    // the facts as paired terms and definitions. (Neither role takes its name
+    // from content, so the pairing is asserted, not queried by name.)
+    expect(term).toHaveRole("term");
+    expect(value).toHaveRole("definition");
+    // The value must follow the label it answers, never trail a description:
+    // anything reading the row linearly would otherwise get a whole sentence
+    // between the two.
+    expect(term.nextElementSibling).toBe(value);
+    expect(value).toContainElement(description);
   });
 
   it("publishes the display-status tone on the status readout", () => {
@@ -203,14 +233,18 @@ describe("ProviderDetails", () => {
     expect(focusFallbackRef.current).toHaveAttribute("tabindex", "-1");
   });
 
-  it("wears libs/ui's inset focus grammar on the parking surface", () => {
+  it("parks focus without a ring of its own, deferring to the pane reticle", () => {
     const focusFallbackRef = createRef<HTMLDivElement>();
     renderDetails(GEMINI_ROW, { focusFallbackRef });
 
-    // The grammar constant is libs/ui's documented class contract, imported
-    // from the package: a parking surface that stops composing it, or restates
-    // it by hand, fails here rather than drifting silently.
-    expect(focusFallbackRef.current).toHaveClass(...FOCUS_OUTLINE_INSET.split(" "));
+    // One mark per pane: the Panel reticle names the pane, so the parking
+    // surface defuses its own outline. The outline tokens are libs/ui's
+    // documented class contract, so a reintroduced second ring fails here
+    // rather than drifting silently.
+    expect(focusFallbackRef.current).toHaveClass("focus:outline-none");
+    for (const token of FOCUS_OUTLINE_INSET.split(" ")) {
+      expect(focusFallbackRef.current).not.toHaveClass(token);
+    }
   });
 
   it("scrolls the details pane with the keyboard when the pane itself is focused", async () => {
@@ -232,6 +266,24 @@ describe("ProviderDetails", () => {
 
     await user.keyboard("{ArrowUp}");
     expect(pane.scrollTop).toBe(80);
+  });
+
+  it("lets the Panel reticle alone mark the pane when it takes focus", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<PanelHarness row={GEMINI_ROW} onAction={vi.fn()} />);
+
+    const pane = screen.getByRole("region", { name: "Provider details content" });
+    await user.tab();
+    expect(pane).toHaveFocus();
+
+    expect(screen.getByRole("region", { name: "Provider details" })).toHaveAttribute(
+      "data-state",
+      "focused",
+    );
+    // The scroller keeps keyboard scrolling but defers the pane mark to the
+    // Panel: the defusal class is libs/ui's documented outline contract.
+    expect(pane).toHaveClass("focus:outline-none");
+    expectSingleReticle(container);
   });
 
   it("offers to review the provider data notice while consent is outstanding", async () => {

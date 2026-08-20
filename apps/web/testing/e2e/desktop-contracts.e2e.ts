@@ -69,72 +69,105 @@ async function measureHeights(locator: Locator): Promise<number[]> {
   return locator.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
 }
 
-interface ScrollViewportGeometry {
+interface ClippedViewportGeometry {
   centerXDelta: number;
   centerYDelta: number;
+  /** Panel top minus where the 1:2 hero band puts it inside the viewport's content box. */
+  bandTopDelta: number;
   panelWidth: number;
 }
 
 /**
- * Where a panel sits inside the scrollport that owns it. The scrollport is found
- * by walking up from the panel rather than by class name, because which element
- * scrolls differs per screen (a plain overflow wrapper on the hub, a ScrollArea
- * on help) and the contract is about the box the user sees, not the markup.
+ * Where a panel sits inside the clipped viewport that owns it. The viewport is
+ * found by walking up from the panel rather than by class name, because which
+ * element clips differs per screen: the settings screens clip in their own
+ * padded overflow-hidden wrapper, while help clips in the app shell's
+ * overflow-hidden main content box (help's labelled scroll region lives inside
+ * the measured panel, so nothing outside it scrolls). Overflow-hidden boxes
+ * count as viewports alongside auto/scroll ones — the contract is about the
+ * box the user sees, not the markup.
  */
-async function measureInScrollViewport(panel: Locator): Promise<ScrollViewportGeometry> {
+async function measureInClippedViewport(panel: Locator): Promise<ClippedViewportGeometry> {
   return panel.evaluate((element) => {
     let scroller = element.parentElement;
     while (scroller) {
       const { overflowY } = getComputedStyle(scroller);
-      if (overflowY === "auto" || overflowY === "scroll") break;
+      if (overflowY === "auto" || overflowY === "scroll" || overflowY === "hidden") break;
       scroller = scroller.parentElement;
     }
-    if (!scroller) throw new Error("the panel has no scrolling ancestor");
+    if (!scroller) throw new Error("the panel has no clipping ancestor");
 
     const scrollerRect = scroller.getBoundingClientRect();
-    // clientLeft/clientTop plus clientWidth/clientHeight is the scrollport itself:
+    // clientLeft/clientTop plus clientWidth/clientHeight is the viewport itself:
     // borders and any scrollbar gutter drop out, so the centre compared against is
     // the box the panel is actually seen inside.
     const viewLeft = scrollerRect.left + scroller.clientLeft;
     const viewTop = scrollerRect.top + scroller.clientTop;
     const panelRect = element.getBoundingClientRect();
 
+    // The hero band lives in the viewport's content box: spare height around
+    // the panel splits 1:2, so the expected top offset is a third of the spare.
+    const style = getComputedStyle(scroller);
+    const paddingTop = Number.parseFloat(style.paddingTop);
+    const contentHeight =
+      scroller.clientHeight - paddingTop - Number.parseFloat(style.paddingBottom);
+    const spare = Math.max(0, contentHeight - panelRect.height);
+
     return {
       centerXDelta: panelRect.left + panelRect.width / 2 - (viewLeft + scroller.clientWidth / 2),
       centerYDelta: panelRect.top + panelRect.height / 2 - (viewTop + scroller.clientHeight / 2),
+      bandTopDelta: panelRect.top - (viewTop + paddingTop + spare / 3),
       panelWidth: panelRect.width,
     };
   });
 }
 
 const SINGLE_PANEL_SCREENS = [
-  { path: "/settings", panel: "Settings Hub", contentWidth: 672 },
-  { path: "/settings/diagnostics", panel: "System Diagnostics", contentWidth: 672 },
-  // Help is not a settings form and keeps its own wider large-screen tier, so the
-  // shared 672px width does not apply to it — only the centring half does.
-  { path: "/help", panel: "Help", contentWidth: null },
+  // The hub's rows pair labels with values, so its card keeps the wider 3xl
+  // tier while single-column settings children hold the shared 2xl width.
+  { path: "/settings", panel: "Settings Hub", contentWidth: 768, vertical: "centre" },
+  // The one card with real spare height at the desktop size, so it is the
+  // screen that pins the band split itself rather than the collapsed centre.
+  {
+    path: "/settings/diagnostics",
+    panel: "System Diagnostics",
+    contentWidth: 672,
+    vertical: "band",
+  },
+  // Help is not a settings form and keeps its own wider large-screen tier, so
+  // no width is pinned — only the placement half of the contract applies.
+  { path: "/help", panel: "Help", contentWidth: null, vertical: "centre" },
 ] as const;
 
-test("single-panel screens centre on both axes inside their scroll viewport", async ({ page }) => {
+test("single-panel screens centre and hold the hero band inside their clipped viewport", async ({
+  page,
+}) => {
   await mockAppApi(page);
 
   for (const screen of SINGLE_PANEL_SCREENS) {
     await page.goto(screen.path);
-    // Exact: the help screen nests the measured "Help" panel inside a labelled
-    // "Help content" scroll region, and role-name matching is substring by default.
+    // Exact: the help screen nests a labelled "Help content" scroll region
+    // inside the measured "Help" panel, and role-name matching is substring by
+    // default.
     const panel = page.getByRole("region", { name: screen.panel, exact: true });
     await expect(panel).toBeVisible();
 
-    const geometry = await measureInScrollViewport(panel);
+    const geometry = await measureInClippedViewport(panel);
     expect(Math.abs(geometry.centerXDelta), `${screen.path} horizontal centre`).toBeLessThanOrEqual(
       1,
     );
-    // Both axes: the auto margins that centre these panels collapse the moment
-    // the content outgrows the scrollport, so a vertical centre off by more than
-    // a pixel is either a lost centring rule or a density regression.
-    expect(Math.abs(geometry.centerYDelta), `${screen.path} vertical centre`).toBeLessThanOrEqual(
-      1,
-    );
+    // Vertical: spare height splits 1:2 around these cards (the hero-tier
+    // optical band). A card that outgrows the desktop viewport is capped to it,
+    // so its spare collapses and the band degenerates to a vertical centre; the
+    // diagnostics card keeps real spare and is pinned to the band itself. Either
+    // way, a drifted panel is a lost band rule or a density regression.
+    if (screen.vertical === "centre") {
+      expect(Math.abs(geometry.centerYDelta), `${screen.path} vertical centre`).toBeLessThanOrEqual(
+        1,
+      );
+    } else {
+      expect(Math.abs(geometry.bandTopDelta), `${screen.path} hero band`).toBeLessThanOrEqual(1);
+    }
     if (screen.contentWidth !== null) {
       expect(geometry.panelWidth, `${screen.path} content width`).toBe(screen.contentWidth);
     }

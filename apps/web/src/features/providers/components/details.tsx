@@ -14,9 +14,10 @@ import type { BadgeVariant } from "@diffgazer/core/schemas/presentation";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
+import { KeyValue } from "@diffgazer/ui/components/key-value";
+import { Panel, type PanelProps } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
-import { FOCUS_OUTLINE_INSET } from "@diffgazer/ui/lib/focus-outline";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { ReactNode, RefCallback, RefObject } from "react";
 import { PROVIDER_STATUS_TONE } from "../lib/status-tone";
@@ -52,16 +53,21 @@ export interface ProviderDetailsProps {
   };
 }
 
-/** Callout rail border per status variant; the text tone comes from the shared map. */
-const STATUS_RAIL: Record<BadgeVariant, string> = {
-  success: "border-success-border",
-  warning: "border-warning-border",
-  error: "border-error-border",
-  info: "border-info-border",
-  neutral: "border-border",
+/** Rail tint per status variant; neutral keeps the frame's plain --border-strong rail. */
+const STATUS_RAIL_TONE: Record<BadgeVariant, PanelProps["tone"]> = {
+  success: "success",
+  warning: "warning",
+  error: "error",
+  info: "info",
+  neutral: undefined,
 };
 
-/** One scroll/layout contract for the pane, shared by the empty and populated states. */
+/**
+ * One scroll/layout contract for the pane, shared by the empty and populated
+ * states. It stays the "details" zone focus target with keyboard scrolling, but
+ * paints no inset ring of its own: the Panel reticle around it is the pane's
+ * single mark.
+ */
 function ProviderDetailsPane({
   paneRef,
   children,
@@ -73,7 +79,7 @@ function ProviderDetailsPane({
     <ScrollArea
       ref={paneRef}
       aria-label="Provider details content"
-      className="@container flex min-h-0 flex-1 flex-col max-md:overflow-x-visible max-md:overflow-y-visible"
+      className="@container flex min-h-0 flex-1 flex-col focus:outline-none max-md:overflow-x-visible max-md:overflow-y-visible"
     >
       {children}
     </ScrollArea>
@@ -195,17 +201,22 @@ export function ProviderDetails({
         <div
           ref={focusFallbackRef}
           tabIndex={-1}
-          className={cn("flex flex-col gap-6 p-6", FOCUS_OUTLINE_INSET)}
+          className="flex flex-col gap-6 p-6 focus:outline-none"
         >
           {actionRow}
-          <div className="border-l-2 border-border pl-3">
-            <p className="text-xs leading-relaxed text-foreground">
-              {UNRECOGNIZED_CONFIGURATION_COPY.description}
-            </p>
-            <p className="mt-1 font-mono text-2xs leading-relaxed text-muted-foreground">
-              {unrecognized.configurationId}
-            </p>
-          </div>
+          {/* Rail, not the default enclosure: the pane's guidance annotates the
+              actions it sits under, where a boxed panel would read as another
+              section of the pane. The status guidance below makes the same call. */}
+          <Panel frame="rail" density="compact">
+            <Panel.Content spacing="none">
+              <p className="text-xs leading-relaxed text-foreground">
+                {UNRECOGNIZED_CONFIGURATION_COPY.description}
+              </p>
+              <p className="mt-1 font-mono text-2xs leading-relaxed text-muted-foreground">
+                {unrecognized.configurationId}
+              </p>
+            </Panel.Content>
+          </Panel>
         </div>
       </ProviderDetailsPane>
     );
@@ -243,13 +254,13 @@ export function ProviderDetails({
         </span>
       </div>
 
-      {/* Keyboard focus parks here after a row action removes its own target; the
-          ring names the pane it landed in. Inset because the pane is a scroller,
-          which would clip an outside outline. */}
+      {/* Keyboard focus parks here after a row action removes its own target.
+          No ring of its own: the Panel reticle already names the pane it landed
+          in, and a pane wears one mark. */}
       <div
         ref={focusFallbackRef}
         tabIndex={-1}
-        className={cn("flex flex-col gap-6 p-6 pt-3", FOCUS_OUTLINE_INSET)}
+        className="flex flex-col gap-6 p-6 pt-3 focus:outline-none"
       >
         {actionRow}
 
@@ -272,53 +283,67 @@ export function ProviderDetails({
           </p>
         ) : null}
 
-        <div className={cn("border-l-2 pl-3", STATUS_RAIL[displayStatus.variant])}>
-          <p className="text-xs leading-relaxed text-foreground">{displayStatus.explanation}</p>
-          {row.readiness.remediation.code === "none" ? null : (
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {displayStatus.remediation}
-            </p>
-          )}
-        </div>
+        <Panel frame="rail" tone={STATUS_RAIL_TONE[displayStatus.variant]} density="compact">
+          <Panel.Content spacing="none">
+            <p className="text-xs leading-relaxed text-foreground">{displayStatus.explanation}</p>
+            {row.readiness.remediation.code === "none" ? null : (
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {displayStatus.remediation}
+              </p>
+            )}
+          </Panel.Content>
+        </Panel>
 
         <section>
-          <SectionHeader variant="accent" bordered className="mb-3 border-border/60">
+          <SectionHeader variant="accent" bordered className="mb-3">
             Configuration
           </SectionHeader>
-          <dl className="border border-border/60">
-            {factRows.map((fact, index) => (
-              <div
-                key={fact.id}
-                className={cn(
-                  "grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-6 p-3",
-                  index > 0 && "border-t border-border/60",
-                )}
-              >
-                <dt className="text-xs text-muted-foreground">{fact.label}</dt>
-                <dd className="text-right text-xs font-bold text-foreground">{fact.value}</dd>
-                {fact.description ? (
-                  <dd className="col-span-2 mt-2 text-2xs leading-relaxed text-muted-foreground">
-                    {fact.description}
-                  </dd>
-                ) : null}
-              </div>
-            ))}
-          </dl>
+          <Panel density="compact">
+            {/* The bordered rows bring their own top padding, so the box drops its
+                own and repays it at the bottom to stay optically even. */}
+            <Panel.Content spacing="none" className="pt-0 pb-4">
+              {/* A description list, so the facts are announced as paired terms and
+                  definitions rather than a run of text. label -> value -> description:
+                  the description qualifies the value, so the label slot must not hold
+                  it — that seats a whole sentence between a label and the value
+                  answering it. It stays left-aligned inside the right-aligned value. */}
+              <KeyValue bordered>
+                {factRows.map((fact) => (
+                  <KeyValue.Item
+                    key={fact.id}
+                    label={fact.label}
+                    value={
+                      <>
+                        {fact.value}
+                        {fact.description ? (
+                          <span className="mt-2 block text-left font-normal text-2xs leading-relaxed text-muted-foreground">
+                            {fact.description}
+                          </span>
+                        ) : null}
+                      </>
+                    }
+                  />
+                ))}
+              </KeyValue>
+            </Panel.Content>
+          </Panel>
         </section>
 
         {proseRows.map((prose) => (
           <section key={prose.id}>
-            <SectionHeader variant="accent" bordered className="mb-3 border-border/60">
+            <SectionHeader variant="accent" bordered className="mb-3">
               {prose.label}
             </SectionHeader>
-            <div className="border border-border/60 p-3">
-              <p className="text-xs leading-relaxed text-foreground">{prose.value}</p>
-              {prose.description ? (
-                <p className="mt-2 text-2xs leading-relaxed text-muted-foreground">
-                  {prose.description}
-                </p>
-              ) : null}
-            </div>
+            <Panel density="compact">
+              <Panel.Content spacing="sm">
+                <p className="text-xs leading-relaxed text-foreground">{prose.value}</p>
+                {prose.description ? (
+                  <p className="text-2xs leading-relaxed text-muted-foreground">
+                    {prose.description}
+                  </p>
+                ) : null}
+              </Panel.Content>
+            </Panel>
           </section>
         ))}
       </div>

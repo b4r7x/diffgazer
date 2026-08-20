@@ -12,8 +12,8 @@ function FooterProbe() {
   );
 }
 
-function renderFailure(overrides: Partial<FailureViewProps> = {}) {
-  const props: FailureViewProps = {
+function failureProps(overrides: Partial<FailureViewProps> = {}): FailureViewProps {
+  return {
     title: "Reviews Unavailable",
     message: "Diffgazer could not read the review history.",
     scope: "failure-view-test",
@@ -21,17 +21,23 @@ function renderFailure(overrides: Partial<FailureViewProps> = {}) {
     secondary: { label: "Back to Home", onAction: vi.fn() },
     ...overrides,
   };
+}
 
-  const view = render(
+function failureTree(props: FailureViewProps) {
+  return (
     <FooterProvider>
       <KeyboardProvider>
         <FailureView {...props} />
         <FooterProbe />
       </KeyboardProvider>
-    </FooterProvider>,
+    </FooterProvider>
   );
+}
 
-  return { ...view, props };
+function renderFailure(overrides: Partial<FailureViewProps> = {}) {
+  const props = failureProps(overrides);
+
+  return { ...render(failureTree(props)), props };
 }
 
 describe("FailureView", () => {
@@ -66,17 +72,12 @@ describe("FailureView", () => {
     const user = userEvent.setup();
     const onPrimary = vi.fn();
     render(
-      <FooterProvider>
-        <KeyboardProvider>
-          <FailureView
-            title="Review Failed"
-            message="The provider dropped the connection."
-            scope="failure-view-single-action-test"
-            primary={{ label: "Back to Home", onAction: onPrimary }}
-          />
-          <FooterProbe />
-        </KeyboardProvider>
-      </FooterProvider>,
+      failureTree({
+        title: "Review Failed",
+        message: "The provider dropped the connection.",
+        scope: "failure-view-single-action-test",
+        primary: { label: "Back to Home", onAction: onPrimary },
+      }),
     );
 
     expect(screen.getAllByRole("button")).toHaveLength(1);
@@ -130,7 +131,31 @@ describe("FailureView", () => {
     expect(onRecovery).toHaveBeenCalledOnce();
   });
 
-  it("seats the resting panel in the optical band with its tone tint", () => {
+  it("keeps the focused reticle on the panel while focus parks there mid-mutation", async () => {
+    const props = failureProps({ scope: "failure-view-park-test" });
+    const { container, rerender } = render(failureTree(props));
+
+    // The reticle follows real focus: mount focus sits on the primary action
+    // inside the panel, so the panel claims the corner brackets.
+    const panel = container.querySelector('[data-slot="panel"]');
+    await waitFor(() => expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus());
+    expect(panel).toHaveAttribute("data-state", "focused");
+
+    // Every action disables mid-mutation: the row parks focus on the panel
+    // itself, and the parked panel must keep the visible reticle.
+    rerender(
+      failureTree({
+        ...props,
+        primary: { ...props.primary, disabled: true },
+        secondary: props.secondary && { ...props.secondary, disabled: true },
+      }),
+    );
+
+    await waitFor(() => expect(panel).toHaveFocus());
+    expect(panel).toHaveAttribute("data-state", "focused");
+  });
+
+  it("seats the panel in the optical band with its tone tint", () => {
     const { container } = renderFailure();
 
     // Panel data attributes are the documented contract: the failure tone tints

@@ -42,6 +42,7 @@ describe("IssueListPane row highlight inversion", () => {
       <IssueListPane
         issues={issues}
         allIssues={issues}
+        runDisplayId="#review-1"
         selectedIssueId="issue-1"
         highlightedIssueId="issue-1"
         onSelectIssue={vi.fn()}
@@ -62,6 +63,7 @@ describe("IssueListPane row highlight inversion", () => {
       <IssueListPane
         issues={issues}
         allIssues={issues}
+        runDisplayId="#review-1"
         selectedIssueId="issue-1"
         highlightedIssueId="issue-1"
         onSelectIssue={vi.fn()}
@@ -83,6 +85,7 @@ describe("IssueListPane severity accessibility", () => {
       <IssueListPane
         issues={issues}
         allIssues={issues}
+        runDisplayId="#review-1"
         selectedIssueId="issue-1"
         onSelectIssue={vi.fn()}
         filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
@@ -108,6 +111,7 @@ describe("IssueListPane severity accessibility", () => {
       <IssueListPane
         issues={[issueWithoutLine]}
         allIssues={[issueWithoutLine]}
+        runDisplayId="#review-1"
         selectedIssueId={issueWithoutLine.id}
         onSelectIssue={vi.fn()}
         filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
@@ -126,6 +130,7 @@ describe("IssueListPane severity accessibility", () => {
       <IssueListPane
         issues={issues}
         allIssues={issues}
+        runDisplayId="#review-1"
         selectedIssueId={null}
         onSelectIssue={vi.fn()}
         filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
@@ -141,6 +146,7 @@ describe("IssueListPane severity accessibility", () => {
       <IssueListPane
         issues={[]}
         allIssues={[]}
+        runDisplayId="#review-1"
         selectedIssueId={null}
         onSelectIssue={vi.fn()}
         filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
@@ -158,6 +164,7 @@ describe("IssueListPane severity accessibility", () => {
       <IssueListPane
         issues={issues}
         allIssues={issues}
+        runDisplayId="#review-1"
         selectedIssueId={null}
         onSelectIssue={onSelectIssue}
         filter={{ activeFilter: new Set(), onFilterChange }}
@@ -172,6 +179,7 @@ describe("IssueListPane severity accessibility", () => {
       <IssueListPane
         issues={[]}
         allIssues={issues}
+        runDisplayId="#review-1"
         selectedIssueId={null}
         onSelectIssue={onSelectIssue}
         filter={{ activeFilter: new Set(["nit"]), onFilterChange }}
@@ -190,6 +198,7 @@ describe("IssueListPane severity", () => {
       <IssueListPane
         issues={issues}
         allIssues={issues}
+        runDisplayId="#review-1"
         selectedIssueId="issue-1"
         onSelectIssue={vi.fn()}
         filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
@@ -239,6 +248,7 @@ describe("IssueListPane severity", () => {
       <IssueListPane
         issues={gradedIssues}
         allIssues={gradedIssues}
+        runDisplayId="#review-1"
         selectedIssueId={null}
         onSelectIssue={vi.fn()}
         filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
@@ -273,6 +283,7 @@ describe("IssueListPane severity", () => {
       <IssueListPane
         issues={uneven}
         allIssues={uneven}
+        runDisplayId="#review-1"
         selectedIssueId={null}
         onSelectIssue={vi.fn()}
         filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
@@ -303,6 +314,7 @@ describe("Review pane chrome", () => {
         <IssueListPane
           issues={issues}
           allIssues={issues}
+          runDisplayId="#review-1"
           selectedIssueId="issue-1"
           onSelectIssue={vi.fn()}
           filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}

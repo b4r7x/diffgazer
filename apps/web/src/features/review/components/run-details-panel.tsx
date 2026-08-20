@@ -1,5 +1,5 @@
 import type { LensSummaryRow } from "@diffgazer/core/review";
-import { Panel, PanelContent } from "@diffgazer/ui/components/panel";
+import { Panel } from "@diffgazer/ui/components/panel";
 
 export interface RunDetailsPanelProps {
   notices: string[];
@@ -16,8 +16,11 @@ export function RunDetailsPanel({ notices, lensRows }: RunDetailsPanelProps) {
   if (notices.length === 0 && lensRows.length === 0) return null;
 
   return (
-    <Panel frame="surface">
-      <PanelContent spacing="sm">
+    <Panel aria-label="Run details">
+      <Panel.Label variant="border" aria-hidden="true">
+        Run Details
+      </Panel.Label>
+      <Panel.Content spacing="sm">
         {notices.map((notice) => (
           <p key={notice} className="text-muted-foreground text-xs" role="note">
             {notice}
@@ -50,7 +53,7 @@ export function RunDetailsPanel({ notices, lensRows }: RunDetailsPanelProps) {
             </tbody>
           </table>
         ) : null}
-      </PanelContent>
+      </Panel.Content>
     </Panel>
   );
 }

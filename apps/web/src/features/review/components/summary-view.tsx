@@ -7,15 +7,17 @@ import {
   buildReviewSummary,
 } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
-import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
-import { DECLINE, useKey, useScope } from "@diffgazer/keys";
+import { DECLINE, useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
-import { useEffect, useRef } from "react";
+import { type FocusEvent, type KeyboardEvent, useRef } from "react";
 import { ReviewCompleteSummary } from "@/features/review/components/complete-summary";
 import { RunDetailsPanel } from "@/features/review/components/run-details-panel";
 import { isInteractiveTarget } from "@/features/review/lib/interactive-target";
+import { useFocusWithin } from "@/hooks/use-focus-within";
 
 interface ReviewSummaryViewProps {
   issues: ReviewIssue[];
@@ -27,6 +29,23 @@ interface ReviewSummaryViewProps {
   minSeverity?: ReviewSeverity;
   onEnterReview: () => void;
   onBack: () => void;
+}
+
+// The action row and the summary region bind different keys, so the legend names
+// the zone that holds focus: ←/→ is inert inside the region, and the keys that do
+// work there - the scroll keys, and Tab back to the row - are named nowhere else.
+function getSummaryShortcuts(inActions: boolean): Shortcut[] {
+  if (inActions) {
+    return [
+      { key: "←/→", label: "Move Action" },
+      { key: "Enter", label: "View Results" },
+    ];
+  }
+  return [
+    { key: "↑/↓", label: "Scroll" },
+    { key: "Tab", label: "Actions" },
+    { key: "Enter", label: "View Results" },
+  ];
 }
 
 export function ReviewSummaryView({
@@ -73,56 +92,117 @@ export function ReviewSummaryView({
   });
   useKey("Escape", onBack);
 
-  // Focus the summary region on mount so the screen opens with a real focus
-  // home instead of document.body: the app shell is overflow-hidden, so arrows
-  // on body scroll nothing and overflowing summary content would be
-  // keyboard-unreachable. The labelled ScrollArea owns Arrow/Page/Home/End
-  // scrolling and sits in the Tab order ahead of the action row.
+  // The labelled ScrollArea is the content-zone target: ↑ from the action row
+  // focuses it so overflowing summary content stays keyboard-scrollable, and ↓
+  // scrolls until the bottom, where it hands the action row back.
   const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    scrollRef.current?.focus({ preventScroll: true });
-  }, []);
+  const panelFocus = useFocusWithin<HTMLDivElement>();
+  const actions = [onBack, onEnterReview];
+  const footer = useActionRowNavigation({
+    enabled: true,
+    actionCount: actions.length,
+    defaultZone: "actions",
+    // Mount lands on [View Results]: the primary action is this screen's focus
+    // target, not the summary region.
+    defaultIndex: 1,
+    disabledFocusFallbackRef: scrollRef,
+    onAction: (index) => actions[index]?.(),
+  });
 
   usePageFooter({
-    shortcuts: [{ key: "Enter", label: "View Results" }],
+    shortcuts: getSummaryShortcuts(footer.inActions),
     rightShortcuts: [BACK_SHORTCUT],
   });
 
+  // Focus reaches the region without the ↑ path too - Shift+Tab from [← Back], or
+  // a click - and the row holds its zone until something releases it, which would
+  // leave the only control mark on screen on a button that does not have focus.
+  const handleRegionFocus = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) footer.reset();
+  };
+
+  // ScrollArea runs this before its own scrolling and honours preventDefault, so ↓
+  // scrolls while content remains below and hands the action row back at the end
+  // of the range - the same ↓-enters-actions move the row runs when nothing
+  // overflows, which is otherwise unreachable once the scroller consumes the key.
+  const handleRegionKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "ArrowDown" || event.target !== event.currentTarget) return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    const region = event.currentTarget;
+    // Fractional layout leaves sub-pixel slack at the end of the scroll range.
+    if (region.scrollHeight - region.clientHeight - region.scrollTop > 1) return;
+    event.preventDefault();
+    footer.enterActions(0);
+  };
+
   return (
-    // ScrollArea rather than a bare overflow-y-auto: the summary was the one
-    // scroll region left with the unstyled platform scrollbar, which read as a
-    // stray desktop strip down the right edge at phone widths. Bottom padding
-    // waits for md: a sticky bottom-0 child docks to the scrollport inset by
-    // that padding, which left a band under the phone action row for half-rows
-    // to render in.
-    <ScrollArea
-      ref={scrollRef}
-      aria-label="Review summary"
-      className="flex-1 px-4 pt-4 scroll-pb-16 md:scroll-pb-0 md:pb-4"
-    >
-      <div className="w-full max-w-4xl mx-auto flex flex-col gap-6">
-        <ReviewCompleteSummary
-          stats={stats}
-          severityCounts={summary.severityCounts}
-          categoryStats={buildCategoryStats(issues)}
-          topIssues={topIssues}
-          durationMs={durationMs}
-        />
-        <RunDetailsPanel notices={notices} lensRows={lensRows} />
-        {/* The action row is the last element and stays reachable while the
-            summary scrolls under it on phones, mirroring the pinned TUI CTA.
-            The hairline is what makes a row disappearing under it read as a
-            docked bar rather than a clipped render. Back is rendered, not just
-            bound to Escape, so leaving the summary is discoverable by pointer. */}
-        <div className="sticky bottom-0 flex flex-wrap justify-center gap-3 border-t border-border bg-background pb-2 pt-3 md:static md:border-t-0 md:pb-4">
-          <Button variant="outline" size="lg" bracket onClick={onBack}>
+    // Page-card shell shared with hub/help/diagnostics: spare height splits 1:2
+    // around the panel and the spacers collapse once the summary outgrows the
+    // viewport, at which point the ScrollArea inside the panel absorbs the
+    // overflow instead of the page.
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-4 md:p-6 lg:p-8">
+      <div aria-hidden className="grow" />
+      <Panel
+        {...panelFocus.props}
+        focused={panelFocus.focusWithin}
+        className="mx-auto flex w-full min-h-0 max-w-4xl flex-col shadow-2xl"
+      >
+        <Panel.Label variant="border" aria-hidden="true">
+          Review Summary
+        </Panel.Label>
+        <Panel.Content spacing="none" className="flex min-h-0 flex-1 flex-col">
+          {/* ScrollArea rather than a bare overflow-y-auto: the summary was the
+              one scroll region left with the unstyled platform scrollbar, which
+              read as a stray desktop strip down the right edge at phone widths.
+              No ring of its own: the Panel reticle already names the pane it
+              landed in, and a pane wears one mark. */}
+          <ScrollArea
+            ref={scrollRef}
+            aria-label="Review summary"
+            className="min-h-0 focus:outline-none"
+            onFocus={handleRegionFocus}
+            onKeyDown={handleRegionKeyDown}
+          >
+            {/* pt-4 keeps the corner labels the inner panels hang above their
+                top border clear of the scrollport's clipped edge. */}
+            <div className="flex flex-col gap-6 pt-4">
+              <ReviewCompleteSummary
+                stats={stats}
+                severityCounts={summary.severityCounts}
+                categoryStats={buildCategoryStats(issues)}
+                topIssues={topIssues}
+                durationMs={durationMs}
+              />
+              <RunDetailsPanel notices={notices} lensRows={lensRows} />
+            </div>
+          </ScrollArea>
+        </Panel.Content>
+        {/* Back is rendered, not just bound to Escape, so leaving the summary
+            is discoverable by pointer. */}
+        <Panel.Footer className="flex-wrap justify-center gap-3">
+          <Button
+            {...footer.getActionProps(0)}
+            variant="outline"
+            size="lg"
+            bracket
+            highlighted={footer.inActions && footer.focusedIndex === 0}
+            onClick={onBack}
+          >
             <span aria-hidden="true">←</span> Back
           </Button>
-          <Button variant="primary" size="lg" bracket onClick={onEnterReview}>
+          <Button
+            {...footer.getActionProps(1)}
+            variant="primary"
+            size="lg"
+            bracket
+            highlighted={footer.inActions && footer.focusedIndex === 1}
+            onClick={onEnterReview}
+          >
             View Results
           </Button>
-        </div>
-      </div>
-    </ScrollArea>
+        </Panel.Footer>
+      </Panel>
+      <div aria-hidden className="grow-[2]" />
+    </div>
   );
 }

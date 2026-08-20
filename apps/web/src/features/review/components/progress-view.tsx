@@ -28,6 +28,7 @@ import { type KeyboardEvent, useState } from "react";
 import { useFocusWithin } from "@/hooks/use-focus-within";
 import { ReviewClockProvider, useReviewClock } from "../hooks/use-clock";
 import {
+  type ProgressPaneActionButtonProps,
   REVIEW_PROGRESS_CONTROLS,
   useReviewProgressKeyboard,
 } from "../hooks/use-progress-keyboard";
@@ -133,34 +134,36 @@ function ErrorDisplay({
 
   return (
     <div className="shrink-0 px-4 pb-3">
-      <Panel tone="error" role="alert" aria-live="assertive" className="p-4 text-left max-w-prose">
-        <div className="text-error-text mb-2 text-lg font-bold">{guidance.title}</div>
-        <div className="text-muted-foreground font-mono text-sm mb-2">
-          {sanitizePresentationText(error)}
-        </div>
-        <div className="text-muted-foreground mb-4 text-sm">{guidance.guidance}</div>
-        <div className="flex flex-wrap gap-3">
-          {onBack && (
-            <Button variant="secondary" bracket onClick={onBack}>
-              Back to Home
-            </Button>
-          )}
-          {isProviderRecoveryError(guidance.kind) && (
-            <Button
-              variant="outline"
-              bracket
-              className="border-warning text-warning-text hover:bg-warning/10"
-              onClick={() => navigate({ to: "/settings/providers" })}
-            >
-              {guidance.ctaLabel}
-            </Button>
-          )}
-          {guidance.kind === "transport" && onRetry && (
-            <Button variant="outline" bracket onClick={onRetry}>
-              {guidance.ctaLabel}
-            </Button>
-          )}
-        </div>
+      <Panel tone="error" role="alert" aria-live="assertive" className="max-w-prose text-left">
+        <Panel.Header>
+          <Panel.Title>{guidance.title}</Panel.Title>
+        </Panel.Header>
+        <Panel.Content>
+          <div className="font-mono text-muted-foreground">{sanitizePresentationText(error)}</div>
+          <div className="text-muted-foreground">{guidance.guidance}</div>
+          <div className="flex flex-wrap gap-3">
+            {onBack && (
+              <Button variant="secondary" bracket onClick={onBack}>
+                Back to Home
+              </Button>
+            )}
+            {isProviderRecoveryError(guidance.kind) && (
+              <Button
+                variant="outline"
+                bracket
+                className="border-warning text-warning-text hover:bg-warning/10"
+                onClick={() => navigate({ to: "/settings/providers" })}
+              >
+                {guidance.ctaLabel}
+              </Button>
+            )}
+            {guidance.kind === "transport" && onRetry && (
+              <Button variant="outline" bracket onClick={onRetry}>
+                {guidance.ctaLabel}
+              </Button>
+            )}
+          </div>
+        </Panel.Content>
       </Panel>
     </div>
   );
@@ -172,13 +175,28 @@ const PANEL_TONE_BY_LIVENESS = {
   stalled: "error",
 } as const satisfies Record<LogStreamState, "warning" | "error" | undefined>;
 
-function ContextRefreshErrorNotice({ error, onRetry }: { error: string; onRetry?: () => void }) {
+function ContextRefreshErrorNotice({
+  error,
+  onRetry,
+  retryProps,
+}: {
+  error: string;
+  onRetry?: () => void;
+  retryProps: ProgressPaneActionButtonProps;
+}) {
   return (
     <Callout tone="warning" live className="mb-8">
       <Callout.Title>Context snapshot unavailable</Callout.Title>
       <Callout.Content>{sanitizePresentationText(error)}</Callout.Content>
       {onRetry ? (
-        <Button variant="outline" size="sm" bracket className="mt-3" onClick={onRetry}>
+        <Button
+          variant="outline"
+          size="sm"
+          bracket
+          className="mt-3"
+          onClick={onRetry}
+          {...retryProps}
+        >
           Retry
         </Button>
       ) : null}
@@ -195,10 +213,12 @@ function StreamLivenessNotice({
   state,
   lastEventAt,
   onReconnect,
+  reconnectProps,
 }: {
   state: Exclude<LogStreamState, "flowing">;
   lastEventAt: number;
   onReconnect?: () => void;
+  reconnectProps: ProgressPaneActionButtonProps;
 }) {
   const now = useReviewClock();
   const elapsed = formatDuration(Math.max(0, now - lastEventAt));
@@ -216,7 +236,7 @@ function StreamLivenessNotice({
         {`${verdict} — no events for ${elapsed}.`}
       </output>
       {state === "stalled" && onReconnect && (
-        <Button variant="outline" size="sm" bracket onClick={onReconnect}>
+        <Button variant="outline" size="sm" bracket onClick={onReconnect} {...reconnectProps}>
           Reconnect
         </Button>
       )}
@@ -250,22 +270,43 @@ export function ReviewProgressView({
   const reconnect = reviewId && onRetry ? () => onRetry(reviewId) : undefined;
   const stalledReconnect = isRunning && liveness.state === "stalled" ? reconnect : undefined;
   const contextRetry = contextRefreshError ? onRetryContextRefresh : undefined;
+  // Independent faults recover independently: r repairs every visible
+  // affordance, so the footer's "r Retry" stays truthful when both render.
+  const retryRecovery =
+    stalledReconnect || contextRetry
+      ? () => {
+          stalledReconnect?.();
+          contextRetry?.();
+        }
+      : undefined;
+
+  // The pane's rendered action buttons in DOM order; the keyboard hook gives
+  // them Tab/arrow traversal and the roving mark.
+  const paneActions = [
+    ...(stalledReconnect ? [{ id: "reconnect" }] : []),
+    ...(contextRetry ? [{ id: "context-retry" }] : []),
+    ...(isRunning && onCancel && !hasError ? [{ id: "cancel", disabled: cancelDisabled }] : []),
+    ...(onViewResults && !hasError ? [{ id: "view-results" }] : []),
+  ];
 
   const {
     progressPaneRef,
     progressScrollRef,
+    actionsRowRef,
     agentFilterRef,
     logContentRef,
     snapshotDownloadsRef,
     handleFilterKeyDown,
+    getPaneActionProps,
   } = useReviewProgressKeyboard({
     onViewResults,
     onBack,
     onCancel: isRunning ? onCancel : undefined,
-    onRetryRecovery: stalledReconnect ?? contextRetry,
+    onRetryRecovery: retryRecovery,
     cancelDisabled,
     hasError,
     hasSnapshotDownloads: !isRunning && contextSnapshot != null,
+    actions: paneActions,
   });
 
   const errorGuidance = error ? classifyReviewStreamError(error, errorCode, transportFamily) : null;
@@ -281,7 +322,11 @@ export function ReviewProgressView({
 
   return (
     <ReviewClockProvider running={isRunning}>
-      <div className="flex flex-1 flex-col gap-4 px-4 pt-4 pb-4 max-md:overflow-y-auto md:flex-row md:overflow-hidden">
+      {/* Same pane rhythm as history/providers: 1px column gap so the pane
+          frames read as one shared rule, --panel-hairline lifted to the full
+          border token (this deliberately firms inner rules too); pt-4 doubles
+          as the notched Panel.Label clearance. */}
+      <div className="grid flex-1 gap-x-px gap-y-6 px-4 pt-4 pb-4 max-md:overflow-y-auto [--panel-hairline:var(--border)] md:min-h-0 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:grid-rows-[minmax(0,1fr)] md:overflow-hidden">
         <Panel
           ref={progressPaneRef}
           as="section"
@@ -290,7 +335,7 @@ export function ReviewProgressView({
           data-pane="progress"
           focused={progressPaneFocus.focusWithin}
           tone={PANEL_TONE_BY_LIVENESS[isRunning ? liveness.state : "flowing"]}
-          className="flex w-full flex-col max-md:shrink-0 md:min-h-0 md:w-1/3"
+          className="flex min-w-0 flex-col md:min-h-0"
         >
           <Panel.Label variant="border" aria-hidden="true">
             Progress
@@ -308,6 +353,7 @@ export function ReviewProgressView({
                 state={liveness.state}
                 lastEventAt={liveness.lastEventAt}
                 onReconnect={reconnect}
+                reconnectProps={getPaneActionProps("reconnect")}
               />
             )}
 
@@ -321,6 +367,7 @@ export function ReviewProgressView({
               <ContextRefreshErrorNotice
                 error={contextRefreshError}
                 onRetry={onRetryContextRefresh}
+                retryProps={getPaneActionProps("context-retry")}
               />
             ) : null}
 
@@ -333,17 +380,31 @@ export function ReviewProgressView({
           </ScrollArea>
 
           <div className="shrink-0 px-4">
+            {/* Metrics own the panel-footer slot even though the action row can
+                follow them: that row is conditional, so the metrics band is the
+                pane's baseline bottom row and the one the footer rule sits above. */}
             <ReviewMetricsFooter metrics={metrics} startTime={startTime} />
 
             {(onViewResults || (isRunning && onCancel)) && !error && (
-              <div className="flex flex-wrap gap-3 pb-4">
+              <div ref={actionsRowRef} className="flex flex-wrap gap-3 pb-4">
                 {isRunning && onCancel && (
-                  <Button variant="secondary" bracket disabled={cancelDisabled} onClick={onCancel}>
+                  <Button
+                    variant="secondary"
+                    bracket
+                    disabled={cancelDisabled}
+                    onClick={onCancel}
+                    {...getPaneActionProps("cancel")}
+                  >
                     {REVIEW_PROGRESS_CONTROLS.cancel.label}
                   </Button>
                 )}
                 {onViewResults && (
-                  <Button variant="primary" bracket onClick={onViewResults}>
+                  <Button
+                    variant="primary"
+                    bracket
+                    onClick={onViewResults}
+                    {...getPaneActionProps("view-results")}
+                  >
                     View Results
                   </Button>
                 )}
@@ -358,7 +419,7 @@ export function ReviewProgressView({
           aria-label="Live Activity Log"
           data-pane="log"
           focused={logPaneFocus.focusWithin}
-          className="flex w-full flex-col max-md:shrink-0 md:min-h-0 md:flex-1"
+          className="flex min-w-0 flex-col md:min-h-0"
         >
           <Panel.Label variant="border" aria-hidden="true">
             Live Activity Log

@@ -181,10 +181,7 @@ function DetailsPanel({
       aria-label="Issue details"
       data-pane="details"
       focused={focusWithin}
-      className={cn(
-        "mt-3 flex min-h-0 w-full flex-1 flex-col md:w-3/5 md:flex-initial md:basis-auto",
-        className,
-      )}
+      className={cn("flex min-h-0 min-w-0 flex-col", className)}
     >
       <Panel.Label variant="border" aria-hidden="true">
         Details

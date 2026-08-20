@@ -5,6 +5,7 @@ import { isListNavigationKey } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { cn } from "@diffgazer/ui/lib/utils";
@@ -151,12 +152,13 @@ export function HistoryInsightsPane({
       </ScrollArea>
 
       {duration && (
-        <div className="border-t border-border bg-base-surface-1 px-4 py-3">
+        // px-4 lines the Duration block up with the scroll column above it.
+        <Panel.Footer className="block px-4 py-3">
           <SectionHeader as="h3" variant="muted" className="mb-1">
             Duration
           </SectionHeader>
           <div className="font-mono text-sm text-foreground">{duration}</div>
-        </div>
+        </Panel.Footer>
       )}
     </div>
   );

@@ -2,8 +2,7 @@ import { formatDuration, formatRunId } from "@diffgazer/core/format";
 import type { CategoryStats } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue, SeverityCounts } from "@diffgazer/core/schemas/review";
 import { pluralize } from "@diffgazer/core/strings";
-import { Panel, PanelContent } from "@diffgazer/ui/components/panel";
-import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { Typography } from "@diffgazer/ui/components/typography";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { SeverityBreakdown } from "@/components/shared/severity/breakdown";
@@ -55,31 +54,43 @@ export function ReviewCompleteSummary({
 
   return (
     <div className={cn("flex flex-col gap-6", className)}>
-      <Panel frame="rail" tone="success" className="py-2 pl-5">
-        {/* The run headline stays at terminal scale below sm: at display size it
-            wraps to two lines at 375 and dwarfs the panels underneath it. */}
-        <Typography as="h1" size="lg" className="text-success-text mb-2 sm:text-2xl">
-          Review Complete {runLabel}
-        </Typography>
-        <p className={cn("text-sm", isClean ? "text-success-text" : "text-muted-foreground")}>
-          {buildFactLine(stats, durationMs)}
-        </p>
-        {stats.blockerCount > 0 && (
-          <p className="mt-1 text-sm font-bold text-error-text">
-            {pluralize(stats.blockerCount, "blocker")} found.
+      {/* tone repaints border-color only, so the corner chip - which tracks the
+          enclosure through --panel-border-color - would keep the neutral edge;
+          lifting --panel-border puts chip and frame on the same green. */}
+      <Panel
+        tone="success"
+        aria-label="Run status"
+        className="[--panel-border:var(--success-border)]"
+      >
+        <Panel.Label variant="border" aria-hidden="true">
+          Run Status
+        </Panel.Label>
+        <Panel.Content spacing="none">
+          {/* The run headline stays at terminal scale below sm: at display size it
+              wraps to two lines at 375 and dwarfs the panels underneath it. */}
+          <Typography as="h1" size="lg" className="text-success-text mb-2 sm:text-2xl">
+            Review Complete {runLabel}
+          </Typography>
+          <p className={cn("text-sm", isClean ? "text-success-text" : "text-muted-foreground")}>
+            {buildFactLine(stats, durationMs)}
           </p>
-        )}
+          {stats.blockerCount > 0 && (
+            <p className="mt-1 text-sm font-bold text-error-text">
+              {pluralize(stats.blockerCount, "blocker")} found.
+            </p>
+          )}
+        </Panel.Content>
       </Panel>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Labelled panels, like every other block of information in the app.
-            The frames stay at rest: the accent corners belong to the focus
-            target, which on this screen is the [View Results] action. */}
+            The frames stay at rest: the single reticle belongs to the page
+            panel enclosing the summary, claimed while focus sits inside it. */}
         <Panel aria-label="Severity breakdown">
           <Panel.Label variant="border" aria-hidden="true">
             Severity Breakdown
           </Panel.Label>
-          <PanelContent spacing="sm">
+          <Panel.Content spacing="sm">
             {/* A clean run keeps its five zero bars - they carry "we did look at
                 all five" - but at reduced weight so the zeros stop competing
                 with the headline. */}
@@ -87,7 +98,7 @@ export function ReviewCompleteSummary({
               counts={severityCounts}
               className={isClean ? "opacity-55" : undefined}
             />
-          </PanelContent>
+          </Panel.Content>
         </Panel>
 
         {/* A clean run has nothing to tabulate, so the panel leaves the two-column
@@ -100,30 +111,28 @@ export function ReviewCompleteSummary({
           <Panel.Label variant="border" aria-hidden="true">
             Issues by Category
           </Panel.Label>
-          <PanelContent spacing="sm">
+          <Panel.Content spacing="sm">
             <CategoryStatsTable categories={categoryStats} />
-          </PanelContent>
+          </Panel.Content>
         </Panel>
       </div>
 
       {topIssues.length > 0 && (
-        <div>
-          <SectionHeader as="h2" variant="muted" className="mb-3">
+        <Panel aria-label="Top Issues Preview">
+          <Panel.Label variant="border" aria-hidden="true">
             Top Issues Preview
-          </SectionHeader>
-          <Panel className="overflow-hidden">
-            {topIssues.map((issue) => (
-              <IssuePreviewItem
-                key={issue.id}
-                title={issue.title}
-                file={issue.file}
-                line={issue.line}
-                category={issue.category}
-                severity={issue.severity}
-              />
-            ))}
-          </Panel>
-        </div>
+          </Panel.Label>
+          {topIssues.map((issue) => (
+            <IssuePreviewItem
+              key={issue.id}
+              title={issue.title}
+              file={issue.file}
+              line={issue.line}
+              category={issue.category}
+              severity={issue.severity}
+            />
+          ))}
+        </Panel>
       )}
     </div>
   );

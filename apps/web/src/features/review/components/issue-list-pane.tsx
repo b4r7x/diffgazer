@@ -33,6 +33,7 @@ export interface IssueListPaneProps {
   listBodyRef?: Ref<HTMLDivElement>;
   isFocused: boolean;
   title?: string;
+  runDisplayId: string;
   className?: string;
 }
 
@@ -50,6 +51,7 @@ export function IssueListPane({
   listBodyRef,
   isFocused,
   title = "Issues",
+  runDisplayId,
   className,
 }: IssueListPaneProps) {
   // The severity filter and the list both live inside this pane, so tracking
@@ -71,13 +73,12 @@ export function IssueListPane({
       aria-label="Issue list"
       data-pane="list"
       focused={focusWithin}
-      className={cn(
-        "mt-3 flex min-h-0 w-full flex-1 flex-col md:w-2/5 md:flex-initial md:basis-auto",
-        className,
-      )}
+      className={cn("flex min-h-0 min-w-0 flex-col", className)}
     >
       <Panel.Label variant="border" aria-hidden="true">
         {title} · {allIssues.length}
+        {/* The run id is data, not a label: keep its real casing. */}
+        <span className="normal-case">{` · ${runDisplayId}`}</span>
       </Panel.Label>
       <div className="px-3 pb-4 pt-3">
         <SeverityFilterGroup counts={counts} {...filter} />

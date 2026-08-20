@@ -3,9 +3,11 @@ import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { FooterView } from "@/testing/footer-view";
+import { expectSingleReticle } from "@/testing/reticle";
 import { ReviewSummaryView } from "./summary-view";
 
 function renderSummary(props?: {
@@ -32,6 +34,7 @@ function renderSummary(props?: {
           onEnterReview={vi.fn()}
           onBack={props?.onBack ?? vi.fn()}
         />
+        <FooterView />
       </FooterProvider>
     </KeyboardProvider>,
   );
@@ -42,7 +45,7 @@ describe("ReviewSummaryView", () => {
     renderSummary({ reviewId: "7685a1b2-0000-4000-8000-000000000000" });
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Review Complete #7685");
-    expect(screen.getByRole("heading", { level: 2, name: /top issues preview/i })).toBeVisible();
+    expect(screen.getByRole("region", { name: "Top Issues Preview" })).toBeVisible();
   });
 
   it("names both summary regions so assistive tech can reach them", () => {
@@ -192,21 +195,148 @@ describe("ReviewSummaryView", () => {
     expect(onBack).toHaveBeenCalledTimes(2);
   });
 
-  it("focuses the summary region on mount so keys land somewhere instead of document.body", () => {
+  it("focuses and highlights [View Results] on mount instead of the summary region", async () => {
     renderSummary();
 
-    expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
+    const viewResults = screen.getByRole("button", { name: /view results/i });
+    await waitFor(() => expect(viewResults).toHaveFocus());
+    expect(viewResults).toHaveAttribute("data-highlighted");
+    expect(screen.getByRole("region", { name: "Review summary" })).not.toHaveFocus();
   });
 
-  it("scrolls the focused summary region with arrow and page keys when content overflows", async () => {
+  it("keeps one reticle whether the action row or the summary region holds focus", async () => {
+    const user = userEvent.setup();
+    const { container } = renderSummary();
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
+    );
+    expectSingleReticle(container);
+
+    await user.keyboard("{ArrowUp}");
+    const region = screen.getByRole("region", { name: "Review summary" });
+    expect(region).toHaveFocus();
+    // The scroller keeps keyboard scrolling but defers the pane mark to the
+    // Panel: the defusal class is libs/ui's documented outline contract.
+    expect(region).toHaveClass("focus:outline-none");
+    expectSingleReticle(container);
+  });
+
+  it("moves focus and highlight between the actions with arrow keys", async () => {
     const user = userEvent.setup();
     renderSummary();
+    const viewResults = screen.getByRole("button", { name: /view results/i });
+    const back = screen.getByRole("button", { name: "Back" });
+    await waitFor(() => expect(viewResults).toHaveFocus());
+
+    await user.keyboard("{ArrowLeft}");
+    expect(back).toHaveFocus();
+    expect(back).toHaveAttribute("data-highlighted");
+    expect(viewResults).not.toHaveAttribute("data-highlighted");
+
+    await user.keyboard("{ArrowRight}");
+    expect(viewResults).toHaveFocus();
+    expect(viewResults).toHaveAttribute("data-highlighted");
+    expect(back).not.toHaveAttribute("data-highlighted");
+  });
+
+  it("drops the action highlight when Shift+Tab moves focus to the summary region", async () => {
+    const user = userEvent.setup();
+    const { container } = renderSummary();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
+    );
+
+    await user.tab({ shift: true });
+    const back = screen.getByRole("button", { name: "Back" });
+    expect(back).toHaveFocus();
+
+    await user.tab({ shift: true });
+    // The region wears no ring of its own, so a mark left on [← Back] would be
+    // the only control mark on screen - on a button that does not have focus.
+    expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
+    expect(back).not.toHaveAttribute("data-highlighted");
+    expect(screen.getByRole("button", { name: /view results/i })).not.toHaveAttribute(
+      "data-highlighted",
+    );
+    expectSingleReticle(container);
+  });
+
+  it("enters the summary region with ArrowUp and returns to the actions with ArrowDown", async () => {
+    const user = userEvent.setup();
+    renderSummary();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
+    );
+
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
+
+    // Nothing to scroll here (jsdom has no layout), so ↓ is a pure zone move; the
+    // overflowing case is pinned below.
+    await user.keyboard("{ArrowDown}");
+    const back = screen.getByRole("button", { name: "Back" });
+    expect(back).toHaveFocus();
+    expect(back).toHaveAttribute("data-highlighted");
+  });
+
+  it("returns to the actions when ArrowDown reaches the bottom of an overflowing summary", async () => {
+    const user = userEvent.setup();
+    renderSummary();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
+    );
     const region = screen.getByRole("region", { name: "Review summary" });
     // jsdom has no layout; pin the metrics that make the region overflow.
     Object.defineProperty(region, "clientHeight", { value: 100, configurable: true });
     Object.defineProperty(region, "scrollHeight", { value: 1000, configurable: true });
 
+    await user.keyboard("{ArrowUp}");
+    await user.keyboard("{ArrowDown}");
+    // Content below still owns ↓.
     expect(region).toHaveFocus();
+    expect(region.scrollTop).toBe(40);
+
+    await user.keyboard("{End}");
+    await user.keyboard("{ArrowDown}");
+    const back = screen.getByRole("button", { name: "Back" });
+    expect(back).toHaveFocus();
+    expect(back).toHaveAttribute("data-highlighted");
+  });
+
+  it("names the keys of the zone that holds focus in the footer", async () => {
+    const user = userEvent.setup();
+    renderSummary();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
+    );
+    const legend = screen.getByRole("contentinfo");
+
+    expect(within(legend).getByText("Move Action")).toBeInTheDocument();
+
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
+
+    // ←/→ does nothing inside the region; the keys that do work there are named.
+    expect(await within(legend).findByText("Scroll")).toBeInTheDocument();
+    expect(within(legend).getByText("Actions")).toBeInTheDocument();
+    expect(within(legend).queryByText("Move Action")).not.toBeInTheDocument();
+  });
+
+  it("scrolls the summary region with arrow and page keys after ArrowUp focuses it", async () => {
+    const user = userEvent.setup();
+    renderSummary();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
+    );
+    const region = screen.getByRole("region", { name: "Review summary" });
+    // jsdom has no layout; pin the metrics that make the region overflow.
+    Object.defineProperty(region, "clientHeight", { value: 100, configurable: true });
+    Object.defineProperty(region, "scrollHeight", { value: 1000, configurable: true });
+
+    await user.keyboard("{ArrowUp}");
+    expect(region).toHaveFocus();
+
     await user.keyboard("{ArrowDown}");
     expect(region.scrollTop).toBe(40);
 
@@ -215,19 +345,6 @@ describe("ReviewSummaryView", () => {
 
     await user.keyboard("{ArrowUp}");
     expect(region.scrollTop).toBe(80);
-  });
-
-  it("keeps the Tab path summary region → Back → View Results", async () => {
-    const user = userEvent.setup();
-    renderSummary();
-
-    expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
-
-    await user.tab();
-    expect(screen.getByRole("button", { name: "Back" })).toHaveFocus();
-
-    await user.tab();
-    expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus();
   });
 
   it("invokes onEnterReview once for the global Enter shortcut and does not double-invoke it when Enter presses the focused View Results button", async () => {

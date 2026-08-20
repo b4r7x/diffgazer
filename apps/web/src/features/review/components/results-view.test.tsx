@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 import { MAIN_CONTENT_ID } from "@/lib/main-content";
 import { FooterView } from "@/testing/footer-view";
 import { HeaderChromeHarness } from "@/testing/header-chrome";
+import { expectSingleReticle } from "@/testing/reticle";
 
 // Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 const { backMock, navigateMock } = vi.hoisted(() => ({
@@ -131,14 +132,19 @@ describe("ReviewResultsView run integrity", () => {
 });
 
 describe("ReviewResultsView run id chip", () => {
-  it("keeps the run id a real h2 while rendering it as a chip sized to the id", () => {
+  it("paints the run id on the list pane's corner label and keeps it announced", () => {
     renderView();
 
-    const heading = screen.getByRole("heading", { level: 2, name: "Review #review-1" });
-    expect(heading).toBeVisible();
-    // The id itself is the chip's content - it is not restated as a separate
-    // full-width banner row above the panes.
-    expect(heading).toHaveTextContent("#review-1");
+    // Same chip idiom as history insights and provider details: the run id is
+    // data appended to the pane's corner label. The label is aria-hidden
+    // decoration for the pane's own name, so this reads its rendered text.
+    const listPane = screen.getByRole("complementary", { name: "Issue list" });
+    expect(listPane.querySelector('[data-slot="panel-label"]')).toHaveTextContent(
+      "Issues · 2 · #review-1",
+    );
+    // The chip cannot name the run for assistive tech, so the screen still owns
+    // a run-identity heading - it is just no longer a full-width banner row.
+    expect(screen.getByRole("heading", { level: 2, name: "Review #review-1" })).toBeInTheDocument();
   });
 });
 
@@ -157,6 +163,15 @@ describe("ReviewResultsView keyboard regression", () => {
     // Without focus.autoFocus the listbox never receives DOM focus on mount and a
     // screen reader hears nothing while j/k move aria-activedescendant.
     await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+  });
+
+  it("keeps exactly one pane bracketed when mount focus lands on the issue list", async () => {
+    const { container } = renderView();
+
+    // Brackets arrive with real focus, so the invariant is checked after the
+    // mount autofocus settles on the list pane.
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    expectSingleReticle(container);
   });
 
   it("lands mount focus on the details region when the review has no issues", async () => {
@@ -975,6 +990,7 @@ describe("ReviewResultsView mobile pane-swap", () => {
     expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "details");
     const details = screen.getByRole("region", { name: "Issue details" });
     await waitFor(() => expect(details).toHaveFocus());
+    expectSingleReticle(container);
 
     // ArrowLeft at the leftmost tab still returns to the list zone and
     // reveals the list pane.

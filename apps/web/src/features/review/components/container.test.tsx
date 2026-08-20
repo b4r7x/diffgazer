@@ -333,7 +333,7 @@ describe("ReviewContainer configuration gates", () => {
     expect(capturedOptions?.reviewId).toBe("review-1");
   });
 
-  it("rests without corner brackets — a configuration gate is not a focus target", async () => {
+  it("wears the focused reticle while the configuration gate holds mount focus", async () => {
     mockLoadConfigurationInit.mockResolvedValue(unreachableLocalInit());
 
     const { container } = renderReviewContainer();
@@ -342,10 +342,15 @@ describe("ReviewContainer configuration gates", () => {
       expect(screen.getByText(/Configuration Not Ready/i)).toBeInTheDocument();
     });
 
-    // Panel's data attributes are the bracket contract: the viewfinder frame
-    // draws resting corners, data-state="focused" draws the focused ones.
+    // Panel's data attributes are the bracket contract: the frame itself stays
+    // at rest (never the viewfinder), and data-state="focused" tracks the real
+    // focus the gate's action row takes on mount.
     expect(container.querySelector('[data-frame="viewfinder"]')).toBeNull();
-    expect(container.querySelector('[data-slot="panel"][data-state="focused"]')).toBeNull();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL })).toHaveFocus();
+    });
+    expect(container.querySelector('[data-slot="panel"]')).toHaveAttribute("data-state", "focused");
   });
 
   it("renders a safe terminal receipt without raw diagnostics", () => {

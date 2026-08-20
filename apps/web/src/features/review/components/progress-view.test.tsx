@@ -10,8 +10,10 @@ import type { AgentState } from "@diffgazer/core/schemas/events";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { FooterView } from "@/testing/footer-view";
+import { expectSingleReticle } from "@/testing/reticle";
 
 // Boundary mock: TanStack Router is the external routing library; progress shortcuts navigate through it.
 vi.mock("@tanstack/react-router", () => ({
@@ -603,6 +605,242 @@ describe("ReviewProgressView", () => {
     await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
   });
 
+  it("reaches the pane action buttons with Tab and roams them with arrows", async () => {
+    const user = userEvent.setup();
+    const { container } = renderView({
+      isRunning: true,
+      onCancel: vi.fn(),
+      onViewResults: vi.fn(),
+    });
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+
+    await user.keyboard("{Tab}");
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    const viewResults = screen.getByRole("button", { name: "View Results" });
+    await waitFor(() => expect(cancel).toHaveFocus());
+    expect(cancel).toHaveAttribute("data-highlighted");
+    // The arrows now step the row, so the footer stops claiming they switch panes.
+    expect(screen.getByText("←/→").parentElement).toHaveTextContent("Move Action");
+    expectSingleReticle(container);
+
+    await user.keyboard("{ArrowRight}");
+    expect(viewResults).toHaveFocus();
+    expect(viewResults).toHaveAttribute("data-highlighted");
+    expect(cancel).not.toHaveAttribute("data-highlighted");
+
+    await user.keyboard("{ArrowLeft}");
+    expect(cancel).toHaveFocus();
+    expect(cancel).toHaveAttribute("data-highlighted");
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
+  });
+
+  it("moves focus off the pane actions with Shift+Tab so arrows switch panes again", async () => {
+    const user = userEvent.setup();
+    renderView({ isRunning: true, onCancel: vi.fn(), onViewResults: vi.fn() });
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+
+    await user.keyboard("{Tab}");
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    await waitFor(() => expect(cancel).toHaveFocus());
+
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    await waitFor(() => expect(cancel).not.toHaveFocus());
+    expect(progressPane.matches(":focus-within")).toBe(true);
+
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
+  });
+
+  it("keeps focus on controls outside the pane when the actions zone is stale", async () => {
+    const user = userEvent.setup();
+    render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <ReviewProgressView
+            data={makeProgressData()}
+            isRunning
+            onCancel={vi.fn()}
+            onViewResults={vi.fn()}
+          />
+          <button type="button">Settings</button>
+          <FooterView />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+
+    await user.keyboard("{Tab}");
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    await waitFor(() => expect(cancel).toHaveFocus());
+    expect(cancel).toHaveAttribute("data-highlighted");
+
+    // App chrome sits outside every zone container, so nothing re-syncs the zone
+    // on the way out: it still reads "actions", as the footer's arrow grammar shows.
+    const settings = screen.getByRole("button", { name: "Settings" });
+    await user.click(settings);
+    expect(settings).toHaveFocus();
+    expect(screen.getByText("←/→").parentElement).toHaveTextContent("Move Action");
+
+    // The stale zone must not let the action row claim the arrow, or it drags
+    // focus off the control the user is standing on and back into [Cancel].
+    await user.keyboard("{ArrowRight}");
+
+    expect(settings).toHaveFocus();
+  });
+
+  it("parks focus on the progress scroll region when a keyboard-activated Cancel disables mid-mutation", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+
+    // Mirrors the container: activating Cancel flips the pending flag that
+    // native-disables the button while the cancel transition runs.
+    function PendingCancelHarness() {
+      const [pending, setPending] = useState(false);
+      return (
+        <ReviewProgressView
+          data={makeProgressData()}
+          isRunning
+          onCancel={() => {
+            onCancel();
+            setPending(true);
+          }}
+          cancelDisabled={pending}
+        />
+      );
+    }
+
+    const { container } = render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <PendingCancelHarness />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+    const progressScroll = document.activeElement as HTMLElement;
+    expect(progressPane).toContainElement(progressScroll);
+
+    await user.keyboard("{Tab}");
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    await waitFor(() => expect(cancel).toHaveFocus());
+
+    await user.keyboard("{Enter}");
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(cancel).toBeDisabled();
+    // jsdom keeps focus on a freshly disabled control (real browsers drop it
+    // to <body>), so this asserts the proactive park the hook performs, not a
+    // browser blur: focus returns to the progress scroll region, keeping the
+    // pane reticle lit and the Tab cycle anchored.
+    await waitFor(() => expect(progressScroll).toHaveFocus());
+    expect(progressPane).toHaveAttribute("data-state", "focused");
+    expectSingleReticle(container);
+  });
+
+  it("parks focus on the progress scroll region when the focused context Retry unmounts on success", async () => {
+    const user = userEvent.setup();
+    const onRetryContextRefresh = vi.fn();
+
+    // Mirrors the container: a successful retry clears the refresh error, so the
+    // notice and the [Retry] the user is standing on leave the tree.
+    function ContextRetryHarness() {
+      const [refreshError, setRefreshError] = useState<string | null>(
+        "Failed to refresh the review context snapshot.",
+      );
+      return (
+        <ReviewProgressView
+          data={makeProgressData()}
+          isRunning={false}
+          contextRefreshError={refreshError}
+          onRetryContextRefresh={() => {
+            onRetryContextRefresh();
+            setRefreshError(null);
+          }}
+        />
+      );
+    }
+
+    const { container } = render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <ContextRetryHarness />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+    const progressScroll = document.activeElement as HTMLElement;
+    expect(progressPane).toContainElement(progressScroll);
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus());
+
+    await user.keyboard("{Enter}");
+
+    expect(onRetryContextRefresh).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    // The vanished action must hand focus back instead of dropping it on <body>,
+    // where the Tab cycle restarts at the document top and both panes go dark.
+    await waitFor(() => expect(progressScroll).toHaveFocus());
+    expect(progressPane).toHaveAttribute("data-state", "focused");
+    expectSingleReticle(container);
+  });
+
+  it("roams the stalled-stream and context recovery buttons with arrows", () => {
+    vi.useFakeTimers();
+    try {
+      renderView({
+        isRunning: true,
+        reviewId: "review-1",
+        onRetry: vi.fn(),
+        contextRefreshError: "Failed to refresh the review context snapshot.",
+        onRetryContextRefresh: vi.fn(),
+        data: makeProgressData({ agents: [makeAgent()], events: makeLogEvents(1) }),
+      });
+
+      act(() => vi.advanceTimersByTime(46_000));
+      const reconnect = screen.getByRole("button", { name: "Reconnect" });
+      const retry = screen.getByRole("button", { name: "Retry" });
+
+      // fireEvent retained: fake timers drive the stall clock; userEvent waits on the same timer queue.
+      fireEvent.keyDown(document.body, { key: "Tab" });
+      expect(reconnect).toHaveFocus();
+      expect(reconnect).toHaveAttribute("data-highlighted");
+
+      // fireEvent retained: fake timers drive the stall clock; userEvent waits on the same timer queue.
+      fireEvent.keyDown(reconnect, { key: "ArrowRight" });
+      expect(retry).toHaveFocus();
+      expect(retry).toHaveAttribute("data-highlighted");
+      expect(reconnect).not.toHaveAttribute("data-highlighted");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("renders exactly one reticle while the progress pane holds focus", async () => {
+    const { container } = renderView();
+
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
+        "data-state",
+        "focused",
+      ),
+    );
+
+    expectSingleReticle(container);
+  });
+
   it("advertises the Filter shortcut while running", async () => {
     renderView({ isRunning: true, onCancel: vi.fn() });
 
@@ -644,6 +882,9 @@ describe("ReviewProgressView", () => {
 
     renderView({ isRunning: false, onViewResults });
 
+    // Two hops: the pane cycle visits the action row between the panes.
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("button", { name: "View Results" })).toHaveFocus());
     await user.keyboard("{Tab}");
     await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
 
@@ -1001,6 +1242,38 @@ describe("ReviewProgressView r retry grammar", () => {
     }
 
     expect(onRetry).toHaveBeenCalledWith("review-1");
+  });
+
+  it("retries both the stalled stream and the failed context refresh with r", () => {
+    vi.useFakeTimers();
+    const onRetry = vi.fn();
+    const onRetryContextRefresh = vi.fn();
+    try {
+      renderView({
+        isRunning: true,
+        reviewId: "review-1",
+        onRetry,
+        contextRefreshError: "Failed to refresh the review context snapshot.",
+        onRetryContextRefresh,
+        data: makeProgressData({ agents: [makeAgent()], events: makeLogEvents(1) }),
+      });
+
+      act(() => vi.advanceTimersByTime(46_000));
+      expect(screen.getByRole("button", { name: "Reconnect" })).toBeVisible();
+      expect(screen.getByRole("button", { name: "Retry" })).toBeVisible();
+      // The footer's r hint stays truthful: r repairs every visible recovery,
+      // not just the stalled stream.
+      const hint = screen.getByText("r");
+      expect(hint.parentElement).toHaveTextContent("Retry");
+
+      // fireEvent retained: fake timers drive the stall clock; userEvent waits on the same timer queue.
+      fireEvent.keyDown(document.body, { key: "r" });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(onRetry).toHaveBeenCalledWith("review-1");
+    expect(onRetryContextRefresh).toHaveBeenCalledTimes(1);
   });
 });
 

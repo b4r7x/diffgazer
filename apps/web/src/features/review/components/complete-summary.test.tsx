@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ReviewCompleteSummary } from "./complete-summary";
 
@@ -45,5 +45,28 @@ describe("ReviewCompleteSummary", () => {
     );
 
     expect(screen.getByRole("cell", { name: "Performance" })).toBeVisible();
+  });
+
+  it("names the run status and top issues panels for assistive tech", () => {
+    render(
+      <ReviewCompleteSummary
+        stats={{ runId: "run-1", totalIssues: 1, filesWithIssues: 1, blockerCount: 0 }}
+        severityCounts={{ blocker: 0, high: 1, medium: 0, low: 0, nit: 0 }}
+        categoryStats={[]}
+        topIssues={[
+          {
+            id: "1",
+            title: "Unchecked response",
+            file: "src/api.ts",
+            category: "correctness",
+            severity: "high",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "Run status" })).toBeVisible();
+    const preview = screen.getByRole("region", { name: "Top Issues Preview" });
+    expect(within(preview).getByText("Unchecked response")).toBeVisible();
   });
 });

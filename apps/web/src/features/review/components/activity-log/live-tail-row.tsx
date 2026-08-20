@@ -2,6 +2,7 @@ import { formatDuration } from "@diffgazer/core/format";
 import type { LogStreamState } from "@diffgazer/core/review";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import { pluralize } from "@diffgazer/core/strings";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useReviewClock } from "../../hooks/use-clock";
 
@@ -63,11 +64,12 @@ export function LiveTailRow({
 
   return (
     // aria-hidden: the same sentence reaches assistive tech through the log's
-    // announcement channel, and it must not be re-read every second.
-    <div
+    // announcement channel, and it must not be re-read every second. The tight
+    // padding keeps the cursor glyph and its status on one pinned line.
+    <Panel.Footer
       aria-hidden="true"
       data-log-tail={state}
-      className="shrink-0 border-t border-border px-2 pt-1.5 pb-2 font-mono text-sm"
+      className="block shrink-0 px-2 pt-1.5 pb-2 font-mono text-sm"
     >
       <span
         className={cn(
@@ -78,6 +80,6 @@ export function LiveTailRow({
       <span className={cn("truncate", isStalled ? "text-error-text" : "text-muted-foreground")}>
         {`${buildTailStatus({ state, agents, sourceFilter })} · ${clock}`}
       </span>
-    </div>
+    </Panel.Footer>
   );
 }

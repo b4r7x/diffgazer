@@ -113,13 +113,45 @@ describe("NoChangesView", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it("rests without corner brackets — a dead end is not a focus target", () => {
+  it("wears the focused reticle while keyboard focus sits inside the panel", async () => {
     const { container } = renderView({ onSwitchMode: vi.fn() });
 
-    // Panel's data attributes are the bracket contract: the viewfinder frame
-    // draws resting corners, data-state="focused" draws the focused ones.
+    // Panel's data attributes are the bracket contract: the frame itself stays
+    // at rest (never the viewfinder), and data-state="focused" tracks real
+    // focus-within instead of a static claim.
     expect(container.querySelector('[data-frame="viewfinder"]')).toBeNull();
-    expect(container.querySelector('[data-slot="panel"][data-state="focused"]')).toBeNull();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Review Staged" })).toHaveFocus();
+    });
+    expect(container.querySelector('[data-slot="panel"]')).toHaveAttribute("data-state", "focused");
+  });
+
+  it("keeps the focused reticle while the panel holds the parked focus", async () => {
+    const user = userEvent.setup();
+    const { container } = renderView({ onSwitchMode: vi.fn() });
+    const panel = container.querySelector('[data-slot="panel"]');
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Review Staged" })).toHaveFocus();
+    });
+
+    // Leaving the action row parks focus on the panel itself, and a parked pane
+    // with no reticle is a screen the keyboard drives with no visible signal.
+    await user.keyboard("{ArrowUp}");
+
+    expect(panel).toHaveFocus();
+    expect(panel).toHaveAttribute("data-state", "focused");
+  });
+
+  it("seats the panel in the shared 1:2 optical band", () => {
+    const { container } = renderView({ onSwitchMode: vi.fn() });
+
+    // The collapsing spacers around the panel are the centering contract the
+    // failure and hub screens share.
+    const panel = container.querySelector('[data-slot="panel"]');
+    expect(panel?.previousElementSibling).toHaveAttribute("aria-hidden");
+    expect(panel?.nextElementSibling).toHaveAttribute("aria-hidden");
   });
 
   it.each<[ReviewMode, { title: string; switchLabel: string }]>([
@@ -133,7 +165,10 @@ describe("NoChangesView", () => {
     renderView({ mode, onSwitchMode: vi.fn() });
     const { message } = getNoChangesCopy(mode);
 
-    expect(screen.getByText(title)).toBeInTheDocument();
+    // The mode-dependent headline is a real heading in the content flow, not
+    // the static corner chip: the chip names the kind of dead end, the heading
+    // says which one.
+    expect(screen.getByRole("heading", { level: 2, name: title })).toBeVisible();
     expect(screen.getByText(message)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: switchLabel })).toBeInTheDocument();
   });

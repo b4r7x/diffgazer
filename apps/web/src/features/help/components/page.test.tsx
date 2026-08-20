@@ -101,9 +101,9 @@ describe("HelpPage", () => {
     expect(screen.getAllByText("Move the highlight")).toHaveLength(1);
   });
 
-  // Brackets mark the pane focus actually sits in, and focus lives on the
-  // scroll region wrapping the sheet rather than inside it, so the sheet wears
-  // the resting chrome: a continuous border and no corners.
+  // The scroll region nested in the sheet paints the screen's one focus mark
+  // (its own inset ring), so the sheet wears the resting chrome — a continuous
+  // border and no corners — instead of stacking a second pane-level mark.
   it("rests on the hairline frame and draws no corner brackets", async () => {
     const { container } = await renderPage();
 
@@ -111,6 +111,18 @@ describe("HelpPage", () => {
     expect(sheet).toHaveAttribute("data-frame", "hairline");
     expect(sheet).not.toHaveAttribute("data-state");
     expect(container.querySelectorAll('[data-slot="panel-corners"]')).toHaveLength(0);
+  });
+
+  // The focus ring geometry PF4 fixed: the labelled scroll region lives inside
+  // the sheet, so its inset ring hugs the panel instead of the viewport. The
+  // region also bleeds a 4px gutter into the panel's padding and pads it back,
+  // so the inset ring clears the glyphs instead of painting through their first
+  // column — a pixel contract jsdom cannot see, verified in the browser.
+  it("nests the labelled scroll region inside the help sheet", async () => {
+    await renderPage();
+
+    const sheet = screen.getByRole("region", { name: /^help$/i });
+    expect(within(sheet).getByRole("region", { name: "Help content" })).toBeInTheDocument();
   });
 
   it("groups the shortcuts by context in the canonical order", async () => {

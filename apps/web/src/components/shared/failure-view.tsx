@@ -5,7 +5,8 @@ import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { useRef } from "react";
+import { useId, useRef } from "react";
+import { useFocusWithin } from "@/hooks/use-focus-within";
 
 interface FailureAction {
   label: string;
@@ -36,9 +37,10 @@ export interface FailureViewProps {
  * The app's one dead-end screen: a resting panel, one sentence of cause, and up
  * to three ways forward. ←/→ move between the actions, Enter/Space activates,
  * Esc takes the secondary one — or the primary when there is no secondary; the
- * recovery action is a forward path and never the Esc target. The panel stays
- * at rest — a failure view is not a focus target, so it never wears the focused
- * corner brackets.
+ * recovery action is a forward path and never the Esc target. The panel claims
+ * the focused corner brackets from real focus: an action inside normally holds
+ * it, and when every action disables mid-mutation, focus parks on the panel
+ * itself so the reticle stays visible.
  */
 export function FailureView({
   title,
@@ -53,7 +55,9 @@ export function FailureView({
   footerRightShortcuts = [BACK_SHORTCUT],
 }: FailureViewProps) {
   useScope(scope);
+  const titleId = useId();
   const focusFallbackRef = useRef<HTMLDivElement>(null);
+  const { focusWithin, props: focusProps } = useFocusWithin<HTMLDivElement>();
   const actions = [primary, recovery, secondary].filter(
     (action): action is FailureAction => action !== undefined,
   );
@@ -89,50 +93,61 @@ export function FailureView({
           outgrows the viewport, so a short window scrolls from the top. */}
       <div aria-hidden className="grow" />
       <Panel
+        {...focusProps}
         ref={focusFallbackRef}
         tabIndex={-1}
         tone={isError ? "error" : "warning"}
-        className="mx-auto w-full max-w-lg shrink-0 p-6 text-center focus:outline-none"
+        focused={focusWithin}
+        aria-labelledby={titleId}
+        className="mx-auto w-full max-w-lg shrink-0 text-center focus:outline-none"
       >
-        {/* The alert wrapper, not the heading itself: role="alert" on a heading
-            element replaces its heading role, and the failure screen wants both
-            the announcement and a real heading in the outline. */}
-        <div role={isError ? "alert" : undefined}>
-          <TitleTag
-            className={cn(
-              "mb-4 font-bold",
-              // The route-level dead end owns the page heading and reads at page scale;
-              // a failure inside a page stays at panel scale.
-              TitleTag === "h1" ? "text-2xl" : "text-lg",
-              isError ? "text-error-text" : "text-warning-text",
-            )}
-          >
-            {title}
-          </TitleTag>
-        </div>
-        {meta ? (
-          // Data, not prose: the identity of the failed configuration keeps its
-          // real casing and reads at full foreground strength.
-          <p className="mb-3 break-words font-mono text-sm text-foreground">{meta}</p>
-        ) : null}
-        <p className="mx-auto mb-6 max-w-[46ch] break-words font-mono text-sm text-muted-foreground">
-          {message}
-        </p>
-        <div className="flex flex-wrap justify-center gap-4">
-          {actions.map((action, index) => (
-            <Button
-              key={action.label}
-              {...footer.getActionProps(index)}
-              variant={action === primary ? "outline" : "secondary"}
-              bracket
-              disabled={action.disabled}
-              highlighted={footer.inActions && footer.focusedIndex === index}
-              onClick={action.onAction}
+        {/* Wayfinding only: the corner chip is a fixed 11px uppercase strip with
+            no wrap, so it names the kind of dead end and the failure's own
+            sentence — often a runtime-interpolated one — stays a real heading in
+            the content flow below. */}
+        <Panel.Label aria-hidden="true">{isError ? "Error" : "Notice"}</Panel.Label>
+        <Panel.Content spacing="none">
+          {/* The alert wrapper, not the heading itself: role="alert" on a heading
+              element replaces its heading role, and the failure screen wants both
+              the announcement and a real heading in the outline. */}
+          <div role={isError ? "alert" : undefined}>
+            <TitleTag
+              id={titleId}
+              className={cn(
+                "mb-4 font-bold",
+                // The route-level dead end owns the page heading and reads at page
+                // scale; a failure inside a page stays at panel scale.
+                TitleTag === "h1" ? "text-2xl" : "text-lg",
+                isError ? "text-error-text" : "text-warning-text",
+              )}
             >
-              {action.label}
-            </Button>
-          ))}
-        </div>
+              {title}
+            </TitleTag>
+          </div>
+          {meta ? (
+            // Data, not prose: the identity of the failed configuration keeps its
+            // real casing and reads at full foreground strength.
+            <p className="mb-3 break-words font-mono text-sm text-foreground">{meta}</p>
+          ) : null}
+          <p className="mx-auto mb-6 max-w-[46ch] break-words font-mono text-sm text-muted-foreground">
+            {message}
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            {actions.map((action, index) => (
+              <Button
+                key={action.label}
+                {...footer.getActionProps(index)}
+                variant={action === primary ? "outline" : "secondary"}
+                bracket
+                disabled={action.disabled}
+                highlighted={footer.inActions && footer.focusedIndex === index}
+                onClick={action.onAction}
+              >
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        </Panel.Content>
       </Panel>
       <div aria-hidden className="grow-[2]" />
     </div>

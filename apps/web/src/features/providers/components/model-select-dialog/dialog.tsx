@@ -5,6 +5,7 @@ import type { ClientConfigurationSummary, ExactModelId } from "@diffgazer/core/s
 import { pluralize } from "@diffgazer/core/strings";
 import { useKey } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
+import { Callout } from "@diffgazer/ui/components/callout";
 import {
   Dialog,
   DialogAction,
@@ -162,31 +163,31 @@ export function ModelSelectDialog({
           {discoveryMessage && !isSaving ? (
             // The single discovery surface: the list's empty state carries generic
             // copy only, so this row is the one place the reason is shown and the
-            // one region that announces it.
-            // biome-ignore lint/a11y/useSemanticElements: role="status" is the alert row's live region; <output> carries form-association semantics that do not fit a message paired with a Retry control.
-            <div
-              role="status"
-              className="mx-5 mb-2 flex items-center justify-between gap-3 border border-warning-border px-3 py-2 text-2xs text-warning-text"
-            >
-              <span>{discoveryMessage}</span>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={source.retry}
-                className="shrink-0"
-              >
-                Retry
-              </Button>
-            </div>
+            // one region that announces it (Callout `live`). py-2 and text-2xs hold
+            // the strip to this dialog's dense band instead of the Callout's
+            // page-band defaults; the root font-size is its one sizing knob.
+            <Callout tone="warning" live className="mx-5 mb-2 py-2 text-2xs">
+              <Callout.Content className="flex items-center justify-between gap-3">
+                <span>{discoveryMessage}</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={source.retry}
+                  className="shrink-0"
+                >
+                  Retry
+                </Button>
+              </Callout.Content>
+            </Callout>
           ) : null}
 
           {retainedModelNotice ? (
             // The saved selection is not in the review-capable list. It keeps
             // working, so this states the gap rather than dropping the row.
-            <p className="mx-5 mb-2 border border-border/60 px-3 py-2 text-2xs leading-relaxed text-muted-foreground">
-              {retainedModelNotice}
-            </p>
+            <Callout tone="info" className="mx-5 mb-2 py-2 text-2xs">
+              <Callout.Content>{retainedModelNotice}</Callout.Content>
+            </Callout>
           ) : null}
 
           <ModelList

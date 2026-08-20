@@ -6,7 +6,6 @@ import {
 } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { IssueDetailsPane } from "@/features/review/components/issue-details-pane/pane";
 import { IssueListPane } from "@/features/review/components/issue-list-pane";
 import { useReviewResultsKeyboard } from "../hooks/use-results-keyboard";
@@ -57,49 +56,56 @@ export function ReviewResultsView({
   // A run that lost lenses must say so wherever it is opened, not only in the
   // live progress view - otherwise a partial result reads as a complete one.
   const completenessNotice = buildLensFailureNotice(lensStats);
+  const runDisplayId = reviewId ? formatRunId(reviewId) : "#unknown";
   // Below md only the active pane is shown; both stay side-by-side from md up.
   const listPaneClassName = mobilePane === "details" ? "hidden md:flex" : undefined;
   const detailsPaneClassName = mobilePane === "list" ? "hidden md:flex" : undefined;
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2 font-mono">
-      <div className="py-2 mb-2 shrink-0">
-        {/* The run id is an inline chip, not a full-width banner: it identifies
-            the run without competing with the panes below it. */}
-        <SectionHeader
-          as="h2"
-          variant="accent"
-          className="inline-flex w-fit border border-accent/40 px-2"
-        >
-          Review {reviewId ? formatRunId(reviewId) : "#unknown"}
-        </SectionHeader>
-        {completenessNotice ? (
-          <p
-            className="mt-1 border-l-2 border-warning-border pl-2 text-xs text-warning-text"
-            role="note"
-          >
-            {completenessNotice}
-          </p>
-        ) : null}
-        {duplicateNotice ? (
-          <p className="mt-1 text-xs text-muted-foreground" role="note">
-            {duplicateNotice}
-          </p>
-        ) : null}
-      </div>
+      {/* The list pane's corner chip shows the run id as aria-hidden decoration,
+          so the screen's identity heading lives here for assistive tech. */}
+      <h2 className="sr-only">Review {runDisplayId}</h2>
+      {completenessNotice || duplicateNotice ? (
+        <div className="shrink-0 space-y-1 pt-2">
+          {completenessNotice ? (
+            // Rail kept hand-rolled: this one-line note already paints what
+            // frame="rail" tone="warning" would paint, so converging buys only
+            // a Panel wrapper and its padding.
+            <p
+              className="border-l-2 border-warning-border pl-2 text-xs text-warning-text"
+              role="note"
+            >
+              {completenessNotice}
+            </p>
+          ) : null}
+          {duplicateNotice ? (
+            <p className="text-xs text-muted-foreground" role="note">
+              {duplicateNotice}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       <section
         aria-label="Review result panes"
         data-viewport="review-results"
         className="flex flex-1 min-h-0 overflow-hidden"
       >
+        {/* Same pane rhythm as history/providers: chip-labelled hairline Panels
+            on a grid, 1px column gap so the frames read as one shared rule, pt-4
+            clearing the notched Panel.Label overhang, --panel-hairline lifted to
+            the full border token (this deliberately firms inner rules too). The
+            single fractional row keeps the one visible pane full-height below md
+            (mobile pane-swap). */}
         <div
           data-row="review"
           data-mobile-pane={mobilePane}
-          className="flex flex-1 min-h-0 flex-col overflow-hidden md:flex-row"
+          className="grid flex-1 min-h-0 grid-rows-[minmax(0,1fr)] gap-x-px overflow-hidden pt-4 [--panel-hairline:var(--border)] md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
         >
           <IssueListPane
             issues={filteredIssues}
             allIssues={issues}
+            runDisplayId={runDisplayId}
             selectedIssueId={selectedIssueId}
             highlightedIssueId={selectedIssueId}
             onSelectIssue={selectIssueAndFocusList}

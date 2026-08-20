@@ -5,6 +5,7 @@ import {
 } from "@diffgazer/core/review";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { CodeBlock } from "@diffgazer/ui/components/code-block";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { PathValue } from "@/components/shared/path-value";
 import { FixPlanChecklist } from "../fix-plan-checklist";
@@ -118,38 +119,43 @@ function CodeEvidence({ item }: { item: Extract<EvidencePresentation, { kind: "c
   const lines = item.excerpt.length > 0 ? item.excerpt.split(/\r?\n/) : [EMPTY_EVIDENCE_EXCERPT];
 
   return (
-    <div className="border-l-2 border-border pl-3">
-      <div className="flex flex-wrap items-baseline gap-x-2">
-        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          {item.label}
-        </span>
-        <span className="text-sm font-medium text-foreground">{item.title}</span>
-      </div>
-      <div className="text-xs text-muted-foreground">
-        Source: <span className="font-mono text-foreground/80">{item.sourceText}</span>
-      </div>
-      <div className="mb-1 flex min-w-0 text-xs text-muted-foreground">
-        <span className="shrink-0">File:&nbsp;</span>
-        <PathValue value={item.file} className="text-foreground/80" />
-      </div>
-      <CodeBlock label={`${item.label}: ${item.title}`}>
-        <CodeBlock.Content tabIndex={-1}>
-          {lines.map((line, offset) => (
-            <CodeBlock.Line
-              key={`${item.ordinal}:${offset}`}
-              number={
-                item.startLine === undefined ||
-                (item.endLine !== undefined && item.startLine + offset > item.endLine)
-                  ? undefined
-                  : item.startLine + offset
-              }
-              content={line}
-              state="highlight"
-            />
-          ))}
-        </CodeBlock.Content>
-      </CodeBlock>
-    </div>
+    // Rail, not the default enclosure: an aside annotates the issue prose it sits
+    // beside, where a boxed panel would read as a section of its own. Every aside in
+    // the issue detail tabs — reference evidence, trace steps — makes the same call.
+    <Panel frame="rail" density="compact">
+      <Panel.Content spacing="none">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            {item.label}
+          </span>
+          <span className="text-sm font-medium text-foreground">{item.title}</span>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Source: <span className="font-mono text-foreground/80">{item.sourceText}</span>
+        </div>
+        <div className="mb-1 flex min-w-0 text-xs text-muted-foreground">
+          <span className="shrink-0">File:&nbsp;</span>
+          <PathValue value={item.file} className="text-foreground/80" />
+        </div>
+        <CodeBlock label={`${item.label}: ${item.title}`}>
+          <CodeBlock.Content tabIndex={-1}>
+            {lines.map((line, offset) => (
+              <CodeBlock.Line
+                key={`${item.ordinal}:${offset}`}
+                number={
+                  item.startLine === undefined ||
+                  (item.endLine !== undefined && item.startLine + offset > item.endLine)
+                    ? undefined
+                    : item.startLine + offset
+                }
+                content={line}
+                state="highlight"
+              />
+            ))}
+          </CodeBlock.Content>
+        </CodeBlock>
+      </Panel.Content>
+    </Panel>
   );
 }
 
@@ -159,19 +165,21 @@ function EvidenceReference({
   item: Extract<EvidencePresentation, { kind: "reference" }>;
 }) {
   return (
-    <section aria-label={`${item.label}: ${item.title}`} className="border-l-2 border-border pl-3">
-      <div className="flex flex-wrap items-baseline gap-x-2">
-        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          {item.label}
-        </span>
-        <span className="text-sm font-medium text-foreground">{item.title}</span>
-      </div>
-      <div className="text-xs text-muted-foreground">
-        Source: <span className="font-mono text-foreground/80">{item.sourceText}</span>
-      </div>
-      <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
-        {item.excerpt}
-      </p>
-    </section>
+    <Panel frame="rail" density="compact" aria-label={`${item.label}: ${item.title}`}>
+      <Panel.Content spacing="none">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            {item.label}
+          </span>
+          <span className="text-sm font-medium text-foreground">{item.title}</span>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Source: <span className="font-mono text-foreground/80">{item.sourceText}</span>
+        </div>
+        <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
+          {item.excerpt}
+        </p>
+      </Panel.Content>
+    </Panel>
   );
 }

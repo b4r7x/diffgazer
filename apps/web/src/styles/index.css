@@ -15,6 +15,12 @@
   --panel-border: var(--border);
 }
 
+/* Stacked pane footers — review metrics, activity-log live tail, history
+   insights — compose Panel.Footer for one thing: the hairline frame's top
+   rule. Each sets `block` plus its own padding to opt out of the primitive's
+   flex metadata row and its density padding, so the footer keeps the column of
+   the pane it sits in. The call sites note only what is theirs. */
+
 /* Resting form shells use the control-edge token, not the decorative hairline. */
 [data-slot="input-group"] {
   border-color: var(--control-border);
