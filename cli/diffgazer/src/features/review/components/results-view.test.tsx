@@ -174,6 +174,35 @@ describe("ReviewResultsView (TUI)", () => {
     expect(frame.split("\n")).toHaveLength((withoutNotice ?? "").split("\n").length);
   });
 
+  test("names the outcome that ended the run without growing the results layout", () => {
+    terminalDimensions.columns = 80;
+    const withoutNotice = render(
+      <FooterProvider initialShortcuts={[]}>
+        <CliThemeProvider initialTheme="dark">
+          <ReviewResultsView reviewId="review-1" issues={[makeIssue({ id: "kept-1" })]} />
+        </CliThemeProvider>
+      </FooterProvider>,
+    ).lastFrame();
+    cleanup();
+    const { lastFrame } = render(
+      <FooterProvider initialShortcuts={[]}>
+        <CliThemeProvider initialTheme="dark">
+          <ReviewResultsView
+            reviewId="review-1"
+            issues={[makeIssue({ id: "kept-1" })]}
+            terminalOutcome="budget-exhausted"
+          />
+        </CliThemeProvider>
+      </FooterProvider>,
+    );
+    const frame = lastFrame() ?? "";
+
+    expect(frame).toContain(
+      "Budget Exhausted — The review stopped because a configured budget limit was reached.",
+    );
+    expect(frame.split("\n")).toHaveLength((withoutNotice ?? "").split("\n").length);
+  });
+
   test("stays quiet when every lens reported", () => {
     const { lastFrame } = render(
       <FooterProvider initialShortcuts={[]}>

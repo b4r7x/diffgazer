@@ -202,6 +202,19 @@ export function useReviewLifecycle({
     base.completion.skipDelay();
   };
 
+  // The stream ended for good, so the live session is dead and the saved record
+  // is the only account of the run left. It replaces this screen in history
+  // rather than stacking on it: nobody needs a Back that returns to the failure.
+  const handleViewRun = (reviewId: string) => {
+    clearActiveSession(reviewId);
+    navigate({
+      to: "/review/{-$reviewId}",
+      params: { reviewId },
+      search: { mode },
+      replace: true,
+    });
+  };
+
   const handleRetry = (reviewId: string) => {
     void base.resumeReview(reviewId);
   };
@@ -264,6 +277,7 @@ export function useReviewLifecycle({
     handleCancel,
     handleBack,
     handleViewResults,
+    handleViewRun,
     handleRetry,
     handleSetupProvider,
     handleSwitchMode,

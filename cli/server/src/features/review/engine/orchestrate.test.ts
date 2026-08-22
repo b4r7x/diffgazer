@@ -27,6 +27,20 @@ function createDiffForFiles(files: string[]) {
   );
 }
 
+function budgetExhaustedError(): Result<never, AIError> {
+  return err({
+    code: "STREAM_ERROR",
+    message: "Review budget exhausted at maxInputTokens (10000).",
+    diagnostic: {
+      code: "budget-exhausted",
+      safeMessage: "Review budget exhausted at maxInputTokens (10000).",
+      retryable: false,
+      remediation: "Reduce review scope or increase configured limits.",
+      correlationId: "budget-1",
+    },
+  });
+}
+
 function makeClient(results: Array<Result<unknown, AIError>>): AIClient {
   const queue = [...results];
   return {
@@ -163,6 +177,203 @@ describe("orchestrateReview", () => {
     expect(generate).toHaveBeenCalledTimes(1);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe("PARSE_ERROR");
+  });
+
+  it("stops dispatching the remaining lenses after the first budget-exhausted settlement", async () => {
+    const client = makeClient([
+      ok({ issues: [makeIssue({ id: "issue-1", file: "file-1" })] }),
+      budgetExhaustedError(),
+    ]);
+    const generate = vi.spyOn(client, "generate");
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts"]),
+      { lenses: ["correctness", "security", "performance", "simplicity", "tests"] },
+      () => {},
+      { concurrency: 1 },
+    );
+
+    // Only the successful lens and the one that exhausted the budget were paid
+    // for; the remaining three were never dispatched.
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.issues).toHaveLength(1);
+    expect(
+      result.value.lensStats.filter((lens) => lens.status === "failed").map((lens) => lens.lensId),
+    ).toEqual(["security", "performance", "simplicity", "tests"]);
+  });
+
+  it("reports the lenses it never dispatched as budget-skipped, not cancelled", async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const client = makeClient([
+      ok({ issues: [makeIssue({ id: "issue-1", file: "file-1" })] }),
+      budgetExhaustedError(),
+    ]);
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts"]),
+      { lenses: ["correctness", "security", "performance", "simplicity", "tests"] },
+      (event) => events.push(event as Record<string, unknown>),
+      { concurrency: 1 },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const skippedMessage = "Not dispatched — the review budget was exhausted.";
+    expect(result.value.lensStats.slice(2)).toEqual([
+      {
+        lensId: "performance",
+        issueCount: 0,
+        status: "failed",
+        errorCode: "BUDGET_EXHAUSTED",
+        errorMessage: skippedMessage,
+      },
+      {
+        lensId: "simplicity",
+        issueCount: 0,
+        status: "failed",
+        errorCode: "BUDGET_EXHAUSTED",
+        errorMessage: skippedMessage,
+      },
+      {
+        lensId: "tests",
+        issueCount: 0,
+        status: "failed",
+        errorCode: "BUDGET_EXHAUSTED",
+        errorMessage: skippedMessage,
+      },
+    ]);
+    expect(result.value.lensStats.map((lens) => lens.errorCode)).not.toContain("CANCELLED");
+    // Without a terminal agent event these rows stay "queued" on the live board.
+    expect(
+      events
+        .filter((event) => event.type === "agent_error")
+        .map((event) => ({ agent: event.agent, error: event.error })),
+    ).toEqual([
+      {
+        agent: "guardian",
+        error: "STREAM_ERROR: Review budget exhausted at maxInputTokens (10000).",
+      },
+      { agent: "optimizer", error: skippedMessage },
+      { agent: "simplifier", error: skippedMessage },
+      { agent: "tester", error: skippedMessage },
+    ]);
+  });
+
+  it("lets the lenses already in flight settle when another exhausts the budget", async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const releases: Array<() => void> = [];
+    let dispatchCount = 0;
+    const client: AIClient = {
+      provider: "openrouter",
+      generate: async <T extends z.ZodType>(
+        _prompt: string,
+        schema: T,
+        options?: Readonly<{ signal?: AbortSignal }>,
+      ) => {
+        dispatchCount += 1;
+        if (dispatchCount === 2) return budgetExhaustedError();
+        const issue = makeIssue({ id: `issue-${dispatchCount}`, file: `file-${dispatchCount}` });
+        // A real adapter drops its in-flight request when the signal it was
+        // handed aborts, so the stub does too — that is what tells the dispatch
+        // signal apart from the per-lens one.
+        await new Promise<void>((resolve, reject) => {
+          releases.push(resolve);
+          options?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        });
+        return ok(schema.parse({ issues: [issue] }) as z.output<T>);
+      },
+    };
+
+    const resultPromise = orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts", "src/b.ts", "src/c.ts"]),
+      { lenses: ["correctness", "security", "performance", "simplicity", "tests"] },
+      (event) => events.push(event as Record<string, unknown>),
+      { concurrency: 3 },
+    );
+
+    // Guardian's agent_error marks the budget settlement; correctness and
+    // performance are still waiting on the provider at that moment.
+    await vi.waitFor(() => {
+      expect(events.some((event) => event.type === "agent_error")).toBe(true);
+      expect(releases).toHaveLength(2);
+    });
+    for (const release of releases) release();
+    const result = await resultPromise;
+
+    // All three co-dispatched lenses were paid for; the last two never were.
+    expect(dispatchCount).toBe(3);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.lensStats).toMatchObject([
+      { lensId: "correctness", issueCount: 1, status: "success" },
+      { lensId: "security", status: "failed", errorCode: "STREAM_ERROR" },
+      { lensId: "performance", issueCount: 1, status: "success" },
+      { lensId: "simplicity", status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+      { lensId: "tests", status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+    ]);
+    expect(result.value.issues.map((issue) => issue.id)).toEqual([
+      "correctness:issue-1",
+      "performance:issue-3",
+    ]);
+  });
+
+  it("blames the budget only for the lenses it never dispatched, not for one that threw", async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const settlements: Array<{ resolve: () => void; reject: (reason: unknown) => void }> = [];
+    let dispatchCount = 0;
+    const client: AIClient = {
+      provider: "openrouter",
+      generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
+        dispatchCount += 1;
+        if (dispatchCount === 2) return budgetExhaustedError();
+        const issue = makeIssue({ id: `issue-${dispatchCount}`, file: `file-${dispatchCount}` });
+        await new Promise<void>((resolve, reject) => {
+          settlements.push({ resolve, reject });
+        });
+        return ok(schema.parse({ issues: [issue] }) as z.output<T>);
+      },
+    };
+
+    const resultPromise = orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts", "src/b.ts", "src/c.ts"]),
+      { lenses: ["correctness", "security", "performance", "simplicity", "tests"] },
+      (event) => events.push(event as Record<string, unknown>),
+      { concurrency: 3 },
+    );
+
+    await vi.waitFor(() => {
+      expect(events.some((event) => event.type === "agent_error")).toBe(true);
+      expect(settlements).toHaveLength(2);
+    });
+    settlements[0]?.resolve();
+    // The optimizer's own transport gives up after the budget settlement: an
+    // abort nobody here asked for, on a lens the review did pay to dispatch.
+    settlements[1]?.reject(new DOMException("Aborted", "AbortError"));
+    const result = await resultPromise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.lensStats).toMatchObject([
+      { lensId: "correctness", issueCount: 1, status: "success" },
+      { lensId: "security", status: "failed", errorCode: "STREAM_ERROR" },
+      { lensId: "performance", status: "failed", errorCode: "CANCELLED", errorMessage: "Aborted" },
+      { lensId: "simplicity", status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+      { lensId: "tests", status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+    ]);
+    // One terminal row for that lens, carrying its own failure, not the budget's.
+    expect(
+      events
+        .filter((event) => event.type === "agent_error" && event.agent === "optimizer")
+        .map((event) => event.error),
+    ).toEqual(["AbortError: Aborted"]);
   });
 
   it("keeps the findings of a lens that decoded while another lens failed structured output", async () => {

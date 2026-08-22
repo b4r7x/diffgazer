@@ -22,7 +22,7 @@ import {
   type ReviewCursorBoundary,
 } from "./cursor.js";
 import type { ReviewSalvageDiagnostics } from "./lenient-read.js";
-import { prohibitResumablePartialFindings } from "./lenient-read.js";
+import { dropUntrustedFindings } from "./lenient-read.js";
 import { withReviewLock } from "./lock.js";
 import {
   addToProjectIndex,
@@ -156,11 +156,11 @@ function countFailedLenses(lensStats: SavedReview["lensStats"]): number {
 
 function presentDurableReviewRead(review: SavedReview): SavedReview {
   const migrated = migrateReview(review);
-  return prohibitResumablePartialFindings(migrated ?? review);
+  return dropUntrustedFindings(migrated ?? review);
 }
 
 function presentDurableReviewMetadata(review: SavedReview): ReviewMetadata {
-  return prohibitResumablePartialFindings(review).metadata;
+  return dropUntrustedFindings(review).metadata;
 }
 
 function migrateReview(review: SavedReview): SavedReview | null {

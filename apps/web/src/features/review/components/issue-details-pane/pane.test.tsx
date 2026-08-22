@@ -243,30 +243,63 @@ describe("IssueDetailsPane", () => {
     ]);
   });
 
-  it("does not map excerpt rows beyond the declared source range", () => {
+  it("renders one plain evidence row per excerpt line", () => {
+    const excerpt = "const parsed = parse(input);\nvalidate(parsed);\nreturn parsed;";
     renderPane(
       makeIssue({
         evidence: [
           {
             type: "code",
-            title: "Bounded parser evidence",
-            sourceId: "source:bounded-parser",
+            title: "Plain parser evidence",
+            sourceId: "source:plain-parser",
+            file: "src/parser.ts",
+            range: { start: 7, end: 9 },
+            excerpt,
+          },
+        ],
+      }),
+    );
+
+    const evidence = screen.getByRole("region", { name: "Code evidence: Plain parser evidence" });
+    const rows = [...evidence.querySelectorAll('[data-slot="code-block-line"]')];
+
+    expect(rows).toHaveLength(excerpt.split(/\r?\n/).length);
+    // Evidence rows stay plain: tinting every row left the code block's inset
+    // untinted, so the padding read as a blank line. Per-line state is a diff signal.
+    for (const row of rows) {
+      expect(row).not.toHaveAttribute("data-state");
+    }
+    expect(
+      rows.map((row) => row.querySelector('[data-slot="code-block-line-number"]')?.textContent),
+    ).toEqual(["7", "8", "9"]);
+  });
+
+  it("numbers every excerpt row, including one past the declared range end", () => {
+    renderPane(
+      makeIssue({
+        evidence: [
+          {
+            type: "code",
+            title: "Trailing context evidence",
+            sourceId: "source:trailing-context",
             file: "src/parser.ts",
             range: { start: 40, end: 42 },
-            excerpt: "line 40\nline 41\nline 42\ncontext without a source line",
+            excerpt: "line 40\nline 41\nline 42\ncontext past the range",
           },
         ],
       }),
     );
 
     const evidence = screen.getByRole("region", {
-      name: "Code evidence: Bounded parser evidence",
+      name: "Code evidence: Trailing context evidence",
     });
     const rows = [...evidence.querySelectorAll('[data-slot="code-block-line"]')];
 
+    // A row with no number renders no gutter cell, so a partly numbered block
+    // would indent its remaining rows one gutter to the left.
     expect(
       rows.map((row) => row.querySelector('[data-slot="code-block-line-number"]')?.textContent),
-    ).toEqual(["40", "41", "42", undefined]);
+    ).toEqual(["40", "41", "42", "43"]);
   });
 
   it("omits malformed evidence locations from a lenient saved issue while retaining excerpts", () => {

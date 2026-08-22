@@ -19,6 +19,15 @@ const EVIDENCE_TYPE = ["code", "doc", "trace", "external"] as const;
 const EvidenceTypeSchema = z.enum(EVIDENCE_TYPE);
 const NonBlankProviderTextSchema = z.string().trim().min(1);
 const TrimmedProviderTextSchema = z.string().trim();
+/**
+ * An excerpt is verbatim source, so the indentation of its first line is part of
+ * the evidence: a whole-string trim would flatten line one against the lines
+ * below it. Blank padding lines and trailing whitespace still go, so the snippet
+ * never renders a phantom row above or below the code.
+ */
+const ExcerptTextSchema = z
+  .string()
+  .overwrite((excerpt) => excerpt.replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd());
 
 const EvidenceRefSchema = z.object({
   type: EvidenceTypeSchema,
@@ -35,7 +44,7 @@ const EvidenceRefSchema = z.object({
       end: z.number(),
     })
     .optional(),
-  excerpt: TrimmedProviderTextSchema,
+  excerpt: ExcerptTextSchema,
   sha: TrimmedProviderTextSchema.optional(),
 });
 export type EvidenceRef = z.infer<typeof EvidenceRefSchema>;
@@ -152,6 +161,8 @@ export const ReviewErrorCode = {
   MODEL_INCOMPATIBLE: "MODEL_INCOMPATIBLE",
   /** The provider refused the request (credential, billing, model, or rate limit). */
   PROVIDER_REJECTED: "PROVIDER_REJECTED",
+  /** The review spent its configured budget before every lens had run. */
+  BUDGET_EXHAUSTED: "BUDGET_EXHAUSTED",
 } as const;
 
 const REVIEW_SPECIFIC_CODES = [
@@ -169,6 +180,7 @@ const REVIEW_SPECIFIC_CODES = [
   ReviewErrorCode.TRUST_REQUIRED,
   ReviewErrorCode.MODEL_INCOMPATIBLE,
   ReviewErrorCode.PROVIDER_REJECTED,
+  ReviewErrorCode.BUDGET_EXHAUSTED,
 ] as const;
 
 const REVIEW_ERROR_CODES = createDomainErrorCodes(REVIEW_SPECIFIC_CODES);

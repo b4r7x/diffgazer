@@ -24,7 +24,11 @@ export interface ReviewGateViewProps {
 }
 
 const SELECT_SHORTCUT: Shortcut = { key: "Enter", label: "Select" };
-const ACTION_SHORTCUTS: Shortcut[] = [{ key: "Left/Right", label: "Actions" }, SELECT_SHORTCUT];
+/** The action-row legend, shared with the review's terminal error view. */
+export const ACTION_SHORTCUTS: Shortcut[] = [
+  { key: "Left/Right", label: "Actions" },
+  SELECT_SHORTCUT,
+];
 const PROVIDER_ACTION_SHORTCUTS: Shortcut[] = [
   ...ACTION_SHORTCUTS,
   getProviderRecoveryShortcut("Providers"),

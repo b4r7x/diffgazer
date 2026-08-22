@@ -178,6 +178,49 @@ describe("CodeBlock", () => {
     });
   });
 
+  describe("line-number gutter", () => {
+    const gutterWidth = (container: HTMLElement) =>
+      container
+        .querySelector<HTMLElement>('[data-slot="code-block-content"]')
+        ?.style.getPropertyValue("--code-block-line-number-w");
+
+    it("sizes the gutter from the largest composed line number, not the line count", () => {
+      const { container } = render(
+        <CodeBlock>
+          <CodeBlock.Content>
+            <CodeBlock.Line number={105} content="const a = 1;" />
+            <CodeBlock.Line number={106} content="const b = 2;" />
+          </CodeBlock.Content>
+        </CodeBlock>,
+      );
+
+      expect(gutterWidth(container)).toBe("3ch");
+    });
+
+    it("keeps the two-digit floor for a short excerpt", () => {
+      const { container } = render(
+        <CodeBlock>
+          <CodeBlock.Content>
+            <CodeBlock.Line number={7} content="const a = 1;" />
+          </CodeBlock.Content>
+        </CodeBlock>,
+      );
+
+      expect(gutterWidth(container)).toBe("2ch");
+    });
+
+    it("sizes auto-split content from its line count", () => {
+      const source = Array.from({ length: 100 }, (_, index) => `line ${index + 1}`).join("\n");
+      const { container } = render(
+        <CodeBlock>
+          <CodeBlock.Content>{source}</CodeBlock.Content>
+        </CodeBlock>,
+      );
+
+      expect(gutterWidth(container)).toBe("3ch");
+    });
+  });
+
   describe("content scrolling", () => {
     it("scrolls the named content region horizontally and vertically once focused", async () => {
       const user = userEvent.setup();

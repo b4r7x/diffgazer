@@ -28,7 +28,6 @@ export type EvidencePresentation =
       label: (typeof EVIDENCE_PRESENTATION_LABELS)["code"];
       file: string;
       startLine?: number;
-      endLine?: number;
     })
   | (EvidencePresentationBase & {
       kind: "reference";
@@ -70,7 +69,6 @@ export function toEvidencePresentation(
         label: EVIDENCE_PRESENTATION_LABELS.code,
         file: evidence.file ?? fallbackCodeFile,
         startLine: range?.start,
-        endLine: range?.end,
       };
     }
     case "doc":

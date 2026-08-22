@@ -641,6 +641,39 @@ describe("useReviewLifecycle Back from a running review", () => {
   });
 });
 
+describe("useReviewLifecycle View Run Details", () => {
+  beforeEach(() => {
+    mockNavigate.mockReset();
+    mockUseReviewLifecycleBase.mockReset();
+  });
+
+  it("opens the saved run in place of the failed live screen and drops the dead session", () => {
+    const base = makeRunningBaseReturn();
+    base.stream.state.isStreaming = false;
+    base.stream.state.error = "Review budget exhausted at maxInputTokens (119808).";
+    base.stream.state.errorCode = ReviewErrorCode.BUDGET_EXHAUSTED;
+    base.checks.isTerminalStreamError = true;
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+
+    const { result } = renderReviewLifecycle("unstaged");
+
+    result.current.handleViewRun("11111111-1111-4111-8111-111111111111");
+
+    expect(mockClearActiveSession).toHaveBeenCalledWith(
+      "unstaged",
+      "11111111-1111-4111-8111-111111111111",
+    );
+    // Non-live: the saved record is the source, and it replaces the failure in
+    // history rather than stacking on it.
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/review/{-$reviewId}",
+      params: { reviewId: "11111111-1111-4111-8111-111111111111" },
+      search: { mode: "unstaged" },
+      replace: true,
+    });
+  });
+});
+
 describe("useReviewLifecycle stream retry", () => {
   it("resumes the active review through the shared stream lifecycle", () => {
     const base = makeBaseReturn();

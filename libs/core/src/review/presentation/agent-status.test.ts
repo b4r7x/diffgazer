@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { AGENT_METADATA, type AgentState, type LensStat } from "../../schemas/events/index.js";
+import { ReviewErrorCode } from "../../schemas/review/index.js";
 import {
   AGENT_STATUS_META,
+  buildDroppedFindingsNotice,
   buildLensFailureNotice,
+  buildMissingLensIssuesNotice,
+  buildTerminalCoverageLine,
   getAgentStatusMeta,
+  getLensCoverage,
   getPartialFailureWarning,
+  hasCompletedLens,
   isAgentHeartbeatEvent,
+  PERSISTED_RUN_ERROR_CODES,
 } from "./agent-status.js";
 
 function makeAgent(
@@ -147,6 +154,113 @@ describe("buildLensFailureNotice", () => {
         { lensId: "security", issueCount: 0, status: "failed" },
       ]),
     ).toBe("Partial run — 1 of 2 lenses failed. Issues from Guardian are missing.");
+  });
+});
+
+describe("buildMissingLensIssuesNotice", () => {
+  it("names the lenses whose issues are missing, without restating the ratio", () => {
+    expect(
+      buildMissingLensIssuesNotice([
+        { lensId: "correctness", issueCount: 4, status: "success" },
+        { lensId: "security", issueCount: 0, status: "failed" },
+        { lensId: "tests", issueCount: 0, status: "failed" },
+      ]),
+    ).toBe("Issues from Guardian and Tester are missing.");
+  });
+
+  it("says nothing when every lens reported", () => {
+    expect(
+      buildMissingLensIssuesNotice([{ lensId: "security", issueCount: 2, status: "success" }]),
+    ).toBe("");
+    expect(buildMissingLensIssuesNotice(undefined)).toBe("");
+  });
+});
+
+describe("buildDroppedFindingsNotice", () => {
+  it("tells the reader the lens counts outlived the findings", () => {
+    expect(buildDroppedFindingsNotice("transport-failed")).toBe(
+      "Findings are not kept for a run that ended this way; the counts below are what each lens reported before it ended.",
+    );
+  });
+
+  it("says nothing for an outcome whose findings the server kept", () => {
+    expect(buildDroppedFindingsNotice("budget-exhausted")).toBe("");
+    expect(buildDroppedFindingsNotice(undefined)).toBe("");
+  });
+});
+
+describe("hasCompletedLens", () => {
+  it("counts a lens that reported nothing as completed", () => {
+    expect(hasCompletedLens([{ lensId: "security", issueCount: 0, status: "success" }])).toBe(true);
+  });
+
+  it("is false when no lens reported", () => {
+    expect(hasCompletedLens([{ lensId: "security", issueCount: 0, status: "failed" }])).toBe(false);
+    expect(hasCompletedLens([])).toBe(false);
+    expect(hasCompletedLens(undefined)).toBe(false);
+  });
+});
+
+describe("getLensCoverage", () => {
+  it("counts the lenses that reported out of the lenses the run tracked", () => {
+    expect(
+      getLensCoverage([
+        { lensId: "correctness", issueCount: 4, status: "success" },
+        { lensId: "security", issueCount: 0, status: "success" },
+        { lensId: "tests", issueCount: 0, status: "failed" },
+      ]),
+    ).toEqual({ completed: 2, total: 3 });
+  });
+
+  it("reports no coverage when the run never tracked a lens", () => {
+    expect(getLensCoverage(undefined)).toEqual({ completed: 0, total: 0 });
+    expect(getLensCoverage([])).toEqual({ completed: 0, total: 0 });
+  });
+});
+
+describe("buildTerminalCoverageLine", () => {
+  it("leads with coverage, then the findings and the elapsed time", () => {
+    expect(
+      buildTerminalCoverageLine({
+        coverage: { completed: 2, total: 5 },
+        issueCount: 3,
+        durationMs: 64_000,
+      }),
+    ).toBe("2 of 5 lenses completed · 3 issues · 1m 4s");
+  });
+
+  it("omits the elapsed time when the run recorded none", () => {
+    expect(buildTerminalCoverageLine({ coverage: { completed: 1, total: 1 }, issueCount: 0 })).toBe(
+      "1 of 1 lens completed · 0 issues",
+    );
+  });
+
+  it("states the coverage of a run the caller derived from lens stats", () => {
+    const lensStats: LensStat[] = [
+      { lensId: "correctness", issueCount: 3, status: "success" },
+      { lensId: "security", issueCount: 0, status: "failed" },
+    ];
+
+    expect(buildTerminalCoverageLine({ coverage: getLensCoverage(lensStats), issueCount: 3 })).toBe(
+      "1 of 2 lenses completed · 3 issues",
+    );
+  });
+});
+
+describe("PERSISTED_RUN_ERROR_CODES", () => {
+  it("lists every code the server reports only after it saved the run", () => {
+    expect(PERSISTED_RUN_ERROR_CODES).toEqual([
+      ReviewErrorCode.BUDGET_EXHAUSTED,
+      ReviewErrorCode.MODEL_INCOMPATIBLE,
+      ReviewErrorCode.PROVIDER_REJECTED,
+      ReviewErrorCode.AI_ERROR,
+    ]);
+  });
+
+  it("leaves out the failures that settle before the write", () => {
+    expect(PERSISTED_RUN_ERROR_CODES).not.toContain(ReviewErrorCode.CANCELLED);
+    expect(PERSISTED_RUN_ERROR_CODES).not.toContain(ReviewErrorCode.SESSION_NOT_FOUND);
+    expect(PERSISTED_RUN_ERROR_CODES).not.toContain(ReviewErrorCode.INTERNAL_ERROR);
   });
 });
 

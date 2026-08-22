@@ -21,7 +21,6 @@ import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { useNavigate } from "@tanstack/react-router";
 import type { KeyboardEvent, RefObject } from "react";
-import { useChromeBackHandoff } from "@/components/layout/header-chrome";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { FailureView } from "@/components/shared/failure-view";
@@ -164,7 +163,6 @@ function HistoryPageContent() {
     setHighlightedIssueId,
   } = useHistoryPage();
   const navigate = useNavigate();
-  const handOffToChrome = useChromeBackHandoff(setFocusZone);
   const hasLoadedReviews = reviewsQuery.data !== undefined;
   const warnings = reviewsQuery.data?.warnings ?? [];
   const warningSummary = summarizeHistoryWarnings(warnings);
@@ -184,7 +182,7 @@ function HistoryPageContent() {
       ? reviewsQuery.error.message
       : null;
 
-  useHistoryKeyboard({
+  const { handOffToChrome } = useHistoryKeyboard({
     enabled: hasLoadedReviews,
     focusZone,
     setFocusZone,

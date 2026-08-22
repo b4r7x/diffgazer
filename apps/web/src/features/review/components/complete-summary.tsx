@@ -1,4 +1,12 @@
 import { formatDuration, formatRunId } from "@diffgazer/core/format";
+import {
+  buildMissingLensIssuesNotice,
+  buildTerminalCoverageLine,
+  describeTerminalOutcome,
+  type FailedTerminalOutcome,
+  getLensCoverage,
+} from "@diffgazer/core/review";
+import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { CategoryStats } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue, SeverityCounts } from "@diffgazer/core/schemas/review";
 import { pluralize } from "@diffgazer/core/strings";
@@ -26,6 +34,9 @@ export interface ReviewCompleteSummaryProps {
   categoryStats: CategoryStats[];
   topIssues: IssuePreview[];
   durationMs?: number;
+  /** Set when the run ended on a failed outcome; the panel then reports the failure. */
+  outcome?: FailedTerminalOutcome;
+  lensStats?: LensStat[];
   className?: string;
 }
 
@@ -46,34 +57,70 @@ export function ReviewCompleteSummary({
   categoryStats,
   topIssues,
   durationMs,
+  outcome,
+  lensStats,
   className,
 }: ReviewCompleteSummaryProps) {
   const runLabel = stats.runId ? formatRunId(stats.runId) : "#unknown";
   const isClean = stats.totalIssues === 0;
   const hasCategories = categoryStats.length > 0;
+  // A failed run names its outcome, how far it got and which lenses produced
+  // nothing. Nothing here may read as a pass: no success tone, no "Review
+  // Complete", and the zero-issue phrasing that congratulates a clean run.
+  // The coverage sentence carries the ratio, so the notice beside it is the
+  // names-only half - the same fact twice in opposite polarity reads as padding.
+  const failure = outcome ? describeTerminalOutcome(outcome) : null;
+  const missingFindings = failure ? buildMissingLensIssuesNotice(lensStats) : "";
 
   return (
     <div className={cn("flex flex-col gap-6", className)}>
       {/* tone repaints border-color only, so the corner chip - which tracks the
           enclosure through --panel-border-color - would keep the neutral edge;
-          lifting --panel-border puts chip and frame on the same green. */}
+          lifting --panel-border puts chip and frame on the same colour. */}
       <Panel
-        tone="success"
+        tone={failure ? "error" : "success"}
         aria-label="Run status"
-        className="[--panel-border:var(--success-border)]"
+        className={
+          failure
+            ? "[--panel-border:var(--error-border)]"
+            : "[--panel-border:var(--success-border)]"
+        }
       >
         <Panel.Label variant="border" aria-hidden="true">
           Run Status
         </Panel.Label>
         <Panel.Content spacing="none">
-          {/* The run headline stays at terminal scale below sm: at display size it
-              wraps to two lines at 375 and dwarfs the panels underneath it. */}
-          <Typography as="h1" size="lg" className="text-success-text mb-2 sm:text-2xl">
-            Review Complete {runLabel}
-          </Typography>
-          <p className={cn("text-sm", isClean ? "text-success-text" : "text-muted-foreground")}>
-            {buildFactLine(stats, durationMs)}
-          </p>
+          {/* The alert wrapper, not the heading itself: role="alert" on a heading
+              element replaces its heading role, and a failed run wants both the
+              announcement and a real heading in the outline. */}
+          <div role={failure ? "alert" : undefined}>
+            {/* The run headline stays at terminal scale below sm: at display size it
+                wraps to two lines at 375 and dwarfs the panels underneath it. */}
+            <Typography
+              as="h1"
+              size="lg"
+              className={cn("mb-2 sm:text-2xl", failure ? "text-error-text" : "text-success-text")}
+            >
+              {failure ? failure.title : "Review Complete"} {runLabel}
+            </Typography>
+            <p
+              className={cn(
+                "text-sm",
+                isClean && !failure ? "text-success-text" : "text-muted-foreground",
+              )}
+            >
+              {failure
+                ? buildTerminalCoverageLine({
+                    coverage: getLensCoverage(lensStats),
+                    issueCount: stats.totalIssues,
+                    durationMs,
+                  })
+                : buildFactLine(stats, durationMs)}
+            </p>
+            {missingFindings ? (
+              <p className="mt-1 text-sm text-warning-text">{missingFindings}</p>
+            ) : null}
+          </div>
           {stats.blockerCount > 0 && (
             <p className="mt-1 text-sm font-bold text-error-text">
               {pluralize(stats.blockerCount, "blocker")} found.

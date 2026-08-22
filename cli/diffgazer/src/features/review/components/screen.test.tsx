@@ -8,6 +8,7 @@ import { NavigationProvider } from "../../../app/providers/navigation";
 import type { Route } from "../../../lib/routes";
 import { ApiBoundary } from "../../../testing/api-boundary";
 import { flush } from "../../../testing/flush";
+import { waitUntil } from "../../../testing/wait-until";
 import { makeReviewLifecycleBase } from "../testing/review-lifecycle-base";
 
 const apiMocks = vi.hoisted(() => ({
@@ -104,6 +105,140 @@ describe("ReviewScreen", () => {
     const frame = lastFrame() ?? "";
     expect(frame).toMatch(/budget exhausted/i);
     expect(frame).toMatch(/usage unavailable/i);
+    expect(frame).not.toMatch(/review complete/i);
+    expect(frame).not.toMatch(/progress overview/i);
+  });
+
+  test("opens a terminal run whose lenses reported into the failure-mode summary", () => {
+    apiMocks.useReview.mockReturnValue({
+      status: "success",
+      data: {
+        review: {
+          metadata: { id: "review-partial", durationMs: 48_352 },
+          result: { issues: [makeIssue({ id: "issue-1", title: "Kept finding" })] },
+          lensStats: [
+            { lensId: "correctness", issueCount: 1, status: "success" },
+            { lensId: "security", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+          ],
+          execution: {
+            receipt: { outcome: "budget-exhausted", usageAvailability: "reported" },
+          },
+        },
+      },
+    });
+
+    const { lastFrame } = renderReviewScreen();
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toMatch(/budget exhausted/i);
+    expect(frame).toContain("1 of 2 lenses completed · 1 issue");
+    expect(frame).toContain("Kept finding");
+    expect(frame).toContain("failed (BUDGET_EXHAUSTED)");
+    expect(frame).not.toMatch(/review complete/i);
+  });
+
+  test("names the outcome on a findings deep link that opens past the summary", () => {
+    apiMocks.useReview.mockReturnValue({
+      status: "success",
+      data: {
+        review: {
+          metadata: { id: "review-partial", durationMs: 48_352 },
+          result: {
+            issues: [
+              makeIssue({ id: "issue-1", title: "Kept finding", symptom: "Kept finding symptom" }),
+            ],
+          },
+          lensStats: [
+            { lensId: "correctness", issueCount: 1, status: "success" },
+            { lensId: "security", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+          ],
+          execution: {
+            receipt: { outcome: "budget-exhausted", usageAvailability: "reported" },
+          },
+        },
+      },
+    });
+
+    const { lastFrame } = renderReviewScreen({
+      screen: "review",
+      reviewId: "review-partial",
+      issueId: "issue-1",
+    });
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("Kept finding symptom");
+    expect(frame).toContain(
+      "Budget Exhausted — The review stopped because a configured budget limit was reached.",
+    );
+  });
+
+  test("hands a failed live run over to its saved record instead of ending on the error", async () => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        error: "Review budget exhausted at maxInputTokens (119808).",
+        errorCode: "BUDGET_EXHAUSTED",
+        gate: "terminal-error",
+        isTerminalStreamError: true,
+        reviewId: "review-123",
+        events: [
+          {
+            type: "orchestrator_complete",
+            totalIssues: 1,
+            filesAnalyzed: 1,
+            lensStats: [
+              { lensId: "correctness", issueCount: 1, status: "success" },
+              {
+                lensId: "security",
+                issueCount: 0,
+                status: "failed",
+                errorCode: "BUDGET_EXHAUSTED",
+              },
+            ],
+            timestamp: "2026-01-01T00:00:05.000Z",
+          },
+        ],
+      }),
+    );
+    apiMocks.useReview.mockImplementation((id: string | null) =>
+      id
+        ? {
+            status: "success" as const,
+            data: {
+              review: {
+                metadata: { id, durationMs: 48_352 },
+                result: { issues: [makeIssue({ id: "issue-1", title: "Kept finding" })] },
+                lensStats: [
+                  { lensId: "correctness", issueCount: 1, status: "success" },
+                  {
+                    lensId: "security",
+                    issueCount: 0,
+                    status: "failed",
+                    errorCode: "BUDGET_EXHAUSTED",
+                  },
+                ],
+                execution: {
+                  receipt: { outcome: "budget-exhausted", usageAvailability: "reported" },
+                },
+              },
+            },
+          }
+        : { status: "pending" as const },
+    );
+
+    const { stdin, lastFrame } = renderReviewScreen({
+      screen: "review",
+      reviewId: "review-123",
+      mode: "staged",
+      live: true,
+    });
+
+    expect(lastFrame() ?? "").toContain("[ View Run Details ]");
+
+    stdin.write("\r");
+    await waitUntil(() => (lastFrame() ?? "").includes("BUDGET EXHAUSTED"));
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("1 of 2 lenses completed · 1 issue");
     expect(frame).not.toMatch(/review complete/i);
     expect(frame).not.toMatch(/progress overview/i);
   });

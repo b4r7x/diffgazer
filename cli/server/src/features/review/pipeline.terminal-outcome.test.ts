@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { ok } from "@diffgazer/core/result";
+import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import {
   type EvidenceKey,
   type ExecutionLimits,
@@ -263,6 +264,57 @@ describe("terminal adapter outcomes reach the review receipt", () => {
     expect(finalized.ok).toBe(false);
     if (finalized.ok) return;
     expect(finalized.error).toMatchObject({ code: "AI_ERROR" });
+  });
+
+  it("names the report step on the terminal abort so the step stops reading as running", async () => {
+    const plan = admittedPlan();
+    const { client, authorization } = authorizedClient(plan, "budget-exhausted");
+    const executed = await executeReview({
+      aiClient: client,
+      parsed: makeParsedDiff([makeFileDiff({ filePath: "a.ts", rawDiff: "+const a = 1;" })]),
+      config: reviewConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+    expect(executed.ok).toBe(true);
+    if (!executed.ok) return;
+
+    const session = createSession("review-terminal", {
+      projectPath: "/project",
+      headCommit: "head",
+      statusHash: "status",
+      statusHashKind: "full",
+      mode: "unstaged",
+    });
+    const events: FullReviewStreamEvent[] = [];
+
+    const finalized = await finalizeReview({
+      outcome: executed.value,
+      emit: async (event) => {
+        events.push(event);
+      },
+      reviewId: "review-terminal",
+      projectPath: "/project",
+      mode: "unstaged",
+      parsed: makeParsedDiff([makeFileDiff({ filePath: "a.ts", rawDiff: "+const a = 1;" })]),
+      activeLenses: ["correctness"],
+      durationMs: 10,
+      branch: null,
+      headCommit: "head",
+      signal: session.controller.signal,
+    });
+
+    expect(finalized.ok).toBe(false);
+    if (finalized.ok) return;
+    // The step travels on the abort; the caller turns it into step_error before
+    // the error event (see the ordering test in service.test.ts).
+    expect(finalized.error).toMatchObject({ code: "BUDGET_EXHAUSTED", step: "report" });
+    expect(
+      events.filter((event) => event.type === "step_start").map((event) => event.step),
+    ).toEqual(["report"]);
+    expect(events.some((event) => event.type === "step_complete" && event.step === "report")).toBe(
+      false,
+    );
   });
 
   it("round-trips a cancelled terminal outcome through the real review store", async () => {

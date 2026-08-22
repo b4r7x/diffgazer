@@ -9,6 +9,7 @@ import {
   type SavedReview,
   SavedReviewSchema,
   TERMINAL_OUTCOMES,
+  terminalOutcomeKeepsFindings,
 } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue } from "@diffgazer/core/testing/factories";
@@ -2069,8 +2070,8 @@ describe("reviews storage", () => {
   });
 
   it.each(
-    TERMINAL_OUTCOMES.filter((outcome) => outcome !== "completed"),
-  )("strips resumable partial findings for %s terminal outcomes", async (outcome) => {
+    TERMINAL_OUTCOMES.filter((outcome) => !terminalOutcomeKeepsFindings(outcome)),
+  )("strips untrusted findings for %s terminal outcomes", async (outcome) => {
     const review = makeSavedReviewWithExecution(outcome, outcome);
     const corruptOnDisk = {
       ...review,
@@ -2096,6 +2097,46 @@ describe("reviews storage", () => {
     }
     expect(listed.ok).toBe(true);
     if (listed.ok) expect(listed.value.items[0]?.issueCount).toBe(0);
+  });
+
+  it("round-trips the findings a budget-exhausted review recorded", async () => {
+    const { saveReview, getReview, listReviewPage } = await loadStorage();
+    const issues = [
+      makeIssue({ id: "kept-1", severity: "high", file: "a.ts" }),
+      makeIssue({ id: "kept-2", severity: "medium", file: "b.ts" }),
+    ];
+
+    const saved = await saveReview(
+      makeSaveOptions({
+        reviewId: REVIEW_ID,
+        result: { issues },
+        lensStats: [
+          { lensId: "correctness", issueCount: 1, status: "success" },
+          { lensId: "security", issueCount: 1, status: "success" },
+          { lensId: "tests", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
+        ],
+        execution: {
+          receipt: makeExecutionReceipt("budget-exhausted", "budget-kept"),
+          result: { issues: [] },
+        },
+      }),
+    );
+
+    expect(saved.ok).toBe(true);
+    const read = await getReview(REVIEW_ID);
+    const listed = await listReviewPage("/projects/test", { limit: 10 });
+
+    expect(read.ok).toBe(true);
+    if (read.ok) {
+      expect(read.value.result.issues.map((issue) => issue.id)).toEqual(["kept-1", "kept-2"]);
+      expect(read.value.metadata).toMatchObject({
+        issueCount: 2,
+        failedLensCount: 1,
+        terminalOutcome: "budget-exhausted",
+      });
+    }
+    expect(listed.ok).toBe(true);
+    if (listed.ok) expect(listed.value.items[0]?.issueCount).toBe(2);
   });
 
   it("does not expose failed execution findings as resumable partial results", async () => {

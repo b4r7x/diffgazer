@@ -61,6 +61,10 @@
 
   [data-slot="code-block-line-number"] {
     flex: 0 0 auto;
+    /* content-box against the global border-box reset: the declared width is the
+       digits themselves, so padding-right stays a gap instead of being eaten by
+       it and a three-digit number never spills into the sign column. */
+    box-sizing: content-box;
     width: var(--code-block-line-number-w, 2ch);
     min-width: var(--code-block-line-number-w, 2ch);
     padding-right: 12px;

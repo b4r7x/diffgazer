@@ -1,4 +1,6 @@
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import type { ReviewEvent } from "@diffgazer/core/review";
+import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
 import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
@@ -132,8 +134,31 @@ beforeEach(() => {
 });
 
 const ESC = "\u001b";
+const ARROW_RIGHT = "\u001b[C";
 
-function RouteHarness(): ReactElement {
+const PARTIAL_LENS_STATS: LensStat[] = [
+  { lensId: "correctness", issueCount: 1, status: "success" },
+  { lensId: "performance", issueCount: 0, status: "success" },
+  { lensId: "security", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+  { lensId: "simplicity", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+  { lensId: "tests", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+];
+
+function makeOrchestratorComplete(lensStats: LensStat[]): ReviewEvent {
+  return {
+    type: "orchestrator_complete",
+    totalIssues: 1,
+    filesAnalyzed: 1,
+    lensStats,
+    timestamp: "2026-01-01T00:00:05.000Z",
+  };
+}
+
+function RouteHarness({
+  onViewRunDetails,
+}: {
+  onViewRunDetails?: (reviewId: string) => void;
+}): ReactElement {
   const { route } = useNavigation();
 
   if (route.screen !== "review") {
@@ -145,6 +170,7 @@ function RouteHarness(): ReactElement {
       mode={route.mode}
       reviewId={route.reviewId}
       allowResumeWithoutSetup={route.live}
+      onViewRunDetails={onViewRunDetails}
     />
   );
 }
@@ -161,10 +187,12 @@ function renderContainer({
   initialRoute = { screen: "review", reviewId: "review-123", mode: "staged" },
   initialShortcuts = [],
   showFooterProbe = false,
+  onViewRunDetails,
 }: {
   initialRoute?: Route;
   initialShortcuts?: Shortcut[];
   showFooterProbe?: boolean;
+  onViewRunDetails?: (reviewId: string) => void;
 } = {}) {
   return render(
     <ApiBoundary api={{ saveSettings: apiMocks.saveSettings }}>
@@ -172,7 +200,7 @@ function renderContainer({
         <TerminalKeyboardProvider>
           <NavigationProvider initialRoute={initialRoute}>
             <FooterProvider initialShortcuts={initialShortcuts}>
-              <RouteHarness />
+              <RouteHarness onViewRunDetails={onViewRunDetails} />
               {showFooterProbe ? <FooterProbe /> : null}
             </FooterProvider>
           </NavigationProvider>
@@ -351,6 +379,134 @@ describe("ReviewContainer", () => {
     await waitUntil(() => (lastFrame() ?? "").includes("Home route"));
     expect(cancel).not.toHaveBeenCalled();
     expect(apiMocks.clearActiveSession).toHaveBeenCalledWith("staged", "review-123");
+  });
+
+  test("offers the saved run when a lens completed before the review failed", async () => {
+    const onViewRunDetails = vi.fn();
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        error: "Review budget exhausted at maxInputTokens (119808).",
+        errorCode: ReviewErrorCode.BUDGET_EXHAUSTED,
+        gate: "terminal-error",
+        isTerminalStreamError: true,
+        reviewId: "review-123",
+        events: [makeOrchestratorComplete(PARTIAL_LENS_STATS)],
+      }),
+    );
+
+    const { stdin, lastFrame } = renderContainer({ onViewRunDetails, showFooterProbe: true });
+
+    await waitUntil(() => (lastFrame() ?? "").includes("Left/Right Actions"));
+    const frame = frameText(lastFrame());
+    expect(frame).toContain("Budget Exhausted");
+    expect(frame).toContain("Reduce the review scope or raise the configured budget");
+    expect(frame).toContain("[ View Run Details ]");
+    expect(frame).toContain("Footer left: Left/Right Actions, Enter Select right: Esc Back");
+
+    stdin.write("\r");
+    await waitUntil(() => onViewRunDetails.mock.calls.length === 1);
+
+    expect(onViewRunDetails).toHaveBeenCalledWith("review-123");
+    // The failed run is over: home must not keep offering it as resumable.
+    expect(apiMocks.clearActiveSession).toHaveBeenCalledWith("staged", "review-123");
+  });
+
+  test("keeps the dead end when no lens completed", () => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        error: "Review budget exhausted at maxInputTokens (119808).",
+        errorCode: ReviewErrorCode.BUDGET_EXHAUSTED,
+        gate: "terminal-error",
+        isTerminalStreamError: true,
+        reviewId: "review-123",
+        events: [
+          makeOrchestratorComplete(
+            PARTIAL_LENS_STATS.map((lens) => ({
+              ...lens,
+              issueCount: 0,
+              status: "failed" as const,
+              errorCode: "BUDGET_EXHAUSTED",
+            })),
+          ),
+        ],
+      }),
+    );
+
+    const frame = frameText(renderContainer({ onViewRunDetails: vi.fn() }).lastFrame());
+
+    expect(frame).toContain("Budget Exhausted");
+    expect(frame).not.toContain("View Run Details");
+    expect(frame).toContain("[ Back ]");
+  });
+
+  test("keeps the dead end when the run ended before it reached disk", () => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        error: "Review is no longer pending.",
+        errorCode: ReviewErrorCode.CANCELLED,
+        gate: "terminal-error",
+        isTerminalStreamError: true,
+        reviewId: "review-123",
+        events: [makeOrchestratorComplete(PARTIAL_LENS_STATS)],
+      }),
+    );
+
+    const frame = frameText(renderContainer({ onViewRunDetails: vi.fn() }).lastFrame());
+
+    expect(frame).not.toContain("View Run Details");
+    expect(frame).toContain("[ Back ]");
+  });
+
+  test("keeps the dead end when the run itself could not be saved", () => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        error: "Failed to save the review.",
+        errorCode: ReviewErrorCode.INTERNAL_ERROR,
+        gate: "terminal-error",
+        isTerminalStreamError: true,
+        reviewId: "review-123",
+        events: [makeOrchestratorComplete(PARTIAL_LENS_STATS)],
+      }),
+    );
+
+    const frame = frameText(renderContainer({ onViewRunDetails: vi.fn() }).lastFrame());
+
+    expect(frame).not.toContain("View Run Details");
+    expect(frame).toContain("[ Back ]");
+  });
+
+  test("offers the providers CTA beside the run when a recoverable failure reported a lens", async () => {
+    const onViewRunDetails = vi.fn();
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        error: "Adapter response failed schema validation.",
+        errorCode: ReviewErrorCode.MODEL_INCOMPATIBLE,
+        gate: "terminal-error",
+        isTerminalStreamError: true,
+        reviewId: "review-123",
+        events: [makeOrchestratorComplete(PARTIAL_LENS_STATS)],
+      }),
+    );
+
+    const { stdin, lastFrame } = renderContainer({ onViewRunDetails, showFooterProbe: true });
+
+    await waitUntil(() => (lastFrame() ?? "").includes("Left/Right Actions"));
+    const frame = frameText(lastFrame());
+    // Web parity: the run the review already paid for and the CTA that repairs
+    // the failure are offered together, Back last.
+    expect(frame).toContain("[ View Run Details ]");
+    expect(frame).toContain("[ Change model ]");
+    expect(frame).toContain("[ Back ]");
+    expect(frame).toContain(
+      "Footer left: Left/Right Actions, Enter Select, p Change model right: Esc Back",
+    );
+
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write("\r");
+
+    await waitUntil(() => (lastFrame() ?? "").includes("Route: settings/providers"));
+    expect(onViewRunDetails).not.toHaveBeenCalled();
   });
 
   test("shows the admission fast-fail inline with the server remediation and a providers jump", async () => {

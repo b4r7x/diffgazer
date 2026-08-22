@@ -2,6 +2,8 @@ import { formatRunId } from "@diffgazer/core/format";
 import {
   buildDuplicateCollapseNotice,
   buildLensFailureNotice,
+  describeTerminalOutcome,
+  type FailedTerminalOutcome,
   selectDetailsEmptyKind,
 } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
@@ -16,6 +18,8 @@ interface ReviewResultsViewProps {
   initialIssueId?: string | null;
   droppedDuplicates?: number;
   lensStats?: LensStat[];
+  /** Set when the run ended on a failed outcome; a deep link opens here without passing the summary. */
+  outcome?: FailedTerminalOutcome;
   onBackToSummary?: () => void;
 }
 
@@ -25,6 +29,7 @@ export function ReviewResultsView({
   initialIssueId,
   droppedDuplicates,
   lensStats,
+  outcome,
   onBackToSummary,
 }: ReviewResultsViewProps) {
   const {
@@ -56,6 +61,10 @@ export function ReviewResultsView({
   // A run that lost lenses must say so wherever it is opened, not only in the
   // live progress view - otherwise a partial result reads as a complete one.
   const completenessNotice = buildLensFailureNotice(lensStats);
+  // A findings deep link reaches this screen without passing the summary, so the
+  // outcome that stopped the run - and its remedy - are told here too. Without
+  // it the completeness notice reads as "a lens errored", never "the run ended".
+  const failure = outcome ? describeTerminalOutcome(outcome) : null;
   const runDisplayId = reviewId ? formatRunId(reviewId) : "#unknown";
   // Below md only the active pane is shown; both stay side-by-side from md up.
   const listPaneClassName = mobilePane === "details" ? "hidden md:flex" : undefined;
@@ -66,8 +75,13 @@ export function ReviewResultsView({
       {/* The list pane's corner chip shows the run id as aria-hidden decoration,
           so the screen's identity heading lives here for assistive tech. */}
       <h2 className="sr-only">Review {runDisplayId}</h2>
-      {completenessNotice || duplicateNotice ? (
+      {failure || completenessNotice || duplicateNotice ? (
         <div className="shrink-0 space-y-1 pt-2">
+          {failure ? (
+            <p className="border-l-2 border-error-border pl-2 text-xs text-error-text" role="alert">
+              {`${failure.title} — ${failure.message}`}
+            </p>
+          ) : null}
           {completenessNotice ? (
             // Rail kept hand-rolled: this one-line note already paints what
             // frame="rail" tone="warning" would paint, so converging buys only

@@ -277,6 +277,14 @@ export function classifyReviewStreamError(
       ctaLabel: "Open Trust Settings",
     };
   }
+  if (errorCode === ReviewErrorCode.BUDGET_EXHAUSTED) {
+    return {
+      kind: "other",
+      title: TERMINAL_OUTCOME_PRESENTATION["budget-exhausted"].title,
+      guidance: "Reduce the review scope or raise the configured budget, then start a new review.",
+      ctaLabel: "Back to Home",
+    };
+  }
   if (errorCode === ErrorCode.STREAM_ERROR) {
     return {
       kind: "transport",

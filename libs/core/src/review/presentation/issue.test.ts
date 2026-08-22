@@ -132,7 +132,6 @@ describe("toEvidencePresentation", () => {
       sourceText: "source:parser",
       file: "src/parser.ts",
       startLine: 7,
-      endLine: 7,
       excerpt: "",
       ordinal: 3,
     });
@@ -150,7 +149,6 @@ describe("toEvidencePresentation", () => {
 
     expect(toEvidencePresentation(evidence, "src/fallback.ts", 0)).toMatchObject({
       startLine: undefined,
-      endLine: undefined,
     });
   });
 

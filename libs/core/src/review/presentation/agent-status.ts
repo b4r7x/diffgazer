@@ -1,3 +1,4 @@
+import { formatDuration } from "../../format.js";
 import {
   AGENT_METADATA,
   type AgentState,
@@ -5,8 +6,13 @@ import {
   LENS_TO_AGENT,
   type LensStat,
 } from "../../schemas/events/index.js";
-import type { LensId } from "../../schemas/review/index.js";
+import {
+  type LensId,
+  ReviewErrorCode,
+  terminalOutcomeKeepsFindings,
+} from "../../schemas/review/index.js";
 import { pluralize } from "../../strings.js";
+import type { FailedTerminalOutcome } from "../screen-state.js";
 import type { ReviewEvent } from "../state.js";
 
 export type AgentStatusBadgeVariant = "neutral" | "info" | "success" | "error";
@@ -103,10 +109,87 @@ export function buildLensFailureNotice(
   // A failure implies at least one reported lens, so the total is never zero.
   const scope = `${failed.length} of ${totalLensCount} lenses failed`;
 
-  const names = failed.map((stat) => getLensAgentName(stat.lensId));
-  const missing = formatList(names);
-  return `Partial run — ${scope}${reason}. Issues from ${missing} are missing.`;
+  return `Partial run — ${scope}${reason}. ${buildMissingLensIssuesNotice(lensStats)}`;
 }
+
+/**
+ * The half of the notice that carries new information when the screen already
+ * states how far the run got: which lenses produced nothing. Kept separate so a
+ * surface that renders a coverage line never prints the same ratio twice.
+ */
+export function buildMissingLensIssuesNotice(lensStats: readonly LensStat[] | undefined): string {
+  const failed = (lensStats ?? []).filter((stat) => stat.status === "failed");
+  if (failed.length === 0) return "";
+
+  const missing = formatList(failed.map((stat) => getLensAgentName(stat.lensId)));
+  return `Issues from ${missing} are missing.`;
+}
+
+/**
+ * What a run whose outcome discarded its findings owes the reader: the kept
+ * total is zero while the per-lens counts beside it are not, and nothing else on
+ * the screen reconciles the two. Empty for `budget-exhausted`, the one failed
+ * outcome whose findings the server keeps.
+ */
+export function buildDroppedFindingsNotice(outcome: FailedTerminalOutcome | undefined): string {
+  if (outcome === undefined || terminalOutcomeKeepsFindings(outcome)) return "";
+  return "Findings are not kept for a run that ended this way; the counts below are what each lens reported before it ended.";
+}
+
+/**
+ * How far a run got: the lenses that reported out of the lenses it tracked.
+ * One shape, so the error screen, both summaries and the history row cannot
+ * print different totals for the same run.
+ */
+export interface LensCoverage {
+  completed: number;
+  total: number;
+}
+
+/** Whether the run got a report out of at least one lens before it ended. */
+export function hasCompletedLens(lensStats: readonly LensStat[] | undefined): boolean {
+  return (lensStats ?? []).some((stat) => stat.status === "success");
+}
+
+export function getLensCoverage(lensStats: readonly LensStat[] | undefined): LensCoverage {
+  const stats = lensStats ?? [];
+  return {
+    completed: stats.filter((stat) => stat.status === "success").length,
+    total: stats.length,
+  };
+}
+
+/**
+ * The one sentence a failed run uses to say how far it got, rendered by both
+ * summaries and the history row. Coverage leads because it is what decides
+ * whether the issue count means anything: "0 issues" from two of five lenses is
+ * coverage that stopped, not a clean bill of health. The outcome title is not
+ * part of it — every caller already shows the title in its own headline.
+ */
+export function buildTerminalCoverageLine(input: {
+  coverage: LensCoverage;
+  issueCount: number;
+  durationMs?: number;
+}): string {
+  const { coverage, issueCount, durationMs } = input;
+  const elapsed = durationMs === undefined ? "" : ` · ${formatDuration(durationMs)}`;
+  const completed = `${coverage.completed} of ${pluralize(coverage.total, "lens", "lenses")} completed`;
+  return `${completed} · ${pluralize(issueCount, "issue")}${elapsed}`;
+}
+
+/**
+ * The error codes the server reports once the run is on disk: the whole
+ * vocabulary of `terminalErrorCode`, which runs from `finalizeReview` after the
+ * write commits (cli/server/src/features/review/pipeline.ts). Pair it with
+ * {@link hasCompletedLens} — a run that ends before the save can report one of
+ * these too, but only from an orchestration where no lens succeeded.
+ */
+export const PERSISTED_RUN_ERROR_CODES: readonly string[] = [
+  ReviewErrorCode.BUDGET_EXHAUSTED,
+  ReviewErrorCode.MODEL_INCOMPATIBLE,
+  ReviewErrorCode.PROVIDER_REJECTED,
+  ReviewErrorCode.AI_ERROR,
+];
 
 function getLensAgentName(lensId: LensId): string {
   return AGENT_METADATA[LENS_TO_AGENT[lensId]].name;

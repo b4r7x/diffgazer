@@ -90,6 +90,7 @@ export {
   type SavedReviewExecutionSnapshot,
   SavedReviewExecutionSnapshotSchema,
   SavedReviewSchema,
+  terminalOutcomeKeepsFindings,
   toSavedReviewExecutionSnapshot,
 } from "./storage.js";
 export {

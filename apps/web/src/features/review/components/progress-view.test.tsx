@@ -6,7 +6,7 @@ import {
   reviewReducer,
   sanitizePresentationText,
 } from "@diffgazer/core/review";
-import type { AgentState } from "@diffgazer/core/schemas/events";
+import type { AgentState, LensStat } from "@diffgazer/core/schemas/events";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -42,6 +42,20 @@ function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
     issueCount: 0,
     ...overrides,
   };
+}
+
+function makeDetective(): AgentState {
+  return makeAgent({
+    id: "detective",
+    meta: {
+      id: "detective",
+      lens: "correctness",
+      name: "Detective",
+      badgeLabel: "DET",
+      badgeVariant: "info",
+      description: "Finds bugs",
+    },
+  });
 }
 
 function makeProgressData(overrides: Partial<ReviewProgressData> = {}): ReviewProgressData {
@@ -110,6 +124,7 @@ function renderView(props: Partial<ReviewProgressViewProps> = {}) {
           contextRefreshError={props.contextRefreshError}
           onRetryContextRefresh={props.onRetryContextRefresh}
           onRetry={props.onRetry}
+          onViewRun={props.onViewRun}
           onViewResults={props.onViewResults}
           onCancel={props.onCancel}
           onBack={props.onBack}
@@ -389,6 +404,122 @@ describe("ReviewProgressView", () => {
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
   });
 
+  describe("a failure that still produced a run", () => {
+    const BUDGET_ERROR = "Review budget exhausted at maxInputTokens (119808).";
+
+    function makeLensStats(completed: number): LensStat[] {
+      return [
+        ...Array.from({ length: completed }, (_, index) => ({
+          lensId: index === 0 ? ("correctness" as const) : ("performance" as const),
+          issueCount: 1,
+          status: "success" as const,
+        })),
+        { lensId: "security", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+      ];
+    }
+
+    function renderFailedRun(props: Partial<ReviewProgressViewProps> = {}) {
+      return renderView({
+        isRunning: false,
+        error: BUDGET_ERROR,
+        errorCode: "BUDGET_EXHAUSTED",
+        reviewId: "review-1",
+        onBack: vi.fn(),
+        data: makeProgressData({ lensStats: makeLensStats(1) }),
+        ...props,
+      });
+    }
+
+    it("offers the saved run when a lens completed, with guidance that names the remedy", async () => {
+      const user = userEvent.setup();
+      const onViewRun = vi.fn();
+
+      renderFailedRun({ onViewRun });
+
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent("Budget Exhausted");
+      expect(alert).toHaveTextContent("Reduce the review scope or raise the configured budget");
+
+      await user.click(screen.getByRole("button", { name: "View Run Details" }));
+
+      expect(onViewRun).toHaveBeenCalledWith("review-1");
+    });
+
+    it("keeps the dead end when no lens completed", () => {
+      renderFailedRun({
+        onViewRun: vi.fn(),
+        data: makeProgressData({ lensStats: makeLensStats(0) }),
+      });
+
+      expect(screen.queryByRole("button", { name: "View Run Details" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Back to Home" })).toBeInTheDocument();
+    });
+
+    it("keeps the dead end when saving the run is what failed", () => {
+      renderFailedRun({ onViewRun: vi.fn(), errorCode: "INTERNAL_ERROR" });
+
+      expect(screen.queryByRole("button", { name: "View Run Details" })).not.toBeInTheDocument();
+    });
+
+    // A cancel and a lost session both settle inside finalizeReview *before*
+    // saveReview runs, so the lens the stream already reported has no record
+    // behind it: the offer would navigate to a review that was never written.
+    it.each([
+      "CANCELLED",
+      "GENERATION_FAILED",
+    ])("keeps the dead end for a %s failure the server settled before saving", (errorCode) => {
+      renderFailedRun({ onViewRun: vi.fn(), errorCode });
+
+      expect(screen.queryByRole("button", { name: "View Run Details" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Back to Home" })).toBeInTheDocument();
+    });
+
+    it("moves between the error actions with the arrows and marks the one holding focus", async () => {
+      const user = userEvent.setup();
+      renderFailedRun({ onViewRun: vi.fn() });
+      const viewRun = screen.getByRole("button", { name: "View Run Details" });
+      const back = screen.getByRole("button", { name: "Back to Home" });
+
+      expect(screen.queryByText("Move Action")).not.toBeInTheDocument();
+
+      viewRun.focus();
+      await waitFor(() => expect(viewRun).toHaveAttribute("data-highlighted"));
+      expect(screen.getByText("Move Action")).toBeInTheDocument();
+
+      await user.keyboard("{ArrowRight}");
+
+      expect(back).toHaveFocus();
+      expect(back).toHaveAttribute("data-highlighted");
+      expect(viewRun).not.toHaveAttribute("data-highlighted");
+    });
+
+    it("leaves the row's keys behind when focus does, so nothing marks a button it left", async () => {
+      const user = userEvent.setup();
+      renderFailedRun({ onViewRun: vi.fn() });
+      const viewRun = screen.getByRole("button", { name: "View Run Details" });
+      const back = screen.getByRole("button", { name: "Back to Home" });
+
+      viewRun.focus();
+      await waitFor(() => expect(viewRun).toHaveAttribute("data-highlighted"));
+
+      // Tab is native on this layout, so focus leaves the row for the log.
+      await user.tab();
+      expect(back).toHaveFocus();
+      await user.tab();
+      expect(screen.getByRole("log", { name: "Activity log" })).toHaveFocus();
+      expect(viewRun).not.toHaveAttribute("data-highlighted");
+      expect(back).not.toHaveAttribute("data-highlighted");
+      expect(screen.queryByText("Move Action")).not.toBeInTheDocument();
+
+      // ← would step the row back to [View Run Details] if it still claimed the
+      // key from outside the panel it belongs to; out there the arrows are the
+      // pane grammar's.
+      await user.keyboard("{ArrowLeft}");
+      expect(viewRun).not.toHaveFocus();
+      expect(back).not.toHaveFocus();
+    });
+  });
+
   it("renders streamed server notices in a non-blocking live region", () => {
     renderView({
       isRunning: true,
@@ -445,21 +576,10 @@ describe("ReviewProgressView", () => {
       thought: "event-0-detective",
       timestamp: "2026-01-01T00:00:00.000Z",
     };
-    const detective = makeAgent({
-      id: "detective",
-      meta: {
-        id: "detective",
-        lens: "correctness",
-        name: "Detective",
-        badgeLabel: "DET",
-        badgeVariant: "info",
-        description: "Finds bugs",
-      },
-    });
 
     renderView({
       isRunning: true,
-      data: makeProgressData({ agents: [detective], events }),
+      data: makeProgressData({ agents: [makeDetective()], events }),
     });
 
     await user.click(screen.getByRole("radio", { name: /Detective/ }));
@@ -520,23 +640,23 @@ describe("ReviewProgressView", () => {
     );
   });
 
-  it("returns to the pane cycle with Tab from the agent filters", async () => {
+  it("continues the pane cycle into the log with Tab from the agent filters", async () => {
     const user = userEvent.setup();
     renderView({
       data: makeProgressData({ agents: [makeAgent()] }),
     });
 
     await user.keyboard("f");
-    await waitFor(() => expect(screen.getByRole("radio", { name: "All" })).toHaveFocus());
+    const allChip = screen.getByRole("radio", { name: "All" });
+    await waitFor(() => expect(allChip).toHaveFocus());
 
+    // The chips sit above the log, so the cycle continues down into it instead
+    // of falling back to the top of the cycle.
     await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
 
-    await waitFor(() =>
-      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
-        "data-state",
-        "focused",
-      ),
-    );
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    await waitFor(() => expect(allChip).toHaveFocus());
   });
 
   it("keeps vertical arrows off the agent chips: ArrowUp stays put, ArrowDown enters the log", async () => {
@@ -554,6 +674,253 @@ describe("ReviewProgressView", () => {
     await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
   });
 
+  it("walks Tab from the pane through the actions and the agent chips into the log", async () => {
+    const user = userEvent.setup();
+    const { container } = renderView({
+      isRunning: true,
+      onCancel: vi.fn(),
+      data: makeProgressData({ agents: [makeDetective()] }),
+    });
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    const logPane = screen.getByRole("region", { name: "Live Activity Log" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+
+    await user.keyboard("{Tab}");
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    await waitFor(() => expect(cancel).toHaveFocus());
+    expectSingleReticle(container);
+
+    // The chip row is one stop, entered on the checked chip.
+    await user.keyboard("{Tab}");
+    const allChip = screen.getByRole("radio", { name: "All" });
+    await waitFor(() => expect(allChip).toHaveFocus());
+    expect(allChip).toHaveAttribute("aria-checked", "true");
+    expect(logPane).toHaveAttribute("data-state", "focused");
+    expectSingleReticle(container);
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
+    expectSingleReticle(container);
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+    expectSingleReticle(container);
+
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
+
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    await waitFor(() => expect(allChip).toHaveFocus());
+
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    await waitFor(() => expect(cancel).toHaveFocus());
+  });
+
+  it("keeps the lone All chip out of the Tab cycle when the run has no agents", async () => {
+    const user = userEvent.setup();
+    renderView({ isRunning: true, onCancel: vi.fn() });
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus());
+
+    const log = screen.getByRole("log");
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(log).toHaveFocus());
+    expect(screen.getByRole("radio", { name: "All" })).not.toHaveFocus();
+
+    // The accelerator stands down with the stop it opens.
+    await user.keyboard("f");
+    expect(log).toHaveFocus();
+  });
+
+  it("enters the agent chips on the checked one, from the actions row and from f", async () => {
+    const user = userEvent.setup();
+    renderView({
+      isRunning: true,
+      onCancel: vi.fn(),
+      data: makeProgressData({ agents: [makeDetective()] }),
+    });
+
+    const detective = screen.getByRole("radio", { name: /Detective/ });
+    await user.click(detective);
+    expect(detective).toHaveAttribute("aria-checked", "true");
+
+    // Round the cycle back to the chip row: log, progress, actions, chips.
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
+    await user.keyboard("{Tab}");
+    await user.keyboard("{Tab}");
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    await waitFor(() => expect(cancel).toHaveFocus());
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(detective).toHaveFocus());
+    expect(screen.getByRole("radio", { name: "All" })).not.toHaveFocus();
+
+    // The accelerator lands on the same chip from the other pane.
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    await waitFor(() => expect(cancel).toHaveFocus());
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
+        "data-state",
+        "focused",
+      ),
+    );
+
+    await user.keyboard("f");
+    await waitFor(() => expect(detective).toHaveFocus());
+  });
+
+  it("keeps one highlight on screen: the chip mark dies with the zone", async () => {
+    const user = userEvent.setup();
+    const { container } = renderView({
+      isRunning: true,
+      onCancel: vi.fn(),
+      data: makeProgressData({ agents: [makeDetective()] }),
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
+        "data-state",
+        "focused",
+      ),
+    );
+
+    await user.keyboard("f");
+    await waitFor(() => expect(screen.getByRole("radio", { name: "All" })).toHaveFocus());
+
+    await user.keyboard("{ArrowRight}");
+    const detective = screen.getByRole("radio", { name: /Detective/ });
+    expect(detective).toHaveFocus();
+    expect(detective).toHaveAttribute("aria-checked", "true");
+    expect(container.querySelectorAll("[data-highlighted]")).toHaveLength(1);
+    expectSingleReticle(container);
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
+    expect(container.querySelectorAll("[data-highlighted]")).toHaveLength(0);
+    expectSingleReticle(container);
+
+    await user.keyboard("{Tab}");
+    await user.keyboard("{Tab}");
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    await waitFor(() => expect(cancel).toHaveFocus());
+    const marked = container.querySelectorAll("[data-highlighted]");
+    expect(marked).toHaveLength(1);
+    expect(marked[0]).toBe(cancel);
+    expectSingleReticle(container);
+  });
+
+  it("hands ArrowUp at the top of the log back to the selected agent chip", async () => {
+    const user = userEvent.setup();
+    renderView({
+      isRunning: true,
+      data: makeProgressData({ agents: [makeDetective()], events: makeLogEvents(5) }),
+    });
+
+    const detective = screen.getByRole("radio", { name: /Detective/ });
+    await user.click(detective);
+    await user.keyboard("{ArrowDown}");
+    const log = screen.getByRole("log");
+    await waitFor(() => expect(log).toHaveFocus());
+
+    // Scrolled away from the top the log keeps the key: there is history above.
+    log.scrollTop = 120;
+    await user.keyboard("{ArrowUp}");
+    expect(log).toHaveFocus();
+
+    log.scrollTop = 0;
+    // A chord is the platform's, not the zone grammar's: the log keeps focus.
+    await user.keyboard("{Shift>}{ArrowUp}{/Shift}");
+    expect(log).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    await waitFor(() => expect(detective).toHaveFocus());
+  });
+
+  it("leaves ArrowUp in the log native when the run has no chip row to reach", async () => {
+    const user = userEvent.setup();
+    renderView({ isRunning: true, data: makeProgressData({ events: makeLogEvents(5) }) });
+
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
+        "data-state",
+        "focused",
+      ),
+    );
+
+    const log = screen.getByRole("log");
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(log).toHaveFocus());
+
+    // fireEvent retained: the contract is the keydown's defaultPrevented verdict -- with no chip
+    // row above it, ArrowUp must stay with the scroller -- which userEvent does not expose.
+    expect(fireEvent.keyDown(log, { key: "ArrowUp" })).toBe(true);
+  });
+
+  it("continues past the last action into the log, and stops at the first one", async () => {
+    const user = userEvent.setup();
+    renderView({ isRunning: true, onCancel: vi.fn(), onViewResults: vi.fn() });
+
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
+        "data-state",
+        "focused",
+      ),
+    );
+
+    await user.keyboard("{Tab}");
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    await waitFor(() => expect(cancel).toHaveFocus());
+
+    // Left of the first action there is no pane to move to.
+    await user.keyboard("{ArrowLeft}");
+    expect(cancel).toHaveFocus();
+
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "View Results" })).toHaveFocus();
+
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
+  });
+
+  it("names the arrow move per zone in the footer", async () => {
+    const user = userEvent.setup();
+    renderView({
+      isRunning: true,
+      onCancel: vi.fn(),
+      data: makeProgressData({ agents: [makeDetective()] }),
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
+        "data-state",
+        "focused",
+      ),
+    );
+    expect(screen.getByText("←/→").parentElement).toHaveTextContent("Switch Pane");
+
+    // One enabled action: the arrows have no second action to step to.
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus());
+    expect(screen.getByText("←/→").parentElement).toHaveTextContent("Switch Pane");
+    expect(screen.queryByText("Move Action")).not.toBeInTheDocument();
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("radio", { name: "All" })).toHaveFocus());
+    expect(screen.getByText("←/→").parentElement).toHaveTextContent("Move Filter");
+    expect(screen.getByText("↓").parentElement).toHaveTextContent("Log");
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
+    expect(screen.getByText("←/→").parentElement).toHaveTextContent("Switch Pane");
+    expect(screen.queryByText("Move Filter")).not.toBeInTheDocument();
+  });
+
   it("reaches the snapshot download buttons with Tab and roams them with arrows", async () => {
     const user = userEvent.setup();
     renderView({
@@ -568,6 +935,8 @@ describe("ReviewProgressView", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Download .txt" })).toHaveFocus(),
     );
+    // The arrows step the download row, so the footer stops claiming they switch panes.
+    expect(screen.getByText("←/→").parentElement).toHaveTextContent("Move Download");
 
     await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("button", { name: "Download .md" })).toHaveFocus();
@@ -578,6 +947,9 @@ describe("ReviewProgressView", () => {
     await user.keyboard("{ArrowLeft}");
     await user.keyboard("{ArrowLeft}");
     expect(screen.getByRole("button", { name: "Download .txt" })).toHaveFocus();
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("radio", { name: "All" })).toHaveFocus());
 
     await user.keyboard("{Tab}");
     await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
@@ -600,6 +972,7 @@ describe("ReviewProgressView", () => {
     await user.keyboard("{Shift>}{Tab}{/Shift}");
     await waitFor(() => expect(txtButton).not.toHaveFocus());
     expect(progressPane.matches(":focus-within")).toBe(true);
+    expect(screen.getByText("←/→").parentElement).toHaveTextContent("Switch Pane");
 
     await user.keyboard("{ArrowRight}");
     await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
@@ -841,11 +1214,23 @@ describe("ReviewProgressView", () => {
     expectSingleReticle(container);
   });
 
-  it("advertises the Filter shortcut while running", async () => {
-    renderView({ isRunning: true, onCancel: vi.fn() });
+  it("advertises the Filter shortcut while the run has agents to filter by", async () => {
+    renderView({
+      isRunning: true,
+      onCancel: vi.fn(),
+      data: makeProgressData({ agents: [makeAgent()] }),
+    });
 
     expect(await screen.findByText("Filter")).toBeInTheDocument();
     expect(screen.getByText("f")).toBeInTheDocument();
+  });
+
+  it("drops the Filter shortcut when the run has no agents to filter by", async () => {
+    renderView({ isRunning: true, onCancel: vi.fn() });
+
+    expect(await screen.findByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    expect(screen.queryByText("Filter")).not.toBeInTheDocument();
+    expect(screen.queryByText("f")).not.toBeInTheDocument();
   });
 
   it("leaves native Tab available on the error screen", async () => {

@@ -60,8 +60,10 @@ export function NoChangesView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
-      {/* Spare height splits 1:2 around the panel — the optical band every
-          hub/child/home screen shares — and the spacers collapse once the panel
+      {/* Gates centre in the content area — the composition the TUI's GateShell
+          draws for the same dead ends (cli/diffgazer/src/components/layout/error-gate.tsx);
+          the page-card screens keep the 1:2 optical band (card.tsx, hub, help,
+          diagnostics, home, summary). Equal spacers collapse once the panel
           outgrows the viewport, so a short window scrolls from the top. */}
       <div aria-hidden className="grow" />
       <Panel
@@ -109,7 +111,7 @@ export function NoChangesView({
           </div>
         </Panel.Content>
       </Panel>
-      <div aria-hidden className="grow-[2]" />
+      <div aria-hidden className="grow" />
     </div>
   );
 }

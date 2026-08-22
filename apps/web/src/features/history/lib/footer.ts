@@ -4,6 +4,7 @@ import {
   type Shortcut,
   SWITCH_PANE_SHORTCUT,
 } from "@diffgazer/core/schemas/presentation";
+import { chromeReturnShortcut } from "@/components/layout/header-chrome";
 import type { HistoryFocusZone } from "@/features/history/types";
 
 export interface HistoryFooter {
@@ -13,7 +14,11 @@ export interface HistoryFooter {
 
 export function getHistoryFooter(
   focusZone: HistoryFocusZone,
-  { hasMore, hasListRetry }: { hasMore: boolean; hasListRetry: boolean },
+  {
+    hasMore,
+    hasListRetry,
+    chromeReturnZone,
+  }: { hasMore: boolean; hasListRetry: boolean; chromeReturnZone: HistoryFocusZone | null },
 ): HistoryFooter {
   if (focusZone === "search") {
     return {
@@ -30,10 +35,17 @@ export function getHistoryFooter(
   const retryKey: Shortcut[] = hasListRetry ? [{ key: "R", label: "Retry History" }] : [];
   const listKeys = [...loadMoreKey, ...retryKey];
 
-  // Parked on the header Back button: the zone keys are gone with the zone, and
-  // only the screen-wide accelerators and Escape are still live.
+  // Parked on the header Back button: the zone keys are gone with the zone, so
+  // only the arrow back to the region that handed off, the screen-wide
+  // accelerators, and Escape are still live.
   if (focusZone === "chrome") {
-    return { shortcuts: listKeys, rightShortcuts: [BACK_SHORTCUT] };
+    return {
+      shortcuts: [
+        ...chromeReturnShortcut(chromeReturnZone, { search: "Search", warnings: "Warnings" }),
+        ...listKeys,
+      ],
+      rightShortcuts: [BACK_SHORTCUT],
+    };
   }
 
   if (focusZone === "warnings") {

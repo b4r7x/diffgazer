@@ -2,10 +2,16 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import { formatDuration, formatRunId } from "@diffgazer/core/format";
 import {
   buildCategoryStats,
+  buildDroppedFindingsNotice,
   buildDuplicateCollapseNotice,
   buildHiddenIssuesNotice,
   buildLensSummaryRows,
+  buildMissingLensIssuesNotice,
   buildReviewSummary,
+  buildTerminalCoverageLine,
+  describeTerminalOutcome,
+  type FailedTerminalOutcome,
+  getLensCoverage,
 } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
@@ -31,6 +37,8 @@ export interface ReviewSummaryViewProps {
   droppedDuplicates?: number;
   droppedBelowThreshold?: number;
   minSeverity?: ReviewSeverity;
+  /** Set for a run that ended on a terminal outcome, so the summary reads as the failure it was. */
+  terminalOutcome?: FailedTerminalOutcome;
   onContinue?: () => void;
   onBack?: () => void;
 }
@@ -49,6 +57,7 @@ export function ReviewSummaryView({
   droppedDuplicates,
   droppedBelowThreshold,
   minSeverity,
+  terminalOutcome,
   onContinue,
   onBack,
 }: ReviewSummaryViewProps): ReactElement {
@@ -56,14 +65,19 @@ export function ReviewSummaryView({
   const { isNarrow } = useResponsive();
   const { contentColumns, contentRows } = useContentZone();
 
+  const failure = terminalOutcome ? describeTerminalOutcome(terminalOutcome) : null;
+  // A failed run keeps only the findings its completed lenses reported; with
+  // none there is nothing for View Results to open, so Enter stays inert.
+  const viewResults = failure && issues.length === 0 ? undefined : onContinue;
+
   usePageFooter({
-    shortcuts: onContinue ? SUMMARY_SHORTCUTS_LEFT : [],
+    shortcuts: viewResults ? SUMMARY_SHORTCUTS_LEFT : [],
     rightShortcuts: onBack ? SUMMARY_SHORTCUTS_RIGHT : [],
   });
 
   useInput((_input, key) => {
-    if (key.return && onContinue) {
-      onContinue();
+    if (key.return && viewResults) {
+      viewResults();
       return;
     }
     if (key.escape && onBack) onBack();
@@ -75,29 +89,46 @@ export function ReviewSummaryView({
   const duplicateNotice = buildDuplicateCollapseNotice(droppedDuplicates, summary.total);
   const hiddenNotice = buildHiddenIssuesNotice(droppedBelowThreshold, minSeverity);
   const lensRows = buildLensSummaryRows(lensStats);
+  const missingLensIssues = failure ? buildMissingLensIssuesNotice(lensStats) : "";
+  const droppedFindingsNotice = buildDroppedFindingsNotice(terminalOutcome);
 
   const width = Math.min(contentColumns, 100);
   const sectionWidth = isNarrow ? width : Math.max(Math.floor((width - 2) / 2), 1);
   const scrollHeight = Math.max(contentRows - SUMMARY_FIXED_ROWS, 1);
   const reviewIdLabel = reviewId ? formatRunId(reviewId) : "#unknown";
+  const headline = failure ? failure.title : "Review Complete";
 
   return (
     <Box justifyContent="center" height={contentRows} overflow="hidden">
       <Box flexDirection="column" width={width} height={contentRows} overflow="hidden">
-        <SectionHeader bordered>{`Review Complete ${reviewIdLabel}`}</SectionHeader>
+        <SectionHeader bordered>{`${headline} ${reviewIdLabel}`}</SectionHeader>
         <ScrollArea height={scrollHeight} isActive>
           <Box flexDirection="column" paddingTop={1}>
-            <Box>
-              <Text color={tokens.muted}>Found </Text>
-              <Text color={tokens.fg} bold>
-                {pluralize(summary.total, "issue")}
-              </Text>
-              <Text color={tokens.muted}> across </Text>
-              <Text color={tokens.fg} bold>
-                {pluralize(summary.filesWithIssues, "file")} with issues
-              </Text>
-              <Text color={tokens.muted}>.</Text>
-            </Box>
+            {failure ? (
+              <Callout variant="error">
+                <Callout.Content>{failure.message}</Callout.Content>
+                {/* Elapsed time keeps its own row below, so the shared line omits it. */}
+                <Callout.Content>
+                  {buildTerminalCoverageLine({
+                    coverage: getLensCoverage(lensStats),
+                    issueCount: issues.length,
+                  })}
+                </Callout.Content>
+                {missingLensIssues ? <Callout.Content>{missingLensIssues}</Callout.Content> : null}
+              </Callout>
+            ) : (
+              <Box>
+                <Text color={tokens.muted}>Found </Text>
+                <Text color={tokens.fg} bold>
+                  {pluralize(summary.total, "issue")}
+                </Text>
+                <Text color={tokens.muted}> across </Text>
+                <Text color={tokens.fg} bold>
+                  {pluralize(summary.filesWithIssues, "file")} with issues
+                </Text>
+                <Text color={tokens.muted}>.</Text>
+              </Box>
+            )}
             {summary.blockerCount > 0 ? (
               <Box marginTop={1}>
                 <Callout variant="error">
@@ -160,6 +191,9 @@ export function ReviewSummaryView({
                 Issues by Lens
               </SectionHeader>
               <Box flexDirection="column" paddingTop={1}>
+                {droppedFindingsNotice ? (
+                  <Text color={tokens.muted}>{droppedFindingsNotice}</Text>
+                ) : null}
                 {lensRows.map((row) => (
                   <Box key={row.lensId} gap={1}>
                     <Text color={tokens.fg}>{row.label}</Text>

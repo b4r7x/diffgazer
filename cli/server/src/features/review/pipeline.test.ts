@@ -1,7 +1,7 @@
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { err, ok } from "@diffgazer/core/result";
 import type { HostedApiProductId, SettingsConfig } from "@diffgazer/core/schemas/config";
-import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
+import type { FullReviewStreamEvent, LensStat } from "@diffgazer/core/schemas/events";
 import {
   type EvidenceKey,
   type ExecutionLimits,
@@ -35,12 +35,7 @@ vi.mock("./engine/orchestrate.js", () => ({
   orchestrateReview: (...args: unknown[]) => orchestrateReview(...args),
 }));
 
-import {
-  executeReview,
-  finalizeReview,
-  prohibitPartialFindings,
-  resolveReviewDefaults,
-} from "./pipeline.js";
+import { executeReview, finalizeReview, resolveReviewDefaults } from "./pipeline.js";
 import {
   addEvent,
   cancelSessionForUser,
@@ -681,27 +676,6 @@ describe("admitted execution lifecycle", () => {
     expect(execution.receipt.executionFingerprint).toHaveLength(64);
   });
 
-  it("prohibits partial findings for every non-completed terminal outcome", () => {
-    const plan = pipelineAdmittedPlan();
-    for (const outcome of [
-      "cancelled",
-      "timed-out",
-      "transport-failed",
-      "schema-failed",
-      "budget-exhausted",
-    ] as const) {
-      const execution = buildExecutionResult(plan, outcome, {
-        startedAt: "2026-07-31T10:00:00.000Z",
-      });
-      const sanitized = prohibitPartialFindings({
-        issues: [makePipelineIssue("partial", "a.ts", "high")],
-        execution,
-      });
-      expect(sanitized.issues).toEqual([]);
-      expect(sanitized.execution?.result.issues).toEqual([]);
-    }
-  });
-
   it("uses per-dispatch receipt timing instead of the orchestration wall clock", async () => {
     const plan = pipelineAdmittedPlan();
     const dispatchStarted = "2026-07-31T10:00:00.000Z";
@@ -825,7 +799,9 @@ describe("admitted execution lifecycle", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.execution?.receipt.outcome).toBe("budget-exhausted");
-    expect(result.value.issues).toEqual([]);
+    // The lens that settled inside the budget keeps its findings; the dispatch
+    // that ran out never returned any, so its own receipt result stays empty.
+    expect(result.value.issues).toHaveLength(1);
     expect(result.value.execution?.result.issues).toEqual([]);
     expect(result.value.execution?.receipt.usage).toEqual({
       inputTokens: 15,
@@ -1212,6 +1188,65 @@ describe("finalizeReview", () => {
     // client's View Results gate (and the absence of a terminal complete) holds.
     expect(stepNames(events, "step_start")).toContain("report");
     expect(stepNames(events, "step_complete")).not.toContain("report");
+  });
+
+  it("persists the findings of lenses that completed inside an exhausted budget", async () => {
+    saveReview.mockResolvedValue(ok({ id: "review-1" }));
+    const issues = [
+      makePipelineIssue("1", "a.ts", "high"),
+      makePipelineIssue("2", "b.ts", "medium"),
+    ];
+    const lensStats: LensStat[] = [
+      { lensId: "correctness", issueCount: 1, status: "success" },
+      { lensId: "security", issueCount: 1, status: "success" },
+      {
+        lensId: "tests",
+        issueCount: 0,
+        status: "failed",
+        errorCode: "STREAM_ERROR",
+        errorMessage: "Review budget exhausted at maxInputTokens (20000).",
+      },
+    ];
+    const execution = buildExecutionResult(pipelineAdmittedPlan(), "budget-exhausted", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:02.000Z",
+      attemptCount: 1,
+      usageAvailability: "unavailable",
+    });
+
+    const result = await runFinalize([], undefined, undefined, { issues, lensStats, execution });
+
+    expect(saveReview).toHaveBeenCalledWith(
+      expect.objectContaining({ result: { issues }, lensStats }),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatchObject({
+      code: ReviewErrorCode.BUDGET_EXHAUSTED,
+      step: "report",
+    });
+  });
+
+  it.each([
+    "cancelled",
+    "timed-out",
+    "transport-failed",
+    "schema-failed",
+  ] as const)("drops the findings a %s review cannot vouch for", async (outcome) => {
+    saveReview.mockResolvedValue(ok({ id: "review-1" }));
+    const execution = buildExecutionResult(pipelineAdmittedPlan(), outcome, {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:02.000Z",
+      attemptCount: 1,
+      usageAvailability: "unavailable",
+    });
+
+    await runFinalize([], undefined, undefined, {
+      issues: [makePipelineIssue("partial", "a.ts", "high")],
+      execution,
+    });
+
+    expect(saveReview).toHaveBeenCalledWith(expect.objectContaining({ result: { issues: [] } }));
   });
 
   it("returns the safe terminal diagnostic after persisting a failed execution", async () => {

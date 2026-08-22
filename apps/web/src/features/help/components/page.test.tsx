@@ -12,6 +12,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
+import { expectSingleReticle } from "@/testing/reticle";
 import { HelpPage } from "./page";
 
 function Providers({ children }: { children: ReactNode }) {
@@ -101,28 +102,57 @@ describe("HelpPage", () => {
     expect(screen.getAllByText("Move the highlight")).toHaveLength(1);
   });
 
-  // The scroll region nested in the sheet paints the screen's one focus mark
-  // (its own inset ring), so the sheet wears the resting chrome — a continuous
-  // border and no corners — instead of stacking a second pane-level mark.
-  it("rests on the hairline frame and draws no corner brackets", async () => {
+  // The sheet is the pane the keys drive, so it wears the screen's one mark
+  // while the region inside it holds focus, and the region defers its own ring.
+  it("brackets the help sheet while its scroll region holds focus", async () => {
     const { container } = await renderPage();
 
     const sheet = screen.getByRole("region", { name: /^help$/i });
+    const region = screen.getByRole("region", { name: "Help content" });
+    expect(region).toHaveFocus();
+    expect(sheet).toHaveAttribute("data-state", "focused");
+    // The region keeps keyboard scrolling but defers the pane mark to the
+    // Panel: the defusal class is libs/ui's documented outline contract.
+    expect(region).toHaveClass("focus:outline-none");
+    expectSingleReticle(container);
+  });
+
+  // The screen hands focus to its scroll region on entry, so the resting chrome
+  // is what shows once focus leaves again: the state follows focus rather than
+  // being pinned on by the markup. Focus leaves the way it does on the real
+  // screen — to a control in the chrome outside the sheet, stood in for here.
+  it("rests on the hairline frame and draws no corner brackets", async () => {
+    const user = userEvent.setup();
+    const router = createHelpRouter(["/help"]);
+    const { container } = render(
+      <>
+        <button type="button">Back</button>
+        <RouterProvider router={router} />
+      </>,
+      { wrapper: Providers },
+    );
+    await screen.findByRole("heading", { level: 1, name: "Help" });
+    const sheet = screen.getByRole("region", { name: /^help$/i });
+    expect(sheet).toHaveAttribute("data-state", "focused");
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
     expect(sheet).toHaveAttribute("data-frame", "hairline");
     expect(sheet).not.toHaveAttribute("data-state");
     expect(container.querySelectorAll('[data-slot="panel-corners"]')).toHaveLength(0);
   });
 
   // The focus ring geometry PF4 fixed: the labelled scroll region lives inside
-  // the sheet, so its inset ring hugs the panel instead of the viewport. The
-  // region also bleeds a 4px gutter into the panel's padding and pads it back,
-  // so the inset ring clears the glyphs instead of painting through their first
-  // column — a pixel contract jsdom cannot see, verified in the browser.
-  it("nests the labelled scroll region inside the help sheet", async () => {
+  // the sheet, so the pane mark it drives hugs the panel instead of the
+  // viewport. It is the sheet's own child rather than the content of a padded
+  // box inside it, which is what puts the scrollbar on the pane edge instead of
+  // inside the text column - measured in testing/e2e/desktop-contracts.e2e.ts.
+  it("nests the labelled scroll region directly inside the help sheet", async () => {
     await renderPage();
 
     const sheet = screen.getByRole("region", { name: /^help$/i });
-    expect(within(sheet).getByRole("region", { name: "Help content" })).toBeInTheDocument();
+    const region = screen.getByRole("region", { name: "Help content" });
+    expect(region.parentElement).toBe(sheet);
   });
 
   it("groups the shortcuts by context in the canonical order", async () => {

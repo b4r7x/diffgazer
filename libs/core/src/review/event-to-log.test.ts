@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AgentStreamEvent, StepEvent } from "../schemas/events/index.js";
+import type { AgentStreamEvent, LensStat, StepEvent } from "../schemas/events/index.js";
 import { AGENT_METADATA } from "../schemas/events/index.js";
 import { makeIssue } from "../testing/factories.js";
 import {
@@ -293,6 +293,36 @@ describe("convertReviewEventsToLogEntries", () => {
     for (const text of expected.messageExcludes ?? []) {
       expect(entry?.message).not.toContain(text);
     }
+  });
+
+  it("reports how far orchestration got when lenses failed", () => {
+    const lensStats: LensStat[] = [
+      { lensId: "correctness", issueCount: 1, status: "success" },
+      { lensId: "security", issueCount: 1, status: "success" },
+      { lensId: "performance", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
+      { lensId: "simplicity", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
+      { lensId: "tests", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
+    ];
+
+    const [entry] = convertReviewEventsToLogEntries([
+      { type: "orchestrator_complete", totalIssues: 2, lensStats, filesAnalyzed: 4, timestamp },
+    ]);
+
+    expect(entry?.message).toBe("Orchestration finished: 2 issues from 2 of 5 lenses (3 failed)");
+    expect(entry?.message).not.toContain("Review complete");
+  });
+
+  it("keeps the complete wording when every lens reported", () => {
+    const lensStats: LensStat[] = [
+      { lensId: "correctness", issueCount: 1, status: "success" },
+      { lensId: "security", issueCount: 0, status: "success" },
+    ];
+
+    const [entry] = convertReviewEventsToLogEntries([
+      { type: "orchestrator_complete", totalIssues: 1, lensStats, filesAnalyzed: 4, timestamp },
+    ]);
+
+    expect(entry?.message).toBe("Review complete: 1 issue found");
   });
 
   it("truncates long agent thoughts", () => {

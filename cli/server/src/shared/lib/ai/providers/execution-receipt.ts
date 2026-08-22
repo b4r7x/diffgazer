@@ -1,3 +1,4 @@
+import type { FailedTerminalOutcome } from "@diffgazer/core/review";
 import {
   ExecutionReceiptSchema,
   type ExecutionResult,
@@ -10,9 +11,6 @@ import {
 } from "@diffgazer/core/schemas/review";
 import type { AttemptEstimate } from "../budget/ledger.js";
 import { type AdapterExecuteRequest, assertBoundedExecutionResult } from "../types.js";
-
-/** Every terminal outcome that carries zero findings. */
-export type FailedTerminalOutcome = Exclude<TerminalOutcome, "completed">;
 
 type FailedExecutionReceipt = Extract<
   ExecutionResult["receipt"],

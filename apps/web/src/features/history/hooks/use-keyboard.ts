@@ -2,7 +2,7 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import { useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
 import { useCanGoBack, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import type { RefObject } from "react";
-import type { CHROME_ZONE } from "@/components/layout/header-chrome";
+import { type CHROME_ZONE, useChromeBackHandoff } from "@/components/layout/header-chrome";
 import { getHistoryFooter } from "@/features/history/lib/footer";
 import type { HistoryFocusZone } from "@/features/history/types";
 import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
@@ -142,23 +142,24 @@ export function useHistoryKeyboard({
   const canGoBack = useCanGoBack();
   const { pathname } = useLocation();
 
-  const tabCycle = buildTabCycle({
-    hasRuns,
-    hasMore,
-    hasInsights,
-    hasRetry,
-    hasListRetry,
-    hasWarnings,
+  // Which zones still have a target on this render: the Tab cycle, the zone the
+  // page renders, and the chrome's way back all read the same set.
+  const zonePresence = { hasRuns, hasMore, hasInsights, hasRetry, hasListRetry, hasWarnings };
+  const tabCycle = buildTabCycle(zonePresence);
+  const effectiveFocusZone = resolveFocusZone({ zone: focusZone, ...zonePresence });
+
+  const chrome = useChromeBackHandoff({
+    zone: effectiveFocusZone,
+    setZone: setFocusZone,
+    scope: HISTORY_SCOPE,
   });
-  const effectiveFocusZone = resolveFocusZone({
-    zone: focusZone,
-    hasRuns,
-    hasMore,
-    hasInsights,
-    hasRetry,
-    hasListRetry,
-    hasWarnings,
-  });
+  // The warnings region can clear while focus is parked on the chrome, and the
+  // return resolves through the same fallback the zone does; the parked hint
+  // reads that resolved zone so it never names a region that has gone.
+  const chromeReturnZone =
+    chrome.returnZone === null
+      ? null
+      : resolveFocusZone({ zone: chrome.returnZone, ...zonePresence });
 
   // The chrome is deliberately absent: it owns no target the page repairs focus
   // to, and a registered container there would let the pane Tab cycle claim Tab
@@ -280,6 +281,7 @@ export function useHistoryKeyboard({
   const { shortcuts, rightShortcuts } = getHistoryFooter(effectiveFocusZone, {
     hasMore,
     hasListRetry,
+    chromeReturnZone,
   });
 
   // The error branch renders its own FailureView footer; publishing history
@@ -289,4 +291,6 @@ export function useHistoryKeyboard({
     rightShortcuts,
     enabled,
   });
+
+  return { handOffToChrome: chrome.handOff };
 }

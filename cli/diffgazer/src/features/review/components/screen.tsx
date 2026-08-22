@@ -2,6 +2,8 @@ import { useReview } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { usePageFooter } from "@diffgazer/core/footer";
 import {
+  type FailedTerminalOutcome,
+  hasCompletedLens,
   type ReviewScreenPhase,
   resolveSavedReviewOutcome,
   type SavedReviewData,
@@ -23,11 +25,18 @@ import { ReviewSummaryView } from "./summary-view";
 
 interface SavedReviewViewProps {
   saved: SavedReviewData;
+  /** Set for a run that ended on a terminal outcome, so the summary opens in failure mode. */
+  terminalOutcome?: FailedTerminalOutcome;
   initialIssueId?: string;
   onClose: () => void;
 }
 
-function SavedReviewView({ saved, initialIssueId, onClose }: SavedReviewViewProps): ReactElement {
+function SavedReviewView({
+  saved,
+  terminalOutcome,
+  initialIssueId,
+  onClose,
+}: SavedReviewViewProps): ReactElement {
   const hasInitialIssue = saved.issues.some((issue) => issue.id === initialIssueId);
   const [phase, setPhase] = useState<Extract<ReviewScreenPhase, "summary" | "results">>(
     hasInitialIssue ? "results" : "summary",
@@ -43,6 +52,7 @@ function SavedReviewView({ saved, initialIssueId, onClose }: SavedReviewViewProp
         droppedDuplicates={saved.droppedDuplicates}
         droppedBelowThreshold={saved.droppedBelowThreshold}
         minSeverity={saved.minSeverity}
+        terminalOutcome={terminalOutcome}
         onContinue={() => setPhase("results")}
         onBack={onClose}
       />
@@ -56,6 +66,7 @@ function SavedReviewView({ saved, initialIssueId, onClose }: SavedReviewViewProp
       initialIssueId={hasInitialIssue ? initialIssueId : undefined}
       droppedDuplicates={saved.droppedDuplicates}
       lensStats={saved.lensStats}
+      terminalOutcome={terminalOutcome}
       onBack={() => setPhase("summary")}
     />
   );
@@ -127,19 +138,27 @@ export function ReviewScreen(): ReactElement {
   const isLiveRoute = route.screen === "review" && route.live === true;
 
   const [streamNotFound, setStreamNotFound] = useState(false);
+  // The run a failed live stream handed over: its record is read on this screen
+  // instead of on a pushed review route, which Back would replay as a new run.
+  const [openedRunId, setOpenedRunId] = useState<string | null>(null);
   const routeKey = `${reviewId ?? ""}:${isLiveRoute}`;
   const [savedRouteKey, setSavedRouteKey] = useState(routeKey);
   if (savedRouteKey !== routeKey) {
     setSavedRouteKey(routeKey);
     setStreamNotFound(false);
+    setOpenedRunId(null);
   }
 
   // One discriminant carries both facts the saved-review path needs: whether to
   // load it, and which id to load.
-  const savedReviewId = reviewId && (!isLiveRoute || streamNotFound) ? reviewId : null;
+  const savedReviewId =
+    openedRunId ?? (reviewId && (!isLiveRoute || streamNotFound) ? reviewId : null);
+  // A 404'd stream and a terminally failed one are equally dead: the saved
+  // record is all there is, so neither may fall back to the stream.
+  const streamGone = streamNotFound || openedRunId !== null;
   const savedReview = useReview(savedReviewId);
   const savedOutcome = savedReviewId
-    ? resolveSavedReviewOutcome(toSavedReviewQueryState(savedReview), streamNotFound)
+    ? resolveSavedReviewOutcome(toSavedReviewQueryState(savedReview), streamGone)
     : null;
   const allowResumeWithoutSetup = isLiveRoute || savedOutcome?.kind === "fallback-to-stream";
 
@@ -162,10 +181,24 @@ export function ReviewScreen(): ReactElement {
       );
     }
     if (savedOutcome.kind === "terminal") {
+      const terminal = savedOutcome.data;
+      // A run whose lenses reported is worth reading: the receipt alone cannot
+      // say how far it got, or show the findings the server kept.
+      if (hasCompletedLens(terminal.lensStats)) {
+        return (
+          <SavedReviewView
+            key={`${terminal.reviewId}:${issueId ?? "summary"}`}
+            saved={terminal}
+            terminalOutcome={terminal.outcome}
+            initialIssueId={issueId}
+            onClose={goBack}
+          />
+        );
+      }
       return (
         <ReviewContainer
-          terminalOutcome={savedOutcome.data.outcome}
-          usageAvailability={savedOutcome.data.usageAvailability}
+          terminalOutcome={terminal.outcome}
+          usageAvailability={terminal.usageAvailability}
           onBack={goBack}
         />
       );
@@ -185,6 +218,7 @@ export function ReviewScreen(): ReactElement {
       reviewId={reviewId}
       allowResumeWithoutSetup={allowResumeWithoutSetup}
       onStreamNotFound={handleStreamNotFound}
+      onViewRunDetails={setOpenedRunId}
     />
   );
 }

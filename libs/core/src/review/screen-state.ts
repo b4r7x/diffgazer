@@ -73,10 +73,16 @@ export function toSavedReviewQueryState(query: SavedReviewQuery): SavedReviewQue
   return { status: "pending" };
 }
 
-export interface SavedReviewTerminalData {
-  reviewId: string;
-  durationMs: number | undefined;
-  outcome: Exclude<TerminalOutcome, "completed">;
+/** Every terminal outcome except the one that means the review actually finished. */
+export type FailedTerminalOutcome = Exclude<TerminalOutcome, "completed">;
+
+/**
+ * A terminal run is still a run: it carries the same saved data as a completed
+ * one so the saved route can render how far it got -- lens outcomes and any
+ * findings the server kept -- instead of a bare receipt.
+ */
+export interface SavedReviewTerminalData extends SavedReviewData {
+  outcome: FailedTerminalOutcome;
   usageAvailability: UsageAvailability;
 }
 
@@ -88,13 +94,24 @@ export type SavedReviewOutcome =
   | { kind: "loading" }
   | { kind: "not-found" };
 
+function toSavedReviewData(review: SavedReviewRecord): SavedReviewData {
+  return {
+    issues: review.result?.issues ?? [],
+    reviewId: review.metadata.id,
+    durationMs: review.metadata.durationMs ?? undefined,
+    lensStats: review.lensStats,
+    droppedDuplicates: review.droppedDuplicates,
+    droppedBelowThreshold: review.droppedBelowThreshold,
+    minSeverity: review.minSeverity,
+  };
+}
+
 function resolveTerminalExecution(review: SavedReviewRecord): SavedReviewTerminalData | null {
   const receipt = review.executionSnapshot?.receipt ?? review.execution?.receipt;
   if (!receipt || receipt.outcome === "completed") return null;
 
   return {
-    reviewId: review.metadata.id,
-    durationMs: review.metadata.durationMs ?? undefined,
+    ...toSavedReviewData(review),
     outcome: receipt.outcome,
     usageAvailability: receipt.usageAvailability,
   };
@@ -117,18 +134,7 @@ export function resolveSavedReviewOutcome(
       return { kind: "terminal", data: terminal };
     }
     if (review?.result) {
-      return {
-        kind: "results",
-        data: {
-          issues: review.result.issues,
-          reviewId: review.metadata.id,
-          durationMs: review.metadata.durationMs ?? undefined,
-          lensStats: review.lensStats,
-          droppedDuplicates: review.droppedDuplicates,
-          droppedBelowThreshold: review.droppedBelowThreshold,
-          minSeverity: review.minSeverity,
-        },
-      };
+      return { kind: "results", data: toSavedReviewData(review) };
     }
     // Saved review exists but has no result. If the stream already 404'd, there
     // is nothing to show -- report not-found instead of looping the dead stream.

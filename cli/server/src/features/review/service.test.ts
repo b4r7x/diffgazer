@@ -19,6 +19,7 @@ import type { z } from "zod";
 import type { AdmittedExecutionPlan } from "../../shared/lib/ai/admission/service.js";
 import { ExecutionLeaseRegistry } from "../../shared/lib/ai/admission/service.js";
 import { createBudgetLedger } from "../../shared/lib/ai/budget/ledger.js";
+import { buildExecutionResult } from "../../shared/lib/ai/client/generate.js";
 import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
 import { promptAttemptEstimate } from "../../shared/lib/ai/providers/execution-receipt.js";
 import type { Adapter } from "../../shared/lib/ai/types.js";
@@ -294,6 +295,31 @@ function makeAIClient(
     terminalExecutions: [],
     terminalDiagnostics: [],
     generate,
+  };
+}
+
+/** A client whose only lens ends the review by exhausting the per-review budget. */
+function makeBudgetExhaustedAIClient(): InitializedAIClient {
+  const base = makeAIClient();
+  const authorization = requireValue(base.authorization, "test client authorization");
+  const diagnostic = {
+    code: "budget-exhausted",
+    safeMessage: "Review budget exhausted at maxInputTokens (40000).",
+    retryable: false,
+    remediation: "Reduce review scope or increase configured limits.",
+    correlationId: "budget-correlation",
+  };
+  return {
+    ...base,
+    terminalExecutions: [
+      buildExecutionResult(authorization.plan, "budget-exhausted", {
+        startedAt: "2026-07-31T10:00:00.000Z",
+        finishedAt: "2026-07-31T10:00:01.000Z",
+      }),
+    ],
+    terminalDiagnostics: [diagnostic],
+    generate: async () =>
+      err({ code: "STREAM_ERROR", message: diagnostic.safeMessage, diagnostic }),
   };
 }
 
@@ -937,6 +963,33 @@ describe("POST-to-stream integration", () => {
     if (completeEvent?.type === "complete") {
       expect(completeEvent.reviewId).toBe(result.value.reviewId);
     }
+  });
+
+  it("emits step_error('report') before the error event on a terminal abort", async () => {
+    const result = await createReviewSession(makeBudgetExhaustedAIClient(), {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    const session = requireValue(getSession(result.value.reviewId), "review session");
+    await vi.waitFor(() => {
+      if (!session.isComplete) throw new Error("session not complete yet");
+    });
+
+    const reportErrorIndex = session.events.findIndex(
+      (event) => event.type === "step_error" && event.step === "report",
+    );
+    const errorIndex = session.events.findIndex((event) => event.type === "error");
+
+    expect(reportErrorIndex).toBeGreaterThanOrEqual(0);
+    expect(reportErrorIndex).toBeLessThan(errorIndex);
+    expect(session.events[errorIndex]).toMatchObject({
+      type: "error",
+      error: { code: "BUDGET_EXHAUSTED" },
+    });
   });
 
   it("persists a nonnegative duration when the wall clock moves backward", async () => {

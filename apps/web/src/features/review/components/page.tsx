@@ -1,5 +1,6 @@
 import { useReview } from "@diffgazer/core/api/hooks";
 import {
+  hasCompletedLens,
   type ReviewScreenPhase,
   resolveSavedReviewOutcome,
   toSavedReviewQueryState,
@@ -58,7 +59,11 @@ export function ReviewPage() {
     reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null,
   );
   const [streamNotFound, setStreamNotFound] = useState(false);
-  const [savedResultsOpen, setSavedResultsOpen] = useState(false);
+  // Which of a saved run's two screens is showing. "auto" defers to the route:
+  // a deep link that names a finding opens the results, everything else opens
+  // the summary. Both moves between them are explicit, so returning from a deep
+  // link's results screen reaches the summary instead of re-resolving the link.
+  const [savedScreen, setSavedScreen] = useState<"auto" | "summary" | "results">("auto");
   const notFoundReportedRef = useRef<string | null>(null);
   const reportErrorReportedRef = useRef<string | null>(null);
 
@@ -71,7 +76,7 @@ export function ReviewPage() {
     setRouteKey(nextRouteKey);
     setLiveState(reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null);
     setStreamNotFound(false);
-    setSavedResultsOpen(false);
+    setSavedScreen("auto");
   }
 
   const router = useRouter();
@@ -88,15 +93,6 @@ export function ReviewPage() {
     ? resolveSavedReviewOutcome(toSavedReviewQueryState(savedReviewQuery), streamNotFound)
     : null;
   const savedOutcomeKind = savedOutcome?.kind ?? null;
-  // A saved review that ended in a failed terminal outcome carries its receipt
-  // durably; the container renders it instead of a results screen with no findings.
-  const savedExecution = shouldLoadSavedReview
-    ? savedReviewQuery.data?.review.executionSnapshot
-    : undefined;
-  const failedTerminalOutcome =
-    savedExecution && savedExecution.receipt.outcome !== "completed"
-      ? savedExecution.receipt.outcome
-      : null;
   const savedErrorForReport = savedOutcome?.kind === "report-error" ? savedOutcome.error : null;
   const allowResumeWithoutSetup =
     isLiveNavigation || (shouldLoadSavedReview && savedOutcomeKind === "fallback-to-stream");
@@ -131,28 +127,35 @@ export function ReviewPage() {
     }
   }, [nextRouteKey, savedOutcomeKind, navigate]);
 
-  if (failedTerminalOutcome && savedExecution) {
-    return (
-      <ReviewContainer
-        terminalOutcome={failedTerminalOutcome}
-        usageAvailability={savedExecution.receipt.usageAvailability}
-        onBack={handleBack}
-      />
-    );
-  }
-
   // `fallback-to-stream` is handled by deriving the streaming view below
   // (the live state falls back to a fresh stream), so it intentionally does
   // not short-circuit here.
   if (savedOutcome && savedOutcome.kind !== "fallback-to-stream") {
-    if (savedOutcome.kind === "results") {
+    // A failed run that never heard back from a lens has nothing to summarise:
+    // the durable receipt is the whole story it can tell.
+    if (savedOutcome.kind === "terminal" && !hasCompletedLens(savedOutcome.data.lensStats)) {
+      return (
+        <ReviewContainer
+          terminalOutcome={savedOutcome.data.outcome}
+          usageAvailability={savedOutcome.data.usageAvailability}
+          onBack={handleBack}
+        />
+      );
+    }
+    // A run that reported lenses opens at its summary whether or not it
+    // finished; the terminal data carries the `outcome` the summary reports.
+    if (savedOutcome.kind === "results" || savedOutcome.kind === "terminal") {
       const savedIssueId = resolveValidIssueId(savedOutcome.data.issues, initialIssueId);
+      const failedOutcome =
+        savedOutcome.kind === "terminal" ? savedOutcome.data.outcome : undefined;
+      const showResults =
+        savedScreen === "results" || (savedScreen === "auto" && savedIssueId !== null);
 
-      if (!savedResultsOpen && !savedIssueId) {
+      if (!showResults) {
         return (
           <ReviewSummaryView
             {...savedOutcome.data}
-            onEnterReview={() => setSavedResultsOpen(true)}
+            onEnterReview={() => setSavedScreen("results")}
             onBack={handleBack}
           />
         );
@@ -164,8 +167,13 @@ export function ReviewPage() {
           initialIssueId={savedIssueId}
           droppedDuplicates={savedOutcome.data.droppedDuplicates}
           lensStats={savedOutcome.data.lensStats}
-          // A deep link skipped the summary, so there is nothing to return to.
-          onBackToSummary={savedIssueId ? undefined : () => setSavedResultsOpen(false)}
+          outcome={failedOutcome}
+          // A deep link into a completed run skipped the summary, so there is
+          // nothing to return to. A failed run always keeps the way back: its
+          // summary is where the outcome and the remedy are told in full.
+          onBackToSummary={
+            savedIssueId && !failedOutcome ? undefined : () => setSavedScreen("summary")
+          }
         />
       );
     }

@@ -191,6 +191,60 @@ describe("ReviewContainer configuration gates", () => {
     expect(container.textContent).not.toMatch(/sk-live-secret/i);
   });
 
+  it("offers the saved run when a stream failure still got a lens out", async () => {
+    const user = userEvent.setup();
+    routeParams.reviewId = "review-1";
+    mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeLifecycleBaseReturn({
+        gate: "terminal-error",
+        stream: {
+          state: {
+            ...createInitialReviewState(),
+            reviewId: "review-1",
+            hasCompleted: false,
+            notices: [],
+            error: "Review budget exhausted at maxInputTokens (119808).",
+            errorCode: "BUDGET_EXHAUSTED",
+            isStreaming: false,
+            orchestratorStats: {
+              lensStats: [
+                { lensId: "correctness", issueCount: 1, status: "success" },
+                {
+                  lensId: "security",
+                  issueCount: 0,
+                  status: "failed",
+                  errorCode: "BUDGET_EXHAUSTED",
+                },
+              ],
+            },
+          },
+          abort: vi.fn(),
+          cancel: vi.fn().mockResolvedValue(null),
+          resume: vi.fn().mockResolvedValue(undefined),
+          isStreamControllerActive: vi.fn().mockReturnValue(false),
+        },
+        checks: {
+          isNoDiffError: false,
+          isTerminalStreamError: true,
+          loadingMessage: null,
+        },
+      }),
+    );
+
+    renderReviewContainer();
+
+    await user.click(await screen.findByRole("button", { name: "View Run Details" }));
+
+    // Non-live: the saved record is the single account of what the run produced.
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/review/{-$reviewId}",
+      params: { reviewId: "review-1" },
+      search: { mode: "staged" },
+      replace: true,
+    });
+  });
+
   it("shows the retryable error gate when configuration init fails", async () => {
     renderReviewContainer();
 

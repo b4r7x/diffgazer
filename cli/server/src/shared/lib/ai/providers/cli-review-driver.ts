@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { err, ok, type Result } from "@diffgazer/core/result";
+import type { FailedTerminalOutcome } from "@diffgazer/core/review";
 import type { LocalCliProductId } from "@diffgazer/core/schemas/config";
 import type { ExecutionResult, ReviewResult } from "@diffgazer/core/schemas/review";
 import { readTextFileWithLimit } from "../bounded-file.js";
@@ -30,7 +31,6 @@ import {
   conservativeAttemptEstimate,
   createCompletedExecutionResult,
   createFailedExecutionResult,
-  type FailedTerminalOutcome,
 } from "./execution-receipt.js";
 
 type CliReviewProcessInput = Readonly<{

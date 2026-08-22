@@ -244,6 +244,136 @@ describe("ReviewPage saved review loading", () => {
     expect(screen.queryByText(/Review Complete/)).not.toBeInTheDocument();
   });
 
+  it("opens a budget-exhausted run with a completed lens into the failure-mode summary", async () => {
+    const user = userEvent.setup();
+    const issue = makeIssue({ id: "issue-1", title: "Kept finding" });
+    routeState.params = { reviewId: "review-budget" };
+    routeState.search = { mode: "staged" };
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        status: "success",
+        data: {
+          review: {
+            metadata: { id: "review-budget" },
+            result: { issues: [issue] },
+            lensStats: [
+              { lensId: "correctness", issueCount: 1, status: "success" },
+              {
+                lensId: "security",
+                issueCount: 0,
+                status: "failed",
+                errorCode: "BUDGET_EXHAUSTED",
+              },
+              { lensId: "tests", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+            ],
+            executionSnapshot: {
+              schemaVersion: 1,
+              executionFingerprint: "a".repeat(64),
+              receipt: { outcome: "budget-exhausted", usageAvailability: "reported" },
+            },
+          },
+        },
+      }),
+    );
+
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      `Budget Exhausted ${formatRunId("review-budget")}`,
+    );
+    expect(screen.getByText("1 of 3 lenses completed · 1 issue")).toBeVisible();
+    expect(screen.queryByText(/Review Complete/)).not.toBeInTheDocument();
+
+    // The findings the run did produce are still a results screen away.
+    await user.click(screen.getByRole("button", { name: /view results/i }));
+    expect(await screen.findByText(`Review ${formatRunId("review-budget")}`)).toBeInTheDocument();
+  });
+
+  it("keeps the failure story on a deep link into a failed run's findings", async () => {
+    const user = userEvent.setup();
+    const issue = makeIssue({ id: "issue-1", title: "Kept finding" });
+    routeState.params = { reviewId: "review-budget" };
+    routeState.search = { mode: "staged", issueId: "issue-1" };
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        status: "success",
+        data: {
+          review: {
+            metadata: { id: "review-budget" },
+            result: { issues: [issue] },
+            lensStats: [
+              { lensId: "correctness", issueCount: 1, status: "success" },
+              {
+                lensId: "security",
+                issueCount: 0,
+                status: "failed",
+                errorCode: "BUDGET_EXHAUSTED",
+              },
+            ],
+            executionSnapshot: {
+              schemaVersion: 1,
+              executionFingerprint: "a".repeat(64),
+              receipt: { outcome: "budget-exhausted", usageAvailability: "reported" },
+            },
+          },
+        },
+      }),
+    );
+
+    renderPage();
+
+    // The history insights list links straight to a finding, skipping the
+    // summary - so the results screen has to carry the outcome itself.
+    expect(await screen.findByRole("option", { name: /kept finding/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Budget Exhausted");
+
+    // And the summary the link skipped stays reachable rather than being the one
+    // screen this run can never show. A deep link opens in the details zone, so
+    // the first Escape steps to the list and the second leaves the results.
+    await user.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
+
+    expect(await screen.findByRole("button", { name: /view results/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      `Budget Exhausted ${formatRunId("review-budget")}`,
+    );
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+
+  it("keeps the durable receipt for a terminal run whose lenses all failed", async () => {
+    routeState.params = { reviewId: "review-failed" };
+    routeState.search = { mode: "staged" };
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        status: "success",
+        data: {
+          review: {
+            metadata: { id: "review-failed" },
+            result: { issues: [] },
+            lensStats: [
+              { lensId: "correctness", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
+            ],
+            executionSnapshot: {
+              schemaVersion: 1,
+              executionFingerprint: "a".repeat(64),
+              receipt: { outcome: "transport-failed", usageAvailability: "unavailable" },
+            },
+          },
+        },
+      }),
+    );
+
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Transport Failed");
+    expect(screen.queryByRole("button", { name: /view results/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back to Home" })).toBeInTheDocument();
+  });
+
   it("opens a saved review at its summary before letting the user view results", async () => {
     const user = userEvent.setup();
     const issue = makeIssue({

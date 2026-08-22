@@ -8,6 +8,7 @@ import {
   type ExecutionResult,
   ExecutionResultSchema,
   Sha256HexSchema,
+  type TerminalOutcome,
   TerminalOutcomeSchema,
 } from "./execution.js";
 import { ReviewResultSchema, ReviewSeveritySchema } from "./issues.js";
@@ -107,6 +108,16 @@ function resultsMatch(
   return canonicalJson(left.issues) === canonicalJson(right.issues);
 }
 
+/**
+ * Whether a review that ended on this terminal outcome may carry findings.
+ * Lenses that settled inside an exhausted budget returned schema-valid findings
+ * the review already streamed, so a budget-exhausted review keeps them; every
+ * other failed outcome ended before its aggregate could be trusted.
+ */
+export function terminalOutcomeKeepsFindings(outcome: TerminalOutcome): boolean {
+  return outcome === "completed" || outcome === "budget-exhausted";
+}
+
 function validateSavedReviewExecution(
   review: {
     execution?: z.infer<typeof ExecutionResultSchema>;
@@ -130,14 +141,19 @@ function validateSavedReviewExecution(
     });
   }
 
-  if (receipt.outcome !== "completed" && review.result.issues.length > 0) {
+  if (!terminalOutcomeKeepsFindings(receipt.outcome) && review.result.issues.length > 0) {
     context.addIssue({
       code: "custom",
-      message: "Non-completed terminal outcomes cannot carry review findings",
+      message: "Only completed and budget-exhausted reviews can carry findings",
       path: ["result", "issues"],
     });
   }
 
+  // `execution.result` is the immutable copy of what a *completed* run produced.
+  // `ExecutionResultSchema` pairs every failed receipt with an empty result, so
+  // `completed` is the only outcome whose findings this can cross-check at all;
+  // the findings a budget-exhausted run keeps are vouched for per lens by
+  // `lensStats`, not by a copy the schema forbids it from carrying.
   if (
     receipt.outcome === "completed" &&
     review.execution &&

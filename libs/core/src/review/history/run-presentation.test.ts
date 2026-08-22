@@ -77,6 +77,46 @@ describe("getRunSummaryText", () => {
     ).toBe("Review ended with outcome cancelled.");
   });
 
+  it("says how far a terminal run got when some lenses reported", () => {
+    expect(
+      getRunSummaryText(
+        makeReviewMetadata({
+          issueCount: 0,
+          terminalOutcome: "budget-exhausted",
+          failedLensCount: 3,
+          lenses: ["correctness", "security", "performance", "simplicity", "tests"],
+        }),
+      ),
+    ).toBe("Budget Exhausted · 2 of 5 lenses completed · 0 issues");
+  });
+
+  it("counts the findings a terminal run kept in the same sentence", () => {
+    expect(
+      getRunSummaryText(
+        makeReviewMetadata({
+          issueCount: 2,
+          highCount: 2,
+          terminalOutcome: "budget-exhausted",
+          failedLensCount: 3,
+          lenses: ["correctness", "security", "performance", "simplicity", "tests"],
+        }),
+      ),
+    ).toBe("Budget Exhausted · 2 of 5 lenses completed · 2 issues");
+  });
+
+  it("keeps the bare outcome when no lens reported", () => {
+    expect(
+      getRunSummaryText(
+        makeReviewMetadata({
+          issueCount: 0,
+          terminalOutcome: "budget-exhausted",
+          failedLensCount: 2,
+          lenses: ["correctness", "security"],
+        }),
+      ),
+    ).toBe("Review ended with outcome budget-exhausted.");
+  });
+
   it("joins severity parts with commas", () => {
     const text = getRunSummaryText(
       makeReviewMetadata({ issueCount: 3, blockerCount: 1, highCount: 2 }),

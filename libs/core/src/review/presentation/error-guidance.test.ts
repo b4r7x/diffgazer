@@ -297,6 +297,20 @@ describe("review error-guidance presentation", () => {
     expect(classifyReviewStreamError("API-key rejected", null, "hosted-api").kind).toBe("api-key");
   });
 
+  it("names the budget remedy instead of only sending the user home", () => {
+    expect(
+      classifyReviewStreamError(
+        "Review budget exhausted at maxInputTokens (119808).",
+        "BUDGET_EXHAUSTED",
+      ),
+    ).toEqual({
+      kind: "other",
+      title: "Budget Exhausted",
+      guidance: "Reduce the review scope or raise the configured budget, then start a new review.",
+      ctaLabel: "Back to Home",
+    });
+  });
+
   it("routes only credential, model, and provider failures to the providers screen", () => {
     expect(isProviderRecoveryError("api-key")).toBe(true);
     expect(isProviderRecoveryError("model-incompatible")).toBe(true);

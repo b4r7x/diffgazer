@@ -30,11 +30,23 @@ function isStructuredOutputFailure(error: AIError): boolean {
   return error.code === "STREAM_ERROR" && error.diagnostic?.code === "schema-failed";
 }
 
+/** A dispatch the per-review budget ledger refused to settle. */
+function isBudgetExhausted(error: AIError): boolean {
+  return error.code === "STREAM_ERROR" && error.diagnostic?.code === "budget-exhausted";
+}
+
 function isAbortRejection(reason: unknown, signal?: AbortSignal): boolean {
   if (signal?.aborted) return true;
   if (reason instanceof DOMException && reason.name === "AbortError") return true;
   return reason instanceof Error && reason.message === "Aborted";
 }
+
+/**
+ * The rejection `runWithConcurrency` fills in for a slot it never launched.
+ * Identity is the only thing that separates it from a dispatched task that threw
+ * an abort-shaped error of its own.
+ */
+const UNDISPATCHED = new Error("Aborted");
 
 async function runWithConcurrency<T, R>(
   items: T[],
@@ -50,7 +62,7 @@ async function runWithConcurrency<T, R>(
     const resolveWithFill = () => {
       for (let i = 0; i < results.length; i++) {
         if (!results[i]) {
-          results[i] = { status: "rejected", reason: new Error("Aborted") };
+          results[i] = { status: "rejected", reason: UNDISPATCHED };
         }
       }
       resolve(results);
@@ -142,6 +154,11 @@ export async function orchestrateReview(
     (candidate): candidate is AbortSignal => candidate !== undefined,
   );
   const signal = AbortSignal.any(signals);
+  // The first dispatch to exhaust the review budget has spent the envelope the
+  // remaining lenses would draw on: dispatching them costs money for output the
+  // ledger refuses. Stop launching new ones and let those in flight settle.
+  const budgetAbort = new AbortController();
+  const dispatchSignal = AbortSignal.any([signal, budgetAbort.signal]);
   let anyLensSucceeded = false;
   let structuredOutputError: ReviewError | null = null;
 
@@ -164,6 +181,8 @@ export async function orchestrateReview(
         } else if (!anyLensSucceeded && isStructuredOutputFailure(result.error)) {
           structuredOutputError ??= { code: result.error.code, message: result.error.message };
           structuredOutputAbort.abort();
+        } else if (isBudgetExhausted(result.error)) {
+          budgetAbort.abort();
         }
         return result;
       } catch (error) {
@@ -176,7 +195,7 @@ export async function orchestrateReview(
         throw error;
       }
     },
-    signal,
+    dispatchSignal,
   );
 
   const allIssues: ReviewIssue[] = [];
@@ -184,17 +203,36 @@ export async function orchestrateReview(
   let failedLensCount = 0;
   let lastError: ReviewError | null = null;
   let droppedIncompleteProviderIssues = 0;
+  // The budget abort and a user cancellation reject an undispatched lens with
+  // the same synthetic reason, so only the controller that fired tells them
+  // apart — and a lens skipped for budget must not report a cancellation.
+  const skippedForBudget = budgetAbort.signal.aborted && !signal.aborted;
 
   settledResults.forEach((settled, i) => {
     const lens = lenses[i];
     if (!lens) return;
 
     if (settled.status === "rejected") {
-      const errorMsg = getErrorMessage(settled.reason);
       // A rejected task is either an abort (synthetic "Aborted" fill or a signal
       // abort) or an unexpected internal throw — never a classified network
       // failure, which travels the `result.ok === false` branch below.
-      const errorCode = isAbortRejection(settled.reason, signal) ? "CANCELLED" : "INTERNAL_ERROR";
+      const aborted = isAbortRejection(settled.reason, signal);
+      const notDispatched = settled.reason === UNDISPATCHED && skippedForBudget;
+      const abortCode = notDispatched ? "BUDGET_EXHAUSTED" : "CANCELLED";
+      const errorCode = aborted ? abortCode : "INTERNAL_ERROR";
+      const errorMsg = notDispatched
+        ? "Not dispatched — the review budget was exhausted."
+        : getErrorMessage(settled.reason);
+      if (notDispatched) {
+        // The lens never reached `runLensAnalysis`, the only other emitter of a
+        // terminal agent event, so without this its board row stays queued.
+        onEvent({
+          type: "agent_error",
+          agent: LENS_TO_AGENT[lens.id],
+          error: errorMsg,
+          timestamp: new Date().toISOString(),
+        });
+      }
       lastError = { code: errorCode, message: errorMsg };
       lensStats.push({
         lensId: lens.id,

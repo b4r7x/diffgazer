@@ -144,11 +144,13 @@ describe("NoChangesView", () => {
     expect(panel).toHaveAttribute("data-state", "focused");
   });
 
-  it("seats the panel in the shared 1:2 optical band", () => {
+  it("centres the panel between two collapsing spacers", () => {
     const { container } = renderView({ onSwitchMode: vi.fn() });
 
-    // The collapsing spacers around the panel are the centering contract the
-    // failure and hub screens share.
+    // A gate centres in the content area between two equal spacers that collapse
+    // once the panel outgrows the viewport. jsdom has no layout, so the placement
+    // itself is pinned in desktop-contracts.e2e.ts; what it needs from the markup
+    // is the pair of spacers.
     const panel = container.querySelector('[data-slot="panel"]');
     expect(panel?.previousElementSibling).toHaveAttribute("aria-hidden");
     expect(panel?.nextElementSibling).toHaveAttribute("aria-hidden");

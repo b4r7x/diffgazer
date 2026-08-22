@@ -66,7 +66,7 @@ describe("ReviewIssueSchema", () => {
         whyItMatters: " It matters ",
         evidence: [
           { type: "code", title: "   ", sourceId: " source:blank ", excerpt: "   " },
-          { type: "code", title: " Valid ", sourceId: " source:valid ", excerpt: " code " },
+          { type: "code", title: " Valid ", sourceId: " source:valid ", excerpt: "\ncode  \n" },
         ],
       }),
     );
@@ -84,6 +84,24 @@ describe("ReviewIssueSchema", () => {
       { type: "code", title: "", sourceId: "source:blank", excerpt: "" },
       { type: "code", title: "Valid", sourceId: "source:valid", excerpt: "code" },
     ]);
+  });
+
+  it("keeps the first excerpt line's indentation on both read paths", () => {
+    const excerpt = "    if (a) {\n      b();\n    }\n";
+    const input = createIssueInput({
+      evidence: [{ type: "code", title: "Guard", sourceId: "source:guard", excerpt }],
+    });
+
+    const parsedIssue = ReviewIssueSchema.parse(input);
+    const parsedResult = ReviewResultSchema.parse({ issues: [input] });
+
+    expect(parsedIssue.evidence[0]?.excerpt).toBe("    if (a) {\n      b();\n    }");
+    expect(parsedIssue.evidence[0]?.excerpt.split("\n")).toEqual([
+      "    if (a) {",
+      "      b();",
+      "    }",
+    ]);
+    expect(parsedResult.issues[0]?.evidence[0]?.excerpt).toBe(parsedIssue.evidence[0]?.excerpt);
   });
 
   it.each([

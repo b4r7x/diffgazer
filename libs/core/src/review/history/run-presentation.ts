@@ -2,6 +2,8 @@ import { formatRunId, getTimestamp, type RunIdLookup } from "../../format.js";
 import { DETACHED_HEAD_BRANCH } from "../../schemas/git.js";
 import type { ReviewMetadata, ReviewSeverity, SeverityCounts } from "../../schemas/review/index.js";
 import { pluralize } from "../../strings.js";
+import { buildTerminalCoverageLine } from "../presentation/agent-status.js";
+import { describeTerminalOutcome } from "../presentation/error-guidance.js";
 
 export interface SeverityPart {
   severity: ReviewSeverity;
@@ -46,8 +48,25 @@ export function getRunSummaryParts(metadata: ReviewMetadata): RunSummaryParts {
 
 export function getRunSummaryText(metadata: ReviewMetadata): string {
   const summary = getRunSummaryParts(metadata);
-  if (metadata.terminalOutcome && metadata.terminalOutcome !== "completed") {
-    return `Review ended with outcome ${metadata.terminalOutcome}.`;
+  const terminalOutcome = metadata.terminalOutcome;
+  if (terminalOutcome && terminalOutcome !== "completed") {
+    // A terminal run whose lenses did report is not a bare failure: the row says
+    // how far it got, in the same sentence both summaries render. History keeps
+    // no per-lens stats, so coverage comes from the lenses the run was
+    // configured with — the list orchestration reports one stat per.
+    const coverage = {
+      completed: metadata.lenses.length - summary.failedLensCount,
+      total: metadata.lenses.length,
+    };
+    if (summary.partial && coverage.completed > 0) {
+      const outcome = describeTerminalOutcome(terminalOutcome).title;
+      const coverageLine = buildTerminalCoverageLine({
+        coverage,
+        issueCount: summary.issueCount,
+      });
+      return `${outcome} · ${coverageLine}`;
+    }
+    return `Review ended with outcome ${terminalOutcome}.`;
   }
   if (summary.partial) {
     const findings =

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { LensStat } from "../schemas/events/index.js";
 import type { ExecutionReceipt } from "../schemas/review/index.js";
 import {
   resolveSavedReviewOutcome,
@@ -125,6 +126,34 @@ describe("resolveSavedReviewOutcome", () => {
       expect(outcome.data.reviewId).toBe("abc");
       expect(outcome.data.outcome).toBe("cancelled");
       expect(outcome.data.usageAvailability).toBe("unavailable");
+      expect(outcome.data.issues).toEqual([]);
+    }
+  });
+
+  it("carries the lens outcomes and kept findings of a terminal run", () => {
+    const lensStats: LensStat[] = [
+      { lensId: "correctness", issueCount: 1, status: "success" },
+      { lensId: "security", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
+    ];
+    const state: SavedReviewQueryState = {
+      status: "success",
+      review: {
+        metadata: { id: "abc", durationMs: 4800 },
+        result: { issues: [issue("i-1")] },
+        executionSnapshot: { receipt: terminalReceipt("budget-exhausted", "reported") },
+        lensStats,
+        droppedDuplicates: 2,
+      },
+    };
+
+    const outcome = resolveSavedReviewOutcome(state, false);
+    expect(outcome.kind).toBe("terminal");
+    if (outcome.kind === "terminal") {
+      expect(outcome.data.outcome).toBe("budget-exhausted");
+      expect(outcome.data.lensStats).toEqual(lensStats);
+      expect(outcome.data.issues).toHaveLength(1);
+      expect(outcome.data.droppedDuplicates).toBe(2);
+      expect(outcome.data.durationMs).toBe(4800);
     }
   });
 

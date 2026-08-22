@@ -167,6 +167,8 @@ function Subject({
           </div>
         </div>
       </div>
+      {/* Mirrors the page layer's parked footer hint, which names this zone. */}
+      <p>{`chrome return: ${keyboard.chromeReturnZone ?? "none"}`}</p>
     </>
   );
 }
@@ -586,6 +588,104 @@ describe("useProvidersKeyboard", () => {
     await user.tab();
     expect(searchInput).toHaveFocus();
     expect(screen.getByRole("listbox", { name: "Providers" })).not.toHaveFocus();
+  });
+
+  it("returns focus to the search box with ArrowDown after the hand-off", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <HeaderChromeHarness>
+          <Subject />
+        </HeaderChromeHarness>
+      </KeyboardProvider>,
+    );
+
+    const searchInput = screen.getByRole("textbox", { name: "Search providers" });
+    await user.click(searchInput);
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Back" })).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(searchInput).toHaveFocus();
+  });
+
+  it("returns focus to the notice action with ArrowDown after the hand-off", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <HeaderChromeHarness>
+          <Subject hasNotice />
+        </HeaderChromeHarness>
+      </KeyboardProvider>,
+    );
+
+    await user.click(screen.getByRole("textbox", { name: "Search providers" }));
+    await user.keyboard("{ArrowUp}");
+    const retry = screen.getByRole("button", { name: "Retry" });
+    expect(retry).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Back" })).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+
+    // The hand-off remembers the control it left, so the return skips the search
+    // box the other origin would come back to.
+    expect(retry).toHaveFocus();
+  });
+
+  it("falls back to the provider list when the notice vanishes while parked", async () => {
+    const user = userEvent.setup();
+
+    const { rerender } = render(
+      <KeyboardProvider>
+        <HeaderChromeHarness>
+          <Subject hasNotice />
+        </HeaderChromeHarness>
+      </KeyboardProvider>,
+    );
+
+    await user.click(screen.getByRole("textbox", { name: "Search providers" }));
+    await user.keyboard("{ArrowUp}");
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Back" })).toHaveFocus();
+
+    rerender(
+      <KeyboardProvider>
+        <HeaderChromeHarness>
+          <Subject hasNotice={false} />
+        </HeaderChromeHarness>
+      </KeyboardProvider>,
+    );
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    // The parked hint follows the return: no Retry left to name, so the footer
+    // advertises the zone the arrow actually lands in.
+    expect(screen.getByText("chrome return: list")).toBeInTheDocument();
+
+    await user.keyboard("{ArrowDown}");
+
+    await waitFor(() => expect(screen.getByRole("listbox", { name: "Providers" })).toHaveFocus());
+  });
+
+  it("ignores ArrowDown on the Back button when nothing handed off", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <HeaderChromeHarness>
+          <Subject />
+        </HeaderChromeHarness>
+      </KeyboardProvider>,
+    );
+
+    const backButton = screen.getByRole("button", { name: "Back" });
+    backButton.focus();
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(backButton).toHaveFocus();
   });
 
   it("keeps ArrowUp native in the search input until the caret sits at the start", async () => {

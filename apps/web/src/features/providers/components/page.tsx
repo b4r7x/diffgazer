@@ -12,6 +12,7 @@ import {
   type Shortcut,
 } from "@diffgazer/core/schemas/presentation";
 import { Panel } from "@diffgazer/ui/components/panel";
+import { chromeReturnShortcut } from "@/components/layout/header-chrome";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import {
   ConfigurationErrorNotice,
@@ -29,7 +30,15 @@ import { useFocusWithin } from "@/hooks/use-focus-within";
 
 function getProvidersFooter(
   focusZone: ProvidersFocusZone,
-  { layout, overflowMenuOpen }: { layout: ProviderActionLayout; overflowMenuOpen: boolean },
+  {
+    layout,
+    overflowMenuOpen,
+    chromeReturnZone,
+  }: {
+    layout: ProviderActionLayout;
+    overflowMenuOpen: boolean;
+    chromeReturnZone: ProvidersFocusZone | null;
+  },
 ): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
   if (overflowMenuOpen) {
     return {
@@ -42,11 +51,22 @@ function getProvidersFooter(
   const hasActions = layout.overflow.length > 0;
   const primary = layout.primary && !layout.primary.disabledReason ? layout.primary : null;
 
-  // Parked on the header Back button: the zone keys are gone with the zone, and
-  // only the screen-wide accelerators and Escape are still live.
+  // Parked on the header Back button: the zone keys are gone with the zone, so
+  // only the arrow back to the control that handed off, the screen-wide
+  // accelerators, and Escape are still live.
   if (focusZone === "chrome") {
     return {
-      shortcuts: [...hotkeys, { key: "/", label: "Search" }],
+      shortcuts: [
+        // The notice's only control is its Retry action, so that is what the
+        // arrow back into it names.
+        ...chromeReturnShortcut(chromeReturnZone, {
+          input: "Search",
+          notice: "Retry",
+          list: "Providers",
+        }),
+        ...hotkeys,
+        { key: "/", label: "Search" },
+      ],
       rightShortcuts: [BACK_SHORTCUT],
     };
   }
@@ -144,6 +164,7 @@ export function ProvidersPage() {
     : getProvidersFooter(keyboard.focusZone, {
         layout: actionLayout,
         overflowMenuOpen: overflowMenu.open,
+        chromeReturnZone: keyboard.chromeReturnZone,
       });
 
   usePageFooter({ shortcuts: footer.shortcuts, rightShortcuts: footer.rightShortcuts });

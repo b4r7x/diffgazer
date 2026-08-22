@@ -3,7 +3,6 @@ import { err, ok, type Result } from "@diffgazer/core/result";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import {
   type ExecutionResult,
-  ExecutionResultSchema,
   type LensId,
   type NormalizedUsage,
   NormalizedUsageSchema,
@@ -16,6 +15,7 @@ import {
   type SeverityFilter,
   severityRank,
   type TerminalOutcome,
+  terminalOutcomeKeepsFindings,
   type UsageAvailability,
 } from "@diffgazer/core/schemas/review";
 import {
@@ -130,20 +130,6 @@ export async function resolveReviewConfig(params: {
   return { ...defaults, projectContext };
 }
 
-export function prohibitPartialFindings(outcome: ReviewOutcome): ReviewOutcome {
-  if (!outcome.execution || outcome.execution.receipt.outcome === "completed") {
-    return outcome;
-  }
-  return {
-    ...outcome,
-    issues: [],
-    execution: ExecutionResultSchema.parse({
-      receipt: outcome.execution.receipt,
-      result: { issues: [] },
-    }),
-  };
-}
-
 /** A client whose dispatches are observable, so the review can report what the adapter returned. */
 type ReviewAIClient = AIClient & {
   authorization?: AuthorizedReviewExecution;
@@ -152,15 +138,17 @@ type ReviewAIClient = AIClient & {
 };
 
 /**
- * The stream error code a failed terminal outcome reports. The two failures the
- * user fixes on the providers screen get their own codes so the surfaces can
- * offer that jump; every other outcome stays a generic AI error.
+ * The stream error code a failed terminal outcome reports. Failures with a
+ * remedy the user can act on — a model that cannot produce structured output, a
+ * provider that refused the request, a spent budget — get their own code so the
+ * surfaces can name it; every other outcome stays a generic AI error.
  */
 function terminalErrorCode(
   outcome: TerminalOutcome,
   diagnostic: AIErrorDiagnostic | undefined,
 ): ReviewErrorCode {
   if (outcome === "schema-failed") return ReviewErrorCode.MODEL_INCOMPATIBLE;
+  if (outcome === "budget-exhausted") return ReviewErrorCode.BUDGET_EXHAUSTED;
   if (diagnostic?.code === PROVIDER_REJECTED_DIAGNOSTIC_CODE) {
     return ReviewErrorCode.PROVIDER_REJECTED;
   }
@@ -372,7 +360,7 @@ export async function executeReview(params: {
       startedAt,
       attemptCount: 0,
     });
-    return ok(prohibitPartialFindings({ issues: [], execution }));
+    return ok({ issues: [], execution });
   }
 
   const result = await orchestrateReview(
@@ -419,13 +407,7 @@ export async function executeReview(params: {
         aiClient.terminalDiagnostics,
         failed,
       );
-      return ok(
-        prohibitPartialFindings({
-          issues: [],
-          execution,
-          terminalDiagnostic,
-        }),
-      );
+      return ok({ issues: [], execution, terminalDiagnostic });
     }
     return err(
       reviewAbort(
@@ -438,7 +420,7 @@ export async function executeReview(params: {
 
   await emit(stepComplete("review"));
 
-  let outcome: ReviewOutcome = {
+  const outcome: ReviewOutcome = {
     issues: result.value.issues,
     lensStats: result.value.lensStats,
     droppedDuplicates: result.value.droppedDuplicates,
@@ -476,7 +458,6 @@ export async function executeReview(params: {
       );
       if (terminalDiagnostic) outcome.terminalDiagnostic = terminalDiagnostic;
     }
-    outcome = prohibitPartialFindings(outcome);
   }
 
   return ok(outcome);
@@ -497,7 +478,7 @@ export async function finalizeReview(params: {
   headCommit: string | null;
 }): Promise<Result<ReviewResult, ReviewAbort>> {
   const {
-    outcome: rawOutcome,
+    outcome,
     emit,
     reviewId,
     projectPath,
@@ -511,11 +492,15 @@ export async function finalizeReview(params: {
     headCommit,
   } = params;
 
-  const outcome = prohibitPartialFindings(rawOutcome);
-
   await emit(stepStart("report"));
 
-  const finalResult: ReviewResult = { issues: outcome.issues };
+  // A failed review keeps only the findings its outcome can vouch for: lenses
+  // that settled inside an exhausted budget produced real ones, while every
+  // other failure ended before the aggregate could be trusted.
+  const terminalOutcome = outcome.execution?.receipt.outcome;
+  const keepsFindings =
+    terminalOutcome === undefined || terminalOutcomeKeepsFindings(terminalOutcome);
+  const finalResult: ReviewResult = { issues: keepsFindings ? outcome.issues : [] };
 
   signal?.throwIfAborted();
 
@@ -552,7 +537,6 @@ export async function finalizeReview(params: {
 
   // A non-completed terminal outcome is durable first and reported as a failure
   // second: the caller surfaces the error once the receipt is on disk.
-  const terminalOutcome = outcome.execution?.receipt.outcome;
   if (terminalOutcome && terminalOutcome !== "completed") {
     if (outcome.terminalDiagnostic) {
       log("warn", "review_execution_failed", {
@@ -572,10 +556,13 @@ export async function finalizeReview(params: {
       terminalOutcome === "schema-failed"
         ? STRUCTURED_OUTPUT_FAILURE_GUIDANCE
         : `Review ended with outcome ${terminalOutcome}.`;
+    // The step the abort names is the one the surfaces resolve: without it the
+    // report step stays painted as running behind the error.
     return err(
       reviewAbort(
         outcome.terminalDiagnostic?.safeMessage ?? fallbackMessage,
         terminalErrorCode(terminalOutcome, outcome.terminalDiagnostic),
+        "report",
       ),
     );
   }

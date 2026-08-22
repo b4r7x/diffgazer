@@ -15,6 +15,7 @@ import {
   resolveSavedReviewExecutionSnapshot,
   SavedReviewExecutionSnapshotSchema,
   SavedReviewSchema,
+  terminalOutcomeKeepsFindings,
   toSavedReviewExecutionSnapshot,
 } from "./storage.js";
 
@@ -357,7 +358,7 @@ describe("SavedReview durable execution wire format", () => {
   });
 
   it.each(
-    TERMINAL_OUTCOMES.filter((outcome) => outcome !== "completed"),
+    TERMINAL_OUTCOMES.filter((outcome) => !terminalOutcomeKeepsFindings(outcome)),
   )("rejects %s terminal outcomes that still carry findings", (outcome) => {
     expect(
       SavedReviewSchema.safeParse({
@@ -366,6 +367,42 @@ describe("SavedReview durable execution wire format", () => {
         execution: {
           receipt: makeReceipt(outcome),
           result: { issues: [] },
+        },
+        gitContext: baseGitContext,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("keeps the findings a budget-exhausted review recorded", () => {
+    const parsed = SavedReviewSchema.safeParse({
+      metadata: { ...baseMetadata, issueCount: 1, highCount: 1 },
+      result: { issues: [sampleIssue] },
+      execution: {
+        receipt: makeReceipt("budget-exhausted"),
+        // The dispatch that ran out of budget returned nothing; the findings
+        // belong to the lenses that settled inside it.
+        result: { issues: [] },
+      },
+      gitContext: baseGitContext,
+    });
+
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.result.issues).toEqual([sampleIssue]);
+    expect(parsed.data.execution?.result.issues).toEqual([]);
+  });
+
+  it("does not let a budget-exhausted execution result vouch for findings of its own", () => {
+    // The findings a budget-exhausted review keeps are vouched for per lens by
+    // lensStats: its execution result is pinned empty by ExecutionResultSchema,
+    // so it can neither claim findings nor drift from the ones on the record.
+    expect(
+      SavedReviewSchema.safeParse({
+        metadata: { ...baseMetadata, issueCount: 1, highCount: 1 },
+        result: { issues: [sampleIssue] },
+        execution: {
+          receipt: makeReceipt("budget-exhausted"),
+          result: { issues: [sampleIssue] },
         },
         gitContext: baseGitContext,
       }).success,

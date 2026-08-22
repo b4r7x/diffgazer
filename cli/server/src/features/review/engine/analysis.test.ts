@@ -215,7 +215,9 @@ describe("runLensAnalysis", () => {
       // non-code provider references survive beside it.
       evidence: [
         { type: "code", file: "src/file-0.ts", sourceId: "src/file-0.ts:1-5" },
-        { type: "doc", title: "Evidence", sourceId: "source:valid", excerpt: "code" },
+        // An excerpt keeps its leading indentation (it is verbatim source); only
+        // trailing whitespace and blank padding lines are normalized away.
+        { type: "doc", title: "Evidence", sourceId: "source:valid", excerpt: " code" },
       ],
     });
     expect(events.filter((event) => event.type === "issue_found")).toHaveLength(1);

@@ -1,5 +1,6 @@
 import type { LogStreamState, ReviewEvent } from "@diffgazer/core/review";
 import type { AgentState } from "@diffgazer/core/schemas/events";
+import { hasModifierKey } from "@diffgazer/keys";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -29,6 +30,13 @@ export interface ActivityLogProps extends React.HTMLAttributes<HTMLDivElement> {
   startTime?: Date;
   /** Epoch ms of the last event; drives the "last event Xs ago" stall clock. */
   lastEventAt?: number;
+  /**
+   * Fired when ArrowUp asks for more log above the top of the history: the
+   * view is at scroll offset 0 and no earlier window is left to page back to.
+   * Left out, ArrowUp is left to the scroller instead of being claimed for nobody.
+   * The bottom edge is owned by PageDown/End, so there is no second direction.
+   */
+  onTopBoundaryReached?: () => void;
 }
 
 interface LogWindowState {
@@ -55,6 +63,7 @@ export function ActivityLog({
   lastEventAt,
   className,
   onKeyDown,
+  onTopBoundaryReached,
   onScroll,
   ...props
 }: ActivityLogProps) {
@@ -232,6 +241,25 @@ export function ActivityLog({
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(event);
+    // Report the top edge only when the log has nothing left to give: someone is
+    // listening, the scroll is at the top and no earlier window is paged out.
+    // Claiming the key stops the container's own 40px scroll from running after
+    // it, so an unheard boundary has to leave the key to the scroller. A
+    // modified or bubbled ArrowUp is not this move: moving focus to another zone
+    // is the one thing in here that must not fire on someone else's key.
+    if (
+      event.key === "ArrowUp" &&
+      onTopBoundaryReached &&
+      !hasModifierKey(event) &&
+      event.target === event.currentTarget &&
+      !hasPrevious &&
+      scrollRef.current?.scrollTop === 0
+    ) {
+      event.preventDefault();
+      onTopBoundaryReached();
+      return;
+    }
+
     if (event.key === "Home") {
       event.preventDefault();
       pendingScrollAlignmentRef.current = "start";

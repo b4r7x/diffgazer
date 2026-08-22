@@ -1,4 +1,4 @@
-import type { AgentId, AgentStreamEvent, StepEvent } from "../schemas/events/index.js";
+import type { AgentId, AgentStreamEvent, LensStat, StepEvent } from "../schemas/events/index.js";
 import { AGENT_METADATA, STEP_METADATA } from "../schemas/events/index.js";
 import type { LogEntryData } from "../schemas/presentation/index.js";
 import { pluralize, truncate } from "../strings.js";
@@ -7,6 +7,23 @@ import { isFatalStepFailure } from "./lifecycle.js";
 function getAgent(agentId: AgentId): { label: string; name: string } {
   const meta = AGENT_METADATA[agentId];
   return { label: meta.badgeLabel, name: meta.name };
+}
+
+/**
+ * Orchestration ends before the pipeline decides whether the review failed, so a
+ * run whose lenses failed must not sign the log off as a clean pass.
+ */
+function describeOrchestratorCompletion(
+  totalIssues: number,
+  lensStats: readonly LensStat[],
+): string {
+  const issues = pluralize(totalIssues, "issue");
+  const failedCount = lensStats.filter((stat) => stat.status === "failed").length;
+  if (failedCount === 0) return `Review complete: ${issues} found`;
+
+  const completedCount = lensStats.length - failedCount;
+  const lenses = pluralize(lensStats.length, "lens", "lenses");
+  return `Orchestration finished: ${issues} from ${completedCount} of ${lenses} (${failedCount} failed)`;
 }
 
 export function getReviewEventLogSource(event: AgentStreamEvent | StepEvent): string | undefined {
@@ -181,7 +198,7 @@ export function convertReviewEventToLogEntry(
         timestamp,
         tag: "DONE",
         tagType: "system",
-        message: `Review complete: ${pluralize(event.totalIssues, "issue")} found`,
+        message: describeOrchestratorCompletion(event.totalIssues, event.lensStats),
       };
 
     default: {

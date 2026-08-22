@@ -5,12 +5,13 @@ import {
   describeTerminalOutcome,
   describeUsageAvailability,
   ENTER_API_KEY_LABEL,
+  type FailedTerminalOutcome,
   getConfigurationNotReadyCopy,
   isCredentialReconnectReadiness,
   isCredentialSetupError,
 } from "@diffgazer/core/review";
 import type { Readiness } from "@diffgazer/core/schemas/config";
-import type { TerminalOutcome, UsageAvailability } from "@diffgazer/core/schemas/review";
+import type { UsageAvailability } from "@diffgazer/core/schemas/review";
 import { ReviewGateView } from "./gate-view";
 
 export interface ApiKeyMissingViewProps {
@@ -84,8 +85,6 @@ export function ConfigurationErrorView({
     />
   );
 }
-
-export type FailedTerminalOutcome = Exclude<TerminalOutcome, "completed">;
 
 export function ReviewTerminalReceiptView({
   outcome,

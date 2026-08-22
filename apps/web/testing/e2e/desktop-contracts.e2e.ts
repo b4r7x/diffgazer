@@ -19,12 +19,27 @@ test.skip(
   "desktop-width layout contracts are a fine-pointer contract",
 );
 
+/** Any valid uuid resolves the review route; the gate below never reads it back. */
+const GATE_REVIEW_ID = "11111111-1111-4111-8111-111111111111";
+
 async function mockAppApi(page: Page) {
   await mockProtectedProviderApi(page);
   // Diagnostics reads the workspace context snapshot. 404 is the "never generated"
   // answer and is not retried, so the panel settles into one geometry to measure.
   await page.route("**/api/review/context", (route) =>
     route.fulfill({ status: 404, json: { error: "context not generated" } }),
+  );
+  // The no-changes gate is the whole review stream: it ends in NO_DIFF before a
+  // single step lands, so one SSE frame renders the screen this file measures.
+  await page.route("**/api/review/reviews/*/stream", (route) =>
+    route.fulfill({
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+      body: `event: error\ndata: ${JSON.stringify({
+        type: "error",
+        error: { code: "NO_DIFF", message: "No unstaged changes found." },
+      })}\n\n`,
+    }),
   );
 }
 
@@ -60,6 +75,16 @@ async function boxOf(locator: Locator, name: string) {
   return box;
 }
 
+/**
+ * A webfont swap moves layout by a pixel, and on a scrolled page it moves the scroll
+ * position with it. Every geometry contract here compares boxes read in separate
+ * protocol calls, so a swap landing between two reads shows up as a 1px drift in a
+ * pair that is actually aligned. Waiting for the faces makes the reads comparable.
+ */
+async function settleFonts(page: Page) {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+}
+
 function overlapsVertically(a: { y: number; height: number }, b: { y: number; height: number }) {
   return Math.max(a.y, b.y) < Math.min(a.y + a.height, b.y + b.height);
 }
@@ -74,6 +99,12 @@ interface ClippedViewportGeometry {
   centerYDelta: number;
   /** Panel top minus where the 1:2 hero band puts it inside the viewport's content box. */
   bandTopDelta: number;
+  /** Panel top minus the top of that content box — zero once the spacers collapse. */
+  contentTopDelta: number;
+  /** Leftover height around the panel: any placement pin over zero spare is degenerate. */
+  spare: number;
+  /** The clipped viewport takes the overflow, so the page never scrolls. */
+  scrolls: boolean;
   panelWidth: number;
 }
 
@@ -117,6 +148,9 @@ async function measureInClippedViewport(panel: Locator): Promise<ClippedViewport
       centerXDelta: panelRect.left + panelRect.width / 2 - (viewLeft + scroller.clientWidth / 2),
       centerYDelta: panelRect.top + panelRect.height / 2 - (viewTop + scroller.clientHeight / 2),
       bandTopDelta: panelRect.top - (viewTop + paddingTop + spare / 3),
+      contentTopDelta: panelRect.top - (viewTop + paddingTop),
+      spare,
+      scrolls: scroller.scrollHeight > scroller.clientHeight,
       panelWidth: panelRect.width,
     };
   });
@@ -125,18 +159,47 @@ async function measureInClippedViewport(panel: Locator): Promise<ClippedViewport
 const SINGLE_PANEL_SCREENS = [
   // The hub's rows pair labels with values, so its card keeps the wider 3xl
   // tier while single-column settings children hold the shared 2xl width.
-  { path: "/settings", panel: "Settings Hub", contentWidth: 768, vertical: "centre" },
-  // The one card with real spare height at the desktop size, so it is the
-  // screen that pins the band split itself rather than the collapsed centre.
+  {
+    path: "/settings",
+    panel: "Settings Hub",
+    contentWidth: 768,
+    vertical: "centre",
+    spareHeight: "collapsed",
+  },
+  // The one settings card with real spare height at the desktop size, so it is
+  // the screen that pins the band split itself rather than the collapsed centre.
   {
     path: "/settings/diagnostics",
     panel: "System Diagnostics",
     contentWidth: 672,
     vertical: "band",
+    spareHeight: "real",
   },
   // Help is not a settings form and keeps its own wider large-screen tier, so
   // no width is pinned — only the placement half of the contract applies.
-  { path: "/help", panel: "Help", contentWidth: null, vertical: "centre" },
+  {
+    path: "/help",
+    panel: "Help",
+    contentWidth: null,
+    vertical: "centre",
+    spareHeight: "real",
+  },
+  // The two dead ends, both with hundreds of pixels of spare at this size: their
+  // centre is the gate rule itself, not a band that collapsed into one.
+  {
+    path: `/review/${GATE_REVIEW_ID}?live=true&mode=unstaged`,
+    panel: "No Unstaged Changes",
+    contentWidth: 448,
+    vertical: "centre",
+    spareHeight: "real",
+  },
+  {
+    path: "/this-route-does-not-exist",
+    panel: "Page Not Found",
+    contentWidth: 512,
+    vertical: "centre",
+    spareHeight: "real",
+  },
 ] as const;
 
 test("single-panel screens centre and hold the hero band inside their clipped viewport", async ({
@@ -156,11 +219,18 @@ test("single-panel screens centre and hold the hero band inside their clipped vi
     expect(Math.abs(geometry.centerXDelta), `${screen.path} horizontal centre`).toBeLessThanOrEqual(
       1,
     );
-    // Vertical: spare height splits 1:2 around these cards (the hero-tier
-    // optical band). A card that outgrows the desktop viewport is capped to it,
-    // so its spare collapses and the band degenerates to a vertical centre; the
-    // diagnostics card keeps real spare and is pinned to the band itself. Either
-    // way, a drifted panel is a lost band rule or a density regression.
+    // Vertical: two rules share this table. The page-card screens split their
+    // spare height 1:2 around the card (the optical band); a dead-end gate centres
+    // in the content area instead, the composition the TUI's GateShell draws. A
+    // row marked "collapsed" has no room to place — its card fills the box the
+    // helper measures — while a "real" row keeps leftover height, so its
+    // placement assertion is live (help's 64px is the padding of its own wrapper
+    // one level below main; its band is collapsed, so centre and band coincide).
+    if (screen.spareHeight === "real") {
+      expect(geometry.spare, `${screen.path} spare height`).toBeGreaterThan(0);
+    } else {
+      expect(geometry.spare, `${screen.path} spare height`).toBe(0);
+    }
     if (screen.vertical === "centre") {
       expect(Math.abs(geometry.centerYDelta), `${screen.path} vertical centre`).toBeLessThanOrEqual(
         1,
@@ -172,6 +242,33 @@ test("single-panel screens centre and hold the hero band inside their clipped vi
       expect(geometry.panelWidth, `${screen.path} content width`).toBe(screen.contentWidth);
     }
   }
+});
+
+test.describe("a viewport too short for the dead-end panel", () => {
+  test.use({ viewport: { width: 1280, height: 360 } });
+
+  test("collapses the gate's spacers and scrolls its content area from the top", async ({
+    page,
+  }) => {
+    await mockAppApi(page);
+    await page.goto("/this-route-does-not-exist");
+
+    const panel = page.getByRole("region", { name: "Page Not Found", exact: true });
+    await expect(panel).toBeVisible();
+
+    // Centring only distributes leftover height. With none left the spacers
+    // collapse, the panel starts at the top of the content box, and the overflow
+    // belongs to the clipped viewport — never to the page, whose shell is h-dvh.
+    const geometry = await measureInClippedViewport(panel);
+    expect(geometry.spare, "spare height").toBe(0);
+    expect(Math.abs(geometry.contentTopDelta), "panel top").toBeLessThanOrEqual(1);
+    expect(geometry.scrolls, "content area scrolls").toBe(true);
+
+    const pageScrolls = await page.evaluate(
+      () => document.documentElement.scrollHeight > document.documentElement.clientHeight,
+    );
+    expect(pageScrolls, "the page scrolls").toBe(false);
+  });
 });
 
 test("the theme screen renders two equal-height columns", async ({ page }) => {
@@ -296,6 +393,7 @@ test("the summary category panel takes the whole row only when there is nothing 
 
   await page.goto("/testing/fixtures/app-fixture.html?view=summary");
   await expect(categories).toBeVisible();
+  await settleFonts(page);
   const pairedBreakdown = await boxOf(breakdown, "severity breakdown");
   const pairedCategories = await boxOf(categories, "category panel");
 
@@ -308,6 +406,7 @@ test("the summary category panel takes the whole row only when there is nothing 
 
   await page.goto("/testing/fixtures/app-fixture.html?view=summary&issues=none");
   await expect(categories).toBeVisible();
+  await settleFonts(page);
   const cleanBreakdown = await boxOf(breakdown, "clean severity breakdown");
   const cleanCategories = await boxOf(categories, "clean category panel");
 
@@ -320,6 +419,129 @@ test("the summary category panel takes the whole row only when there is nothing 
   expect(cleanCategories.x, "clean category panel start").toBeCloseTo(cleanBreakdown.x, 0);
   expect(cleanCategories.width, "clean category panel span").toBeGreaterThanOrEqual(
     cleanBreakdown.width * 2,
+  );
+});
+
+/** The perimeter every pane draws (panel.css, frame="hairline"). */
+const PANEL_BORDER = 1;
+/**
+ * The gutter each scroller's own padding leaves between the reserved scrollbar
+ * track and the content: summary px-5 measures 20, help px-3.5 measures 14. The
+ * clearance floors sit under those so a density change stays legal, while the bar
+ * can never move back into the text column it used to be carved out of.
+ */
+const SUMMARY_PANE_PADDING = 20;
+const SUMMARY_TRACK_CLEARANCE = 16;
+const HELP_TRACK_CLEARANCE = 12;
+
+interface ScrollerGeometry {
+  /** Scroller edges measured from the panel's own edges: one border wide = flush. */
+  leftInset: number;
+  rightInset: number;
+  /**
+   * Inline start of the space-taking scrollbar track. `offsetWidth - clientWidth`
+   * is the scroller's border plus that track, so subtracting it from the right edge
+   * lands where the 6px bar begins - the edge content has to stay clear of.
+   */
+  track: number;
+  /** Scroller left edge: the datum the content column's inset is measured from. */
+  left: number;
+}
+
+/**
+ * Where a pane's scroll region sits inside the panel that owns it. Both panes below
+ * make the scroller the Panel's direct child and carry the pane padding on it, so the
+ * reserved bar rides the pane's inner border and that padding is the gutter keeping it
+ * off the glyphs. A padded wrapper between the two instead carves the bar out of the
+ * text column, which is what these contracts guard against.
+ */
+async function readScrollerGeometry(region: Locator): Promise<ScrollerGeometry> {
+  return region.evaluate((node) => {
+    const scroller = node as HTMLElement;
+    const panel = scroller.closest('[data-slot="panel"]');
+    if (!panel) throw new Error("the scroll region has no panel");
+    const panelRect = panel.getBoundingClientRect();
+    const scrollerRect = scroller.getBoundingClientRect();
+    return {
+      leftInset: scrollerRect.left - panelRect.left,
+      rightInset: panelRect.right - scrollerRect.right,
+      track: scrollerRect.right - (scroller.offsetWidth - scroller.clientWidth),
+      left: scrollerRect.left,
+    };
+  });
+}
+
+test("summary scrollbar rides the pane edge, clear of the content", async ({ page }) => {
+  await page.goto("/testing/fixtures/app-fixture.html?view=summary");
+
+  const scroller = page.getByRole("region", { name: "Review summary", exact: true });
+  await expect(scroller).toBeVisible();
+  await settleFonts(page);
+  const geometry = await readScrollerGeometry(scroller);
+  const runStatus = await boxOf(
+    page.getByRole("region", { name: "Run status", exact: true }),
+    "run status panel",
+  );
+
+  expect(geometry.leftInset, "summary scroller left edge").toBeCloseTo(PANEL_BORDER, 0);
+  expect(geometry.rightInset, "summary scroller right edge").toBeCloseTo(PANEL_BORDER, 0);
+  // The bar used to sit against the run-status border and 20px inside the pane:
+  // the padding was on the wrapper around the scroller rather than on it.
+  expect(
+    geometry.track - (runStatus.x + runStatus.width),
+    "summary content clear of the track",
+  ).toBeGreaterThanOrEqual(SUMMARY_TRACK_CLEARANCE);
+  expect(runStatus.x - geometry.left, "summary content column inset").toBeCloseTo(
+    SUMMARY_PANE_PADDING,
+    0,
+  );
+});
+
+test("help sheet wears the pane mark and its scroller rides the pane edge", async ({ page }) => {
+  await mockAppApi(page);
+  await page.goto("/help");
+
+  const sheet = page.getByRole("region", { name: "Help", exact: true });
+  const region = page.getByRole("region", { name: "Help content", exact: true });
+  await expect(sheet).toBeVisible();
+  // The sheet opens with focus in its scroll region, so the pane mark is the
+  // sheet's brackets and the region defers its own ring: one mark per screen.
+  await expect(region).toBeFocused();
+  await expect(sheet).toHaveAttribute("data-state", "focused");
+  await expect(page.locator('[data-slot="panel-corners"]')).toHaveCount(1);
+  await settleFonts(page);
+
+  const geometry = await readScrollerGeometry(region);
+  const paint = await region.evaluate((node) => {
+    const scroller = node as HTMLElement;
+    // Every shortcut row and the closing paragraph fill the content column, so the
+    // widest right edge among them is the column's own edge - the one the bar
+    // used to reach into.
+    const rows = Array.from(scroller.querySelectorAll("li, p"));
+    // The focused sheet firms its perimeter to --border-strong; resolve the token
+    // through a probe so both sides compare as the same computed colour format.
+    const sheet = scroller.closest<HTMLElement>('[data-slot="panel"]');
+    const probe = document.createElement("span");
+    probe.style.color = "var(--border-strong)";
+    document.body.append(probe);
+    const borderStrong = getComputedStyle(probe).color;
+    probe.remove();
+    return {
+      outlineStyle: getComputedStyle(scroller).outlineStyle,
+      textRight: Math.max(...rows.map((row) => row.getBoundingClientRect().right)),
+      sheetBorder: sheet ? getComputedStyle(sheet).borderTopColor : null,
+      borderStrong,
+    };
+  });
+
+  expect(paint.outlineStyle, "help region outline").toBe("none");
+  expect(paint.sheetBorder, "focused help sheet border is --border-strong").toBe(
+    paint.borderStrong,
+  );
+  expect(geometry.leftInset, "help scroller left edge").toBeCloseTo(PANEL_BORDER, 0);
+  expect(geometry.rightInset, "help scroller right edge").toBeCloseTo(PANEL_BORDER, 0);
+  expect(geometry.track - paint.textRight, "help text clear of the track").toBeGreaterThanOrEqual(
+    HELP_TRACK_CLEARANCE,
   );
 });
 

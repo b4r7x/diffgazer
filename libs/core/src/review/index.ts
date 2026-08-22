@@ -56,12 +56,19 @@ export {
 } from "./lifecycle.js";
 export {
   type AgentStatusBadgeVariant,
+  buildDroppedFindingsNotice,
   buildLensFailureNotice,
+  buildMissingLensIssuesNotice,
+  buildTerminalCoverageLine,
   getAgentStatusMeta,
+  getLensCoverage,
   getPartialFailureWarning,
+  hasCompletedLens,
   isAgentHeartbeatEvent,
+  type LensCoverage,
   type LogStreamState,
   type PartialFailureWarning,
+  PERSISTED_RUN_ERROR_CODES,
 } from "./presentation/agent-status.js";
 export {
   getAlternateReviewMode,
@@ -104,6 +111,7 @@ export {
 } from "./presentation/issue.js";
 export { mapStepsToProgressData, mapStepsToProgressDataWithAgents } from "./progress-mapping.js";
 export {
+  type FailedTerminalOutcome,
   type ReviewScreenPhase,
   resolveSavedReviewOutcome,
   type SavedReviewData,

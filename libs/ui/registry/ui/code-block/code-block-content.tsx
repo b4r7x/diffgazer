@@ -1,14 +1,35 @@
 "use client";
 
-import { Children, type ComponentProps, type CSSProperties } from "react";
+import {
+  Children,
+  type ComponentProps,
+  type CSSProperties,
+  isValidElement,
+  type ReactNode,
+} from "react";
 import { ScrollArea } from "../scroll-area/scroll-area";
 import { useRequiredCodeBlockContext } from "./code-block-context";
-import { CodeBlockLine } from "./code-block-line";
+import { CodeBlockLine, type CodeBlockLineProps } from "./code-block-line";
 
 /** Props for code block content. */
 export interface CodeBlockContentProps extends ComponentProps<"div"> {
   /** Auto-split mode only. Renders a line-number gutter for string children. */
   showLineNumbers?: boolean;
+}
+
+/**
+ * Widest number a composed body prints. An excerpt lifted out of a file numbers
+ * its lines from where they live (105, 106), so counting the lines would size
+ * the gutter for "2" and clip "105".
+ */
+function largestLineNumber(children: ReactNode): number {
+  let largest = 0;
+  Children.forEach(children, (child) => {
+    if (!isValidElement<CodeBlockLineProps>(child)) return;
+    const { number } = child.props;
+    if (number !== undefined && number > largest) largest = number;
+  });
+  return largest;
 }
 
 /** Scrollable <pre> body (auto-split or composed) */
@@ -27,8 +48,8 @@ export function CodeBlockContent({
   const resolvedLabelledBy = hasExplicitName ? ariaLabelledBy : context.ariaLabelledBy;
 
   const lines = typeof children === "string" ? children.split("\n") : null;
-  const lineCount = lines ? lines.length : Children.count(children);
-  const gutterWidth = Math.max(String(lineCount).length, 2);
+  const widestNumber = lines ? lines.length : largestLineNumber(children);
+  const gutterWidth = Math.max(String(widestNumber).length, 2);
 
   return (
     <ScrollArea

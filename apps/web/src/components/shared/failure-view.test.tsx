@@ -155,7 +155,7 @@ describe("FailureView", () => {
     expect(panel).toHaveAttribute("data-state", "focused");
   });
 
-  it("seats the panel in the optical band with its tone tint", () => {
+  it("centres the panel between two collapsing spacers with its tone tint", () => {
     const { container } = renderFailure();
 
     // Panel data attributes are the documented contract: the failure tone tints
@@ -164,9 +164,10 @@ describe("FailureView", () => {
     expect(panel).toHaveAttribute("data-tone", "error");
     expect(panel).not.toHaveAttribute("data-frame", "viewfinder");
 
-    // The collapsing spacers around the panel are the centering contract — the
-    // panel sits in the shared 1:2 optical band, not dead-center in the leftover
-    // space below the header.
+    // A dead end centres in the content area between two equal spacers that
+    // collapse once the panel outgrows the viewport. jsdom has no layout, so the
+    // placement itself is pinned in desktop-contracts.e2e.ts; what it needs from
+    // the markup is the pair of spacers.
     expect(panel?.previousElementSibling).toHaveAttribute("aria-hidden");
     expect(panel?.nextElementSibling).toHaveAttribute("aria-hidden");
   });

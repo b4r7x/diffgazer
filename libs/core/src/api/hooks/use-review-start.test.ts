@@ -103,9 +103,11 @@ describe("useReviewStart", () => {
     });
 
     // call-count IS the contract: stale-session callback must fire exactly once under StrictMode (no double-notification on the consumer)
-    await waitFor(() => expect(onStale).toHaveBeenCalledTimes(1));
-    // Started but holding no usable stream history: completion must not fire from it.
-    expect(result.current.status).toBe("terminated");
+    await waitFor(() => {
+      expect(onStale).toHaveBeenCalledTimes(1);
+      // Started but holding no usable stream history: completion must not fire from it.
+      expect(result.current.status).toBe("terminated");
+    });
   });
 
   it("invokes onNotFoundInSession with the missing review id (SESSION_NOT_FOUND)", async () => {

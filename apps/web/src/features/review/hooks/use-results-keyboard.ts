@@ -16,7 +16,11 @@ import {
 } from "@diffgazer/keys";
 import { useCanGoBack, useLocation, useRouter } from "@tanstack/react-router";
 import { type KeyboardEvent, useRef, useState } from "react";
-import { CHROME_ZONE, useChromeBackHandoff } from "@/components/layout/header-chrome";
+import {
+  CHROME_ZONE,
+  chromeReturnShortcut,
+  useChromeBackHandoff,
+} from "@/components/layout/header-chrome";
 import { patchRendersDiffView } from "@/features/review/components/issue-details-pane/patch";
 import { RESET_FILTER_VALUE } from "@/features/review/components/severity-filter-group";
 import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
@@ -57,15 +61,20 @@ function getReviewResultsFooter(
   hasFixPlanSteps: boolean,
   hasPatchDiff: boolean,
   hasSummaryBack: boolean,
+  chromeReturnZone: FocusZone | null,
 ): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
   // From the filters/list zones Escape returns to the summary when the screen
   // was entered from one; the hint must name where the key actually goes.
   const backShortcut: Shortcut = hasSummaryBack ? { key: "Esc", label: "Summary" } : BACK_SHORTCUT;
 
   // Parked on the header Back button: every zone key stood down with the zone,
-  // so Escape is all that is still live.
+  // so the only keys left are Escape and the arrow back to the row that handed
+  // focus over — the severity filters, this screen's one hand-off origin.
   if (focusZone === "chrome") {
-    return { shortcuts: [], rightShortcuts: [backShortcut] };
+    return {
+      shortcuts: chromeReturnShortcut(chromeReturnZone, { filters: "Filters" }),
+      rightShortcuts: [backShortcut],
+    };
   }
 
   if (focusZone === "filters") {
@@ -166,7 +175,11 @@ export function useReviewResultsKeyboard({
     setMobilePane(zone === "details" ? "details" : "list");
   };
 
-  const handOffToChrome = useChromeBackHandoff(changeFocusZone);
+  const chrome = useChromeBackHandoff({
+    zone: focusZone,
+    setZone: changeFocusZone,
+    scope: REVIEW_SCOPE,
+  });
 
   const {
     severityFilter,
@@ -303,7 +316,7 @@ export function useReviewResultsKeyboard({
     }
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      handOffToChrome();
+      chrome.handOff();
     }
   };
 
@@ -388,6 +401,7 @@ export function useReviewResultsKeyboard({
     hasFixPlanSteps,
     hasPatchDiff,
     onBackToSummary !== undefined,
+    chrome.returnZone,
   );
 
   usePageFooter({ shortcuts: footer.shortcuts, rightShortcuts: footer.rightShortcuts });

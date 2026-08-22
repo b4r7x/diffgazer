@@ -35,6 +35,17 @@ describe("CodeBlock CSS contract", () => {
     expect(header).toContain("min-height: 44px");
   });
 
+  it("measures the line-number gutter in digits, so its 12px gap survives", () => {
+    // Under the global border-box reset the padding is taken out of the declared
+    // width instead of sitting beside it, leaving a three-digit number to spill
+    // into the sign column.
+    const number = ruleBody(css, '[data-slot="code-block-line-number"]');
+    expect(number).not.toBeNull();
+    expect(number).toContain("box-sizing: content-box");
+    expect(number).toMatch(/[;{\n]\s*width: var\(--code-block-line-number-w, 2ch\)/);
+    expect(number).toContain("padding-right: 12px");
+  });
+
   it("flattens the ramp in forced colors", () => {
     const forced = atRuleBody(css, "@media (forced-colors: active)");
     expect(ruleBody(forced, '[data-slot="code-block-dots"] span')).toContain(

@@ -3,14 +3,11 @@ import { getProviderDisplay } from "@diffgazer/core/providers";
 import {
   CONFIGURE_PROVIDER_LABEL,
   ENTER_API_KEY_LABEL,
+  type FailedTerminalOutcome,
   isCredentialReconnectReadiness,
   mapStepsToProgressData,
 } from "@diffgazer/core/review";
-import type {
-  ReviewMode,
-  TerminalOutcome,
-  UsageAvailability,
-} from "@diffgazer/core/schemas/review";
+import type { ReviewMode, UsageAvailability } from "@diffgazer/core/schemas/review";
 import { Navigate } from "@tanstack/react-router";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { useConfigActions, useConfigData } from "@/hooks/use-config";
@@ -25,8 +22,6 @@ import { NoChangesView } from "./no-changes-view";
 import { ReviewProgressView } from "./progress-view";
 
 export type { ReviewCompleteData };
-
-type FailedTerminalOutcome = Exclude<TerminalOutcome, "completed">;
 
 interface ReviewStreamProps {
   mode: ReviewMode;
@@ -92,6 +87,7 @@ function ReviewStreamContainer({
     handleCancel,
     handleBack,
     handleViewResults,
+    handleViewRun,
     handleRetry,
     handleSetupProvider,
     handleSwitchMode,
@@ -223,6 +219,7 @@ function ReviewStreamContainer({
       contextRefreshError={contextRefreshError}
       onRetryContextRefresh={retryContextRefresh}
       onRetry={handleRetry}
+      onViewRun={handleViewRun}
       onViewResults={isCompleting ? handleViewResults : undefined}
       onCancel={handleCancel}
       onBack={handleBack}

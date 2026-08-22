@@ -1,4 +1,5 @@
 import { FooterProvider } from "@diffgazer/core/footer";
+import type { FailedTerminalOutcome } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
@@ -93,6 +94,7 @@ function renderView(
   ],
   droppedDuplicates?: number,
   lensStats?: LensStat[],
+  outcome?: FailedTerminalOutcome,
 ) {
   return render(
     <KeyboardProvider>
@@ -102,6 +104,7 @@ function renderView(
           reviewId="review-1"
           droppedDuplicates={droppedDuplicates}
           lensStats={lensStats}
+          outcome={outcome}
         />
         <FooterView />
       </FooterProvider>
@@ -128,6 +131,24 @@ describe("ReviewResultsView run integrity", () => {
     renderView(undefined, undefined, [{ lensId: "correctness", issueCount: 2, status: "success" }]);
 
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  });
+
+  it("names the outcome that ended a run opened straight at one of its findings", () => {
+    renderView(undefined, undefined, partialLensStats, "budget-exhausted");
+
+    // A deep link from history lands here without passing the summary, so this
+    // is the only place the run can say what stopped it and what to do about it.
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Budget Exhausted");
+    expect(alert).toHaveTextContent(
+      "The review stopped because a configured budget limit was reached.",
+    );
+  });
+
+  it("says nothing about an outcome a run that finished never had", () => {
+    renderView(undefined, undefined, partialLensStats);
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
 
@@ -1146,6 +1167,38 @@ describe("ReviewResultsView chrome hand-off", () => {
     expect(blocker).not.toHaveAttribute("data-highlighted");
     expect(footer.queryByText("Move Filter")).not.toBeInTheDocument();
     expect(footer.getByText("Back")).toBeInTheDocument();
+    // The arrow that took focus up says how to come back.
+    expect(footer.getByText("Filters")).toBeInTheDocument();
+  });
+
+  it("returns focus to the severity filter with ArrowDown after the hand-off", async () => {
+    const user = userEvent.setup();
+    renderViewWithChrome();
+
+    await focusFilters(user);
+    const blocker = screen.getByRole("button", { name: /blocker severity/i });
+    await user.keyboard("{ArrowUp}");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Back" })).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+
+    // Back on the exact chip that handed off, with the filters legend again.
+    await waitFor(() => expect(blocker).toHaveFocus());
+    const footer = within(screen.getByRole("contentinfo"));
+    expect(footer.getByText("Move Filter")).toBeInTheDocument();
+  });
+
+  it("ignores ArrowDown on the Back button when nothing handed off", async () => {
+    const user = userEvent.setup();
+    renderViewWithChrome();
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    const backButton = screen.getByRole("button", { name: "Back" });
+    backButton.focus();
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(backButton).toHaveFocus();
   });
 
   it("declines the pane Tab cycle on the Back button so native Tab re-enters the page", async () => {

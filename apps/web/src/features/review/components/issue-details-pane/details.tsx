@@ -142,14 +142,10 @@ function CodeEvidence({ item }: { item: Extract<EvidencePresentation, { kind: "c
             {lines.map((line, offset) => (
               <CodeBlock.Line
                 key={`${item.ordinal}:${offset}`}
-                number={
-                  item.startLine === undefined ||
-                  (item.endLine !== undefined && item.startLine + offset > item.endLine)
-                    ? undefined
-                    : item.startLine + offset
-                }
+                // Number every row, including any past range.end: a line without a
+                // number renders no gutter cell at all, so a mixed block steps its indent.
+                number={item.startLine === undefined ? undefined : item.startLine + offset}
                 content={line}
-                state="highlight"
               />
             ))}
           </CodeBlock.Content>

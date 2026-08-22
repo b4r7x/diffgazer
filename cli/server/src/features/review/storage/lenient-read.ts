@@ -13,6 +13,7 @@ import {
   ReviewMetadataSchema,
   ReviewSeveritySchema,
   type SavedReview,
+  terminalOutcomeKeepsFindings,
 } from "@diffgazer/core/schemas/review";
 import { z } from "zod";
 import { normalizeIssueLineFields } from "../engine/issues/normalization.js";
@@ -97,9 +98,15 @@ function salvageExecution(raw: unknown): ExecutionResult | undefined {
   return undefined;
 }
 
-/** Non-completed terminal outcomes must not expose resumable findings through history reads. */
-export function prohibitResumablePartialFindings(review: SavedReview): SavedReview {
-  if (!review.execution || review.execution.receipt.outcome === "completed") return review;
+/**
+ * History reads expose only the findings a review's terminal outcome can vouch
+ * for. Records written before that policy — or hand-edited since — can carry
+ * findings their outcome never earned, so they are dropped here.
+ */
+export function dropUntrustedFindings(review: SavedReview): SavedReview {
+  if (!review.execution || terminalOutcomeKeepsFindings(review.execution.receipt.outcome)) {
+    return review;
+  }
 
   return {
     ...review,
@@ -177,7 +184,7 @@ export function lenientReadSavedReview(
     (record.execution !== undefined || record.executionSnapshot !== undefined);
 
   return {
-    item: prohibitResumablePartialFindings(salvagedReview),
+    item: dropUntrustedFindings(salvagedReview),
     diagnostics: { droppedIssueCount: salvagedIssues.droppedItemCount, droppedExecution },
   };
 }

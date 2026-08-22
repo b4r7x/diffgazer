@@ -1,3 +1,4 @@
+import type { FailedTerminalOutcome } from "@diffgazer/core/review";
 import type { LocalHttpProductId } from "@diffgazer/core/schemas/config";
 import type { ExecutionResult } from "@diffgazer/core/schemas/review";
 import { ReviewResultSchema } from "@diffgazer/core/schemas/review";
@@ -6,7 +7,6 @@ import type { Adapter, AdapterExecuteRequest } from "../../types.js";
 import {
   createCompletedExecutionResult,
   createFailedExecutionResult,
-  type FailedTerminalOutcome,
 } from "../execution-receipt.js";
 import {
   discoverAtResolvedEndpoint,

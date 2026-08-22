@@ -70,10 +70,10 @@ function trackEventReads(events: ReviewEvent[]) {
   };
 }
 
-function setScrollMetrics(log: HTMLElement, scrollTop: number) {
+function setScrollMetrics(log: HTMLElement, scrollTop: number, scrollHeight = 1_000) {
   Object.defineProperties(log, {
     clientHeight: { configurable: true, value: 100 },
-    scrollHeight: { configurable: true, value: 1_000 },
+    scrollHeight: { configurable: true, value: scrollHeight },
     scrollTop: { configurable: true, value: scrollTop, writable: true },
   });
 }
@@ -239,6 +239,69 @@ describe("ActivityLog native callbacks", () => {
     await user.keyboard("{End}");
     expect(await screen.findByText("event-400")).toBeInTheDocument();
     expect(onKeyDown).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe("ActivityLog boundary reporting", () => {
+  it("reports the top boundary on ArrowUp only once nothing is left above", async () => {
+    const user = userEvent.setup();
+    const state = createTaggedState(makeLogEvents(401));
+    const onTopBoundaryReached = vi.fn();
+    render(<ActivityLog events={state.events} onTopBoundaryReached={onTopBoundaryReached} />);
+    const log = screen.getByRole("log");
+    log.focus();
+
+    setScrollMetrics(log, 200);
+    await user.keyboard("{ArrowUp}");
+    expect(onTopBoundaryReached).not.toHaveBeenCalled();
+
+    // At the top of the rendered window, but an earlier window is still paged
+    // out: the log owns the key so the history stays reachable.
+    setScrollMetrics(log, 0);
+    await user.keyboard("{ArrowUp}");
+    expect(onTopBoundaryReached).not.toHaveBeenCalled();
+
+    await user.keyboard("{Home}");
+    expect(await screen.findByText("event-0")).toBeInTheDocument();
+
+    await user.keyboard("{ArrowUp}");
+    expect(onTopBoundaryReached).toHaveBeenCalledTimes(1);
+    // The key was claimed, so the container's own scroll never ran.
+    expect(log.scrollTop).toBe(0);
+  });
+
+  it("leaves a modified ArrowUp at the top edge to the scroller", async () => {
+    const user = userEvent.setup();
+    const state = createTaggedState(makeLogEvents(5));
+    const onTopBoundaryReached = vi.fn();
+    render(<ActivityLog events={state.events} onTopBoundaryReached={onTopBoundaryReached} />);
+    const log = screen.getByRole("log");
+    log.focus();
+    setScrollMetrics(log, 0);
+
+    await user.keyboard("{Shift>}{ArrowUp}{/Shift}");
+
+    // Handing focus to another zone is the one move in here that must not fire
+    // on a chord the user meant for the platform.
+    expect(onTopBoundaryReached).not.toHaveBeenCalled();
+
+    await user.keyboard("{ArrowUp}");
+    expect(onTopBoundaryReached).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves ArrowUp native when nothing is listening for the boundary", () => {
+    const state = createTaggedState(makeLogEvents(5));
+    render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+    log.focus();
+
+    // The narrow layout, where the log has no scrolling box of its own: a
+    // claimed ArrowUp would move nothing at all here.
+    setScrollMetrics(log, 0, 100);
+
+    // fireEvent retained: the contract is the keydown's defaultPrevented verdict -- whether the
+    // key still reaches the scroller underneath -- which userEvent does not expose.
+    expect(fireEvent.keyDown(log, { key: "ArrowUp" })).toBe(true);
   });
 });
 

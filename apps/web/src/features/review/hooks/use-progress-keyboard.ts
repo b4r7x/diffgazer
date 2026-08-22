@@ -2,6 +2,7 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import { BACK_SHORTCUT, SWITCH_PANE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import {
   containsActiveElement,
+  findNavigationItemByValue,
   getNavigationItems,
   useFocusZone,
   useKey,
@@ -25,6 +26,38 @@ export interface ProgressPaneActionButtonProps {
 // marker narrows back out of the item query.
 const PANE_ACTION_ITEMS = { type: "button", itemSelector: "[data-pane-action]" } as const;
 
+// The chips are a radiogroup nested inside the filter row, so the default owner
+// scoping - which only accepts radios whose radiogroup IS the container - would
+// drop every one of them.
+const AGENT_CHIP_ITEMS = { type: "radio", ownerSelector: null } as const;
+
+/** The chip value that stands for "no agent filter", shared with the row that renders it. */
+export const ALL_AGENTS_VALUE = "all";
+
+// The downloads row and the pane's action buttons nest inside the progress
+// pane, and focus-sync resolves the first zone whose container holds focus - so
+// "downloads" and "actions" must be declared before "progress" or focusing a
+// nested button syncs the wrong zone.
+const PROGRESS_ZONES = ["downloads", "actions", "progress", "log", "filters"] as const;
+type ProgressZone = (typeof PROGRESS_ZONES)[number];
+
+// ←/→ mean what the focused zone makes them mean, and the footer says which.
+// Every zone that can move is named only while its row is there to move: the
+// action row needs a second enabled action, the download row is three buttons or
+// none, the chip row needs agents to choose between - and each flag is what goes
+// false when the row unmounts under a focused control.
+function getArrowShortcutLabel(
+  zone: ProgressZone,
+  enabledActionCount: number,
+  hasSnapshotDownloads: boolean,
+  hasAgentFilterStop: boolean,
+): string {
+  if (zone === "filters" && hasAgentFilterStop) return "Move Filter";
+  if (zone === "actions" && enabledActionCount > 1) return "Move Action";
+  if (zone === "downloads" && hasSnapshotDownloads) return "Move Download";
+  return "Switch Pane";
+}
+
 interface UseReviewProgressKeyboardOptions {
   onViewResults?: () => void;
   onBack?: () => void;
@@ -34,6 +67,10 @@ interface UseReviewProgressKeyboardOptions {
   cancelDisabled?: boolean;
   hasError: boolean;
   hasSnapshotDownloads?: boolean;
+  /** Whether the run has agents to filter the log by; a lone "All" chip is not a stop. */
+  hasAgentFilters?: boolean;
+  /** The chip the filter row has checked; null is the "All" chip. Zone entry lands on it. */
+  activeAgentFilter?: string | null;
   /** The pane's rendered action buttons in DOM order; traversal and zone entry skip disabled entries. */
   actions?: readonly { id: string; disabled?: boolean }[];
 }
@@ -52,6 +89,8 @@ export function useReviewProgressKeyboard({
   cancelDisabled = false,
   hasError,
   hasSnapshotDownloads = false,
+  hasAgentFilters = false,
+  activeAgentFilter = null,
   actions = [],
 }: UseReviewProgressKeyboardOptions) {
   const progressPaneRef = useRef<HTMLElement>(null);
@@ -67,11 +106,16 @@ export function useReviewProgressKeyboard({
   const streamingReviewCancel = useStreamingReviewCancelRef();
 
   // A claimed Tab must never land in a zone with nothing focusable.
-  const hasEnabledAction = actions.some((action) => !action.disabled);
+  const enabledActionCount = actions.filter((action) => !action.disabled).length;
+  // The chip row is a keyboard stop only once there are agents to choose
+  // between; the error layout stands the whole zone grammar down, so it has no
+  // chip stop either.
+  const hasAgentFilterStop = hasAgentFilters && !hasError;
   const tabCycle = [
     "progress" as const,
     ...(hasSnapshotDownloads ? (["downloads"] as const) : []),
-    ...(hasEnabledAction ? (["actions"] as const) : []),
+    ...(enabledActionCount > 0 ? (["actions"] as const) : []),
+    ...(hasAgentFilterStop ? (["filters"] as const) : []),
     "log" as const,
   ];
 
@@ -82,21 +126,24 @@ export function useReviewProgressKeyboard({
     }).find(containsActiveElement) ?? null;
   const getFirstEnabledActionElement = () =>
     getNavigationItems(progressPaneRef.current, PANE_ACTION_ITEMS)[0] ?? null;
+  // Radiogroup entry lands on the checked radio - the row's own tab target.
+  // Resolving the row itself would focus its first descendant, always "All".
+  const getCheckedAgentChip = () =>
+    findNavigationItemByValue(agentFilterRef.current, {
+      ...AGENT_CHIP_ITEMS,
+      value: activeAgentFilter ?? ALL_AGENTS_VALUE,
+    });
 
   const { zone, setZone } = useFocusZone({
     initial: "progress",
-    // The downloads row and the pane's action buttons nest inside the progress
-    // pane, and focus-sync resolves the first zone whose container holds focus
-    // - so "downloads" and "actions" must be declared before "progress" or
-    // focusing a nested button syncs the wrong zone.
-    zones: ["downloads", "actions", "progress", "log", "filters"] as const,
+    zones: PROGRESS_ZONES,
     scope: "review-progress",
     tabCycle: hasError ? undefined : tabCycle,
     focus: {
       autoFocus: true,
       targets: {
         progress: { container: progressPaneRef, target: progressScrollRef },
-        filters: agentFilterRef,
+        filters: { container: agentFilterRef, target: getCheckedAgentChip },
         downloads: snapshotDownloadsRef,
         // No single wrapper holds every action, so the container resolves to
         // whichever one holds focus (the providers focus-park shape) and falls
@@ -125,7 +172,6 @@ export function useReviewProgressKeyboard({
     transitions: ({ zone, key }) => {
       if (key === "ArrowLeft" && zone === "log") return "progress";
       if (key === "ArrowRight" && zone === "progress") return "log";
-      if (key === "ArrowDown" && zone === "filters") return "log";
       return null;
     },
   });
@@ -153,6 +199,12 @@ export function useReviewProgressKeyboard({
     wrap: false,
     focusWithinOnly: true,
     enabled: zone === "actions" && !hasError,
+    // Right past the last action continues into the log, the same move the
+    // arrow makes from the progress body. Left on the first action stays inert:
+    // there is no pane to its left.
+    onNavigationBoundaryReached: (direction) => {
+      if (direction === "next") setZone("log");
+    },
   });
 
   // The row lost the action it held - it turned disabled mid-interaction (a
@@ -232,7 +284,7 @@ export function useReviewProgressKeyboard({
       if (isInteractiveTarget(event.target)) return;
       setZone("filters");
     },
-    { enabled: !hasError },
+    { enabled: hasAgentFilterStop },
   );
 
   // The agent ToggleGroup claims vertical arrows as extra horizontal moves, so
@@ -249,22 +301,37 @@ export function useReviewProgressKeyboard({
     }
   };
 
+  // The log's top edge continues up into the chip row above it - the mirror of
+  // the chips' ArrowDown. The log reports the boundary only when there is
+  // nothing left to scroll or page back to, and it is handed a listener only
+  // when there is a chip row to reach: elsewhere ArrowUp stays native.
+  const handleLogBoundary = hasAgentFilterStop ? () => setZone("filters") : undefined;
+
+  // The error layout stands this whole zone grammar down and publishes its own
+  // legend from the error row, so the hook leaves that screen's footer to it
+  // rather than writing an empty one over it.
   usePageFooter({
-    shortcuts: hasError
-      ? []
-      : [
-          SWITCH_PANE_SHORTCUT,
-          // Inside the action row the arrows step between actions instead of
-          // switching panes, so the hint names the move the user's zone makes.
-          { key: "←/→", label: zone === "actions" ? "Move Action" : "Switch Pane" },
-          { key: "f", label: "Filter" },
-          ...(onViewResults ? [{ key: "Enter", label: "View Results" }] : []),
-          ...(onRetryRecovery ? [REVIEW_PROGRESS_CONTROLS.retry] : []),
-          ...(onCancel
-            ? [{ ...REVIEW_PROGRESS_CONTROLS.cancel, key: "c/q", disabled: cancelDisabled }]
-            : []),
-        ],
+    shortcuts: [
+      SWITCH_PANE_SHORTCUT,
+      {
+        key: "←/→",
+        label: getArrowShortcutLabel(
+          zone,
+          enabledActionCount,
+          hasSnapshotDownloads,
+          hasAgentFilterStop,
+        ),
+      },
+      ...(zone === "filters" && hasAgentFilterStop ? [{ key: "↓", label: "Log" }] : []),
+      ...(hasAgentFilterStop ? [{ key: "f", label: "Filter" }] : []),
+      ...(onViewResults ? [{ key: "Enter", label: "View Results" }] : []),
+      ...(onRetryRecovery ? [REVIEW_PROGRESS_CONTROLS.retry] : []),
+      ...(onCancel
+        ? [{ ...REVIEW_PROGRESS_CONTROLS.cancel, key: "c/q", disabled: cancelDisabled }]
+        : []),
+    ],
     rightShortcuts: onBack ? [BACK_SHORTCUT] : [],
+    enabled: !hasError,
   });
 
   const getPaneActionProps = (id: string): ProgressPaneActionButtonProps => ({
@@ -288,6 +355,8 @@ export function useReviewProgressKeyboard({
     logContentRef,
     snapshotDownloadsRef,
     handleFilterKeyDown,
+    handleLogBoundary,
+    isAgentFilterFocused: zone === "filters",
     getPaneActionProps,
   };
 }

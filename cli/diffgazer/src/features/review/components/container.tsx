@@ -2,9 +2,12 @@ import { useProviderConsentGate } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import {
   classifyReviewStreamError,
+  type FailedTerminalOutcome,
   getAlternateReviewMode,
+  hasCompletedLens,
   isProviderRecoveryError,
   mapStepsToProgressDataWithAgents,
+  PERSISTED_RUN_ERROR_CODES,
 } from "@diffgazer/core/review";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { BACK_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
@@ -15,6 +18,7 @@ import { ProviderConsentOverlay } from "../../../components/shared/provider-cons
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { Spinner } from "../../../components/ui/spinner";
+import { useActionRow } from "../../../hooks/use-action-row";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useReviewLifecycle } from "../hooks/use-lifecycle";
 import {
@@ -25,9 +29,9 @@ import {
 import {
   ApiKeyMissingView,
   ConfigurationErrorView,
-  type FailedTerminalOutcome,
   ReviewTerminalReceiptView,
 } from "./api-key-missing-view";
+import { ACTION_SHORTCUTS } from "./gate-view";
 import { NoChangesView } from "./no-changes-view";
 import { ReviewProgressView } from "./progress-view/view";
 import { ReviewResultsView } from "./results-view";
@@ -39,6 +43,8 @@ interface ReviewStreamContainerProps {
   reviewId?: string;
   allowResumeWithoutSetup?: boolean;
   onStreamNotFound?: (reviewId: string) => void;
+  /** Opens the saved record of a run that failed after some lenses had reported. */
+  onViewRunDetails?: (reviewId: string) => void;
 }
 
 interface ReviewTerminalReceiptContainerProps {
@@ -67,6 +73,7 @@ function ReviewTerminalErrorView({
   guidance,
   onBack,
   recovery,
+  onViewRun,
 }: {
   title: string;
   error: string;
@@ -74,11 +81,23 @@ function ReviewTerminalErrorView({
   onBack: () => void;
   /** Set when the failure is fixed on the providers screen; adds the `p` recovery shortcut, named by the CTA. */
   recovery?: { label: string; open: () => void };
+  /** Set when the failed run reached disk with lens results worth reading. */
+  onViewRun?: () => void;
 }): ReactElement {
   usePageFooter({
-    shortcuts: recovery ? [getProviderRecoveryShortcut(recovery.label)] : [],
+    shortcuts: [
+      ...(onViewRun ? ACTION_SHORTCUTS : []),
+      ...(recovery ? [getProviderRecoveryShortcut(recovery.label)] : []),
+    ],
     rightShortcuts: BACK_SHORTCUTS,
   });
+  // A dead end keeps its single Back button and carries the recovery CTA on `p`
+  // alone. Once there is a run worth reading the screen is a row, and the CTA
+  // joins it as a button too: the web error panel offers both side by side.
+  const recoveryAction = onViewRun ? recovery : undefined;
+  const actionCount = (onViewRun ? 1 : 0) + (recoveryAction ? 1 : 0) + 1;
+  // Each button owns its own Enter; the row owns Left/Right and the single mark.
+  const actions = useActionRow({ actionCount });
   useInput(
     (input, key) => {
       if (key.escape) {
@@ -101,7 +120,25 @@ function ReviewTerminalErrorView({
         ) : null}
       </Callout>
       <Box gap={2}>
-        <Button variant="secondary" isActive onPress={onBack}>
+        {onViewRun ? (
+          <Button variant="primary" isActive={actions.isActionActive(0)} onPress={onViewRun}>
+            View Run Details
+          </Button>
+        ) : null}
+        {recoveryAction ? (
+          <Button
+            variant="secondary"
+            isActive={actions.isActionActive(1)}
+            onPress={recoveryAction.open}
+          >
+            {recoveryAction.label}
+          </Button>
+        ) : null}
+        <Button
+          variant="secondary"
+          isActive={actions.isActionActive(actionCount - 1)}
+          onPress={onBack}
+        >
           Back
         </Button>
       </Box>
@@ -128,6 +165,7 @@ function ReviewStreamContainer({
   reviewId,
   allowResumeWithoutSetup = false,
   onStreamNotFound,
+  onViewRunDetails,
 }: ReviewStreamContainerProps): ReactElement {
   const { navigate, goBack } = useNavigation();
   const { state, start, cancel, goToSummary, goToResults, retryConfig, reset } = useReviewLifecycle(
@@ -257,15 +295,31 @@ function ReviewStreamContainer({
       state.errorCode,
       state.transportFamily ?? undefined,
     );
+    const recovery = isProviderRecoveryError(guidance.kind)
+      ? { label: guidance.ctaLabel, open: goToProviderSettings }
+      : undefined;
+    // A saved run whose lenses got somewhere is worth opening instead of ending
+    // on a dead end. Same gate as the web error panel, down to the CTA it sits
+    // beside: a failure the providers screen fixes still offers the run.
+    const failedRunId = state.reviewId;
+    const canViewRun =
+      failedRunId !== null &&
+      onViewRunDetails !== undefined &&
+      PERSISTED_RUN_ERROR_CODES.includes(state.errorCode ?? "") &&
+      hasCompletedLens(state.completion.lensStats);
     return (
       <ReviewTerminalErrorView
         title={guidance.title}
         error={error}
         guidance={guidance.guidance}
         onBack={handleGateBack}
-        recovery={
-          isProviderRecoveryError(guidance.kind)
-            ? { label: guidance.ctaLabel, open: goToProviderSettings }
+        recovery={recovery}
+        onViewRun={
+          canViewRun
+            ? () => {
+                reset({ clearActiveSession: true });
+                onViewRunDetails(failedRunId);
+              }
             : undefined
         }
       />

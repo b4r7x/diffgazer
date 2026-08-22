@@ -3,6 +3,8 @@ import { formatRunId } from "@diffgazer/core/format";
 import {
   buildDuplicateCollapseNotice,
   buildLensFailureNotice,
+  describeTerminalOutcome,
+  type FailedTerminalOutcome,
   filterIssuesBySeverity,
   selectDetailsEmptyKind,
   useIssueDetailsState,
@@ -28,6 +30,8 @@ export interface ReviewResultsViewProps {
   initialIssueId?: string;
   droppedDuplicates?: number;
   lensStats?: LensStat[];
+  /** Set when the run ended on a failed outcome; a deep link opens here without passing the summary. */
+  terminalOutcome?: FailedTerminalOutcome;
   onBack?: () => void;
 }
 
@@ -45,6 +49,7 @@ export function ReviewResultsView({
   initialIssueId,
   droppedDuplicates,
   lensStats,
+  terminalOutcome,
   onBack,
 }: ReviewResultsViewProps): ReactElement {
   const { tokens } = useTheme();
@@ -108,7 +113,11 @@ export function ReviewResultsView({
   const detailsEmptyKind = selectDetailsEmptyKind(issues.length, filteredIssues.length);
   const duplicateNotice = buildDuplicateCollapseNotice(droppedDuplicates, issues.length);
   const completenessNotice = buildLensFailureNotice(lensStats);
-  const noticeRows = (duplicateNotice ? 1 : 0) + (completenessNotice ? 1 : 0);
+  // A findings deep link opens this screen without passing the summary, so the
+  // outcome that stopped the run is told here too: on its own the completeness
+  // notice reads as "a lens errored", never "the run ended".
+  const failure = terminalOutcome ? describeTerminalOutcome(terminalOutcome) : null;
+  const noticeRows = (failure ? 1 : 0) + (duplicateNotice ? 1 : 0) + (completenessNotice ? 1 : 0);
   const {
     listWidth,
     listContentWidth,
@@ -132,6 +141,11 @@ export function ReviewResultsView({
           {`Review ${reviewIdLabel}`}
         </Text>
       </Box>
+      {failure ? (
+        <Box paddingX={1}>
+          <Text color={tokens.error}>{`${failure.title} — ${failure.message}`}</Text>
+        </Box>
+      ) : null}
       {completenessNotice ? (
         <Box paddingX={1}>
           <Text color={tokens.warning}>{completenessNotice}</Text>

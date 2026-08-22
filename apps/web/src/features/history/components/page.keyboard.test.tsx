@@ -1006,6 +1006,87 @@ describe("HistoryPage chrome hand-off", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Back" })).toHaveFocus());
     expect(footer.queryByText("Clear Search")).not.toBeInTheDocument();
     expect(footer.getByText("Back")).toBeInTheDocument();
+    // The arrow that took focus up says how to come back.
+    expect(footer.getByText("Search")).toBeInTheDocument();
+  });
+
+  it("returns to the search box with ArrowDown after the hand-off", async () => {
+    const user = userEvent.setup();
+    renderWithChrome();
+
+    const search = await screen.findByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
+    await user.click(search);
+    await user.keyboard("{ArrowUp}");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Back" })).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+
+    await waitFor(() => expect(search).toHaveFocus());
+    const footer = within(screen.getByRole("contentinfo"));
+    expect(footer.getByText("Clear Search")).toBeInTheDocument();
+  });
+
+  it("returns to the warnings region with ArrowDown after the hand-off", async () => {
+    mockGetReviews.mockResolvedValue({
+      reviews: [makeReviewMetadata({ id: "readable-review" })],
+      warnings: [
+        { kind: "unreadable_review" as const, reviewId: "00000000-1111-4111-8111-111111111111" },
+      ],
+    });
+    const user = userEvent.setup();
+    renderWithChrome();
+
+    const warningRegion = await screen.findByRole("region", { name: "History warnings" });
+    warningRegion.focus();
+    await waitFor(() => expect(warningRegion).toHaveFocus());
+    await user.keyboard("{ArrowUp}");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Back" })).toHaveFocus());
+    const footer = within(screen.getByRole("contentinfo"));
+    expect(footer.getByText("Warnings")).toBeInTheDocument();
+
+    await user.keyboard("{ArrowDown}");
+
+    // The hand-off remembers the control it left, so the return skips the search
+    // box the other origin would come back to.
+    await waitFor(() => expect(warningRegion).toHaveFocus());
+    expect(footer.getByText("Scroll Warnings")).toBeInTheDocument();
+  });
+
+  it("ignores ArrowDown on the Back button when nothing handed off", async () => {
+    const user = userEvent.setup();
+    renderWithChrome();
+
+    await screen.findByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
+    const backButton = screen.getByRole("button", { name: "Back" });
+    backButton.focus();
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(backButton).toHaveFocus();
+  });
+
+  it("ArrowDown on Back reached by Tab after a stale hand-off declines", async () => {
+    const user = userEvent.setup();
+    renderWithChrome();
+
+    const search = await screen.findByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
+    await user.click(search);
+    await user.keyboard("{ArrowUp}");
+    const backButton = screen.getByRole("button", { name: "Back" });
+    await waitFor(() => expect(backButton).toHaveFocus());
+
+    // Tab ends the park and hands the zone back to the page: the Back button
+    // Shift+Tab lands on again is not parked, so the arrow owes nobody a return
+    // -- the remembered control belongs to the hand-off, not to every visit.
+    await user.tab();
+    await waitFor(() => expect(search).toHaveFocus());
+    await user.tab({ shift: true });
+    await waitFor(() => expect(backButton).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(backButton).toHaveFocus();
+    expect(search).not.toHaveFocus();
   });
 
   it("returns the zone to the page when focus comes back from the chrome", async () => {

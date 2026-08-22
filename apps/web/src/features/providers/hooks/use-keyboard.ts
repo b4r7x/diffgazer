@@ -39,6 +39,8 @@ const PROVIDER_ZONES = [
 
 export type ProvidersFocusZone = (typeof PROVIDER_ZONES)[number];
 
+const PROVIDERS_SCOPE = "providers";
+
 interface ProvidersKeyboardOptions {
   /** The page layer's derived action layout: the row's controls and the keys that reach them. */
   layout: ProviderActionLayout;
@@ -93,7 +95,7 @@ export function useProvidersKeyboard({
   const { zone: internalZone, setZone } = useFocusZone({
     initial: "list",
     zones: PROVIDER_ZONES,
-    scope: "providers",
+    scope: PROVIDERS_SCOPE,
     enabled: !dialogOpen,
     // Tab hops between the panes like the TUI's list<->details cycle, but only
     // while focus is inside one of them: containers scope declines Tab
@@ -135,7 +137,6 @@ export function useProvidersKeyboard({
       },
     },
   });
-  const handOffToChrome = useChromeBackHandoff(setZone);
 
   // The More menu owns the keys while it is open: the page's accelerators are
   // off through `dialogOpen`, and the dialog scope is what stands the global
@@ -148,6 +149,19 @@ export function useProvidersKeyboard({
   if (!hasSelection && internalZone === "buttons") effectiveFocusZone = "list";
   if (!hasNotice && internalZone === "notice") effectiveFocusZone = "list";
   const inButtons = effectiveFocusZone === "buttons";
+
+  // A notice can clear while focus is parked on the chrome, and the zone it
+  // handed off from goes with it; the return -- and the parked footer hint that
+  // names it -- then fall back to the list, as the render-time resolution above
+  // does.
+  const resolveChromeZone = (zone: ProvidersFocusZone): ProvidersFocusZone =>
+    zone === "notice" && !hasNotice ? "list" : zone;
+
+  const chrome = useChromeBackHandoff({
+    zone: effectiveFocusZone,
+    setZone: (zone) => setZone(resolveChromeZone(zone)),
+    scope: PROVIDERS_SCOPE,
+  });
 
   const focusProviderList = () => {
     listContainerRef.current?.focus({ preventScroll: true });
@@ -226,7 +240,7 @@ export function useProvidersKeyboard({
       ) {
         return DECLINE;
       }
-      handOffToChrome();
+      chrome.handOff();
       return;
     },
     {
@@ -284,6 +298,7 @@ export function useProvidersKeyboard({
 
   return {
     focusZone: effectiveFocusZone,
+    chromeReturnZone: chrome.returnZone === null ? null : resolveChromeZone(chrome.returnZone),
     buttonIndex,
     actionRowRef,
     detailsPaneRef,

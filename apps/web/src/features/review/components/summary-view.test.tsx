@@ -1,4 +1,5 @@
 import { FooterProvider } from "@diffgazer/core/footer";
+import type { FailedTerminalOutcome } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
@@ -7,10 +8,11 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { FooterView } from "@/testing/footer-view";
+import { HeaderChromeHarness } from "@/testing/header-chrome";
 import { expectSingleReticle } from "@/testing/reticle";
 import { ReviewSummaryView } from "./summary-view";
 
-function renderSummary(props?: {
+interface SummaryProps {
   droppedBelowThreshold?: number;
   droppedDuplicates?: number;
   minSeverity?: ReviewIssue["severity"];
@@ -18,22 +20,33 @@ function renderSummary(props?: {
   issues?: ReviewIssue[];
   reviewId?: string | null;
   durationMs?: number;
+  outcome?: FailedTerminalOutcome;
+  onEnterReview?: () => void;
   onBack?: () => void;
-}) {
+}
+
+function summaryElement(props?: SummaryProps) {
+  return (
+    <ReviewSummaryView
+      issues={props?.issues ?? [makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
+      reviewId={props?.reviewId === undefined ? "review-1" : props.reviewId}
+      durationMs={props?.durationMs}
+      droppedBelowThreshold={props?.droppedBelowThreshold}
+      droppedDuplicates={props?.droppedDuplicates}
+      minSeverity={props?.minSeverity}
+      lensStats={props?.lensStats}
+      outcome={props?.outcome}
+      onEnterReview={props?.onEnterReview ?? vi.fn()}
+      onBack={props?.onBack ?? vi.fn()}
+    />
+  );
+}
+
+function renderSummary(props?: SummaryProps) {
   return render(
     <KeyboardProvider>
       <FooterProvider>
-        <ReviewSummaryView
-          issues={props?.issues ?? [makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
-          reviewId={props?.reviewId === undefined ? "review-1" : props.reviewId}
-          durationMs={props?.durationMs}
-          droppedBelowThreshold={props?.droppedBelowThreshold}
-          droppedDuplicates={props?.droppedDuplicates}
-          minSeverity={props?.minSeverity}
-          lensStats={props?.lensStats}
-          onEnterReview={vi.fn()}
-          onBack={props?.onBack ?? vi.fn()}
-        />
+        {summaryElement(props)}
         <FooterView />
       </FooterProvider>
     </KeyboardProvider>,
@@ -369,5 +382,277 @@ describe("ReviewSummaryView", () => {
     screen.getByRole("button", { name: /view results/i }).focus();
     await user.keyboard("{Enter}");
     expect(onEnterReview).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("ReviewSummaryView failure mode", () => {
+  const FAILED_RUN: LensStat[] = [
+    { lensId: "correctness", issueCount: 1, status: "success" },
+    { lensId: "security", issueCount: 1, status: "success" },
+    { lensId: "performance", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+    { lensId: "tests", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+    { lensId: "simplicity", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+  ];
+
+  const KEPT_ISSUES = [
+    makeIssue({ id: "1", severity: "high", title: "Kept issue", file: "a.ts" }),
+    makeIssue({ id: "2", severity: "low", title: "Other kept issue", file: "b.ts" }),
+  ];
+
+  it("reports the outcome the run had instead of signing it off as complete", () => {
+    renderSummary({ outcome: "budget-exhausted", lensStats: FAILED_RUN, issues: KEPT_ISSUES });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Budget Exhausted");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Budget Exhausted");
+    expect(screen.queryByText(/Review Complete/)).not.toBeInTheDocument();
+    expect(screen.getByText("2 of 5 lenses completed · 2 issues")).toBeVisible();
+  });
+
+  it("names the lenses whose findings the run never produced, without restating the ratio", () => {
+    renderSummary({ outcome: "budget-exhausted", lensStats: FAILED_RUN, issues: KEPT_ISSUES });
+
+    expect(
+      screen.getByText("Issues from Optimizer, Tester and Simplifier are missing."),
+    ).toBeVisible();
+    // The coverage line above already says how far the run got; the same fact in
+    // the opposite polarity is the hardest form to read, and this is one alert.
+    expect(screen.queryByText(/lenses failed/)).not.toBeInTheDocument();
+    const lensTable = screen.getByRole("table", { name: /issues by lens/i });
+    expect(within(lensTable).getAllByText("failed [BUDGET_EXHAUSTED]")).toHaveLength(3);
+  });
+
+  it("says the findings were not kept when the outcome discards them", () => {
+    renderSummary({
+      outcome: "cancelled",
+      lensStats: [
+        { lensId: "correctness", issueCount: 3, status: "success" },
+        { lensId: "security", issueCount: 0, status: "failed", errorCode: "CANCELLED" },
+      ],
+      issues: [],
+    });
+
+    // The stored per-lens counts survive the drop, so "0 issues" would otherwise
+    // sit above a lens row reading "3" with nothing reconciling them.
+    expect(screen.getByText("1 of 2 lenses completed · 0 issues")).toBeVisible();
+    const lensTable = screen.getByRole("table", { name: /issues by lens/i });
+    expect(within(lensTable).getByText("3")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Findings are not kept for a run that ended this way; the counts below are what each lens reported before it ended.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("stays quiet about dropped findings for an outcome that keeps them", () => {
+    renderSummary({ outcome: "budget-exhausted", lensStats: FAILED_RUN, issues: KEPT_ISSUES });
+
+    expect(screen.queryByText(/Findings are not kept/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the findings the failed run did produce reachable", async () => {
+    const user = userEvent.setup();
+    const onEnterReview = vi.fn();
+    renderSummary({
+      outcome: "budget-exhausted",
+      lensStats: FAILED_RUN,
+      issues: KEPT_ISSUES,
+      onEnterReview,
+    });
+
+    expect(screen.getByText("Kept issue")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /view results/i }));
+    expect(onEnterReview).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers no results screen when the failed run kept no findings", async () => {
+    const user = userEvent.setup();
+    const onEnterReview = vi.fn();
+    const { container } = renderSummary({
+      outcome: "timed-out",
+      lensStats: [{ lensId: "correctness", issueCount: 0, status: "success" }],
+      issues: [],
+      onEnterReview,
+    });
+
+    expect(screen.queryByRole("button", { name: /view results/i })).not.toBeInTheDocument();
+    // Mount focus falls to the row's first enabled action instead of vanishing.
+    const back = screen.getByRole("button", { name: "Back" });
+    await waitFor(() => expect(back).toHaveFocus());
+    expectSingleReticle(container);
+
+    await user.keyboard("{Enter}");
+    expect(onEnterReview).not.toHaveBeenCalled();
+
+    const legend = within(screen.getByRole("contentinfo"));
+    expect(legend.queryByText("View Results")).not.toBeInTheDocument();
+    expect(legend.queryByText("Move Action")).not.toBeInTheDocument();
+    // The row's one remaining key is named instead of an empty legend.
+    expect(legend.getByText("Summary")).toBeInTheDocument();
+  });
+
+  it("says the run got nowhere without congratulating a clean sheet", () => {
+    renderSummary({
+      outcome: "timed-out",
+      lensStats: [{ lensId: "correctness", issueCount: 0, status: "success" }],
+      issues: [],
+      durationMs: 3800,
+    });
+
+    expect(screen.getByText("1 of 1 lens completed · 0 issues · 3.8s")).toBeVisible();
+    expect(screen.queryByText(/No issues found/)).not.toBeInTheDocument();
+  });
+});
+
+describe("ReviewSummaryView chrome hand-off", () => {
+  function renderSummaryWithChrome(props?: SummaryProps) {
+    return render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <HeaderChromeHarness>
+            {summaryElement(props)}
+            <FooterView />
+          </HeaderChromeHarness>
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+  }
+
+  // The harness renders the shell's Back button before the screen, and the
+  // summary's own footer control carries the same accessible name.
+  function backButtons() {
+    return screen.getAllByRole("button", { name: "Back" });
+  }
+
+  async function park(user: ReturnType<typeof userEvent.setup>) {
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
+    );
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    const [chromeBack] = backButtons();
+    await waitFor(() => expect(chromeBack).toHaveFocus());
+    return chromeBack;
+  }
+
+  it("hands focus to the header Back from the top of the region and returns it with ArrowDown", async () => {
+    const user = userEvent.setup();
+    const { container } = renderSummaryWithChrome();
+
+    await park(user);
+
+    await user.keyboard("{ArrowDown}");
+
+    const region = screen.getByRole("region", { name: "Review summary" });
+    await waitFor(() => expect(region).toHaveFocus());
+    expectSingleReticle(container);
+  });
+
+  it("keeps the summary's own arrows out of the chrome while focus is parked there", async () => {
+    const user = userEvent.setup();
+    renderSummaryWithChrome();
+
+    const chromeBack = await park(user);
+    const [, summaryBack] = backButtons();
+    const viewResults = screen.getByRole("button", { name: /view results/i });
+
+    await user.keyboard("{ArrowLeft}");
+    await user.keyboard("{ArrowRight}");
+    await user.keyboard("{ArrowUp}");
+
+    expect(chromeBack).toHaveFocus();
+    // Nothing in the page is marked either: the mark follows focus, and focus
+    // is in the chrome.
+    expect(summaryBack).not.toHaveAttribute("data-highlighted");
+    expect(viewResults).not.toHaveAttribute("data-highlighted");
+  });
+
+  it("names the way back in the footer while parked, and nothing that is inert", async () => {
+    const user = userEvent.setup();
+    renderSummaryWithChrome();
+    const legend = within(screen.getByRole("contentinfo"));
+
+    await park(user);
+
+    expect(legend.getByText("Summary")).toBeInTheDocument();
+    expect(legend.getByText("Back")).toBeInTheDocument();
+    expect(legend.queryByText("View Results")).not.toBeInTheDocument();
+    expect(legend.queryByText("Scroll")).not.toBeInTheDocument();
+    expect(legend.queryByText("Move Action")).not.toBeInTheDocument();
+  });
+
+  it("ends the park when Tab carries focus back into the page", async () => {
+    const user = userEvent.setup();
+    renderSummaryWithChrome();
+    const legend = within(screen.getByRole("contentinfo"));
+
+    await park(user);
+
+    // Tab out of the chrome is native, so nothing hands the zone back: the page
+    // has to notice focus returning or it keeps advertising a park that ended.
+    await user.tab();
+    const region = screen.getByRole("region", { name: "Review summary" });
+    expect(region).toHaveFocus();
+    expect(await legend.findByText("Scroll")).toBeInTheDocument();
+    expect(legend.getByText("Actions")).toBeInTheDocument();
+    expect(legend.queryByText("Summary")).not.toBeInTheDocument();
+
+    // And the arrow is native on the Back button again: this park is over, so
+    // Shift+Tab back to the chrome reaches it the way Tab does.
+    await user.tab({ shift: true });
+    const [chromeBack] = backButtons();
+    expect(chromeBack).toHaveFocus();
+    // The legend must not name a return the arrow will decline.
+    expect(legend.queryByText("Summary")).not.toBeInTheDocument();
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(chromeBack).toHaveFocus();
+    expect(region).not.toHaveFocus();
+  });
+
+  it("stops naming the page's keys once Tab carries focus into the chrome", async () => {
+    const user = userEvent.setup();
+    renderSummaryWithChrome();
+    const legend = within(screen.getByRole("contentinfo"));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
+    );
+    expect(legend.getByText("Move Action")).toBeInTheDocument();
+
+    // Into the region, then out of the page the way Tab goes: the row's keys are
+    // scoped to the panel, so out here every one of them is inert.
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
+    await user.tab({ shift: true });
+    const [chromeBack] = backButtons();
+    expect(chromeBack).toHaveFocus();
+
+    expect(await legend.findByText("Back")).toBeInTheDocument();
+    expect(legend.queryByText("Move Action")).not.toBeInTheDocument();
+    expect(legend.queryByText("View Results")).not.toBeInTheDocument();
+    expect(legend.queryByText("Scroll")).not.toBeInTheDocument();
+    // No arrow took focus up, so there is no way back to name either.
+    expect(legend.queryByText("Summary")).not.toBeInTheDocument();
+  });
+
+  it("ignores ArrowDown on the Back button reached by Tab, where no arrow took focus up", async () => {
+    const user = userEvent.setup();
+    renderSummaryWithChrome();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
+    );
+
+    // Into the region, then out of the page the way Tab goes.
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
+    await user.tab({ shift: true });
+    const [chromeBack, summaryBack] = backButtons();
+    expect(chromeBack).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(chromeBack).toHaveFocus();
+    expect(summaryBack).not.toHaveFocus();
   });
 });
