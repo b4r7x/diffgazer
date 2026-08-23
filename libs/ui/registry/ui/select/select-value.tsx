@@ -19,7 +19,6 @@ const selectValuePlaceholderVariants = cva("", {
 
 export type SelectValueDisplay = "count" | "list" | "truncate";
 
-/** Props for select value render. */
 export interface SelectValueRenderProps {
   /** Selected option values provided to the custom render function. */
   selected: string[];
@@ -32,7 +31,6 @@ function getLabelMap(
   return new Map(Array.from(options, ([value, option]) => [value, option.label]));
 }
 
-/** Props for select value. */
 export interface SelectValueProps {
   /** Rendered when nothing is selected. */
   placeholder?: ReactNode;

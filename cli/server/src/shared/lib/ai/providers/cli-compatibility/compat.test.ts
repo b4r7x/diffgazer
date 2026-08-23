@@ -608,11 +608,11 @@ describe("CLI process-group cancellation", () => {
 
     try {
       await expect(
-        terminateCliProcessGroup(
-          { pid: 4321, child, exited: false, descendantsExited: false },
-          [],
-          { gracefulTimeoutMs: 1, forcedTimeoutMs: 1, sleep: async () => {} },
-        ),
+        terminateCliProcessGroup({ pid: 4321, child, exited: false }, [], {
+          gracefulTimeoutMs: 1,
+          forcedTimeoutMs: 1,
+          sleep: async () => {},
+        }),
       ).rejects.toThrow("CLI process termination could not be confirmed");
       expect(processKill).toHaveBeenCalled();
     } finally {
@@ -707,7 +707,6 @@ describe("CLI process-group cancellation", () => {
         pid: child.pid ?? 0,
         child,
         exited: false,
-        descendantsExited: false,
       };
 
       const termination = await terminateCliProcessGroup(supervisor, [descendantPid], {
@@ -741,7 +740,7 @@ describe("CLI process-group cancellation", () => {
       }) as unknown as ChildProcess;
 
       await expect(
-        terminateCliProcessGroup({ pid: 4321, child, exited: true, descendantsExited: false }, []),
+        terminateCliProcessGroup({ pid: 4321, child, exited: true }, []),
       ).rejects.toThrow("CLI process termination could not be confirmed");
     } finally {
       Object.defineProperty(process, "platform", { value: realPlatform, configurable: true });
@@ -793,11 +792,9 @@ describe("CLI process-group cancellation", () => {
 
     try {
       await expect(
-        terminateCliProcessGroup(
-          { pid: 4321, child, exited: true, descendantsExited: false },
-          [descendantPid],
-          { sleep: async () => {} },
-        ),
+        terminateCliProcessGroup({ pid: 4321, child, exited: true }, [descendantPid], {
+          sleep: async () => {},
+        }),
       ).rejects.toThrow("CLI process termination could not be confirmed");
       expect(processKill).toHaveBeenCalledWith(descendantPid, "SIGKILL");
       expect(child.kill).not.toHaveBeenCalled();
@@ -821,11 +818,11 @@ describe("CLI process-group cancellation", () => {
 
     try {
       await expect(
-        terminateCliProcessGroup(
-          { pid: 4321, child, exited: false, descendantsExited: false },
-          [descendantPid],
-          { gracefulTimeoutMs: 10, forcedTimeoutMs: 10, sleep: async () => {} },
-        ),
+        terminateCliProcessGroup({ pid: 4321, child, exited: false }, [descendantPid], {
+          gracefulTimeoutMs: 10,
+          forcedTimeoutMs: 10,
+          sleep: async () => {},
+        }),
       ).rejects.toThrow("CLI process termination could not be confirmed");
       expect(child.kill).toHaveBeenCalledTimes(1);
       expect(child.kill).toHaveBeenCalledWith("SIGTERM");
@@ -855,11 +852,9 @@ describe("CLI process-group cancellation", () => {
     try {
       const controlledRejections: unknown[] = [];
       try {
-        await terminateCliProcessGroup(
-          { pid: 4321, child, exited: true, descendantsExited: false },
-          [],
-          { sleep: async () => {} },
-        );
+        await terminateCliProcessGroup({ pid: 4321, child, exited: true }, [], {
+          sleep: async () => {},
+        });
       } catch (error) {
         controlledRejections.push(error);
       }
@@ -912,11 +907,11 @@ describe("CLI process-group cancellation", () => {
 
     try {
       await expect(
-        terminateCliProcessGroup(
-          { pid: 4321, child, exited: false, descendantsExited: false },
-          [],
-          { gracefulTimeoutMs: 1, forcedTimeoutMs: 1, sleep: async () => {} },
-        ),
+        terminateCliProcessGroup({ pid: 4321, child, exited: false }, [], {
+          gracefulTimeoutMs: 1,
+          forcedTimeoutMs: 1,
+          sleep: async () => {},
+        }),
       ).rejects.toThrow("CLI process termination could not be confirmed");
       await new Promise<void>((resolve) => setImmediate(resolve));
 
@@ -1052,11 +1047,11 @@ if (args.includes("-p")) process.stdout.write(" S\\n");
 
     try {
       await expect(
-        terminateCliProcessGroup(
-          { pid: 4321, child, exited: true, descendantsExited: false },
-          [9876],
-          { gracefulTimeoutMs: 1, forcedTimeoutMs: 10, sleep: async () => {} },
-        ),
+        terminateCliProcessGroup({ pid: 4321, child, exited: true }, [9876], {
+          gracefulTimeoutMs: 1,
+          forcedTimeoutMs: 10,
+          sleep: async () => {},
+        }),
       ).rejects.toThrow("CLI process termination could not be confirmed");
       expect(processKill).toHaveBeenCalledWith(-4321, "SIGKILL");
       expect(child.kill).not.toHaveBeenCalled();
@@ -1085,15 +1080,11 @@ if (args.includes("-p")) process.stdout.write(" S\\n");
 
     try {
       await expect(
-        terminateCliProcessGroup(
-          { pid: 4321, child, exited: true, descendantsExited: false },
-          [descendantPid],
-          {
-            gracefulTimeoutMs: 1,
-            forcedTimeoutMs: 10,
-            sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-          },
-        ),
+        terminateCliProcessGroup({ pid: 4321, child, exited: true }, [descendantPid], {
+          gracefulTimeoutMs: 1,
+          forcedTimeoutMs: 10,
+          sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+        }),
       ).rejects.toThrow("CLI process termination could not be confirmed");
       expect(processKill).toHaveBeenCalledWith(-4321, "SIGKILL");
       expect(processKill).toHaveBeenCalledWith(descendantPid, "SIGKILL");
@@ -1122,7 +1113,7 @@ if (args.includes("-p")) process.stdout.write(" S\\n");
 
     try {
       const termination = await terminateCliProcessGroup(
-        { pid: 4321, child, exited: false, descendantsExited: false },
+        { pid: 4321, child, exited: false },
         [9876],
         // Signals are mocked, but the group enumeration still reads the real process
         // table, and the claim below needs that read to succeed rather than time out.
@@ -1171,11 +1162,11 @@ if (args.includes("-p")) process.stdout.write(" S\\n");
 
     try {
       await expect(
-        terminateCliProcessGroup(
-          { pid: 4321, child, exited: false, descendantsExited: false },
-          [descendantPid],
-          { gracefulTimeoutMs: 10, forcedTimeoutMs: 10, sleep: async () => {} },
-        ),
+        terminateCliProcessGroup({ pid: 4321, child, exited: false }, [descendantPid], {
+          gracefulTimeoutMs: 10,
+          forcedTimeoutMs: 10,
+          sleep: async () => {},
+        }),
       ).rejects.toThrow("CLI process termination could not be confirmed");
       expect(child.kill).not.toHaveBeenCalled();
       expect(processKill).toHaveBeenCalledWith(-4321, "SIGTERM");

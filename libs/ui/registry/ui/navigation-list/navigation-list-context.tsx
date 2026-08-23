@@ -10,7 +10,6 @@ export interface GroupHeaderRegistration {
   expanded: boolean;
 }
 
-/** Context value shared by navigation list. */
 export interface NavigationListContextValue {
   /** Controlled selected item id. */
   selectedId: string | null;
@@ -28,20 +27,15 @@ export interface NavigationListContextValue {
    */
   focused: boolean;
   idPrefix: string;
-  /** Visual indicator style for the active/selected item. */
   indicator: NavigationListIndicator;
-  /** Registers item with navigation list. */
   registerItem: (
     registrationId: string,
     value: string,
     disabled: boolean,
     element: HTMLElement | null,
   ) => void;
-  /** Unregisters item from navigation list. */
   unregisterItem: (registrationId: string) => void;
-  /** Registers group header with navigation list. */
   registerGroupHeader: (id: string, registration: GroupHeaderRegistration) => void;
-  /** Unregisters group header from navigation list. */
   unregisterGroupHeader: (id: string) => void;
 }
 

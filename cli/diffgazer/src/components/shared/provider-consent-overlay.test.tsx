@@ -11,7 +11,7 @@ import { flush } from "../../testing/flush";
 import { CliThemeProvider } from "../../theme/provider";
 import { ProviderConsentOverlay } from "./provider-consent-overlay";
 
-// The 80x24 floor: 80 columns, 24 rows minus the app header and footer.
+// Default content zone of a 100x30 terminal; the minimum-size test narrows it.
 const contentZone = { columns: 100, contentColumns: 100, contentRows: 26 };
 
 vi.mock("../layout/global", async (importOriginal) => {
@@ -138,6 +138,7 @@ describe("ProviderConsentOverlay", () => {
   });
 
   test("keeps the title, its description and one action row inside the 80x24 floor", async () => {
+    // 80x24 floor: 80 columns, 24 rows minus HEADER_ROWS (3) and FOOTER_ROWS (1) = 20 content rows.
     Object.assign(contentZone, { columns: 80, contentColumns: 80, contentRows: 20 });
     const { frame } = renderOverlay({ error: "settings file is read-only" });
     await flush();

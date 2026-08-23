@@ -1,7 +1,6 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for card description. */
 export type CardDescriptionProps = ComponentPropsWithRef<"p">;
 
 /** Supporting description text. */

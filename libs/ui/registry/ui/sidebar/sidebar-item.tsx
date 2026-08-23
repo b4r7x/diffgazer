@@ -15,7 +15,6 @@ import { useOptionalSidebar, useSidebarChrome } from "./sidebar-context";
 import { resolveSidebarIntent, type SidebarIntent } from "./sidebar-intent";
 import { type SidebarVariant, sidebarItemVariants } from "./sidebar-variants";
 
-/** Props for sidebar item render. */
 export interface SidebarItemRenderProps<TElement extends HTMLElement = HTMLAnchorElement> {
   /** Ref forwarded to the underlying element. */
   ref?: Ref<TElement>;
@@ -47,7 +46,6 @@ export interface SidebarItemRenderProps<TElement extends HTMLElement = HTMLAncho
   itemPrefix?: ReactNode;
 }
 
-/** Props for sidebar item shared. */
 interface SidebarItemSharedProps {
   /** Marks the item as active. */
   active?: boolean;
@@ -60,7 +58,6 @@ interface SidebarItemSharedProps {
   disabled?: boolean;
 }
 
-/** Props for sidebar item as anchor. */
 export interface SidebarItemAsAnchorProps
   extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "children" | "value">,
     SidebarItemSharedProps {
@@ -75,7 +72,6 @@ export interface SidebarItemAsAnchorProps
   ref?: Ref<HTMLAnchorElement>;
 }
 
-/** Props for sidebar item as button. */
 export interface SidebarItemAsButtonProps
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "disabled" | "value">,
     SidebarItemSharedProps {
@@ -90,11 +86,9 @@ export interface SidebarItemAsButtonProps
   ref?: Ref<HTMLButtonElement>;
 }
 
-/** Props for sidebar item. */
 export type SidebarItemProps = SidebarItemAsAnchorProps | SidebarItemAsButtonProps;
 
-/** Class variants for sidebar intent dot. */
-export const sidebarIntentDotVariants = cva(
+const sidebarIntentDotVariants = cva(
   "inline-block w-1.5 h-1.5 shrink-0 mr-1 group-data-[state=rail]/sidebar:hidden",
   {
     variants: {

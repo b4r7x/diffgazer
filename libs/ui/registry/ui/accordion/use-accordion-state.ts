@@ -11,7 +11,6 @@ import {
   useControllableState,
 } from "@/hooks/use-controllable-state";
 
-/** Props for accordion in single-selection mode. */
 export interface AccordionSingleProps {
   /**
    * Single allows one open item; multiple allows several open at once. Switches the
@@ -38,11 +37,10 @@ export interface AccordionSingleProps {
   "aria-labelledby"?: string;
   /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLDivElement>;
-  /** Called when key down occurs. */
+  /** Called before the built-in accordion key handling; call event.preventDefault() to suppress it. */
   onKeyDown?: (event: ReactKeyboardEvent) => void;
 }
 
-/** Props for accordion in multiple-selection mode. */
 export interface AccordionMultipleProps {
   /**
    * Single allows one open item; multiple allows several open at once. Switches the
@@ -65,11 +63,10 @@ export interface AccordionMultipleProps {
   "aria-labelledby"?: string;
   /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLDivElement>;
-  /** Called when key down occurs. */
+  /** Called before the built-in accordion key handling; call event.preventDefault() to suppress it. */
   onKeyDown?: (event: ReactKeyboardEvent) => void;
 }
 
-/** Props for accordion. */
 export type AccordionProps = AccordionSingleProps | AccordionMultipleProps;
 
 function normalizeStateOptions(props: AccordionProps): UseControllableStateOptions<string[]> {
@@ -112,7 +109,6 @@ function toggleMultiple(prev: string[], value: string): string[] {
   return prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value];
 }
 
-/** Provides accordion state behavior. */
 export function useAccordionState(props: AccordionProps) {
   const isSingle = props.type !== "multiple";
   const collapsible = props.type !== "multiple" ? (props.collapsible ?? true) : true;

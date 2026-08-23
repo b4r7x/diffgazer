@@ -30,11 +30,10 @@ import { useIssueSelection } from "./use-issue-selection";
 import { useSeverityFilter } from "./use-severity-filter";
 import { useReviewSeverityFilterKeyboard } from "./use-severity-filter-keyboard";
 
-type FocusZone = "filters" | "list" | "details" | "chrome";
-
 // "chrome" is last: an unknown zone falls back to the first entry, which must be
 // a zone inside the page.
 const ZONES = ["filters", "list", "details", "chrome"] as const;
+type FocusZone = (typeof ZONES)[number];
 const REVIEW_SCOPE = "review";
 const TAB_KEY_BY_ID: Record<IssueTab, string> = {
   details: "1",

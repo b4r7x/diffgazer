@@ -14,7 +14,7 @@ import {
 import { useRef } from "react";
 import { useDialogScope } from "@/hooks/use-dialog-scope";
 
-export interface DeleteConfigurationDialogProps {
+interface DeleteConfigurationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** The provider (or record) whose configuration the confirmation names. */

@@ -20,7 +20,6 @@ import {
 
 type NoInfer<T> = [T][T extends unknown ? 0 : never];
 
-/** Props for horizontal stepper. */
 export interface HorizontalStepperProps<TStep extends string = string>
   extends Omit<ComponentProps<"ol">, "children"> {
   /** Id of the active step. */
@@ -107,7 +106,6 @@ function assertActiveStep(steps: readonly string[], value: string): void {
   );
 }
 
-/** Sibling primitive: compact horizontal step bar. */
 export function HorizontalStepperRoot<TStep extends string>({
   value,
   variant = "ascii",

@@ -4,7 +4,6 @@ import { type ComponentProps, useId, useLayoutEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useDialogContext } from "./dialog-context";
 
-/** Props for dialog description. */
 export interface DialogDescriptionProps extends ComponentProps<"p"> {}
 
 /**

@@ -3,7 +3,6 @@
 import type { ComponentPropsWithRef, ReactNode } from "react";
 import { OverlayHints } from "../shared/overlay-hints";
 
-/** Props for command palette footer. */
 export interface CommandPaletteFooterProps extends ComponentPropsWithRef<"div"> {
   /**
    * Footer content. Omit it to render the palette's canonical keyboard legend

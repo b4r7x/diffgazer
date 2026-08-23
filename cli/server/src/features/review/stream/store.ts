@@ -33,7 +33,6 @@ export interface ActiveSession {
   admittedExecutionFingerprint: string | null;
   leaseId: string | null;
   startedAt: Date;
-  lastEventAt: Date;
   lastActivityTick: number;
   events: FullReviewStreamEvent[];
   isComplete: boolean;
@@ -95,19 +94,11 @@ export function buildReviewConfigKey(params: {
   return parts.join("|");
 }
 
-type ConfigurationCancelOptions = SessionCancelOptions & {
-  configurationId?: string;
-  configurationRevision?: number;
-  admittedExecutionFingerprint?: string;
-};
-
 function matchesConfigurationCancellation(
   session: ActiveSession,
-  options?: ConfigurationCancelOptions,
+  options?: SessionCancelOptions,
 ): boolean {
-  if (!options?.configurationId) {
-    return !options?.provider || session.provider === options.provider;
-  }
+  if (!options?.configurationId) return true;
   if (session.configurationId !== options.configurationId) return false;
   if (
     options.configurationRevision !== undefined &&
@@ -133,7 +124,7 @@ function isContentBlindStatusOnly(statusHashKind: StatusHashKind): boolean {
 
 const MAX_SESSIONS = 50;
 const MAX_EVENTS_PER_SESSION = 10_000;
-const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 
 const activeSessions = new Map<string, ActiveSession>();
 const sessionClocks = new WeakMap<ActiveSession, () => number>();
@@ -165,7 +156,6 @@ type StoreEventResult = { stored: boolean; firstDrop: boolean };
 // past the cap overwrite an older slot so the outcome stays observable; non-terminal
 // ones are dropped, and the first drop is reported via `firstDrop`.
 function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent): StoreEventResult {
-  session.lastEventAt = new Date();
   session.lastActivityTick = monotonicNowFor(session);
   if (session.events.length < MAX_EVENTS_PER_SESSION) {
     session.events.push(event);
@@ -384,7 +374,6 @@ export function createSession(
     admittedExecutionFingerprint: options.admittedExecutionFingerprint ?? null,
     leaseId: options.leaseId ?? null,
     startedAt,
-    lastEventAt: startedAt,
     lastActivityTick: monotonicNow(),
     events: [],
     isComplete: false,

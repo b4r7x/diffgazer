@@ -6,11 +6,10 @@ import {
 } from "@diffgazer/keys";
 import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 
-type TrustFormFocusZone = "list" | "buttons";
-export type TrustFormAction = "save" | "revoke";
-
 const TRUST_FORM_ZONES = ["list", "buttons"] as const;
 const TRUST_FORM_ACTIONS = ["save", "revoke"] as const;
+type TrustFormFocusZone = (typeof TRUST_FORM_ZONES)[number];
+export type TrustFormAction = (typeof TRUST_FORM_ACTIONS)[number];
 
 interface UseTrustFormKeyboardOptions {
   enabled?: boolean;

@@ -37,7 +37,6 @@ export function toVerticalBoundaryDirection(
   direction: BoundaryDirection,
   key: string,
 ): VerticalDirection | null;
-/** Implementation for boundary-to-vertical direction mapping. */
 export function toVerticalBoundaryDirection(
   direction: BoundaryDirection,
   key?: string,

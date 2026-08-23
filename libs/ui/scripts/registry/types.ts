@@ -3,17 +3,12 @@ import type {
   RegistryItem as CanonicalRegistryItem,
   RegistryFile,
 } from "@diffgazer/registry/schemas";
-import { RegistrySchema } from "@diffgazer/registry/schemas";
 
 type UiRegistryMeta = {
   client?: boolean;
   hidden?: boolean;
   optionalIntegrations?: string[];
-  docsPage?: boolean;
-  crossDeps?: unknown;
 };
-
-export const UiRegistrySchema = RegistrySchema;
 
 export type { RegistryFile };
 export type RegistryItem = Omit<

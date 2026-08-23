@@ -3,7 +3,6 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for navigation list status. */
 export interface NavigationListStatusProps extends ComponentPropsWithoutRef<"span"> {
   /** Top-right status marker. */
   children: ReactNode;

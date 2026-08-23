@@ -10,7 +10,6 @@ export interface TrustStatusInput {
 export interface DerivedTrustStatus {
   /** Repository is known but trust has never been resolved — prompt user. */
   needsTrust: boolean;
-  /** Read capability is granted. */
   isTrusted: boolean;
 }
 

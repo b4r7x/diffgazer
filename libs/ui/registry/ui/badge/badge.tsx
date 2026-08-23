@@ -2,14 +2,10 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-/** Allowed badge variant values. */
 export type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
-/** Allowed badge size values. */
 export type BadgeSize = NonNullable<VariantProps<typeof badgeVariants>["size"]>;
-/** Allowed badge appearance values. */
 export type BadgeAppearance = NonNullable<VariantProps<typeof badgeVariants>["appearance"]>;
 
-/** Class variants for badge. */
 export const badgeVariants = cva(
   "inline-flex items-center font-bold tracking-wider uppercase rounded-sm border shrink-0 whitespace-nowrap",
   {
@@ -41,7 +37,6 @@ export const badgeVariants = cva(
   },
 );
 
-/** Props for badge. */
 export interface BadgeProps extends ComponentProps<"span"> {
   /** Semantic color token. Picks foreground, background, border, and dot color together. */
   variant?: BadgeVariant;

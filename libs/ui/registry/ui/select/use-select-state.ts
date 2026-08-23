@@ -55,7 +55,6 @@ interface UseSelectStateBaseOptions {
   seedOptions: ReadonlyMap<string, SelectOptionMetadata>;
 }
 
-/** Options for use select state single. */
 interface UseSelectStateSingleOptions extends UseSelectStateBaseOptions {
   /** Enable multi-select. value/onChange become string[]. */
   multiple?: false;
@@ -68,7 +67,6 @@ interface UseSelectStateSingleOptions extends UseSelectStateBaseOptions {
   defaultValue?: string;
 }
 
-/** Options for use select state multiple. */
 interface UseSelectStateMultipleOptions extends UseSelectStateBaseOptions {
   /** Enable multi-select. value/onChange become string[]. */
   multiple: true;
@@ -81,7 +79,6 @@ interface UseSelectStateMultipleOptions extends UseSelectStateBaseOptions {
   defaultValue?: string[];
 }
 
-/** Options for use select state. */
 export type UseSelectStateOptions = UseSelectStateSingleOptions | UseSelectStateMultipleOptions;
 
 export interface UseSelectStateReturn {

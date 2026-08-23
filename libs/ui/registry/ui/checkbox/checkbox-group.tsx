@@ -39,7 +39,6 @@ const EMPTY_VALUES = Object.freeze<string[]>([]) as string[];
 const CHECKBOX_PREVIOUS_KEYS = ["ArrowUp", "k"] as const;
 const CHECKBOX_NEXT_KEYS = ["ArrowDown", "j"] as const;
 
-/** Props for checkbox group root. */
 type CheckboxGroupRootProps = Omit<
   ComponentPropsWithRef<"div">,
   | "children"

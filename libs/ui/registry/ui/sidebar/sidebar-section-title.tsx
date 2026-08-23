@@ -16,7 +16,6 @@ import { useSidebarSectionContext } from "./sidebar-section-context";
 
 export type SidebarSectionTitleHeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
-/** Props for sidebar section title. */
 export interface SidebarSectionTitleProps extends Omit<ComponentProps<"h2">, "ref" | "onClick"> {
   /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLElement>;

@@ -28,7 +28,6 @@ import { DialogTitle } from "./dialog-title";
 
 export type DialogCorners = "none" | "subtle" | "standard" | "bold" | "outset";
 
-/** Class variants for dialog content. */
 export const dialogContentVariants = cva(
   // Modal overlay tier: the shared --surface-1 step and lip plus --shadow-hard,
   // the library's only sanctioned drop shadow. The surface step is what makes
@@ -132,7 +131,6 @@ interface DialogContentInlineProps
   onEscapeKeyDown?: never;
 }
 
-/** Props for dialog content. */
 export type DialogContentProps = DialogContentModalProps | DialogContentInlineProps;
 
 function hasNonEmptyText(value: string | undefined): boolean {

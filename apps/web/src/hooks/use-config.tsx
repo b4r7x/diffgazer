@@ -149,21 +149,22 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     };
   }, [initData, isLoading, initError]);
 
-  const refresh = useCallback(async () => {
-    await invalidateConfigurationCaches(queryClient, api);
-  }, [queryClient, api]);
+  const refresh = useCallback(
+    () => invalidateConfigurationCaches(queryClient, api),
+    [queryClient, api],
+  );
 
   const actionsValue = useMemo<ConfigActionsContextValue>(
     () => ({
       refresh,
-      createConfiguration: async (request) => createConfigurationMutate(request),
+      createConfiguration: createConfigurationMutate,
       inspectConfiguration: async (configurationId) => {
         await inspectConfigurationMutate(configurationId);
       },
       selectConfiguration: async (configurationId, modelId) => {
         await selectConfigurationMutate({ configurationId, modelId });
       },
-      testConfiguration: async (configurationId) => testConfigurationMutate(configurationId),
+      testConfiguration: testConfigurationMutate,
       updateConfiguration: async (input) => {
         await updateConfigurationMutate(input);
       },

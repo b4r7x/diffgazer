@@ -1,6 +1,6 @@
 /**
  * A provider that resolves to zero models would render a blank picker (the
- * design D6 "never a blank picker" guarantee), so it is the smoke's hard
+ * "never a blank picker" guarantee), so it is the smoke's hard
  * failure. `resolve` is the `(catalog, provider) -> models[]` transform,
  * injected so the offline snapshot and the live models.dev response run through
  * identical assertions, with the failure attributed to the active `source`.

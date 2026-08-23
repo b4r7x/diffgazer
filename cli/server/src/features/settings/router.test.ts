@@ -635,9 +635,7 @@ describe("settings trust routes — server-scoped project", () => {
     const body = (await res.json()) as { removed: boolean };
     // Server removed projectA's trust (the resolved project), not projectB's
     expect(body.removed).toBe(true);
-    // projectB's trust is still intact
     expect(store.getTrust(projectBId)).not.toBeNull();
-    // projectA's trust was removed
     expect(store.getTrust(projectAId)).toBeNull();
   });
 });

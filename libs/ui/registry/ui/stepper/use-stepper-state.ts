@@ -3,7 +3,6 @@
 import { useCallback } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 
-/** Props for stepper state. */
 export interface StepperStateProps {
   /** Controlled set of currently expanded step ids. */
   expandedIds?: string[];
@@ -13,7 +12,6 @@ export interface StepperStateProps {
   onExpandedChange?: (ids: string[]) => void;
 }
 
-/** Provides stepper state behavior. */
 export function useStepperState({
   expandedIds,
   defaultExpandedIds,

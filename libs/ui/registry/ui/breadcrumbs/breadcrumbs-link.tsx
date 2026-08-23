@@ -5,14 +5,12 @@ import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 import { useBreadcrumbsContext } from "./breadcrumbs-context";
 
-/** Props for breadcrumbs link render. */
 export type BreadcrumbsLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   ref: Ref<HTMLAnchorElement>;
   className: string;
   "data-slot": "breadcrumbs-link";
 };
 
-/** Props for breadcrumbs link. */
 export interface BreadcrumbsLinkProps
   extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "children"> {
   /**

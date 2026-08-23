@@ -2,7 +2,6 @@
 
 import { createContext, useContext } from "react";
 
-/** Context value shared by navigation list item. */
 export interface NavigationListItemContextValue {
   labelId: string;
   /** Prefix the description parts derive their own ids from, never an id itself. */

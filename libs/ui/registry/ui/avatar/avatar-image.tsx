@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { useAvatarContext } from "./avatar-context";
 import { useImageStatus } from "./use-image-status";
 
-/** Props for avatar image. */
 export interface AvatarImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "alt"> {
   /**
    * Accessible name for the image. Defaults to `""`, treating the avatar as decorative so it is

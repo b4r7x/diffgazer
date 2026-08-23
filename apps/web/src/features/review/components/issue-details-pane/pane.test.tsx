@@ -487,7 +487,7 @@ describe("IssueDetailsPane", () => {
   it("exposes the issue severity textually in the details heading, not only by color", () => {
     renderPane(makeIssue({ severity: "blocker", title: "Null deref crashes startup" }));
 
-    // F-230: the colored h1 alone leaves severity inaccessible; the heading now
+    // The colored h1 alone leaves severity inaccessible; the heading now
     // carries the severity word for screen readers.
     expect(
       screen.getByRole("heading", { name: /blocker severity.*null deref crashes startup/i }),

@@ -2,7 +2,6 @@
 
 import { createContext, useContext } from "react";
 
-/** Context value shared by navigation list group. */
 export interface NavigationListGroupContextValue {
   /**
    * Visual treatment. "section" shows uppercase headers with counts, "tree" shows indented
@@ -26,7 +25,6 @@ export function useNavigationListGroupContext() {
   return useContext(NavigationListGroupContext);
 }
 
-/** Context value shared by navigation list group position. */
 export interface NavigationListGroupPositionContextValue {
   isLast: boolean;
 }

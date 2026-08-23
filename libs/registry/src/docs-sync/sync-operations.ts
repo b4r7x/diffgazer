@@ -5,7 +5,7 @@ import { collectJsonFiles, ensureExists, resetDir, resolveInside } from "../util
 import { rewriteSecondaryDemoIndexImports } from "./demo-index-rewrite.js";
 import { assertSafeLibraryId } from "./library-id-validation.js";
 import { assertManifestLibraryId } from "./loader.js";
-import type { AfterSyncContext, LoadedLibraryArtifacts, SyncOutputPaths } from "./types.js";
+import type { LoadedLibraryArtifacts, SyncOutputPaths } from "./types.js";
 
 function resolveNamespaceDir(baseDir: string, id: string, label: string): string {
   assertSafeLibraryId(id, label);
@@ -50,9 +50,6 @@ function assertNoUnrewrittenOrigin(dir: string, targetOrigin: string, sourceOrig
 
   const offenders: string[] = [];
   for (const jsonFile of collectJsonFiles(dir)) {
-    if (!existsSync(jsonFile)) {
-      continue;
-    }
     let raw: string;
     try {
       raw = readFileSync(jsonFile, "utf-8");
@@ -262,9 +259,8 @@ export function runDocsSyncPass(params: {
   paths: SyncOutputPaths;
   origin: string;
   sourceOrigin: string;
-  afterSync?: (ctx: AfterSyncContext) => void;
 }): void {
-  const { artifacts, primaryArtifact, paths, origin, sourceOrigin, afterSync } = params;
+  const { artifacts, primaryArtifact, paths, origin, sourceOrigin } = params;
 
   assertArtifactOrigins(artifacts, origin);
   for (const artifact of artifacts) {
@@ -295,15 +291,6 @@ export function runDocsSyncPass(params: {
     });
 
     copyExamplesForLibrary(artifact, primaryArtifact.id, paths.registryDir);
-
-    afterSync?.({
-      libraryId: artifact.id,
-      generatedDir: resolveNamespaceDir(
-        paths.generatedDir,
-        artifact.id,
-        `${artifact.id} generated namespace output`,
-      ),
-    });
   }
 
   console.log(`[docs-sync] Syncing registries (origin asserted: ${origin})...`);

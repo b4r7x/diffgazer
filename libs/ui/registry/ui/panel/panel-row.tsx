@@ -1,7 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for panel row. */
 export interface PanelRowProps extends Omit<ComponentProps<"div">, "children"> {
   /** Row label (renders left-aligned, muted). */
   label: ReactNode;

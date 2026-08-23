@@ -13,7 +13,6 @@ function getSubmittedValue(
   return value;
 }
 
-/** Props for the hidden native form controls mirrored by Select. */
 interface SelectFormMirrorProps {
   /** Name for the hidden form input that participates in native form submission. */
   name?: string;

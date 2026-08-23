@@ -35,7 +35,6 @@ export interface OrchestratorStats {
   minSeverity?: ReviewSeverity;
 }
 
-// Unified review state for web and CLI
 export interface ReviewState {
   steps: StepState[];
   agents: AgentState[];
@@ -232,9 +231,6 @@ function isStepReviewEvent(event: ReviewEvent): event is StepEvent {
   return event.type in STEP_EVENT_TYPES;
 }
 
-// Routes a review event to the handler that owns its sub-type. Step, file-progress
-// and orchestrator-complete events have dedicated handlers; all remaining
-// agent/issue events fall through to the agent path.
 function dispatchEvent(state: ReviewState, event: ReviewEvent): ReviewState {
   if (isStepReviewEvent(event)) {
     return handleStepEvent(state, event);

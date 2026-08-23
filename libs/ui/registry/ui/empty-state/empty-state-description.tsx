@@ -1,7 +1,6 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for empty state description. */
 export type EmptyStateDescriptionProps = ComponentPropsWithRef<"p">;
 
 /** Secondary supporting copy. Font size adapts via context. */

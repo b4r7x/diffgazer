@@ -2,7 +2,6 @@
 
 import { cva } from "class-variance-authority";
 
-/** Allowed spinner size values. */
 export type SpinnerSize = "sm" | "md" | "lg";
 
 // 3×3 grid positions (0–8, left-to-right top-to-bottom).
@@ -24,7 +23,6 @@ const TRAIL_VARS = [
 ] as const;
 const IDLE_VAR = "--spinner-trail-idle";
 
-/** Class variants for snake grid dot. */
 const snakeGridDotVariants = cva("rounded-sm bg-current", {
   variants: {
     size: {
@@ -36,7 +34,6 @@ const snakeGridDotVariants = cva("rounded-sm bg-current", {
   defaultVariants: { size: "md" },
 });
 
-/** Class variants for snake grid container. */
 const snakeGridContainerVariants = cva("grid grid-cols-3", {
   variants: {
     size: {
@@ -58,7 +55,6 @@ function getCellOpacity(frame: number, cellIndex: number): string {
   return `var(${TRAIL_VARS[distanceBehindHead] ?? IDLE_VAR})`;
 }
 
-/** Props for snake grid. */
 interface SnakeGridProps {
   /** Animation frame index. */
   frame: number;

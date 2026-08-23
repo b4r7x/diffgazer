@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigationListItemContext } from "./navigation-list-item-context";
 
-/** Props for navigation list meta. */
 export interface NavigationListMetaProps {
   /** Container for inline metadata (badges, dates). Wired to aria-describedby. */
   children: ReactNode;

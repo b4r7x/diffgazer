@@ -3,7 +3,6 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for pager. */
 export interface PagerProps extends ComponentPropsWithRef<"nav"> {}
 
 /** Root nav element with top border and flex layout. */

@@ -23,15 +23,11 @@ import {
 import { DiffViewSplit } from "./diff-view-split";
 import { DiffViewUnified } from "./diff-view-unified";
 
-/** Allowed diff view variant values. */
 export type DiffViewVariant = "hairline" | "bare" | "dense" | "viewfinder" | "statusbar";
 
-/** Allowed diff view density values. */
 export type DiffViewDensity = "compact" | "default" | "comfortable";
-/** Allowed diff view palette values. */
 export type DiffViewPalette = "default" | "okabe-ito";
 
-/** Props for diff view base. */
 interface DiffViewBaseProps extends Omit<ComponentProps<"figure">, "children"> {
   /** Inline unified view or side-by-side split panes (Old / New). */
   mode?: "unified" | "split";
@@ -115,7 +111,6 @@ type DiffViewNonStatusbarVariantProps = {
   statusBar?: never;
 };
 
-/** Props for diff view. */
 export type DiffViewProps = (DiffInputPatch | DiffInputCompare | DiffInputParsed) &
   DiffViewBaseProps &
   (DiffViewStatusbarVariantProps | DiffViewNonStatusbarVariantProps);

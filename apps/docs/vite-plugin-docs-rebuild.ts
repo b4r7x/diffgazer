@@ -50,7 +50,6 @@ export function docsDataRebuild(): Plugin {
     apply: "serve",
     configureServer(s) {
       if (isVitest) return;
-      // Only watch workspace artifact dirs in dev mode
       if (!IS_DEV) return;
 
       server = s;

@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 const INDENT_BASE_PX = 12;
 const INDENT_PER_LEVEL_PX = 12;
 
-/** Class variants for toc item. */
 export const tocItemVariants = cva(
   [
     "block py-1 text-xs font-mono transition-colors",
@@ -35,7 +34,6 @@ export const tocItemVariants = cva(
   },
 );
 
-/** Props for toc item render. */
 export type TocItemRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   ref: Ref<HTMLAnchorElement>;
   className: string;
@@ -44,7 +42,6 @@ export type TocItemRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   "data-selected"?: true;
 };
 
-/** Props for toc item. */
 export interface TocItemProps extends Omit<ComponentPropsWithRef<"a">, "children"> {
   /** Link label, or a render function for framework Link integration. */
   children: ReactNode | ((props: TocItemRenderProps) => ReactNode);

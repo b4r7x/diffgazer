@@ -132,7 +132,7 @@ function stripModuleQuery(modulePath: string): string {
 }
 
 function toPosixPath(path: string): string {
-  return path.replaceAll("\\", "/");
+  return path.split(/[\\/]+/).join("/");
 }
 
 /**

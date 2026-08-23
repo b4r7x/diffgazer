@@ -2,10 +2,8 @@ import { cva } from "class-variance-authority";
 import { FOCUS_OUTLINE_INSET } from "@/lib/focus-outline";
 import { MARKER_RAIL_BASE } from "@/lib/marker-rail";
 
-/** Allowed sidebar variant values. */
 export type SidebarVariant = "caret" | "inverted" | "bar" | "terminal" | "tree";
 
-/** Class variants for sidebar container. */
 export const sidebarContainerVariants = cva(
   [
     // group/sidebar lets descendants (item label/badge/glyph, section title)
@@ -31,7 +29,6 @@ export const sidebarContainerVariants = cva(
   },
 );
 
-/** Class variants for sidebar item. */
 export const sidebarItemVariants = cva(
   [
     // group/item is consumed by the marker glyph in sidebar-item (hover preview).

@@ -17,7 +17,6 @@ import { cn } from "@/lib/utils";
 import { StepperContent } from "./stepper-content";
 import { StepperStepContext, type StepStatus, useStepperContext } from "./stepper-context";
 
-/** Props for stepper step. */
 export interface StepperStepProps extends Omit<ComponentProps<"li">, "children"> {
   /** Stable identifier matched against expandedIds. */
   stepId: string;

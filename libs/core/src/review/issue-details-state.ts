@@ -21,7 +21,6 @@ export function clampIssueTab(requested: IssueTab, available: IssueTab[]): Issue
   return available.includes(requested) ? requested : "details";
 }
 
-/** Toggles a fix-plan step in a completed-steps set, returning a new set. */
 export function toggleFixPlanStep(completed: ReadonlySet<number>, step: number): Set<number> {
   const next = new Set(completed);
   if (next.has(step)) next.delete(step);

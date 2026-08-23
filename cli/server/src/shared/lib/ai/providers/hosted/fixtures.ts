@@ -15,7 +15,6 @@ type HostedConformanceRequirement = "REQ-084" | "REQ-085" | "REQ-086";
 export type HostedConformanceSkipReason =
   | "live-probes-disabled"
   | "credential-missing"
-  | "network-unavailable"
   | "entitlement-missing";
 
 export type HostedConformanceObservation = Readonly<{
@@ -169,19 +168,11 @@ function requestUrl(input: Parameters<typeof fetch>[0]): string {
   return input.url;
 }
 
-function mockResponse(
-  body: unknown,
-  init: { status?: number; headers?: Record<string, string>; redirected?: boolean } = {},
-): Response {
-  const payload = typeof body === "string" ? body : JSON.stringify(body);
-  const response = new Response(payload, {
+function mockResponse(body: unknown, init: { status?: number } = {}): Response {
+  return new Response(JSON.stringify(body), {
     status: init.status ?? 200,
-    headers: { "content-type": "application/json", ...(init.headers ?? {}) },
+    headers: { "content-type": "application/json" },
   });
-  if (init.redirected) {
-    Object.defineProperty(response, "redirected", { value: true });
-  }
-  return response;
 }
 
 function successFetch(productId: HostedApiProductId, content: unknown): typeof fetch {

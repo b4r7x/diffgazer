@@ -67,7 +67,7 @@ export function SeverityFilterGroup({
 
   const handleHighlightChange = (value: string | null) => {
     if (value === null) return;
-    // biome-ignore lint/complexity/useIndexOf: SEVERITY_ORDER is a readonly ReviewSeverity tuple; indexOf(value:string) would require the cast F-202 removed.
+    // biome-ignore lint/complexity/useIndexOf: SEVERITY_ORDER is a readonly ReviewSeverity tuple; indexOf(value:string) would require a cast.
     const index = SEVERITY_ORDER.findIndex((severity) => severity === value);
     if (index >= 0) onFocusedIndexChange?.(index);
   };

@@ -22,14 +22,13 @@ import {
   registryItemToDistKey,
   resolveKeysHookFiles,
 } from "@diffgazer/registry/build-checks";
-import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
+import { REGISTRY_ITEM_TYPE, RegistrySchema } from "@diffgazer/registry/schemas";
 import type { Plugin } from "esbuild";
 import { defineConfig } from "tsup";
 import { NON_REGISTRY_CLIENT_OUTPUTS } from "./scripts/registry/client-entrypoints.js";
-import { UiRegistrySchema } from "./scripts/registry/types.js";
 
 const registryRoot = resolve(import.meta.dirname, "registry");
-const registry = UiRegistrySchema.parse(
+const registry = RegistrySchema.parse(
   JSON.parse(readFileSync(resolve(registryRoot, "registry.json"), "utf-8")),
 );
 

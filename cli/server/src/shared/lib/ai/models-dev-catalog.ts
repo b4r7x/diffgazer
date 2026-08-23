@@ -226,7 +226,7 @@ const isOffline = (): boolean => {
   return flag !== undefined && flag !== "" && flag !== "0" && flag.toLowerCase() !== "false";
 };
 
-export interface ModelsDevFetch {
+interface ModelsDevFetch {
   readonly catalog: ModelsDevCatalog;
   readonly etag: string | null;
   /** models.dev answered 304 to `revalidate.etag`: `catalog` is the cached one, current again. */
@@ -564,7 +564,8 @@ export const catalogProviderModels = {
 
 // Three-tier orchestration: a bundled-snapshot tier, per-product non-empty
 // fall-through, a single-source-drop poison guard, and a corrupt-cache
-// quarantine that still seeds a shrink-guard baseline. See design.md D6.
+// quarantine that still seeds a shrink-guard baseline. All of it serves one
+// guarantee: the model picker is never blank on first run or offline.
 export const getProviderModels = async (
   productId: RunnableProductId,
 ): Promise<ProviderModelsResponse> => {

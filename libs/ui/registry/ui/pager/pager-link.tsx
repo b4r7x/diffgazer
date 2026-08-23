@@ -4,7 +4,6 @@ import type { AnchorHTMLAttributes, ComponentPropsWithRef, ReactNode, Ref } from
 import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 
-/** Props for pager link render. */
 export type PagerLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   ref: Ref<HTMLAnchorElement>;
   className: string;
@@ -12,7 +11,6 @@ export type PagerLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   direction: "previous" | "next";
 };
 
-/** Props for pager link. */
 export interface PagerLinkProps extends Omit<ComponentPropsWithRef<"a">, "children"> {
   /**
    * Link label, or a render function that receives ref, className, rel, direction, and

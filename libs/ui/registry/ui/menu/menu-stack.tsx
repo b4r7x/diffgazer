@@ -9,7 +9,6 @@ import { getItemState, menuItemBase } from "./menu-item-variants";
 /** Reserved item id for the drill-down back row. */
 export const MENU_STACK_BACK_ID = "__menu-stack-back";
 
-/** Props for menu stack back. */
 interface MenuStackBackProps {
   /** Parent trigger label echoed in the row. */
   label: ReactNode;

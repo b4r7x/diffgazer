@@ -21,7 +21,6 @@ import { usePopoverContentDismissal } from "./use-content-dismissal";
 
 const FALLBACK_POPOVER_DIALOG_LABEL = "Popover";
 
-/** Props for popover content. */
 export interface PopoverContentProps
   extends Omit<ComponentPropsWithoutRef<"div">, "children" | "id" | "role" | "style"> {
   /** Popover body content. */
@@ -181,7 +180,6 @@ export function PopoverContent({
   );
 }
 
-/** Props for popover auto focus. */
 interface PopoverAutoFocusProps {
   /** Ref for the content element. */
   contentRef: RefObject<HTMLDivElement | null>;

@@ -65,7 +65,6 @@ export {
   getPartialFailureWarning,
   hasCompletedLens,
   isAgentHeartbeatEvent,
-  type LensCoverage,
   type LogStreamState,
   type PartialFailureWarning,
   PERSISTED_RUN_ERROR_CODES,
@@ -93,7 +92,6 @@ export {
   isProviderRecoveryError,
   type ReviewStartErrorDescription,
   type ReviewStreamErrorGuidance,
-  type ReviewStreamErrorKind,
   sanitizePresentationText,
   TERMINAL_OUTCOME_PRESENTATION,
   USAGE_AVAILABILITY_PRESENTATION,
@@ -119,7 +117,6 @@ export {
   type SavedReviewQuery,
   type SavedReviewQueryState,
   type SavedReviewRecord,
-  type SavedReviewTerminalData,
   toSavedReviewQueryState,
 } from "./screen-state.js";
 export {

@@ -53,14 +53,12 @@ function getStore(stdout: NodeJS.WriteStream): StreamStore {
 
 function subscribe(stdout: NodeJS.WriteStream, onStoreChange: () => void): () => void {
   const store = getStore(stdout);
-  // The first subscriber attaches the single shared resize listener.
   if (store.subscribers.size === 0) {
     stdout.on("resize", store.onResize);
   }
   store.subscribers.add(onStoreChange);
   return () => {
     store.subscribers.delete(onStoreChange);
-    // The last subscriber detaches the listener and drops the store.
     if (store.subscribers.size === 0) {
       stdout.off("resize", store.onResize);
       stores.delete(stdout);

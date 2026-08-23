@@ -1,17 +1,15 @@
-import { chmod, mkdir, readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { chmod, readFile, stat } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { atomicWriteFile } from "../../fs.js";
 import {
   decodeConfigFile,
   decodeConfigV1,
   decodeConfigV2,
-  loadConfigV2,
   parseSettingsRecord,
   selectConfigV2,
   serializeConfigV2,
 } from "./config.js";
-import { homePath, tempHome } from "./persistence.test-support.js";
+import { homePath } from "./persistence.test-support.js";
 
 const encoder = new TextEncoder();
 
@@ -401,44 +399,10 @@ describe("V2 configuration persistence", () => {
     expect(new Uint8Array(written)).toEqual(serializeConfigV2(document));
     expect(metadata.mode & 0o777).toBe(0o600);
     await chmod(path, 0o600);
-    expect(loadConfigV2().configurations[0]).toMatchObject({
+    expect(decodeConfigV2(new Uint8Array(written)).configurations[0]).toMatchObject({
       status: "supported",
       record: { productId: "gemini", revision: 3 },
     });
-  });
-
-  it("resolves the config path per call so a changed DIFFGAZER_HOME is honored", async () => {
-    await atomicWriteFile(
-      homePath("config.json"),
-      '{"schemaVersion":2,"settings":{"theme":"dark"},"selectedConfigurationId":null,"configurations":[]}\n',
-      0o600,
-    );
-    expect(loadConfigV2().settings).toEqual({ theme: "dark" });
-
-    const relocated = homePath("relocated");
-    await mkdir(relocated, { recursive: true, mode: 0o700 });
-    await atomicWriteFile(
-      join(relocated, "config.json"),
-      '{"schemaVersion":2,"settings":{"theme":"light"},"selectedConfigurationId":null,"configurations":[]}\n',
-      0o600,
-    );
-
-    process.env.DIFFGAZER_HOME = relocated;
-    try {
-      expect(loadConfigV2().settings).toEqual({ theme: "light" });
-    } finally {
-      process.env.DIFFGAZER_HOME = tempHome;
-    }
-  });
-
-  it("returns an empty V2 document when no config file exists", () => {
-    expect(loadConfigV2()).toEqual({
-      schemaVersion: 2,
-      settings: {},
-      selectedConfigurationId: null,
-      configurations: [],
-    });
-    expect(tempHome).toBeTruthy();
   });
 
   it("round-trips prototype-named settings keys into unknown instead of throwing", () => {

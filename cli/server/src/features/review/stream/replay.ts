@@ -41,7 +41,6 @@ export async function streamActiveSessionToSSE(
   });
 
   if (!earlyUnsub) {
-    // Session already gone
     try {
       await writeStreamEvent(stream, STALE_ERROR_EVENT);
     } catch (e) {
@@ -81,7 +80,6 @@ export async function streamActiveSessionToSSE(
 
   if (replayedTerminalEvent || session.isComplete) {
     earlyUnsub();
-    // Drain any remaining buffered live events that arrived during replay
     for (const event of liveQueue) {
       if (replayedSet.has(event)) continue;
       if (!isAuthorized()) return;
@@ -95,8 +93,6 @@ export async function streamActiveSessionToSSE(
     return;
   }
 
-  // Transition to live streaming. Remove the early subscriber and wire up
-  // the full promise-based subscriber + completion listener.
   earlyUnsub();
 
   await new Promise<void>((resolve, reject) => {
@@ -141,7 +137,6 @@ export async function streamActiveSessionToSSE(
     }
     clientSignal?.addEventListener("abort", onClientAbort, { once: true });
 
-    // Drain buffered live events first, then subscribe for new ones.
     const processEvent = (event: FullReviewStreamEvent): void => {
       if (!isAuthorized()) {
         finish(resolve);

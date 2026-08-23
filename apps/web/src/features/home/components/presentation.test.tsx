@@ -599,7 +599,7 @@ describe("HomePagePresentation — review-start pending state", () => {
 
     await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
 
-    // F-353(a): the in-flight start is visible and a second press is refused.
+    // The in-flight start is visible and a second press is refused.
     const liveRegion = await screen.findByRole("status");
     expect(liveRegion).toHaveTextContent(/starting review/i);
     const startedRow = screen.getByRole("menuitem", { name: "Review Unstaged" });

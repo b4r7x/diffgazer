@@ -10,6 +10,7 @@ import { RUNTIME_IDENTITY, STRUCTURED_OUTPUT_SCHEMA_SHA256 } from "../../ai/admi
 import { log } from "../../log.js";
 import { isKeyringAvailable } from "../keyring.js";
 import { parseSettingsRecord } from "../persistence/config.js";
+import { literalCredentialFilePath } from "../persistence/credential-file-path.js";
 import type { DecodedSecretBinding } from "../persistence/secrets.js";
 import type { SupportedProviderConfigurationRecord } from "../provider-config.js";
 import { computeProviderReadinessResult, type ProviderReadinessInput } from "../readiness.js";
@@ -24,7 +25,7 @@ import {
   retiredBindingTombstones,
   workspaceAccountReferenceFor,
 } from "./credential-lifecycle.js";
-import { type DocumentStore, literalSecretPath } from "./document-store.js";
+import type { DocumentStore } from "./document-store.js";
 import { createSettingsMigration } from "./settings.js";
 import {
   type CapturedConfigurationSnapshot,
@@ -52,7 +53,7 @@ type SnapshotSettingsDependencies = Readonly<{
 export function createSnapshotSettingsActions(deps: SnapshotSettingsDependencies) {
   const settingsMigration = createSettingsMigration({
     secretIO,
-    literalSecretPath,
+    literalSecretPath: literalCredentialFilePath,
     keyringSecretName: getConfigurationSecretName,
     discardBindingSecret: deps.discardBindingSecret,
     encodeDecodedBinding: deps.encodeDecodedBinding,

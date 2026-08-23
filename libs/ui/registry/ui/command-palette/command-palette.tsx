@@ -7,7 +7,6 @@ import {
   useCommandPaletteState,
 } from "./use-command-palette-state";
 
-/** Props for command palette. */
 export interface CommandPaletteProps extends UseCommandPaletteStateOptions {
   /** Content rendered inside the component. */
   children: ReactNode;

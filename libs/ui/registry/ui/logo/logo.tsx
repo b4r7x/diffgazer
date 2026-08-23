@@ -1,7 +1,6 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for logo. */
 export interface LogoProps extends ComponentProps<"pre"> {
   /** Display text, also used as the accessible name when asciiText is provided. */
   text: string;

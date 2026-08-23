@@ -1,7 +1,6 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for panel footer. */
 export type PanelFooterProps = ComponentPropsWithRef<"div">;
 
 /** Bottom metadata/action row. */

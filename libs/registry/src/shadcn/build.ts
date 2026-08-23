@@ -120,8 +120,6 @@ export interface BuildShadcnRegistryWithOriginOptions {
   outputDir?: string;
   originRaw?: string;
   defaultOrigin: string;
-  fromOrigin?: string;
-  beforeBuild?: () => void;
   afterBuild?: (ctx: { rootDir: string; outputDir: string }) => void;
 }
 
@@ -139,20 +137,16 @@ export function buildShadcnRegistryWithOrigin(
     outputDir = "public/r",
     originRaw = process.env.REGISTRY_ORIGIN,
     defaultOrigin,
-    fromOrigin = defaultOrigin,
-    beforeBuild,
     afterBuild,
   } = options;
 
   const origin = normalizeOrigin(originRaw, { defaultOrigin });
 
-  beforeBuild?.();
-
   runShadcnRegistryBuild({ rootDir, registryPath, outputDir });
   afterBuild?.({ rootDir, outputDir: resolve(rootDir, outputDir) });
 
   rewriteOriginsInDir(resolve(rootDir, outputDir), {
-    fromOrigin,
+    fromOrigin: defaultOrigin,
     toOrigin: origin,
   });
 

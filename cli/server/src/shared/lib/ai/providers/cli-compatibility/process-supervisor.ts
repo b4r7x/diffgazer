@@ -50,7 +50,6 @@ export type CliProcessSupervisor = Readonly<{
   pid: number;
   child: ChildProcess;
   exited: boolean;
-  descendantsExited: boolean;
 }>;
 
 type CliSpawnFn = (
@@ -572,7 +571,6 @@ export async function runCliArgvProcess(
       pid: childPid,
       child,
       exited,
-      descendantsExited: false,
     };
     termination = terminateCliProcessGroupInternal(supervisor, [], dependencies);
     resolveTerminationStart(termination);

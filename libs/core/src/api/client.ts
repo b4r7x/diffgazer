@@ -56,7 +56,7 @@ const BODY_SECRET_SCAN_MAX_NODES = 512;
 const BODY_SECRET_VALUE_MAX_COUNT = 64;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function sanitizeText(
@@ -79,7 +79,7 @@ function sanitizeText(
  * come from a different copy of the schema library than the one linked here.
  */
 function isSchemaValidationFailure(cause: unknown): boolean {
-  return isRecord(cause) && Array.isArray((cause as { issues?: unknown }).issues);
+  return isRecord(cause) && Array.isArray(cause.issues);
 }
 
 function isUntrustedDiagnostic(value: string): boolean {

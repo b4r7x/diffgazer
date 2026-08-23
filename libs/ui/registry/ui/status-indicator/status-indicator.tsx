@@ -2,7 +2,6 @@ import { cva } from "class-variance-authority";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-/** Allowed status indicator status values. */
 export type StatusIndicatorStatus = "online" | "offline" | "busy";
 
 /**
@@ -31,7 +30,6 @@ export const statusIndicatorDotVariants = cva("inline-block size-2 shrink-0", {
   },
 });
 
-/** Props for status indicator. */
 export interface StatusIndicatorProps extends ComponentProps<"span"> {
   /** Semantic status. Drives the dot shape and color and the default sr-only status word. */
   status?: StatusIndicatorStatus;

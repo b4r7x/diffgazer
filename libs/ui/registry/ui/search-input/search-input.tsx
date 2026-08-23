@@ -40,7 +40,6 @@ const defaultPrefix = (
   </span>
 );
 
-/** Props for search input. */
 export interface SearchInputProps
   extends Omit<
     InputHTMLAttributes<HTMLInputElement>,

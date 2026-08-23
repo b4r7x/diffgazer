@@ -11,16 +11,13 @@ export function getTabPanelId(tabsId: string, value: string): string {
   return `${tabsId}-tabpanel-${encodeURIComponent(value)}`;
 }
 
-/** Context value shared by tabs. */
 export interface TabsContextValue {
-  /** DOM id for tabs. */
   tabsId: string;
   /** Controlled active tab value. Pair with onChange. */
   value: string;
   tabbableValue: string;
   /** Fired when the active tab changes. */
   onChange: (value: string) => void;
-  /** Called when focus change occurs. */
   onFocusChange: (value: string | null) => void;
   panelValues: string[];
   triggerValues: string[];

@@ -1,6 +1,5 @@
 import * as fs from "node:fs";
-import { mkdir, readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { readFile, stat } from "node:fs/promises";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { atomicWriteFile } from "../../fs.js";
 import { homePath, tempHome } from "./persistence.test-support.js";
@@ -297,7 +296,7 @@ describe("V2 secrets persistence", () => {
   });
 
   it("loads back a document written with the V2 codec", async () => {
-    const { decodeSecretsV2, loadSecretsV2, serializeSecretsV2 } = await import("./secrets.js");
+    const { decodeSecretsV2, serializeSecretsV2 } = await import("./secrets.js");
     const document = decodeSecretsV2(
       encoder.encode(
         '{"schemaVersion":2,"bindings":[{"configurationId":"config-a","revision":2,"status":"active","kind":"none"}]}',
@@ -308,43 +307,9 @@ describe("V2 secrets persistence", () => {
     await atomicWriteFile(path, new TextDecoder().decode(serializeSecretsV2(document)), 0o600);
 
     expect((await stat(path)).mode & 0o777).toBe(0o600);
-    expect(loadSecretsV2().bindings[0]).toMatchObject({
+    expect(decodeSecretsV2(new Uint8Array(await readFile(path))).bindings[0]).toMatchObject({
       binding: { configurationId: "config-a", revision: 2, kind: "none" },
     });
-  });
-
-  it("returns an empty V2 document when no secrets file exists", async () => {
-    const { loadSecretsV2 } = await import("./secrets.js");
-    expect(loadSecretsV2()).toEqual({ schemaVersion: 2, bindings: [] });
-  });
-
-  it("resolves the secrets path per call so a changed DIFFGAZER_HOME is honored", async () => {
-    const { loadSecretsV2 } = await import("./secrets.js");
-    await atomicWriteFile(
-      homePath("secrets.json"),
-      '{"schemaVersion":2,"bindings":[{"configurationId":"config-first","revision":1,"status":"active","kind":"none"}]}\n',
-      0o600,
-    );
-    expect(loadSecretsV2().bindings[0]).toMatchObject({
-      binding: { configurationId: "config-first" },
-    });
-
-    const relocated = homePath("relocated");
-    await mkdir(relocated, { recursive: true, mode: 0o700 });
-    await atomicWriteFile(
-      join(relocated, "secrets.json"),
-      '{"schemaVersion":2,"bindings":[{"configurationId":"config-second","revision":1,"status":"active","kind":"none"}]}\n',
-      0o600,
-    );
-
-    process.env.DIFFGAZER_HOME = relocated;
-    try {
-      expect(loadSecretsV2().bindings[0]).toMatchObject({
-        binding: { configurationId: "config-second" },
-      });
-    } finally {
-      process.env.DIFFGAZER_HOME = tempHome;
-    }
   });
 
   it("restores both documents byte-for-byte from a mode-0600 recovery sidecar", async () => {
@@ -372,12 +337,16 @@ describe("V2 secrets persistence", () => {
 
     await expect(restoreRecordedRecovery()).resolves.toBeNull();
 
-    const { loadSecretsV2 } = await import("./secrets.js");
-    const { loadConfigV2 } = await import("./config.js");
-    expect(loadSecretsV2().bindings[0]).toMatchObject({
+    const { decodeSecretsV2 } = await import("./secrets.js");
+    const { decodeConfigV2 } = await import("./config.js");
+    expect(
+      decodeSecretsV2(new Uint8Array(await readFile(homePath("secrets.json")))).bindings[0],
+    ).toMatchObject({
       binding: { configurationId: "config-before", revision: 7 },
     });
-    expect(loadConfigV2().settings).toEqual({ theme: "dark" });
+    expect(
+      decodeConfigV2(new Uint8Array(await readFile(homePath("config.json")))).settings,
+    ).toEqual({ theme: "dark" });
     await expect(stat(getSecretsRecoveryPath())).rejects.toMatchObject({ code: "ENOENT" });
   });
 

@@ -1,7 +1,6 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for card action. */
 export type CardActionProps = ComponentPropsWithRef<"div">;
 
 /** Action slot in header (positioned top-right via grid) */

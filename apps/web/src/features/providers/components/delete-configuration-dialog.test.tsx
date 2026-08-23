@@ -2,14 +2,12 @@ import { KeyboardProvider } from "@diffgazer/keys";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axeCore from "axe-core";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
-import {
-  DeleteConfigurationDialog,
-  type DeleteConfigurationDialogProps,
-} from "./delete-configuration-dialog";
+import { DeleteConfigurationDialog } from "./delete-configuration-dialog";
 
-function renderDialog(overrides: Partial<DeleteConfigurationDialogProps> = {}) {
-  const props: DeleteConfigurationDialogProps = {
+function renderDialog(overrides: Partial<ComponentProps<typeof DeleteConfigurationDialog>> = {}) {
+  const props: ComponentProps<typeof DeleteConfigurationDialog> = {
     open: true,
     onOpenChange: vi.fn(),
     name: "Google Gemini",

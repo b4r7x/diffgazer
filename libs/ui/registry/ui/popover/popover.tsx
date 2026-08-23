@@ -11,7 +11,6 @@ import {
 } from "./popover-context";
 import { usePopoverBehavior } from "./use-behavior";
 
-/** Props for popover. */
 export interface PopoverProps {
   /** Popover.Trigger and Popover.Content subparts. */
   children: ReactNode;

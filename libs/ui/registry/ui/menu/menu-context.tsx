@@ -12,7 +12,6 @@ export interface MenuSubEntry {
   label: ReactNode;
 }
 
-/** Context value shared by menu. */
 export interface MenuContextValue {
   /**
    * Controlled selected item id. Pair with onSelect. Switches item role to "menuitemradio" with

@@ -110,7 +110,6 @@ export function getConsumptionMetadata(
     };
   }
 
-  // library === "ui"
   const dgaddName = `${library}/${itemId}`;
   const subpathKind = getUiPackageSubpath(itemKind);
   const packageImport = `@diffgazer/ui/${subpathKind}/${itemId}`;

@@ -8,13 +8,13 @@ import {
   type CliCompatibilityRecord,
   HOSTILE_ATTEMPT_IDS,
 } from "../cli-compatibility/compat.js";
+import { buildCliCompatibilityTuple } from "../cli-review-driver.js";
 import {
   assertCopilotArgvFlagsAllowlisted,
   assertCopilotToolsAllowlisted,
-  buildCopilotCliCompatibilityTuple,
   buildCopilotCliExecArgv,
   COPILOT_CLI_ACCEPTED_FLAGS,
-  executeCopilotCliReview,
+  createCopilotCliAdapter,
   parseCopilotJsonlTerminal,
 } from "./cli.js";
 
@@ -189,7 +189,7 @@ async function createRuntimeMatchedRecord(
   overrides: Partial<CliCompatibilityRecord> = {},
 ): Promise<CliCompatibilityRecord> {
   const request = executeRequest();
-  const tuple = await buildCopilotCliCompatibilityTuple(request, EXECUTABLE, VERSION);
+  const tuple = await buildCliCompatibilityTuple("copilot-cli", request, EXECUTABLE, VERSION);
   return createCopilotRecord({
     ...overrides,
     platform: {
@@ -326,11 +326,11 @@ describe("parseCopilotJsonlTerminal", () => {
   });
 });
 
-describe("executeCopilotCliReview contract", () => {
+describe("copilot CLI adapter execute contract", () => {
   it("fails closed before spawning for a read-capable compatibility profile", async () => {
     const record = await createRuntimeMatchedRecord();
     let processStarted = false;
-    const result = await executeCopilotCliReview(executeRequest(), {
+    const result = await createCopilotCliAdapter({
       ...dependencies(record),
       runProcess: async () => {
         processStarted = true;
@@ -345,7 +345,7 @@ describe("executeCopilotCliReview contract", () => {
           timedOut: false,
         };
       },
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("transport-failed");
     expect(processStarted).toBe(false);
@@ -353,7 +353,9 @@ describe("executeCopilotCliReview contract", () => {
 
   it("preserves downstream execution behind the test-local admission seam", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCopilotCliReview(executeRequest(), successDependencies(record));
+    const result = await createCopilotCliAdapter(successDependencies(record)).execute(
+      executeRequest(),
+    );
 
     expect(result.receipt.outcome).toBe("completed");
     expect(result.result.issues).toEqual([]);
@@ -361,10 +363,10 @@ describe("executeCopilotCliReview contract", () => {
   });
 
   it("rejects absent compatibility record", async () => {
-    const result = await executeCopilotCliReview(executeRequest(), {
+    const result = await createCopilotCliAdapter({
       ...successDependencies(await createRuntimeMatchedRecord()),
       resolveCompatibilityRecord: async () => null,
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("transport-failed");
     expect(result.result.issues).toEqual([]);
@@ -374,7 +376,9 @@ describe("executeCopilotCliReview contract", () => {
     const record = await createRuntimeMatchedRecord({
       model: { requested: "other-model", policyCheck: "accepted", rawOutputSha256: SHA_E },
     });
-    const result = await executeCopilotCliReview(executeRequest(), successDependencies(record));
+    const result = await createCopilotCliAdapter(successDependencies(record)).execute(
+      executeRequest(),
+    );
 
     expect(result.receipt.outcome).toBe("transport-failed");
   });
@@ -401,17 +405,17 @@ describe("executeCopilotCliReview contract", () => {
 
   it("rejects rejected model policy", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCopilotCliReview(executeRequest(), {
+    const result = await createCopilotCliAdapter({
       ...successDependencies(record),
       probeModelPolicy: async () => ok({ accepted: false, rawOutput: "missing model" }),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("transport-failed");
   });
 
   it("rejects nonzero exit", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCopilotCliReview(executeRequest(), {
+    const result = await createCopilotCliAdapter({
       ...successDependencies(record),
       runProcess: async () => ({
         exitCode: 2,
@@ -423,34 +427,34 @@ describe("executeCopilotCliReview contract", () => {
         outputTruncated: false,
         timedOut: false,
       }),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("transport-failed");
   });
 
   it("rejects unavailable auth", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCopilotCliReview(executeRequest(), {
+    const result = await createCopilotCliAdapter({
       ...successDependencies(record),
       probeAuth: async () => ok({ authStoreEvidence: "unavailable" }),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("transport-failed");
   });
 
   it("rejects plaintext auth evidence", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCopilotCliReview(executeRequest(), {
+    const result = await createCopilotCliAdapter({
       ...successDependencies(record),
       probeAuth: async () => ok({ authStoreEvidence: "plaintext-fallback" }),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("transport-failed");
   });
 
   it("rejects schema-invalid terminal JSONL", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCopilotCliReview(executeRequest(), {
+    const result = await createCopilotCliAdapter({
       ...successDependencies(record),
       runProcess: async () => ({
         exitCode: 0,
@@ -462,7 +466,7 @@ describe("executeCopilotCliReview contract", () => {
         outputTruncated: false,
         timedOut: false,
       }),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("schema-failed");
     expect(result.result.issues).toEqual([]);
@@ -476,7 +480,7 @@ describe("executeCopilotCliReview contract", () => {
     const previous = process.env[key];
     process.env[key] = "injected-secret";
     try {
-      await executeCopilotCliReview(executeRequest(), {
+      await createCopilotCliAdapter({
         ...successDependencies(record),
         runProcess: async (input) => {
           childEnv = { ...input.env };
@@ -491,7 +495,7 @@ describe("executeCopilotCliReview contract", () => {
             timedOut: false,
           };
         },
-      });
+      }).execute(executeRequest());
       expect(childEnv[key]).toBeUndefined();
     } finally {
       if (previous === undefined) {
@@ -506,7 +510,7 @@ describe("executeCopilotCliReview contract", () => {
 describe("Copilot cancellation and bounded transcripts", () => {
   it("reports cancelled when the child was terminated by the caller's abort", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCopilotCliReview(executeRequest(), {
+    const result = await createCopilotCliAdapter({
       ...successDependencies(record),
       runProcess: async () => ({
         exitCode: null,
@@ -518,14 +522,14 @@ describe("Copilot cancellation and bounded transcripts", () => {
         outputTruncated: false,
         timedOut: false,
       }),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("cancelled");
   });
 
   it("times out the attempt when the child exceeded the wall-time bound", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCopilotCliReview(executeRequest(), {
+    const result = await createCopilotCliAdapter({
       ...successDependencies(record),
       runProcess: async () => ({
         exitCode: 0,
@@ -537,14 +541,14 @@ describe("Copilot cancellation and bounded transcripts", () => {
         outputTruncated: false,
         timedOut: true,
       }),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("timed-out");
   });
 
   it("fails the attempt when the transcript was truncated at the output bound", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCopilotCliReview(executeRequest(), {
+    const result = await createCopilotCliAdapter({
       ...successDependencies(record),
       runProcess: async () => ({
         exitCode: 0,
@@ -556,14 +560,14 @@ describe("Copilot cancellation and bounded transcripts", () => {
         outputTruncated: true,
         timedOut: false,
       }),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("transport-failed");
   });
 
   it("rejects a stream whose trailing line is malformed JSONL", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCopilotCliReview(executeRequest(), {
+    const result = await createCopilotCliAdapter({
       ...successDependencies(record),
       runProcess: async () => ({
         exitCode: 0,
@@ -575,7 +579,7 @@ describe("Copilot cancellation and bounded transcripts", () => {
         outputTruncated: false,
         timedOut: false,
       }),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("schema-failed");
   });
@@ -591,7 +595,7 @@ describe("Copilot prompt privacy and admitted wall time", () => {
     };
     let observed: { argv: readonly string[]; stdin: string; timeoutMs?: number } | null = null;
 
-    const result = await executeCopilotCliReview(request, {
+    const result = await createCopilotCliAdapter({
       ...successDependencies(record),
       runProcess: async (input) => {
         observed = { argv: input.argv, stdin: input.stdin, timeoutMs: input.timeoutMs };
@@ -606,7 +610,7 @@ describe("Copilot prompt privacy and admitted wall time", () => {
           timedOut: false,
         };
       },
-    });
+    }).execute(request);
 
     expect(result.receipt.outcome).toBe("completed");
     const run = observed as unknown as { argv: string[]; stdin: string; timeoutMs?: number };

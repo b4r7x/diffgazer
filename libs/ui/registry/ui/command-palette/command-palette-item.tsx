@@ -12,7 +12,6 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useCommandPaletteContext } from "./command-palette-context";
 import { getCommandPaletteItemDomId } from "./use-command-palette-state";
 
-/** Allowed command palette item tone values. */
 export type CommandPaletteItemTone =
   | "neutral"
   | "nav"
@@ -21,7 +20,6 @@ export type CommandPaletteItemTone =
   | "destructive"
   | "ai";
 
-/** Props for command palette item. */
 export interface CommandPaletteItemProps
   extends Omit<ComponentPropsWithRef<"div">, "children" | "id" | "onSelect"> {
   /** Stable unique id used for highlight state and aria-activedescendant. */

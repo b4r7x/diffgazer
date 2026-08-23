@@ -12,15 +12,6 @@ import {
 // (0400 on a hardened install) stay readable and must not be rejected.
 const GROUP_OTHER_MASK = 0o077;
 
-const SECRET_BINDING_KINDS = [
-  "environment-reference",
-  "keyring-reference",
-  "file-0600",
-  "optional-local-bearer",
-  "none",
-] as const;
-type SecretBindingKind = (typeof SECRET_BINDING_KINDS)[number];
-
 const SECRET_BINDING_STATUSES = ["active", "unknown", "removed"] as const;
 export type SecretBindingStatus = (typeof SECRET_BINDING_STATUSES)[number];
 
@@ -227,30 +218,6 @@ export function createNoneSecretBinding(
 
 export function markSecretBindingRemoved(binding: SecretBinding): SecretBinding {
   return { ...binding, status: "removed" };
-}
-
-export interface SafeSecretBindingProjection {
-  readonly configurationId: string;
-  readonly revision: number;
-  readonly kind: SecretBindingKind;
-  readonly status: SecretBindingStatus;
-}
-
-/** Return only non-sensitive binding identity; references and values stay server-side. */
-export function toSafeSecretBinding(binding: SecretBinding): SafeSecretBindingProjection {
-  const parsed = SecretBindingSchema.parse(binding);
-  return {
-    configurationId: parsed.configurationId,
-    revision: parsed.revision,
-    kind: parsed.kind,
-    status: parsed.status,
-  };
-}
-
-/** Serialize persistence metadata only. Secret values are never part of SecretBinding. */
-export function serializeSecretBinding(binding: SecretBinding): string {
-  const parsed = SecretBindingSchema.parse(binding);
-  return JSON.stringify(parsed);
 }
 
 function assertExpectedIdentity(

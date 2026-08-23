@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 
 const INTERACTIVE_AFFIX_SELECTOR = "button, a, input, select, textarea, label, [tabindex]";
 
-/** Class variants for input group. */
 export const inputGroupVariants = cva(
   // The shell owns the focus indicator for the bare input inside it. Under forced-colors
   // the ring (a box-shadow) is dropped and border-color is forced to the system palette,
@@ -28,14 +27,12 @@ export const inputGroupVariants = cva(
   },
 );
 
-/** Props for input group variant. */
 export type InputGroupVariantProps = VariantProps<typeof inputGroupVariants>;
 
 function isPlainDecorativeAffix(value: ReactNode) {
   return typeof value === "string" || typeof value === "number";
 }
 
-/** Props for input group. */
 export interface InputGroupProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "prefix"> {
   /** Ref forwarded to the underlying element. */

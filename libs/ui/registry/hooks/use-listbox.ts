@@ -296,12 +296,12 @@ export function useListbox<TId extends string = string>({
     if (autoFocusInitialized.current) return;
 
     const view = containerRef.current?.ownerDocument.defaultView;
-    const requestFrame = view?.requestAnimationFrame?.bind(view) ?? requestAnimationFrame;
-    const cancelFrame = view?.cancelAnimationFrame?.bind(view) ?? cancelAnimationFrame;
-    const frame = requestFrame(() => {
+    if (!view) return;
+
+    const frame = view.requestAnimationFrame(() => {
       if (runAutoFocusInit()) autoFocusInitialized.current = true;
     });
-    return () => cancelFrame(frame);
+    return () => view.cancelAnimationFrame(frame);
   }, [autoFocus, items]);
 
   const { onKeyDown: navKeyDown } = useNavigation<TId>({

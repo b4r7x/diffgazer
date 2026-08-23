@@ -89,7 +89,6 @@ function main(): void {
     copyDirs,
     rewriteDirs: ["registry", "source/registry"],
     afterCopy: ({ artifactRoot }) => {
-      // Verify expected generated files were copied
       const expectedFiles = ["generated/keys-hooks.json", "generated/hook-list.json"];
       for (const file of expectedFiles) {
         const filePath = resolve(artifactRoot, file);

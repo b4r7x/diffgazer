@@ -2,7 +2,6 @@
 
 import { createContext, type ReactNode, useContext } from "react";
 
-/** Context value shared by breadcrumbs. */
 interface BreadcrumbsContextValue {
   /** Separator rendered between items. Pass null to omit. */
   separator: ReactNode;

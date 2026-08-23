@@ -11,7 +11,6 @@ import { ScrollArea } from "../scroll-area/scroll-area";
 import { useRequiredCodeBlockContext } from "./code-block-context";
 import { CodeBlockLine, type CodeBlockLineProps } from "./code-block-line";
 
-/** Props for code block content. */
 export interface CodeBlockContentProps extends ComponentProps<"div"> {
   /** Auto-split mode only. Renders a line-number gutter for string children. */
   showLineNumbers?: boolean;

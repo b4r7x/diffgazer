@@ -3,16 +3,11 @@
  * (web Tailwind/CSS variables, CLI Ink hex colors). Canonical dark and light
  * values live in palette-values.ts.
  *
- * Groupings:
- *   - PRIMITIVE_TOKEN_KEYS — raw color slots (bg/fg + palette ramps + chrome).
- *   - SEMANTIC_TOKEN_KEYS  — role-based slots (success/warning/error/info/accent).
- *   - SEVERITY_TOKEN_KEYS  — review-issue severity slots.
- *   - STATUS_TOKEN_KEYS    — pipeline/run status slots.
- *
- * Source of truth derived from `cli/diffgazer/src/theme/palettes.ts`
- * (CliColorTokens) and the matching `--base-*` / `--severity-*` / `--status-*`
- * CSS variables in `apps/web/src/styles/theme-overrides.css`. Vocabulary
- * already aligns 1:1; this module locks the alignment as a type contract.
+ * This module owns the vocabulary; `cli/diffgazer/src/theme/palettes.ts`,
+ * `apps/web/src/styles/theme-overrides.css` and `libs/ui/styles/theme.css`
+ * implement it. The CSS variable names are mapped, not identical — the maps and
+ * the enforcement live in `libs/ui/theme/theme-parity.test.ts` and
+ * `apps/web/src/styles/theme-overrides.test.ts`.
  */
 
 export const PRIMITIVE_TOKEN_KEYS = [

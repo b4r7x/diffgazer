@@ -5,7 +5,6 @@ import { hasAccessibleTextContent } from "@/lib/accessible-text";
 import { Button, type ButtonProps } from "../button/button";
 import { useDialogDismiss } from "./dialog-context";
 
-/** Props for dialog close. */
 export interface DialogCloseProps
   extends Pick<
     ButtonProps,
@@ -15,7 +14,7 @@ export interface DialogCloseProps
   children?: ReactNode;
   /** Close handler. Call e.preventDefault() to keep the dialog open. */
   onClick?: MouseEventHandler<HTMLButtonElement>;
-  /** Called when focus occurs. */
+  /** Forwarded to the underlying button; the dialog adds no focus handling of its own. */
   onFocus?: FocusEventHandler<HTMLButtonElement>;
   /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLButtonElement>;

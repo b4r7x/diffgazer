@@ -11,6 +11,7 @@ import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import {
+  buildLensReviewResultJsonSchema,
   CreateReviewResponseSchema,
   type EvidenceKey,
   ReviewErrorCode,
@@ -22,10 +23,6 @@ import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { STRUCTURED_OUTPUT_FAILURE_GUIDANCE } from "../../shared/lib/ai/admission/service.js";
 import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
-import {
-  buildReviewSchemaJson,
-  hashReviewSchemaJson,
-} from "../../shared/lib/ai/providers/cli-compatibility/review-schema.js";
 import { executionLimitsFromBudget } from "../../shared/lib/config/budget-ceiling.js";
 import type { ConfigStore } from "../../shared/lib/config/store.js";
 import { DEFAULT_CONFIGURATION_BUDGET } from "../../shared/lib/config/store.js";
@@ -449,8 +446,8 @@ describe("review router project boundaries", () => {
     );
     expect(readResponse.status).toBe(404);
 
-    const { getReview } = await import("./storage/reviews.js");
-    const stored = await getReview(REVIEW_B);
+    const { getReviewDetail } = await import("./storage/reviews.js");
+    const stored = await getReviewDetail(REVIEW_B);
     expect(stored.ok).toBe(true);
   });
 
@@ -465,10 +462,10 @@ describe("review router project boundaries", () => {
     expect(response.status).toBe(200);
     expect(body.review).not.toHaveProperty("diff");
 
-    const { getReview } = await import("./storage/reviews.js");
-    const stored = await getReview(REVIEW_A);
+    const { getReviewDetail } = await import("./storage/reviews.js");
+    const stored = await getReviewDetail(REVIEW_A);
     expect(stored.ok).toBe(true);
-    if (stored.ok) expect(stored.value.diff).toBeDefined();
+    if (stored.ok) expect(stored.value.review.diff).toBeDefined();
   });
 
   it.each([
@@ -1264,7 +1261,7 @@ async function writeBlockedV1ReviewState(recovery: "valid" | "corrupt"): Promise
 }
 
 function routerStructuredOutputSchemaSha256(): string {
-  return hashReviewSchemaJson(buildReviewSchemaJson());
+  return sha256CanonicalJsonSync(buildLensReviewResultJsonSchema());
 }
 
 function routerEvidenceKeyFor(configurationId: string, modelId: string): EvidenceKey {

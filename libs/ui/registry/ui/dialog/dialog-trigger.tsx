@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 import { isNativeInteractiveElement, mergeHandlers } from "../shared/trigger-interop";
 import { useDialogContext } from "./dialog-context";
 
-/** Props for dialog trigger render. */
 export interface DialogTriggerRenderProps {
   /** Ref forwarded to the underlying element. */
   ref: RefCallback<HTMLElement>;
@@ -27,11 +26,10 @@ export interface DialogTriggerRenderProps {
   "aria-expanded": boolean;
   /** ID of the element controlled by the rendered element. */
   "aria-controls"?: string;
-  /** Called when click occurs. */
+  /** Called before the built-in dialog open handling; call event.preventDefault() to keep the dialog closed. */
   onClick: MouseEventHandler<HTMLElement>;
 }
 
-/** Props for dialog trigger. */
 export interface DialogTriggerProps {
   /**
    * Trigger button or render function. The render form receives ref, className,
@@ -40,13 +38,12 @@ export interface DialogTriggerProps {
   children: ReactNode | ((props: DialogTriggerRenderProps) => ReactNode);
   /** Additional class names merged onto the rendered element. */
   className?: string;
-  /** Called when click occurs. */
+  /** Called before the built-in dialog open handling; call event.preventDefault() to keep the dialog closed. */
   onClick?: MouseEventHandler<HTMLElement>;
   /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLElement>;
 }
 
-/** Props for dialog trigger element. */
 interface DialogTriggerElementProps {
   /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLElement>;
@@ -60,7 +57,7 @@ interface DialogTriggerElementProps {
   "aria-expanded"?: boolean;
   /** ID of the element controlled by the rendered element. */
   "aria-controls"?: string;
-  /** Called when click occurs. */
+  /** Existing click handler on the child element; merged with the dialog open handling. */
   onClick?: MouseEventHandler<HTMLElement>;
 }
 

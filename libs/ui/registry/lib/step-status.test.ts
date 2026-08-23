@@ -1,7 +1,16 @@
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { describe, expect, it } from "vitest";
 import registry from "../registry.json";
-import { STEP_STATUSES } from "./step-status";
+import type { StepStatus } from "./step-status";
+
+const STEP_STATUSES = [
+  "pending",
+  "active",
+  "completed",
+  "error",
+  "skipped",
+  "disabled",
+] as const satisfies readonly StepStatus[];
 
 describe("step-status registry metadata", () => {
   it("names every canonical status", () => {

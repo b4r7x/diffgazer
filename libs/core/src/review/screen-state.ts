@@ -81,7 +81,7 @@ export type FailedTerminalOutcome = Exclude<TerminalOutcome, "completed">;
  * one so the saved route can render how far it got -- lens outcomes and any
  * findings the server kept -- instead of a bare receipt.
  */
-export interface SavedReviewTerminalData extends SavedReviewData {
+interface SavedReviewTerminalData extends SavedReviewData {
   outcome: FailedTerminalOutcome;
   usageAvailability: UsageAvailability;
 }

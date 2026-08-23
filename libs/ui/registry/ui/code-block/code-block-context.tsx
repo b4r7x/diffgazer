@@ -2,13 +2,11 @@
 
 import { createContext, useContext } from "react";
 
-/** Allowed code block variant values. */
 export type CodeBlockVariant = "hairline" | "bare" | "terminal";
 
 /** Decorative header chrome options. */
 export type CodeBlockChrome = "dots" | "none";
 
-/** Context value shared by code block. */
 export interface CodeBlockContextValue {
   /**
    * Visual variant. "hairline" (default) is a soft-bordered block with a filename header.

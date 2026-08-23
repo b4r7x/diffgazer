@@ -3,7 +3,6 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for dialog body. */
 export interface DialogBodyProps extends ComponentProps<"div"> {}
 
 /** Scrollable content. */

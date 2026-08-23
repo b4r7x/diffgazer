@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 import { SidebarSectionContext } from "./sidebar-section-context";
 import { SidebarSectionTitle } from "./sidebar-section-title";
 
-/** Props for sidebar section. */
 export interface SidebarSectionProps extends ComponentProps<"div"> {
   /**
    * When true, Sidebar.SectionTitle becomes a disclosure toggle that expands/collapses the

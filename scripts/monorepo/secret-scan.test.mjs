@@ -5,13 +5,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { escapeRegExp } from "./lib/regexp.mjs";
 import { collectSecretFindings, formatSecretFindings } from "./secret-scan.mjs";
 
 const LARGE_FILE_BYTES = 2 * 1024 * 1024;
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 function scanSource(source) {
   const dir = mkdtempSync(join(tmpdir(), "dg-secret-scan-"));

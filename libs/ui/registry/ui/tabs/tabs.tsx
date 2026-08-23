@@ -20,7 +20,6 @@ import { TabsContent } from "./tabs-content";
 import { TabsContext } from "./tabs-context";
 import { TabsTrigger } from "./tabs-trigger";
 
-/** Props for tabs. */
 export interface TabsProps<TValue extends string = string>
   extends Omit<ComponentProps<"div">, "defaultValue" | "onChange"> {
   /** Controlled active tab value. Pair with onChange. */
@@ -41,7 +40,6 @@ export interface TabsProps<TValue extends string = string>
   ref?: Ref<HTMLDivElement>;
 }
 
-/** Props for tab trigger element. */
 interface TabTriggerElementProps {
   /** Controlled active tab value. Pair with onChange. */
   value?: string;

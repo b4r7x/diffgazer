@@ -4,10 +4,9 @@ export default defineConfig({
   test: {
     globals: false,
     include: ["src/**/*.test.ts"],
-    // The workspace default everywhere else. The registry suites build tmpdir
-    // fixtures and re-read the committed public/r trees, so the stock 5s cap is
-    // the tightest in the repo and is the first to break when `turbo run test`
-    // fans out across all 17 packages.
+    // The registry suites build tmpdir fixtures and re-read the committed public/r
+    // trees; the stock 5s cap (only libs/core still runs on it) is the first to
+    // break when `turbo run test` fans out across every workspace at once.
     testTimeout: 10_000,
   },
 });

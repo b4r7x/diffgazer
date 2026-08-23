@@ -451,24 +451,6 @@ describe("dgadd init --force manifest ownership preservation", () => {
     expect(manifest?.["ui/button"]?.files?.[0]?.hash).toBe("deadbeefcafef00d");
   });
 
-  test("recovers a pre-rename installedComponents ledger across --force", () => {
-    seedInstalledProject(true);
-    const { installedItems, ...withoutLedger } = priorConfig;
-    writeFileSync(
-      join(root, "diffgazer.json"),
-      `${JSON.stringify(
-        { ...withoutLedger, aliases: { components: 42 }, installedComponents: installedItems },
-        null,
-        2,
-      )}\n`,
-    );
-
-    writeInitConfig(root, { componentsDir: "src/components/ui", force: true });
-
-    const manifest = ctx.config.getManifestItems(root);
-    expect(manifest?.["ui/button"]?.files?.[0]?.hash).toBe("deadbeefcafef00d");
-  });
-
   test("init --force succeeds when validation fails on aliases but topology is unchanged", async () => {
     seedInstalledProject(true);
     writeFileSync(

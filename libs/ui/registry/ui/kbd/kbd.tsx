@@ -2,7 +2,6 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-/** Class variants for kbd. */
 export const kbdVariants = cva(
   "inline-flex items-center justify-center border font-mono rounded-sm",
   {
@@ -29,7 +28,6 @@ export const kbdVariants = cva(
   },
 );
 
-/** Props for kbd. */
 export interface KbdProps extends ComponentProps<"kbd">, VariantProps<typeof kbdVariants> {}
 
 /** Keyboard key indicator rendered as an inline kbd element with terminal styling. */

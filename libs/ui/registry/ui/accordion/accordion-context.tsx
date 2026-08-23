@@ -2,7 +2,6 @@
 
 import { createContext, useContext } from "react";
 
-/** Context value shared by accordion. */
 export interface AccordionContextValue {
   /**
    * Normalized open values; single mode contains zero or one item, while multiple mode may contain
@@ -35,7 +34,6 @@ export function useAccordionContext() {
   return context;
 }
 
-/** Context value shared by accordion item. */
 export interface AccordionItemContextValue {
   /** Stable identifier matched against the Accordion value. */
   value: string;

@@ -34,7 +34,6 @@ export interface BlockBarSegmentData {
   className?: string;
 }
 
-/** Props for block bar. */
 export interface BlockBarProps
   extends Omit<
     ComponentProps<"div">,

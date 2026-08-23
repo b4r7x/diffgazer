@@ -52,7 +52,6 @@ const selectItemVariants = cva(
   },
 );
 
-/** Allowed item state values. */
 type ItemState =
   | "default"
   | "highlighted"
@@ -68,7 +67,6 @@ function getItemState(isSelected: boolean, isHighlighted: boolean, multiple: boo
 
 export type SelectItemIndicator = "auto" | "checkbox" | "radio" | "none";
 
-/** Props for select item. */
 export interface SelectItemProps<TValue extends string = string>
   extends Omit<ComponentPropsWithRef<"div">, "children" | "onSelect"> {
   /** Item value. Must be unique within the Select. */

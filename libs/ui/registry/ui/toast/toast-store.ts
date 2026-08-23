@@ -28,7 +28,6 @@ export interface Toast {
   toneLabel?: string;
 }
 
-/** Options for toast. */
 export interface ToastOptions {
   /** Title content. */
   title: string;
@@ -336,7 +335,6 @@ export const toast: ToastFn = Object.assign(
   },
 );
 
-/** Provides toast store behavior. */
 export function useToastStore(): StoreState {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

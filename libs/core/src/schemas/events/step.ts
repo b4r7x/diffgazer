@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { LIFECYCLE_STATUSES } from "./statuses.js";
 
-// Step IDs match the workflow phases
 const STEP_IDS = ["diff", "context", "review", "report"] as const;
 export const StepIdSchema = z.enum(STEP_IDS);
 export type StepId = z.infer<typeof StepIdSchema>;
@@ -13,7 +12,6 @@ export const STEP_METADATA: Record<StepId, { label: string; description: string 
   report: { label: "Generate report", description: "Synthesizing final report" },
 };
 
-// Step events emitted during review
 const StepStartEventSchema = z.object({
   type: z.literal("step_start"),
   step: StepIdSchema,

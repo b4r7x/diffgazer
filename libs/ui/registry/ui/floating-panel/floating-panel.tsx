@@ -25,7 +25,6 @@ interface FloatingCSS extends CSSProperties {
   [key: `--${string}`]: string | number;
 }
 
-/** Context value shared by floating panel. */
 export interface FloatingPanelContextValue {
   /** True once a viewport position has been resolved. */
   positioned: boolean;
@@ -45,7 +44,6 @@ export function useFloatingPanelContext(): FloatingPanelContextValue {
   return ctx;
 }
 
-/** Props for floating panel. */
 export interface FloatingPanelProps extends Omit<ComponentPropsWithoutRef<"div">, "style"> {
   /**
    * Controlled open state. FloatingPanel never closes itself; the wrapping primitive owns

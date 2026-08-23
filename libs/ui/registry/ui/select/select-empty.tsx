@@ -5,7 +5,6 @@ import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { type SelectOptionMetadata, useSelectContext } from "./select-context";
 
-/** Props for select empty. */
 export interface SelectEmptyProps {
   /** Custom empty-state content. */
   children?: ReactNode;

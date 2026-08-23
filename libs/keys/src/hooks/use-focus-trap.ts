@@ -4,7 +4,7 @@ import { type RefObject, useEffect, useRef } from "react";
 import { composedContains, getDeepActiveElement, isHTMLElement } from "../dom/element-guards.js";
 import { restoreFocus as restoreFocusTarget } from "../dom/focus-restore.js";
 import { getFocusableElements, isFocusable } from "../dom/focusable.js";
-import { createFocusTrapController } from "./focus-trap-controller.js";
+import { createFocusTrapController, isInsideContainer } from "./focus-trap-controller.js";
 import { useFocusRestore } from "./use-focus-restore.js";
 
 /** Options for trapping Tab focus inside a container. */
@@ -31,13 +31,6 @@ function pickInitialTarget(
   if (requested && composedContains(container, requested) && isFocusable(requested))
     return requested;
   return getFocusableElements(container)[0] ?? container;
-}
-
-function isInsideContainer(
-  container: HTMLElement,
-  target: EventTarget | null,
-): target is HTMLElement {
-  return isHTMLElement(target) && composedContains(container, target);
 }
 
 /**

@@ -416,8 +416,6 @@ describe("session bounds and subscriber failures", () => {
     const event = stepEvent();
     addEvent(session.reviewId, event);
 
-    expect(session.lastEventAt).toEqual(new Date(eventWallTime));
-
     activityTick += 30 * 60 * 1000;
     vi.setSystemTime(cleanupWallTime);
     cleanupStaleSessions();
@@ -766,7 +764,7 @@ describe("scoped active-session lookup", () => {
     markReady("scoped");
 
     // A mode-only lookup must resolve the scoped session (the /sessions/active reload
-    // path that must not miss a scoped review, F-163).
+    // path that must not miss a scoped review).
     expect(
       getActiveSessionForProject("/scoped", {
         headCommit: "head",

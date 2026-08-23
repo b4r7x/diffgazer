@@ -2,7 +2,6 @@
 
 import { createContext, useContext } from "react";
 
-/** Context value shared by panel. */
 export interface PanelContextValue {
   /**
    * True while the panel is marked as the active pane. PanelLabel reads it so the

@@ -34,7 +34,6 @@ const selectTriggerVariants = cva(
   },
 );
 
-/** Props for select trigger. */
 export interface SelectTriggerProps
   extends Omit<ComponentPropsWithRef<"button">, "children" | "type" | "disabled" | "id"> {
   /** Trigger label. Use SelectValue or SelectTags for selection display. */

@@ -1,7 +1,5 @@
-import { readFileSync } from "node:fs";
 import { scanJsonRejectingDuplicateKeys } from "@diffgazer/core/json";
 import { decodeLegacyProviderConfigurationRecord } from "@diffgazer/core/schemas/config";
-import { getGlobalConfigPath } from "../../paths.js";
 import {
   type DecodedProviderConfigurationRecord,
   decodeProviderConfigurationRecord,
@@ -322,7 +320,6 @@ export const decodeConfigV2 = (inputBytes: Uint8Array): ConfigDocumentV2 => {
     selectedConfigurationId,
     configurations: records,
     rawBytes: bytes,
-    ...(settingsSlice ? { rawSettingsBytes: copyBytes(settingsBytes) } : {}),
   } satisfies ConfigDocumentV2;
   assertV2Document(document);
   return createV2Snapshot(
@@ -458,24 +455,6 @@ export const serializeConfigV2 = (document: ConfigDocumentV2): Uint8Array => {
   return textEncoder.encode(
     `{"schemaVersion":2,"settings":${new TextDecoder().decode(settingsBytes)},"selectedConfigurationId":${JSON.stringify(document.selectedConfigurationId)},"configurations":[${records}]}\n`,
   );
-};
-
-export const loadConfigV2 = (): ConfigDocumentV2 => {
-  let bytes: Uint8Array;
-  try {
-    bytes = new Uint8Array(readFileSync(getGlobalConfigPath()));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return {
-        schemaVersion: CONFIG_SCHEMA_VERSION_V2,
-        settings: {},
-        selectedConfigurationId: null,
-        configurations: [],
-      };
-    }
-    throw error;
-  }
-  return decodeConfigV2(bytes);
 };
 
 /** Select a supported configuration without changing any record bytes or order. */

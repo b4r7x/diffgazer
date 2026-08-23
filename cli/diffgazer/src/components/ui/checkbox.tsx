@@ -1,14 +1,13 @@
 import { Box } from "ink";
 import type { ReactElement, ReactNode } from "react";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext } from "react";
 import { useListNavigation } from "../../hooks/use-list-navigation";
 import { useListNavigationInput } from "../../hooks/use-list-navigation-input";
 import { collectChildItems } from "../../lib/collect-child-items";
 import { SelectableItemRow } from "./selectable-item-row";
 
 export interface CheckboxGroupProps<T extends string = string> {
-  value?: T[];
-  defaultValue?: T[];
+  value: T[];
   onChange?: (value: T[]) => void;
   onHighlightChange?: (value: string) => void;
   onNavigationBoundaryReached?: (direction: 1 | -1) => void;
@@ -69,7 +68,6 @@ function CheckboxItem({ value, label, description, disabled = false }: CheckboxI
 
 function CheckboxGroupRoot<T extends string = string>({
   value,
-  defaultValue,
   onChange,
   onHighlightChange,
   onNavigationBoundaryReached,
@@ -84,7 +82,6 @@ function CheckboxGroupRoot<T extends string = string>({
     disabled: disabled || item.disabled,
   }));
 
-  const [internalValue, setInternalValue] = useState<string[]>(defaultValue ?? []);
   const navigation = useListNavigation({
     items: navigableItems,
     onHighlightChange,
@@ -92,16 +89,13 @@ function CheckboxGroupRoot<T extends string = string>({
     wrap,
   });
 
-  const checkedValues = value ?? internalValue;
+  const checkedValues: string[] = value;
 
   function toggle(id: string) {
     const nextValues = checkedValues.includes(id)
       ? checkedValues.filter((v) => v !== id)
       : [...checkedValues, id];
 
-    if (value === undefined) {
-      setInternalValue(nextValues);
-    }
     onChange?.(nextValues as T[]);
   }
 
@@ -115,7 +109,7 @@ function CheckboxGroupRoot<T extends string = string>({
   return (
     <CheckboxGroupContext
       value={{
-        checkedValues: checkedValues as string[],
+        checkedValues,
         highlightedValue: navigation.currentHighlightedId,
         groupDisabled: disabled,
       }}

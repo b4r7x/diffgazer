@@ -24,10 +24,8 @@ import {
 } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
 
-/** Allowed switch size values. */
 export type SwitchSize = "sm" | "md";
 
-/** Props for switch root. */
 type SwitchRootProps = Omit<
   ComponentPropsWithRef<"button">,
   | "children"
@@ -45,7 +43,6 @@ type SwitchRootProps = Omit<
   | "ref"
 >;
 
-/** Props for switch. */
 export type SwitchProps = SwitchRootProps & {
   checked?: boolean;
   defaultChecked?: boolean;

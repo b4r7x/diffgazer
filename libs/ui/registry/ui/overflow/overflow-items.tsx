@@ -5,7 +5,6 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useOverflowItems } from "@/hooks/use-overflow-items";
 import { cn } from "@/lib/utils";
 
-/** Props for overflow indicator render. */
 export interface OverflowIndicatorRenderProps {
   /** Numeric count rendered by the component. */
   count: number;
@@ -17,7 +16,6 @@ export type OverflowIndicatorRender =
 
 const hiddenClass = "invisible absolute pointer-events-none";
 
-/** Props for overflow items. */
 export interface OverflowItemsProps extends Omit<ComponentPropsWithRef<"div">, "children"> {
   /** String to clamp (text mode) or items to measure (items mode). */
   children: ReactNode;

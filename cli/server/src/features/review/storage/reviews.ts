@@ -610,8 +610,3 @@ export async function getReviewDetail(reviewId: string): Promise<Result<ReviewDe
   }
   return ok({ review: presentDurableReviewRead(stored), warnings });
 }
-
-export async function getReview(reviewId: string): Promise<Result<SavedReview, StoreError>> {
-  const detail = await getReviewDetail(reviewId);
-  return detail.ok ? ok(detail.value.review) : detail;
-}

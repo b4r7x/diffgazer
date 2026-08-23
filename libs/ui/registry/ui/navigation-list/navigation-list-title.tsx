@@ -12,7 +12,6 @@ const INDICATOR_GLYPHS = {
   bracket: "[",
 } as const;
 
-/** Props for navigation list title. */
 export interface NavigationListTitleProps {
   /** Primary label. Used as aria-labelledby for the item. */
   children: ReactNode;

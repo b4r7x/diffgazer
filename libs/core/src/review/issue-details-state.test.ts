@@ -177,11 +177,9 @@ describe("useIssueDetailsState", () => {
     act(() => result.current.setActiveTab("patch"));
     expect(result.current.activeTab).toBe("patch");
 
-    // Switching to an issue without a patch clamps the active tab to details...
     rerender(noPatch);
     expect(result.current.activeTab).toBe("details");
 
-    // ...but the requested "patch" is remembered and restored when available again.
     rerender(withPatch);
     expect(result.current.activeTab).toBe("patch");
   });

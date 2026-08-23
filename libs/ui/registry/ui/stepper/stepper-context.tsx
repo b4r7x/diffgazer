@@ -6,10 +6,8 @@ import type { StepperVariant } from "@/lib/stepper-variants";
 
 export type { StepStatus };
 
-/** Allowed substep status values. */
 export type SubstepStatus = "pending" | "active" | "completed" | "error";
 
-/** Context value shared by stepper. */
 export interface StepperContextValue {
   /** Controlled set of currently expanded step ids. */
   expandedIds: string[];
@@ -19,13 +17,11 @@ export interface StepperContextValue {
   variant: StepperVariant;
   /** DOM id for tab target. */
   tabTargetId: string | null;
-  /** Registers step with stepper. */
   registerStep: (
     registrationId: string,
     descriptor: { id: string; status: StepStatus; label: string | undefined },
     element: HTMLElement | null,
   ) => void;
-  /** Unregisters step from stepper. */
   unregisterStep: (registrationId: string) => void;
 }
 
@@ -39,7 +35,6 @@ export function useStepperContext() {
   return context;
 }
 
-/** Context value shared by stepper step. */
 export interface StepperStepContextValue {
   /** Stable identifier matched against expandedIds. */
   stepId: string;

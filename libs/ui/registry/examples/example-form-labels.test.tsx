@@ -31,7 +31,7 @@ import ToggleGroupSizes from "./toggle-group/toggle-group-sizes";
 import ToggleGroupVariants from "./toggle-group/toggle-group-variants";
 import ToggleGroupVertical from "./toggle-group/toggle-group-vertical";
 
-// Only the labeling rules: F-354 is about form controls named only by a
+// Only the labeling rules: the contract is about form controls named only by a
 // placeholder or the "Select" fallback, not unrelated a11y concerns.
 const LABEL_RULES = {
   runOnly: {

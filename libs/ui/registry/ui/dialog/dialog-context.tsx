@@ -2,7 +2,6 @@
 
 import { createContext, type MouseEventHandler, type RefObject, useContext } from "react";
 
-/** Context value shared by dialog. */
 export interface DialogContextValue {
   /** Controlled open state. Pair with onOpenChange. */
   open: boolean;

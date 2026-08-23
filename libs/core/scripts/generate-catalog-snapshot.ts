@@ -62,7 +62,7 @@ const source = await loadSource();
 const parsed = parseModelsDevCatalog(source);
 const trimmed = trimCatalogSnapshot(parsed, wantedSourceIds);
 
-// Both artifacts stay unwritten until the refresh is proven usable: a thinned
+// All three artifacts stay unwritten until the refresh is proven usable: a thinned
 // payload must fail the command, not silently replace the committed fallback.
 const defect = findCatalogSnapshotDefect(source, parsed, trimmed, wantedSourceIds);
 if (defect) {

@@ -30,12 +30,10 @@ describe("SettingsDiagnosticsPage diagnostics refresh", () => {
     renderPage();
     await waitForReady();
 
-    // Capture initial call counts; the next refetches are the ones the test holds.
     const initialHealthCalls = mockRequest.mock.calls.length;
     const initialContextCalls = mockGetReviewContext.mock.calls.length;
     const initialInitCalls = mockLoadInit.mock.calls.length;
 
-    // Stub the next refetches to block until we resolve.
     mockRequest.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -171,7 +169,6 @@ describe("SettingsDiagnosticsPage diagnostics refresh", () => {
     renderPage();
     await waitForReady();
 
-    // Next health refetch fails.
     mockRequest.mockRejectedValueOnce(new Error("server down"));
 
     await user.click(screen.getByRole("button", { name: "Refresh Diagnostics" }));

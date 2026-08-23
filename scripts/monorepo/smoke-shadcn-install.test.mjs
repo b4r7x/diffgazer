@@ -84,7 +84,7 @@ test("smoke app bundles every registry:ui component installed via direct URLs", 
   }
 
   // Components outside the JSX-exercised representative subset must still be
-  // bundled by the Vite build (F-053 hardening).
+  // bundled by the Vite build.
   for (const bundledOnly of ["radio", "toggle-group", "spinner", "switch", "progress"]) {
     assert.ok(
       componentNames.includes(bundledOnly),

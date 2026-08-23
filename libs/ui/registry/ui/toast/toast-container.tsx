@@ -44,7 +44,6 @@ interface ToastAnnouncement {
 
 const toasterStack = createTopLayerStack();
 
-/** Props for toaster. */
 export interface ToasterProps {
   /** Corner where toasts stack. Drives positioning classes and slide-in direction. */
   position?: ToastPosition;

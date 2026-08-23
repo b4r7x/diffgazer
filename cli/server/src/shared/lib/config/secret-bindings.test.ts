@@ -26,8 +26,6 @@ import {
   markSecretBindingRemoved,
   resolveSecretBinding,
   SecretBindingError,
-  serializeSecretBinding,
-  toSafeSecretBinding,
   writeSecretBinding,
 } from "./secret-bindings.js";
 
@@ -69,7 +67,7 @@ function createMemoryKeyring(): KeyringSecretStore {
 }
 
 describe("configuration-bound secret bindings", () => {
-  it("keeps write-only values out of serialized and safe projections", async () => {
+  it("keeps write-only values out of the persisted binding", async () => {
     const directory = await createCredentialDirectory();
     const filePath = join(directory, "secret");
     const binding = await bindWriteOnlySecret(
@@ -82,9 +80,7 @@ describe("configuration-bound secret bindings", () => {
       { filePath },
     );
 
-    expect(serializeSecretBinding(binding)).not.toContain("literal-never-serialized");
-    expect(JSON.stringify(toSafeSecretBinding(binding))).not.toContain("literal-never-serialized");
-    expect(JSON.stringify(toSafeSecretBinding(binding))).not.toContain(filePath);
+    expect(JSON.stringify(binding)).not.toContain("literal-never-serialized");
     await expect(readFile(filePath, "utf8")).resolves.toBe("literal-never-serialized");
   });
 
@@ -260,12 +256,12 @@ describe("configuration-bound secret bindings", () => {
     const unknown = createKeyringSecretBinding("legacy-removed-zai-plan", 4, "legacy/4", "unknown");
     const removed = markSecretBindingRemoved(active);
 
-    expect(JSON.parse(serializeSecretBinding(unknown))).toMatchObject({
+    expect(unknown).toMatchObject({
       configurationId: "legacy-removed-zai-plan",
       revision: 4,
       status: "unknown",
     });
-    expect(JSON.parse(serializeSecretBinding(removed))).toMatchObject({
+    expect(removed).toMatchObject({
       configurationId: "legacy-removed-zai-plan",
       revision: 4,
       status: "removed",
@@ -280,7 +276,7 @@ describe("configuration-bound secret bindings", () => {
     ).rejects.toMatchObject({
       code: "BINDING_UNAVAILABLE",
     });
-    expect(serializeSecretBinding(removed)).not.toContain('"productId":"zai"');
+    expect(JSON.stringify(removed)).not.toContain('"productId":"zai"');
   });
 
   it("never relabels or sends a removed-product binding", async () => {
@@ -293,7 +289,7 @@ describe("configuration-bound secret bindings", () => {
       SecretBindingError,
     );
     expect(await keyring.read("legacy-removed-zai-plan/1")).toBeNull();
-    expect(toSafeSecretBinding(removed)).toMatchObject({
+    expect(removed).toMatchObject({
       configurationId: "legacy-removed-zai-plan",
       status: "removed",
     });

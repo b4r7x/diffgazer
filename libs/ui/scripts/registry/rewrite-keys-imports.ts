@@ -61,11 +61,7 @@ interface PublicRegistryIndexJson {
   items?: PublicRegistryItemJson[];
 }
 
-export type ThemeStyleStripPolicy = (
-  itemName: string,
-  filePath: string,
-  content: string,
-) => boolean;
+export type ThemeStyleStripPolicy = (itemName: string, content: string) => boolean;
 
 export function createThemeStyleStripPolicy(
   sourceItems: readonly RegistryItem[],
@@ -102,7 +98,7 @@ export function createThemeStyleStripPolicy(
     }
   }
 
-  return (itemName, _filePath, content) => {
+  return (itemName, content) => {
     if (itemName === "theme" || !aggregateContent.includes(content)) return false;
     const roots = rootsByItem.get(itemName) ?? [];
     return roots.length > 0 && roots.every((root) => dependencyClosure(root.name).has("theme"));
@@ -220,9 +216,7 @@ function stripThemeStylesFromSource(
   if (!stylePolicy || !readSourceFile || item.name === "theme") return item;
 
   const files = item.files.filter(
-    (file) =>
-      file.type !== "registry:style" ||
-      !stylePolicy(item.name, file.path, readSourceFile(file.path)),
+    (file) => file.type !== "registry:style" || !stylePolicy(item.name, readSourceFile(file.path)),
   );
   return files.length === item.files.length ? item : { ...item, files };
 }
@@ -239,8 +233,7 @@ function stripThemeStylePaths<T extends PublicRegistryItemJson>(
     (file) =>
       file.type !== "registry:style" ||
       (typeof file.content === "string"
-        ? !aggregateContent.includes(file.content) ||
-          !stylePolicy(item.name ?? "", file.path ?? "", file.content)
+        ? !aggregateContent.includes(file.content) || !stylePolicy(item.name ?? "", file.content)
         : !duplicateStyleCarriers.get(item.name ?? "")?.has(file.path ?? "")),
   );
   return files.length === item.files.length ? item : { ...item, files };
@@ -276,7 +269,7 @@ function duplicateThemeStyleCarriers(
         file.path &&
         typeof file.content === "string" &&
         themeStyles.includes(file.content) &&
-        stylePolicy(item.name ?? "", file.path, file.content)
+        stylePolicy(item.name ?? "", file.content)
       ) {
         const paths = duplicateCarriers.get(item.name ?? "") ?? new Set<string>();
         paths.add(file.path);
@@ -374,7 +367,7 @@ export function applyUiRegistryTargetsInPublicRegistry(outputDir: string): void 
   }
 }
 
-export function isHiddenKeysShim(item: PublicRegistryItemJson & { name?: string }): boolean {
+export function isHiddenKeysShim(item: PublicRegistryItemJson): boolean {
   return (
     item.meta?.hidden === true &&
     item.name?.startsWith("use-") === true &&
@@ -402,9 +395,7 @@ export function transformUiPublicRegistryKeysImports(outputDir: string): void {
   }
 
   for (const { itemPath } of listPublicRegistryEntries(outputDir)) {
-    const item = JSON.parse(readFileSync(itemPath, "utf-8")) as PublicRegistryItemJson & {
-      name?: string;
-    };
+    const item = JSON.parse(readFileSync(itemPath, "utf-8")) as PublicRegistryItemJson;
 
     if (isHiddenKeysShim(item)) {
       unlinkSync(itemPath);

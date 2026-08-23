@@ -20,7 +20,6 @@ import { useMenuItemInteractions } from "./use-menu-item-interactions";
 const CHECKBOX_CHECKED = "[x]";
 const CHECKBOX_UNCHECKED = "[ ]";
 
-/** Props for menu item checkbox. */
 export interface MenuItemCheckboxProps
   extends Omit<
     ComponentPropsWithRef<"div">,

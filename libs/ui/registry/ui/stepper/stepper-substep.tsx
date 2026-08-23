@@ -17,7 +17,6 @@ export interface SubstepData {
   detail?: string;
 }
 
-/** Class variants for substep. */
 export const substepVariants = cva("flex items-center gap-2 py-1 text-sm", {
   variants: {
     status: {
@@ -40,7 +39,6 @@ const SUBSTEP_STATUS_BADGE_VARIANTS: Record<
   error: "error",
 };
 
-/** Class variants for substep label. */
 export const substepLabelVariants = cva("", {
   variants: {
     status: {
@@ -53,7 +51,6 @@ export const substepLabelVariants = cva("", {
   defaultVariants: { status: "pending" },
 });
 
-/** Props for stepper substep. */
 export interface StepperSubstepProps
   extends Omit<ComponentProps<"div">, "children">,
     Omit<SubstepData, "id"> {

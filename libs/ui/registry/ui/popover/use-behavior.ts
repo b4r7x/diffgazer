@@ -21,23 +21,15 @@ export interface UsePopoverBehaviorOptions {
 }
 
 export interface UsePopoverBehaviorReturn {
-  /** Called when trigger enter occurs. */
   onTriggerEnter: () => void;
-  /** Called when trigger focus occurs. */
   onTriggerFocus: () => void;
-  /** Called when pointer leaves the trigger. */
   onTriggerLeave: () => void;
-  /** Called when focus leaves the trigger. */
   onTriggerBlur: () => void;
-  /** Called when trigger click occurs. */
   onTriggerClick: () => void;
-  /** Called when trigger pointer down occurs. */
   onTriggerPointerDown: () => void;
   /** Suppresses immediate focus-open after dismissal. */
   markDismissed: () => void;
-  /** Called when content enter occurs. */
   onContentEnter: () => void;
-  /** Called when content leave occurs. */
   onContentLeave: () => void;
 }
 

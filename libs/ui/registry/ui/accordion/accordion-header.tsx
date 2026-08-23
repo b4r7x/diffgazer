@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { AccordionHeaderContext } from "./accordion-context";
 
-/** Props for accordion header. */
 export interface AccordionHeaderProps {
   /** Heading level wrapping the trigger. */
   as?: "h2" | "h3" | "h4" | "h5" | "h6";

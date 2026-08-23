@@ -6,7 +6,6 @@ import { cornerLabelVariants } from "@/lib/corner-label-variants";
 import { cn } from "@/lib/utils";
 import { usePanelContext } from "./panel-context";
 
-/** Props for panel label. */
 export type PanelLabelProps = ComponentPropsWithRef<"div"> &
   VariantProps<typeof cornerLabelVariants>;
 

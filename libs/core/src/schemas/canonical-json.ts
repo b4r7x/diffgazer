@@ -17,12 +17,8 @@ function serializeCanonicalJson(value: unknown, ancestors: Set<object>): string 
     case "number":
       if (!Number.isFinite(value)) throw new TypeError("Canonical JSON requires finite numbers");
       return String(value);
-    case "string": {
-      const serialized = JSON.stringify(value);
-      if (serialized === undefined)
-        throw new TypeError("Canonical JSON string serialization failed");
-      return serialized;
-    }
+    case "string":
+      return JSON.stringify(value);
     case "object": {
       if (ancestors.has(value))
         throw new TypeError("Canonical JSON does not support cyclic values");

@@ -18,10 +18,6 @@ type DocSourceDataByType = {
 
 type DocSourceType = keyof DocSourceDataByType;
 
-interface LoadDocDataOptions {
-  throwIfMissing?: boolean;
-}
-
 function hasSafeDocPath(library: string, name: string | undefined): name is string {
   return name !== undefined && SAFE_PATH_SEGMENT.test(library) && SAFE_PATH_SEGMENT.test(name);
 }
@@ -51,18 +47,10 @@ function isDocSourceData<T extends DocSourceType>(
   return schema.safeParse(value).success;
 }
 
-function handleMissingData(path: string, options: LoadDocDataOptions): null {
-  if (options.throwIfMissing) {
-    throw new Error(`Missing generated docs data: ${path}`);
-  }
-  return null;
-}
-
 export async function loadDocPageData<T extends keyof DocPageDataByType>(
   library: string,
   type: T,
   name: string | undefined,
-  options: LoadDocDataOptions = {},
 ): Promise<DocPageDataByType[T] | null> {
   if (!hasSafeDocPath(library, name)) return null;
 
@@ -73,7 +61,7 @@ export async function loadDocPageData<T extends keyof DocPageDataByType>(
     );
     return mod.default;
   } catch {
-    return handleMissingData(path, options);
+    throw new Error(`Missing generated docs data: ${path}`);
   }
 }
 
@@ -81,7 +69,6 @@ export async function loadDocSourceData<T extends keyof DocSourceDataByType>(
   library: string,
   type: T,
   name: string | undefined,
-  options: LoadDocDataOptions = {},
 ): Promise<DocSourceDataByType[T] | null> {
   if (!isDocsLibraryId(library) || !isDocSourceType(type) || !hasSafeDocPath(library, name)) {
     return null;
@@ -92,7 +79,7 @@ export async function loadDocSourceData<T extends keyof DocSourceDataByType>(
     `${import.meta.env.BASE_URL}source-data/${library}/${type}/${name}.source.json`,
   );
   if (!response.ok) {
-    return handleMissingData(path, options);
+    throw new Error(`Missing generated docs data: ${path}`);
   }
 
   let data: unknown;

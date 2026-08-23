@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
 import { useTabsListWrapped } from "./tabs-list";
 
-/** Props for tabs trigger. */
 export interface TabsTriggerProps<TValue extends string = string>
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "value" | "disabled"> {
   /** Stable identifier matched against Tabs value and the paired Tabs.Content. */

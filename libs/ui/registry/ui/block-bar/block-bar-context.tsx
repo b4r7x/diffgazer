@@ -2,7 +2,6 @@
 
 import { createContext, useContext } from "react";
 
-/** Context value shared by block bar. */
 interface BlockBarContextValue {
   /** Maximum value the bar represents. Used for aria-valuemax and fill ratio. */
   max: number;
@@ -29,7 +28,6 @@ export function useBlockBarSegmentCount(): number | null {
   return useContext(BlockBarSegmentCountContext);
 }
 
-/** Computes filled count. */
 export function computeFilledCount(value: number, max: number, barWidth: number): number {
   if (!Number.isFinite(value) || !Number.isFinite(max) || max <= 0) return 0;
 

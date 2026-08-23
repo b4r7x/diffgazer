@@ -2,12 +2,9 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-/** Allowed progress size values. */
 export type ProgressSize = NonNullable<VariantProps<typeof progressVariants>["size"]>;
-/** Allowed progress variant values. */
 export type ProgressVariant = NonNullable<VariantProps<typeof progressVariants>["variant"]>;
 
-/** Props for progress. */
 export interface ProgressProps
   extends Omit<
     ComponentProps<"div">,
@@ -28,7 +25,6 @@ export interface ProgressProps
   valueText?: string;
 }
 
-/** Class variants for track. */
 export const progressVariants = cva("relative w-full overflow-hidden bg-border", {
   variants: {
     size: {

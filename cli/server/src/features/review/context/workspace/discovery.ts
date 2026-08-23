@@ -7,6 +7,7 @@ import { getErrorMessage } from "@diffgazer/core/errors";
 import { z } from "zod";
 import { buildCliChildEnvironment } from "../../../../shared/lib/ai/providers/cli-compatibility/child-environment.js";
 import { formatSchemaIssues } from "../../../../shared/lib/errors.js";
+import { executableCandidateNames } from "../../../../shared/lib/executable-candidates.js";
 import { readFileDirectory } from "../directory.js";
 import { readPackageManifest } from "./manifest.js";
 
@@ -30,7 +31,6 @@ const execFileAsync = promisify(execFile);
 const PNPM_LIST_TIMEOUT_MS = 10_000;
 const PNPM_LIST_MAX_BUFFER_BYTES = 4 * 1024 * 1024;
 const PNPM_LIST_ARGS = ["--recursive", "--depth", "-1", "list", "--json"] as const;
-const WINDOWS_DEFAULT_PATHEXT = ".COM;.EXE;.BAT;.CMD";
 
 const PnpmWorkspaceListSchema = z
   .array(
@@ -77,14 +77,6 @@ async function hasPnpmWorkspace(projectPath: string): Promise<boolean> {
     }
     throw error;
   }
-}
-
-function executableCandidateNames(command: string): string[] {
-  if (process.platform !== "win32") return [command];
-  const extensions = (process.env.PATHEXT ?? WINDOWS_DEFAULT_PATHEXT)
-    .split(";")
-    .filter((extension) => extension.length > 0);
-  return extensions.map((extension) => command + extension);
 }
 
 /**

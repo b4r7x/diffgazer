@@ -1,7 +1,7 @@
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { REGISTRY_ORIGIN } from "./constants.js";
 import { normalizeOrigin, resolveRegistryRoute } from "./origin.js";
 import { buildShadcnRegistryWithOrigin } from "./shadcn/build.js";
@@ -73,17 +73,13 @@ describe("buildShadcnRegistryWithOrigin", () => {
   });
 
   it("rejects an invalid origin before the registry build starts", () => {
-    const beforeBuild = vi.fn();
-
     expect(() =>
       buildShadcnRegistryWithOrigin({
         rootDir: "/unused",
         originRaw: "https://example.com/registry?preview=1",
         defaultOrigin: REGISTRY_ORIGIN,
-        beforeBuild,
       }),
     ).toThrow(/REGISTRY_ORIGIN/);
-    expect(beforeBuild).not.toHaveBeenCalled();
   });
 });
 

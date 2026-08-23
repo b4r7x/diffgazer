@@ -4,7 +4,6 @@ import { type ComponentProps, useLayoutEffect } from "react";
 import { cn } from "@/lib/utils";
 import { usePanelContext } from "./panel-context";
 
-/** Props for panel title. */
 export interface PanelTitleProps extends ComponentProps<"h2"> {
   /** Heading level. Defaults to h2, matching Dialog. */
   as?: "h2" | "h3" | "h4" | "h5" | "h6";

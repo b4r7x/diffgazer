@@ -97,8 +97,7 @@ const PATHLESS_HUNK: ParsedDiff = {
 
 // DiffView's public anatomy contract is the `data-slot=...` /
 // `[aria-live=...]` selectors documented in component-docs and the CSS rewrite
-// rules. These helpers target that contract; tests below should use them
-// instead of inline querySelector calls so the contract lives in one place.
+// rules. These helpers target that contract.
 
 /** Live region for hunk-navigation announcements (`aria-live="polite"`). */
 function getLiveRegion() {
@@ -107,32 +106,26 @@ function getLiveRegion() {
   return el;
 }
 
-/** Root figure element (`data-slot="diff-view"`). */
 function getFigure(container: HTMLElement) {
   return container.querySelector('[data-slot="diff-view"]');
 }
 
-/** Caption slot (`data-slot="diff-view-caption"`). */
 function getCaption(container: HTMLElement) {
   return container.querySelector('[data-slot="diff-view-caption"]');
 }
 
-/** Status-bar slot (`data-slot="diff-view-statusbar"`). */
 function getStatusBar(container: HTMLElement) {
   return container.querySelector('[data-slot="diff-view-statusbar"]');
 }
 
-/** Viewfinder corners slot (`data-slot="diff-view-corners"`). */
 function getCorners(container: HTMLElement) {
   return container.querySelector('[data-slot="diff-view-corners"]');
 }
 
-/** Vertical-scroll wrapper (`data-slot="diff-view-scroll-v"`). */
 function getScrollV(container: HTMLElement) {
   return container.querySelector('[data-slot="diff-view-scroll-v"]');
 }
 
-/** Diff markers (`+`/`−`) for rows of a given state. */
 function getMarkers(container: HTMLElement, state: "added" | "removed") {
   return container.querySelectorAll(`[data-row][data-state="${state}"] .diff-marker`);
 }

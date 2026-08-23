@@ -194,7 +194,7 @@ export function describeReviewStartError(error: unknown): ReviewStartErrorDescri
   }
 }
 
-export type ReviewStreamErrorKind =
+type ReviewStreamErrorKind =
   | "api-key"
   | "model-incompatible"
   | "provider"

@@ -8,7 +8,6 @@ import type { AvatarSize } from "./avatar";
 import { AvatarGroupContext } from "./avatar-context";
 import { AvatarIndicator } from "./avatar-indicator";
 
-/** Class variants for avatar group spacing. */
 export const avatarGroupSpacingVariants = cva("", {
   variants: {
     spacing: {
@@ -21,7 +20,6 @@ export const avatarGroupSpacingVariants = cva("", {
   defaultVariants: { spacing: "overlap" },
 });
 
-/** Props for avatar group. */
 export interface AvatarGroupProps extends Omit<ComponentProps<"div">, "role"> {
   /**
    * Hard cap on visible avatars. Extras render as an AvatarIndicator. When omitted, AvatarGroup

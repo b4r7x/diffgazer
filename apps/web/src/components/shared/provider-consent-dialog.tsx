@@ -26,7 +26,7 @@ import { dialogScope } from "@/hooks/use-dialog-scope";
 // imperatively below, so no useDialogScope call would mark it.
 const CONSENT_SCOPE = dialogScope("provider-consent-dialog");
 
-export interface ProviderConsentDialogProps {
+interface ProviderConsentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** The recorded consent; null offers the acceptance, a record reads it back. */

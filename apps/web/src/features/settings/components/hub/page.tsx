@@ -178,7 +178,7 @@ export function SettingsHubPage() {
           <Panel.Label>
             <h1 id={titleId}>Settings Hub</h1>
           </Panel.Label>
-          {/* Menu-of-actions over a links list is deliberate (F-231): the hub keeps
+          {/* Menu-of-actions over a links list is deliberate: the hub keeps
               TUI-parity keyboard navigation, and the app runs as a local single-window
               product where new-tab/middle-click link semantics do not apply. */}
           <Menu

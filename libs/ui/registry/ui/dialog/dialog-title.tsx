@@ -4,7 +4,6 @@ import { type ComponentProps, useId, useLayoutEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useDialogContext } from "./dialog-context";
 
-/** Props for dialog title. */
 export interface DialogTitleProps extends ComponentProps<"h2"> {
   /** Heading level for the title element. */
   as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";

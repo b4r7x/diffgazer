@@ -7,16 +7,6 @@ export type StepStatus = "completed" | "active" | "pending" | "error" | "skipped
  */
 export type HorizontalStepStatus = Extract<StepStatus, "completed" | "active" | "pending">;
 
-/** All step statuses in their canonical variant-map order. */
-export const STEP_STATUSES = [
-  "pending",
-  "active",
-  "completed",
-  "error",
-  "skipped",
-  "disabled",
-] as const satisfies readonly StepStatus[];
-
 /** Returns true when a step status may respond to user interaction. */
 export function isStepInteractive(status: StepStatus): boolean {
   return status !== "disabled";

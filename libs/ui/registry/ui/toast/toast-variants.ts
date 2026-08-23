@@ -1,6 +1,5 @@
 import { cva } from "class-variance-authority";
 
-/** Allowed toast position values. */
 export type ToastPosition =
   | "top-left"
   | "top-center"
@@ -9,9 +8,7 @@ export type ToastPosition =
   | "bottom-center"
   | "bottom-right";
 
-/** Allowed toast tone values. */
 export type ToastTone = "success" | "error" | "warning" | "info" | "loading";
-/** Allowed toast variant values. */
 export type ToastVariant = "hud" | "card" | "viewfinder" | "countdown";
 
 export const toastToneBorder = cva("", {
@@ -96,7 +93,6 @@ export const icons: Record<Exclude<ToastTone, "loading">, string> = {
 
 export type ToastSide = "left" | "right" | "top" | "bottom";
 
-/** Class variants for toast slide in. */
 export const toastSlideInVariants = cva("motion-reduce:animate-[fade-in_0.15s_ease-out]", {
   variants: {
     side: {
@@ -109,7 +105,6 @@ export const toastSlideInVariants = cva("motion-reduce:animate-[fade-in_0.15s_ea
   defaultVariants: { side: "right" },
 });
 
-/** Class variants for toast slide out. */
 export const toastSlideOutVariants = cva(
   "motion-reduce:animate-[fade-out_0.15s_ease-in_forwards]",
   {
@@ -134,7 +129,6 @@ export const positionToSide: Record<ToastPosition, ToastSide> = {
   "bottom-right": "right",
 };
 
-/** Class variants for toast position. */
 export const toastPositionVariants = cva("", {
   variants: {
     position: {

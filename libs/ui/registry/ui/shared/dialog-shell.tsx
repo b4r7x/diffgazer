@@ -19,7 +19,6 @@ import { useTopLayerPosition } from "@/hooks/use-top-layer-position";
 import { isHTMLDialogElement } from "@/lib/aria";
 import { createTopLayerStack } from "@/lib/top-layer-stack";
 
-/** Props for dialog shell. */
 export interface DialogShellProps extends ComponentProps<"dialog"> {
   /** Controlled open state. */
   open: boolean;
@@ -56,7 +55,6 @@ function isEventOutsideDialogRect(
   );
 }
 
-/** Renders the dialog shell component. */
 export function DialogShell({
   open,
   onBackdropClick,

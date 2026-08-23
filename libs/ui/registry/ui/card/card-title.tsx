@@ -1,7 +1,6 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for card title. */
 export type CardTitleProps = ComponentPropsWithRef<"h3"> & {
   as?: "h2" | "h3" | "h4" | "h5";
 };

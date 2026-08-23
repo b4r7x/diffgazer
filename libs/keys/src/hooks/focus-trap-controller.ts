@@ -149,7 +149,7 @@ function removeTrap(entry: TrapEntry): void {
   }
 }
 
-function isInsideContainer(
+export function isInsideContainer(
   container: HTMLElement,
   target: EventTarget | null,
 ): target is HTMLElement {

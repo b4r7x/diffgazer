@@ -75,10 +75,6 @@ const pointerListenerCounts = new Map<Document, number>();
 const keydownListenerCounts = new Map<Document, number>();
 const handledPointerEvents = new WeakSet<Event>();
 
-function getComposedPath(event: Event): EventTarget[] {
-  return typeof event.composedPath === "function" ? event.composedPath() : [];
-}
-
 function pathContains(path: EventTarget[], element: HTMLElement | null): boolean {
   if (!element) return false;
   return path.includes(element);
@@ -89,7 +85,7 @@ function isTargetInside(target: Node, element: HTMLElement | null): boolean {
 }
 
 function isInEntry(event: Event, target: Node, entry: OutsideClickEntry): boolean {
-  const path = getComposedPath(event);
+  const path = event.composedPath();
   if (pathContains(path, entry.node) || isTargetInside(target, entry.node)) return true;
   return (
     entry.excludeRefsRef.current?.some(
@@ -107,7 +103,7 @@ function isOverlayTriggerActivation(
     candidate instanceof View.Element && candidate.hasAttribute(OVERLAY_TRIGGER_ATTRIBUTE);
   const targetElement = target instanceof View.Element ? target : target.parentElement;
   const trigger =
-    getComposedPath(event).find(isMarkedTrigger) ??
+    event.composedPath().find(isMarkedTrigger) ??
     targetElement?.closest(`[${OVERLAY_TRIGGER_ATTRIBUTE}]`);
   // A marked trigger whose own overlay is already open is toggling it closed, not
   // switching layers, so it is not exempt.

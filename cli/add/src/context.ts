@@ -182,17 +182,11 @@ const RegistryBundleSchema = BaseRegistryBundleSchema.extend({
   styles: z.string(),
 });
 
-type RegistryBundle = z.infer<typeof RegistryBundleSchema>;
-
-const loadRegistry = createRegistryLoader(
+export const getRegistry = createRegistryLoader(
   resolve(__dirname, "./generated/registry-bundle.json"),
   RegistryBundleSchema,
   (bundle) => ({ items: bundle.items, theme: bundle.theme, styles: bundle.styles }),
 );
-
-export function getRegistry(): RegistryBundle {
-  return loadRegistry();
-}
 
 const KeysVersionSchema = z.object({ versionSpec: z.string().min(1) });
 
@@ -212,30 +206,14 @@ export function getDefaultKeysVersionSpec(): string {
 }
 
 const registry = createRegistryAccessors({
-  loader: () => getRegistry(),
+  loader: getRegistry,
   itemLabel: "Component",
   pathPrefixes: ["registry/ui/", "registry/hooks/", "registry/lib/", "styles/"],
 });
 
-/**
- * The ledger key `dgadd` wrote before items replaced components. A config from
- * that build still owns its installed items, so reads decode the old key when
- * the current one is absent; the next write persists `installedItems` and drops it.
- */
-export const LEGACY_MANIFEST_KEY = "installedComponents";
-
-const InstalledItemsSchema = DiffgazerAddConfigSchema.shape.installedItems;
-
-export function adoptLegacyManifestLedger(raw: unknown): unknown {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
-  const { [LEGACY_MANIFEST_KEY]: legacy, ...rest } = raw as Record<string, unknown>;
-  if (legacy === undefined || rest.installedItems !== undefined) return raw;
-  return InstalledItemsSchema.safeParse(legacy).success ? { ...rest, installedItems: legacy } : raw;
-}
-
 const config = createConfigModule<DiffgazerAddConfig, ResolvedConfig, ManifestItem>({
   configFileName: CONFIG_FILE,
-  schema: z.preprocess(adoptLegacyManifestLedger, DiffgazerAddConfigSchema),
+  schema: DiffgazerAddConfigSchema,
   resolveConfig,
   manifestKey: "installedItems",
 });

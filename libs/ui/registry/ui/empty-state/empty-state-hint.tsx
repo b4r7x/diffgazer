@@ -1,7 +1,6 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for empty state hint. */
 export type EmptyStateHintProps = ComponentPropsWithRef<"p">;
 
 /**

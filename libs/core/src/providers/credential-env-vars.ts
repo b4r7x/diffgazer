@@ -5,7 +5,7 @@ import type { RunnableProductId } from "../schemas/config/transports.js";
  * `{ kind: "environment" }`.
  *
  * This is the single copy: the server binds the credential from it
- * (`cli/server/src/shared/lib/config/store.ts`) and the setup surfaces preview the
+ * (`cli/server/src/shared/lib/config/store/actions.ts`) and the setup surfaces preview the
  * same name to the user. The names carry no secrets, so shipping them to clients
  * costs nothing and parity holds by construction.
  *

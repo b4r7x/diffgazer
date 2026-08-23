@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
 import type { ReactElement, ReactNode } from "react";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext } from "react";
 import { useListNavigation } from "../../hooks/use-list-navigation";
 import { useListNavigationInput } from "../../hooks/use-list-navigation-input";
 import { collectChildItems } from "../../lib/collect-child-items";
@@ -8,14 +8,12 @@ import { SURFACE_BORDER, selectionHue } from "../../theme/chrome";
 import { useTheme } from "../../theme/provider";
 
 interface TabsProps {
-  value?: string;
-  defaultValue?: string;
+  value: string;
   onChange?: (value: string) => void;
   children: ReactNode;
 }
 
 interface TabsListProps {
-  loop?: boolean;
   isActive?: boolean;
   children: ReactNode;
 }
@@ -57,15 +55,10 @@ function extractTabsTrigger(element: ReactElement): CollectedTrigger | null {
   return { value: props.value, disabled: props.disabled ?? false };
 }
 
-function TabsRoot({ value, defaultValue, onChange, children }: TabsProps) {
-  const [internalValue, setInternalValue] = useState(defaultValue ?? "");
-
-  const activeValue = value ?? internalValue;
+function TabsRoot({ value, onChange, children }: TabsProps) {
+  const activeValue = value;
 
   function setActiveValue(next: string) {
-    if (value === undefined) {
-      setInternalValue(next);
-    }
     onChange?.(next);
   }
 
@@ -76,7 +69,7 @@ function TabsRoot({ value, defaultValue, onChange, children }: TabsProps) {
   );
 }
 
-function TabsList({ loop = true, isActive = true, children }: TabsListProps) {
+function TabsList({ isActive = true, children }: TabsListProps) {
   const ctx = useTabsContext();
   const { tokens } = useTheme();
   const triggers = collectChildItems(children, extractTabsTrigger);
@@ -84,7 +77,7 @@ function TabsList({ loop = true, isActive = true, children }: TabsListProps) {
     items: triggers.map((trigger) => ({ id: trigger.value, disabled: trigger.disabled })),
     highlightedId: ctx.activeValue,
     onHighlightChange: ctx.setActiveValue,
-    wrap: loop,
+    wrap: true,
   });
 
   useListNavigationInput({ navigation, isActive, orientation: "horizontal" });

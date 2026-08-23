@@ -3,14 +3,14 @@ import { KeyboardProvider } from "@diffgazer/keys";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axeCore from "axe-core";
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { ProviderConsentDialog, type ProviderConsentDialogProps } from "./provider-consent-dialog";
+import { ProviderConsentDialog } from "./provider-consent-dialog";
 
 const ACCEPTED = { version: 1 as const, acceptedAt: "2026-08-18T10:00:00.000Z" };
 
-function renderDialog(overrides: Partial<ProviderConsentDialogProps> = {}) {
-  const props: ProviderConsentDialogProps = {
+function renderDialog(overrides: Partial<ComponentProps<typeof ProviderConsentDialog>> = {}) {
+  const props: ComponentProps<typeof ProviderConsentDialog> = {
     open: true,
     onOpenChange: vi.fn(),
     consent: null,

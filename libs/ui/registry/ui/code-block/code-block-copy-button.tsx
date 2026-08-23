@@ -4,7 +4,6 @@ import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { hasAccessibleTextContent } from "@/lib/accessible-text";
 
-/** Props for code block copy button. */
 export interface CodeBlockCopyButtonProps
   extends Omit<ComponentProps<"button">, "children" | "onCopy"> {
   /** Text copied to the clipboard on click. */

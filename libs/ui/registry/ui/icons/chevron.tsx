@@ -2,7 +2,6 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { CSSProperties, Ref, SVGProps } from "react";
 import { cn } from "@/lib/utils";
 
-/** Class variants for chevron. */
 export const chevronVariants = cva(
   "shrink-0 motion-safe:transition-transform motion-safe:duration-200",
   {
@@ -28,7 +27,6 @@ const baseDeg: Record<ChevronDirection, number> = {
   up: 270,
 };
 
-/** Props for chevron. */
 export interface ChevronProps
   extends Omit<SVGProps<SVGSVGElement>, "ref">,
     VariantProps<typeof chevronVariants> {

@@ -10,7 +10,6 @@ export interface SelectOptionMetadata {
   disabled: boolean;
 }
 
-/** Context value shared by select. */
 export interface SelectContextValue {
   /** Controlled open state. Pair with onOpenChange. */
   open: boolean;
@@ -36,12 +35,9 @@ export interface SelectContextValue {
   readTypeaheadQuery: (key: string, options?: { extendOnly?: boolean }) => string | null;
   /** Controlled highlighted item id. Pair with onHighlightChange. */
   highlighted: string | null;
-  /** Updates highlighted. */
   setHighlighted: (value: string | null) => void;
   selectItem: (value: string) => void;
-  /** Registers option with select. */
   registerOption: (value: string, metadata: SelectOptionMetadata) => void;
-  /** Unregisters option from select. */
   unregisterOption: (value: string) => void;
   options: ReadonlyMap<string, SelectOptionMetadata>;
   /** Ref for the trigger element. */

@@ -3,10 +3,8 @@
 import { createContext, useContext } from "react";
 import type { SidebarVariant } from "./sidebar-variants";
 
-/** Allowed sidebar state values. */
 export type SidebarState = "open" | "rail" | "hidden";
 
-/** Context value shared by sidebar. */
 export interface SidebarContextValue {
   state: SidebarState;
   /** DOM id for content. */
@@ -19,7 +17,6 @@ export interface SidebarContextValue {
    * tri-state.
    */
   openMobile: boolean;
-  /** Called when state change occurs. */
   onStateChange: (state: SidebarState) => void;
   /** Opens or closes the mobile sheet. */
   onMobileOpenChange: (open: boolean) => void;
@@ -45,7 +42,6 @@ export function useOptionalSidebar() {
   return useContext(SidebarContext);
 }
 
-/** Context value shared by sidebar chrome. */
 export interface SidebarChromeContextValue {
   /**
    * Visual variant. "caret" reserves a chevron marker slot shown on the active row;

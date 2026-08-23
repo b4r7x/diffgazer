@@ -12,7 +12,6 @@ test("the results panes swap without horizontal overflow at 320px", async ({ pag
   await expect(viewport).toBeVisible();
   await expect(issueListPane).toBeVisible();
   await expect(issueList).toBeFocused();
-  // Mobile pane-swap: the issue list is the only visible pane until an issue opens.
   await expect(details).toBeHidden();
 
   const initial = await viewport.evaluate((element) => ({
@@ -78,7 +77,6 @@ test("mobile shows one review pane at a time", async ({ page }, testInfo) => {
   const listBody = page.locator("[data-list-body]");
   const options = issueList.getByRole("option");
 
-  // On load the details pane is hidden and only the list is shown.
   await expect(issueList).toBeVisible();
   await expect(details).toBeHidden();
 
@@ -97,14 +95,12 @@ test("mobile shows one review pane at a time", async ({ page }, testInfo) => {
   );
   expect(fullyVisibleRows).toBeGreaterThanOrEqual(5);
 
-  // Tapping an issue swaps to the details pane with a visible Back control.
   await options.first().click();
   await expect(issueList).toBeHidden();
   await expect(details).toBeVisible();
   const back = page.getByRole("button", { name: /issues/i });
   await expect(back).toBeVisible();
 
-  // Activating Back returns to the list.
   await back.click();
   await expect(issueList).toBeVisible();
   await expect(details).toBeHidden();

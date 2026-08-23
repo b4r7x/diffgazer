@@ -1014,12 +1014,12 @@ describe("POST-to-stream integration", () => {
       });
 
       expect(session.events.find((event) => event.type === "complete")).toBeDefined();
-      const { getReview } = await import("./storage/reviews.js");
-      const saved = await getReview(result.value.reviewId);
+      const { getReviewDetail } = await import("./storage/reviews.js");
+      const saved = await getReviewDetail(result.value.reviewId);
 
       expect(saved.ok, saved.ok ? undefined : JSON.stringify(saved.error)).toBe(true);
       if (!saved.ok) return;
-      expect(saved.value.metadata.durationMs).toBeGreaterThanOrEqual(0);
+      expect(saved.value.review.metadata.durationMs).toBeGreaterThanOrEqual(0);
     } finally {
       dateNow.mockRestore();
     }
@@ -1078,14 +1078,14 @@ describe("POST-to-stream integration", () => {
       expect(session.events.at(-1), JSON.stringify(session.events)).toMatchObject({
         type: "complete",
       });
-      const { getReview } = await import("./storage/reviews.js");
-      const saved = await getReview(result.value.reviewId);
+      const { getReviewDetail } = await import("./storage/reviews.js");
+      const saved = await getReviewDetail(result.value.reviewId);
 
       expect(saved.ok, saved.ok ? undefined : JSON.stringify(saved.error)).toBe(true);
       if (!saved.ok) return;
-      expect(saved.value.metadata.lenses).toEqual(["correctness"]);
-      expect(saved.value.metadata.profile).toBeNull();
-      expect(saved.value.result.issues).toEqual([
+      expect(saved.value.review.metadata.lenses).toEqual(["correctness"]);
+      expect(saved.value.review.metadata.profile).toBeNull();
+      expect(saved.value.review.result.issues).toEqual([
         expect.objectContaining({ severity: "low", title: "Snapshot issue" }),
       ]);
     } finally {
@@ -1143,19 +1143,19 @@ describe("POST-to-stream integration", () => {
     await vi.waitFor(() => {
       if (!session.isComplete) throw new Error("session not complete yet");
     });
-    const { getReview } = await import("./storage/reviews.js");
-    const saved = await getReview(result.value.reviewId);
+    const { getReviewDetail } = await import("./storage/reviews.js");
+    const saved = await getReviewDetail(result.value.reviewId);
 
     expect(saved.ok, saved.ok ? undefined : JSON.stringify(saved.error)).toBe(true);
     if (!saved.ok) return;
-    expect(saved.value.metadata.branch).toBe("snapshot-branch");
-    expect(saved.value.gitContext).toMatchObject({
+    expect(saved.value.review.metadata.branch).toBe("snapshot-branch");
+    expect(saved.value.review.gitContext).toMatchObject({
       branch: "snapshot-branch",
       commit: "snapshot-head",
     });
-    expect(saved.value.diff).toBeDefined();
-    if (!saved.value.diff) return;
-    expect(saved.value.diff.files[0]?.rawDiff).toContain("return a - b");
+    expect(saved.value.review.diff).toBeDefined();
+    if (!saved.value.review.diff) return;
+    expect(saved.value.review.diff.files[0]?.rawDiff).toContain("return a - b");
     expect(gitService.getHeadCommit).toHaveBeenCalledTimes(headReadsBeforeModel);
     expect(gitService.getStatus).toHaveBeenCalledTimes(statusReadsBeforeModel);
   });

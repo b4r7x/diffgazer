@@ -4,7 +4,6 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { DialogKeyboardHints, type KeyboardHint } from "./dialog-keyboard-hints";
 
-/** Props for dialog footer. */
 export interface DialogFooterProps extends ComponentProps<"div"> {
   /**
    * Inline keyboard shortcut hints rendered alongside the action buttons. Use the shorthand
@@ -39,7 +38,6 @@ function DialogFooterRoot({ hints, className, children, ...props }: DialogFooter
   );
 }
 
-/** Props for dialog footer actions. */
 export type DialogFooterActionsProps = ComponentProps<"div">;
 
 function DialogFooterActions({ className, ...props }: DialogFooterActionsProps) {

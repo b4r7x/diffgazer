@@ -3,7 +3,6 @@
 import type { ComponentProps } from "react";
 import { useSidebarSectionContext } from "./sidebar-section-context";
 
-/** Props for sidebar section content. */
 export interface SidebarSectionContentProps extends ComponentProps<"div"> {}
 
 /**

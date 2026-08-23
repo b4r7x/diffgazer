@@ -155,8 +155,7 @@ export async function resolveGitDiff(params: {
     return err(
       reviewAbort(
         `Diff too large (${sizeMB}MB exceeds ${maxMB}MB limit). Try reviewing fewer files or use file filtering.`,
-        // Not a ReviewErrorCode of its own; surfaces as GENERATION_FAILED (the
-        // same code the prior untyped collapse produced for this message).
+        // Diff-size overflow has no ReviewErrorCode of its own; it reuses GENERATION_FAILED.
         ReviewErrorCode.GENERATION_FAILED,
         "diff",
       ),

@@ -229,7 +229,6 @@ interface CreateRegistryAccessorsOptions {
   loader: () => { items: RegistryContentItem[] };
   itemLabel: string;
   pathPrefixes: string[];
-  itemTypeFilter?: string;
 }
 
 export interface RegistryAccessors {
@@ -244,7 +243,7 @@ export interface RegistryAccessors {
 export function createRegistryAccessors(
   options: CreateRegistryAccessorsOptions,
 ): RegistryAccessors {
-  const { loader, itemLabel, pathPrefixes, itemTypeFilter } = options;
+  const { loader, itemLabel, pathPrefixes } = options;
 
   let itemMap: Map<string, RegistryContentItem> | null = null;
   function getItem(name: string): RegistryContentItem | undefined {
@@ -255,8 +254,7 @@ export function createRegistryAccessors(
   }
 
   function getAllItems(): RegistryContentItem[] {
-    const items = loader().items;
-    return itemTypeFilter ? items.filter((item) => item.type === itemTypeFilter) : items;
+    return loader().items;
   }
 
   function getPublicItems(): RegistryContentItem[] {

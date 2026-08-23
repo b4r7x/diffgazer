@@ -141,7 +141,7 @@ export function buildDroppedFindingsNotice(outcome: FailedTerminalOutcome | unde
  * One shape, so the error screen, both summaries and the history row cannot
  * print different totals for the same run.
  */
-export interface LensCoverage {
+interface LensCoverage {
   completed: number;
   total: number;
 }

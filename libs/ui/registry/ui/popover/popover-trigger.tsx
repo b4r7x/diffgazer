@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 import { isNativeInteractiveElement, mergeHandlers } from "../shared/trigger-interop";
 import { type PopoverPopupRole, usePopoverContext } from "./popover-context";
 
-/** Props for popover trigger render. */
 export interface PopoverTriggerRenderProps {
   /** Ref forwarded to the underlying element. */
   ref: RefCallback<HTMLElement>;
@@ -56,7 +55,6 @@ export interface PopoverTriggerRenderProps {
   tabIndex?: number;
 }
 
-/** Props for popover trigger. */
 export interface PopoverTriggerProps {
   /**
    * Trigger element. Pass a single element (cloned with merged ARIA/handlers), text (wrapped in

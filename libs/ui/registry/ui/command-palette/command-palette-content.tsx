@@ -9,12 +9,9 @@ import { DialogShell } from "../shared/dialog-shell";
 import { PortalContainerProvider } from "../shared/portal-context";
 import { useCommandPaletteContext } from "./command-palette-context";
 
-/** Allowed command palette frame values. */
 export type CommandPaletteFrame = "border" | "viewfinder" | "terminal" | "card" | "none";
-/** Allowed command palette density values. */
 export type CommandPaletteDensity = "compact" | "comfortable" | "dense";
 
-/** Class variants for command palette content. */
 export const commandPaletteContentVariants = cva(
   cn(
     "relative flex flex-col max-h-[80dvh] w-full font-mono",
@@ -41,7 +38,6 @@ function getLiveText(search: string, itemCount: number): string {
   return `${itemCount} result${itemCount === 1 ? "" : "s"} available`;
 }
 
-/** Props for command palette content. */
 export interface CommandPaletteContentProps
   extends VariantProps<typeof commandPaletteContentVariants> {
   /** Content rendered inside the component. */

@@ -3,7 +3,6 @@
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for callout title. */
 export interface CalloutTitleProps extends ComponentProps<"span"> {
   /** Title text for the callout. */
   children: ReactNode;

@@ -4,7 +4,6 @@ import { type ComponentProps, useLayoutEffect } from "react";
 import { cn } from "@/lib/utils";
 import { usePanelContext } from "./panel-context";
 
-/** Props for panel description. */
 export interface PanelDescriptionProps extends ComponentProps<"p"> {}
 
 /**

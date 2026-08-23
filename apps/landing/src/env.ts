@@ -1,7 +1,7 @@
 import { type EnvLinks, resolveLinks } from "./links";
 
 export function wireEnvLinks(
-  root: ParentNode = document,
+  root: ParentNode,
   links: EnvLinks = resolveLinks(import.meta.env),
 ): void {
   const targets: Record<string, string> = {

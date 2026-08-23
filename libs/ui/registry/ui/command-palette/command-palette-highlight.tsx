@@ -123,7 +123,6 @@ function isPureText(children: ReactNode): boolean {
   return false;
 }
 
-/** Props for command palette highlight item. */
 export interface CommandPaletteHighlightItemProps extends Omit<CommandPaletteItemProps, "tone"> {
   /** Visual tone. */
   tone?: CommandPaletteItemTone;

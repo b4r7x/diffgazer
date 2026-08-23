@@ -3,7 +3,6 @@
 import type { ComponentPropsWithRef, ReactNode } from "react";
 import { useCommandPaletteContext } from "./command-palette-context";
 
-/** Props for command palette empty. */
 export interface CommandPaletteEmptyProps
   extends Omit<ComponentPropsWithRef<"div">, "children" | "role"> {
   /** Content rendered inside the component. */

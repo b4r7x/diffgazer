@@ -2,7 +2,6 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
-/** Class variants for empty state. */
 export const emptyStateVariants = cva("group/es text-muted-foreground", {
   variants: {
     variant: {
@@ -26,12 +25,9 @@ export const emptyStateVariants = cva("group/es text-muted-foreground", {
   defaultVariants: { variant: "centered", size: "md" },
 });
 
-/** Allowed empty state size values. */
 export type EmptyStateSize = NonNullable<VariantProps<typeof emptyStateVariants>["size"]>;
-/** Allowed empty state variant values. */
 export type EmptyStateVariant = NonNullable<VariantProps<typeof emptyStateVariants>["variant"]>;
 
-/** Props for empty state. */
 export type EmptyStateProps = ComponentPropsWithRef<"div"> & {
   variant?: EmptyStateVariant;
   size?: EmptyStateSize;

@@ -36,7 +36,6 @@ import { ToggleGroupItem } from "./toggle-group-item";
 // there would change identity each time and invalidate the context memo every item reads.
 const EMPTY_VALUES: readonly string[] = [];
 
-/** Props for toggle group in single-selection mode. */
 interface ToggleGroupSingleProps {
   /**
    * Switches between radio-style single selection and pressed-button-style multiple selection.
@@ -51,7 +50,6 @@ interface ToggleGroupSingleProps {
   onChange?: (value: string | null) => void;
 }
 
-/** Props for toggle group in multiple-selection mode. */
 interface ToggleGroupMultipleProps {
   /**
    * Switches between radio-style single selection and pressed-button-style multiple selection.
@@ -66,15 +64,19 @@ interface ToggleGroupMultipleProps {
   onChange?: (value: readonly string[]) => void;
 }
 
-/** Props for toggle group base. */
 interface ToggleGroupBaseProps {
   /** Single mode only. When true, clicking the active item deselects it (allowing a null value). */
   allowDeselect?: boolean;
   /** Disables the entire group. */
   disabled?: boolean;
-  /** Item size token. */
+  /**
+   * Item density token. "sm" is 36px, rising to a 44px target on coarse pointers; "md" is always a
+   * 44px target.
+   */
   size?: SegmentedSize;
-  /** Visual style variant. */
+  /**
+   * Item style: default outlines, bracket adds [ ], pill fills, underline rules.
+   */
   variant?: SegmentedVariant;
   /** Layout axis and arrow-key navigation direction. */
   orientation?: "horizontal" | "vertical";
@@ -106,7 +108,6 @@ interface ToggleGroupBaseProps {
   ref?: Ref<HTMLDivElement>;
 }
 
-/** Props for toggle group. */
 export type ToggleGroupProps = ToggleGroupBaseProps &
   (ToggleGroupSingleProps | ToggleGroupMultipleProps);
 

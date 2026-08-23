@@ -81,7 +81,6 @@ function seedFieldFromChildren(
   return { slots, directSlots, controlId, hasDirectControl };
 }
 
-/** Props for field. */
 export interface FieldProps extends ComponentProps<"div"> {
   /** Override the auto-generated id used by the wrapped control, label, description, and error. */
   controlId?: string;

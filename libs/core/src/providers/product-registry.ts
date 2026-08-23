@@ -61,7 +61,6 @@ export interface RunnableProductDescriptor<ProductId extends RunnableProductId> 
   readonly id: ProductId;
   readonly kind: "runnable";
   readonly selectable: true;
-  readonly contractVersion: number;
   readonly transportFamily: ProductTransportFamily<ProductId>;
   readonly presentation: {
     readonly name: string;
@@ -133,7 +132,6 @@ export const PRODUCT_REGISTRY = {
     id: "gemini",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "hosted-api",
     presentation: {
       name: "Google Gemini",
@@ -173,7 +171,6 @@ export const PRODUCT_REGISTRY = {
     id: "zai",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "hosted-api",
     presentation: {
       name: "Z.AI",
@@ -215,7 +212,6 @@ export const PRODUCT_REGISTRY = {
     id: "openrouter",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "hosted-api",
     presentation: {
       name: "OpenRouter",
@@ -258,7 +254,6 @@ export const PRODUCT_REGISTRY = {
     id: "groq",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "hosted-api",
     presentation: {
       name: "Groq",
@@ -298,7 +293,6 @@ export const PRODUCT_REGISTRY = {
     id: "cerebras",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "hosted-api",
     presentation: {
       name: "Cerebras",
@@ -338,7 +332,6 @@ export const PRODUCT_REGISTRY = {
     id: "deepseek",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "hosted-api",
     presentation: {
       name: "DeepSeek",
@@ -384,7 +377,6 @@ export const PRODUCT_REGISTRY = {
     id: "qwen",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "hosted-api",
     presentation: {
       name: "Qwen International",
@@ -437,7 +429,6 @@ export const PRODUCT_REGISTRY = {
     id: "moonshot",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "hosted-api",
     presentation: {
       name: "Moonshot Open Platform",
@@ -481,7 +472,6 @@ export const PRODUCT_REGISTRY = {
     id: "mistral",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "hosted-api",
     presentation: {
       name: "Mistral",
@@ -528,7 +518,6 @@ export const PRODUCT_REGISTRY = {
     id: "ollama-cloud",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "hosted-api",
     presentation: {
       name: "Ollama Cloud",
@@ -574,7 +563,6 @@ export const PRODUCT_REGISTRY = {
     id: "ollama",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "local-http",
     presentation: {
       name: "Ollama",
@@ -615,7 +603,6 @@ export const PRODUCT_REGISTRY = {
     id: "local-openai",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "local-http",
     presentation: {
       name: "Local OpenAI-compatible",
@@ -655,7 +642,6 @@ export const PRODUCT_REGISTRY = {
     id: "codex-cli",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "local-cli",
     presentation: {
       name: "OpenAI Codex CLI",
@@ -697,7 +683,6 @@ export const PRODUCT_REGISTRY = {
     id: "copilot-cli",
     kind: "runnable",
     selectable: true,
-    contractVersion: 1,
     transportFamily: "local-cli",
     presentation: {
       name: "GitHub Copilot CLI",

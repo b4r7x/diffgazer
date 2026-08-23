@@ -7,7 +7,6 @@ import {
   type CodeBlockVariant,
 } from "./code-block-context";
 
-/** Props for code block. */
 export interface CodeBlockProps extends Omit<ComponentProps<"figure">, "children"> {
   /**
    * Visual variant. "hairline" (default) is a soft-bordered block with a filename header.

@@ -4,7 +4,6 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useStepperStepContext } from "./stepper-context";
 
-/** Props for stepper content. */
 export interface StepperContentProps extends Omit<ComponentProps<"div">, "children"> {
   /**
    * Expandable content (e.g. nested StepperSubstep rows). aria-hidden and inert when collapsed.

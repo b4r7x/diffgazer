@@ -3,10 +3,8 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-/** Allowed progress variant values. */
 type ProgressVariant = "block" | "bar";
 
-/** Class variants for progress color. */
 const progressColorVariants = cva("", {
   variants: {
     color: {
@@ -25,7 +23,6 @@ type ProgressColor = "auto" | NonNullable<VariantProps<typeof progressColorVaria
 // `width` must not ask String.repeat for a string it cannot allocate.
 const MAX_BAR_WIDTH = 200;
 
-/** Props for navigation list progress. */
 export interface NavigationListProgressProps {
   /** Progress percentage (0-100). Clamped; invalid values become zero. */
   value: number;

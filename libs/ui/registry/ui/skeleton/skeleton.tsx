@@ -1,6 +1,5 @@
 import type { ComponentProps, CSSProperties } from "react";
 
-/** Props for skeleton. */
 export type SkeletonProps = Omit<ComponentProps<"div">, "aria-hidden"> & {
   /**
    * Width of the placeholder in character cells, so it reserves the width of the

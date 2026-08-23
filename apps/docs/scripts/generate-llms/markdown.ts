@@ -216,7 +216,7 @@ function renderLibraryHookSource(attributes: string): string {
   if (!library || !sectionTitle) return "";
 
   const hooks = loadLibraryHooksMap(library);
-  const sections = [sectionTitle ? `## ${sectionTitle}` : "", hint ?? ""];
+  const sections = [`## ${sectionTitle}`, hint ?? ""];
   if (hooks) {
     for (const hook of Object.values(hooks)) {
       const files = hook.files?.filter((file) => file.raw) ?? [];

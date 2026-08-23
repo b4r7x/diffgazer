@@ -47,7 +47,7 @@ export const AGENT_EXECUTION_MODES = ["parallel", "sequential"] as const;
 export const AgentExecutionSchema = z.enum(AGENT_EXECUTION_MODES);
 export type AgentExecution = z.infer<typeof AgentExecutionSchema>;
 
-export const PROVIDER_CONSENT_VERSION = 1;
+const PROVIDER_CONSENT_VERSION = 1;
 
 /**
  * The one consent every provider send rests on. Recorded once in settings; the
@@ -60,7 +60,7 @@ export const PROVIDER_CONSENT_TEXT =
 /** Where the consent points for the full account of what leaves the machine. */
 export const PROVIDER_CONSENT_PRIVACY_URL = "https://docs.b4r7.dev/app/concepts/privacy";
 
-export const ProviderConsentSchema = z.strictObject({
+const ProviderConsentSchema = z.strictObject({
   version: z.literal(PROVIDER_CONSENT_VERSION),
   acceptedAt: z.iso.datetime(),
 });

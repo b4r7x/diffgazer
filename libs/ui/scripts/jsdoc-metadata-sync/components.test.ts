@@ -41,7 +41,7 @@ const componentDocModules = import.meta.glob<ComponentDocModule>(
 type RegistryItem = {
   name: string;
   type: string;
-  meta?: { hidden?: boolean; docsPage?: boolean };
+  meta?: { hidden?: boolean };
 };
 
 const authoredRegistryItems = (
@@ -71,7 +71,7 @@ function getComponentDoc(name: string): ComponentDoc {
 }
 
 function isPublishedComponent(item: RegistryItem): boolean {
-  return item.type === "registry:ui" && item.meta?.hidden !== true && item.meta?.docsPage !== false;
+  return item.type === "registry:ui" && item.meta?.hidden !== true;
 }
 
 const publishedComponents = publicRegistryItems.filter(isPublishedComponent);

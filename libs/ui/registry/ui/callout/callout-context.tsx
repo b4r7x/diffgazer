@@ -2,10 +2,8 @@
 
 import { createContext, useContext } from "react";
 
-/** Allowed callout tone values. */
 export type CalloutTone = "info" | "warning" | "error" | "success";
 
-/** Context value shared by callout. */
 export interface CalloutContextValue {
   /** Semantic tone - drives color and default icon. */
   tone: CalloutTone;

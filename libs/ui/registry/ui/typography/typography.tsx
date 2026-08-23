@@ -2,7 +2,6 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
-/** Class variants for typography. */
 export const typographyVariants = cva("font-mono", {
   variants: {
     variant: {
@@ -52,7 +51,6 @@ export const typographyVariants = cva("font-mono", {
   },
 });
 
-/** Allowed typography size values. */
 type TypographySize = NonNullable<VariantProps<typeof typographyVariants>["size"]>;
 
 type HeadingTag = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
@@ -68,10 +66,8 @@ const HEADING_DEFAULT_SIZE: Record<HeadingTag, TypographySize> = {
 
 type TypographyElement = "div" | "p" | "span" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
-/** Props for typography own. */
 type TypographyOwnProps = VariantProps<typeof typographyVariants>;
 
-/** Props for typography. */
 export type TypographyProps<T extends TypographyElement = "div"> = Omit<
   ComponentPropsWithRef<T>,
   keyof TypographyOwnProps | "as"

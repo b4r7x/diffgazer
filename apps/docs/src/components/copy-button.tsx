@@ -7,7 +7,6 @@ interface CopyButtonProps {
   className?: string;
   label?: string;
   title?: string;
-  successMessage?: string;
 }
 
 async function writeToClipboard(text: string): Promise<void> {
@@ -31,10 +30,10 @@ async function writeToClipboard(text: string): Promise<void> {
   }
 }
 
-export function CopyButton({ text, className, label, title, successMessage }: CopyButtonProps) {
+export function CopyButton({ text, className, label, title }: CopyButtonProps) {
   const { copied, copy } = useCopyToClipboard({
     write: writeToClipboard,
-    onCopy: () => toast.success(successMessage ?? "Copied to clipboard"),
+    onCopy: () => toast.success("Copied to clipboard"),
     onError: (error) => {
       if (import.meta.env.DEV) {
         console.error("CopyButton: failed to write to clipboard", error);

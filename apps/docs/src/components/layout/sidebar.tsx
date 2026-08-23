@@ -37,10 +37,6 @@ function sectionKey(title: string, items: PageTreeNode[]): string {
   return `${title}::${firstUrl ?? ""}`;
 }
 
-function formatSectionLabel(title: string): string {
-  return title.trim() || "Section";
-}
-
 function getSlug(path: string): string {
   return path.split("/").pop() ?? "";
 }
@@ -172,7 +168,7 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                   sectionHasActive ? "text-foreground" : "font-medium text-muted-foreground"
                 }
               >
-                {formatSectionLabel(section.title)}
+                {section.title.trim() || "Section"}
               </SidebarSectionTitle>
             ) : null}
 

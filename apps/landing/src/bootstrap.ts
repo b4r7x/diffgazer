@@ -38,10 +38,10 @@ function startMotion(
 
   let running = true;
   let active = true;
-  document.addEventListener(
+  doc.addEventListener(
     "visibilitychange",
     () => {
-      running = !document.hidden;
+      running = !doc.hidden;
     },
     { signal },
   );

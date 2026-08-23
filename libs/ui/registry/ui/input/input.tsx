@@ -5,10 +5,8 @@ import { cn } from "@/lib/utils";
 
 export { inputSizeClasses, inputVariants };
 
-/** Props for input variant. */
 export type InputVariantProps = VariantProps<typeof inputVariants>;
 
-/** Props for input. */
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
   /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLInputElement>;

@@ -6,7 +6,6 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { CalloutContext, type CalloutTone } from "./callout-context";
 
-/** Allowed callout frame values. */
 export type CalloutFrame = "inline" | "rail" | "bar";
 
 const TONE_LABEL: Record<CalloutTone, string> = {
@@ -49,7 +48,6 @@ function moveFocusOutsideCallout(root: HTMLElement): void {
   }
 }
 
-/** Props for callout. */
 export interface CalloutProps extends ComponentProps<"div"> {
   /** Content rendered inside the component. */
   children: ReactNode;

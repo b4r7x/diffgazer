@@ -4,7 +4,6 @@ import { createContext, useContext } from "react";
 import type { SelectableVariant } from "@/lib/selectable-variants";
 import type { CheckboxSize } from "./checkbox";
 
-/** Context value shared by checkbox group. */
 export type CheckboxGroupContextValue = {
   /** Controlled selected item values. */
   value: string[];

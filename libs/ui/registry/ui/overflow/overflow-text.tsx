@@ -20,7 +20,6 @@ function resolveTooltipContent(
   return children;
 }
 
-/** Props for overflow text. */
 export interface OverflowTextProps extends Omit<ComponentPropsWithRef<"div">, "children"> {
   /** String to clamp (text mode) or items to measure (items mode). */
   children: string;
@@ -57,9 +56,9 @@ type PassiveOverflowTriggerProps = Pick<
 >;
 
 interface OverflowTextContentProps extends Omit<ComponentPropsWithRef<"div">, "children"> {
-  /** String to clamp (text mode) or items to measure (items mode). */
+  /** The string being clamped. */
   children: string;
-  /** Text mode only. 1 truncates; 2+ uses CSS line-clamp. */
+  /** Resolved clamp count. 1 truncates; 2+ uses CSS line-clamp. */
   lines: number;
   /** Inline styles applied to the rendered element. */
   style: CSSProperties | undefined;
@@ -86,11 +85,10 @@ function OverflowTextContent({
   );
 }
 
-/** Props for overflow tooltip trigger. */
 interface OverflowTooltipTriggerProps extends PassiveOverflowTriggerProps {
   /** Ref for the container element. */
   containerRef: Ref<HTMLDivElement>;
-  /** Text mode only. 1 truncates; 2+ uses CSS line-clamp. */
+  /** Resolved clamp count. 1 truncates; 2+ uses CSS line-clamp. */
   lines: number;
   /** Additional class names merged onto the rendered element. */
   className?: string;
@@ -98,7 +96,7 @@ interface OverflowTooltipTriggerProps extends PassiveOverflowTriggerProps {
   style: CSSProperties | undefined;
   /** Props forwarded to the container element. */
   containerProps: Omit<ComponentPropsWithRef<"div">, "children">;
-  /** String to clamp (text mode) or items to measure (items mode). */
+  /** The string being clamped. */
   children: string;
 }
 
@@ -186,7 +184,7 @@ function mergeClampStyle(
 interface OverflowTooltipTextProps extends Omit<OverflowTextProps, "tooltip" | "style" | "lines"> {
   /** Tooltip content resolved from the public tooltip prop. */
   resolvedTooltip: ReactNode;
-  /** Text mode only. 1 truncates; 2+ uses CSS line-clamp. */
+  /** Resolved clamp count. 1 truncates; 2+ uses CSS line-clamp. */
   lines: number;
   /** Inline styles applied to the rendered element. */
   style: CSSProperties | undefined;

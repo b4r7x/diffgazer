@@ -39,7 +39,6 @@ function resolveHandle(
   return handles[axis] ?? "line";
 }
 
-/** Props for textarea. */
 export interface TextareaProps
   extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "size">,
     VariantProps<typeof inputVariants> {

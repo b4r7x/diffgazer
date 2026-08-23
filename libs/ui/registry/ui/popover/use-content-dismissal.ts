@@ -151,7 +151,7 @@ export function usePopoverContentDismissal({
     if (!ownerDocument || !trigger || !content) return;
 
     const handleFocusOut = (event: globalThis.FocusEvent) => {
-      const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+      const path = event.composedPath();
       const target = event.target;
       const View = ownerDocument.defaultView;
       const startedInPair =

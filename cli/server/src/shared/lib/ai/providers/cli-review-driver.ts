@@ -122,7 +122,7 @@ export async function buildCliCompatibilityTuple(
  * child run, and terminal parsing. Each step fails closed, releasing the
  * reservation and settling the receipt as a failed attempt.
  */
-export async function executeCliReview(
+async function executeCliReview(
   request: AdapterExecuteRequest,
   product: CliReviewProduct,
   dependencies: CliReviewDependencies = {},

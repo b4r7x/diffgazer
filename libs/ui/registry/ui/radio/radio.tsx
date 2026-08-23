@@ -31,7 +31,6 @@ import {
 } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
 
-/** Allowed radio size values. */
 export type RadioSize = SelectableSize;
 
 const RADIO_CHECK_EVENT = "diffgazer:radio-check";
@@ -56,7 +55,6 @@ function dispatchRadioCheck(source: HTMLElement, name: string) {
   );
 }
 
-/** Props for radio root. */
 type RadioRootProps = Omit<
   ComponentPropsWithRef<"div">,
   | "children"
@@ -74,7 +72,6 @@ type RadioRootProps = Omit<
   | "data-value"
 >;
 
-/** Props for radio. */
 export interface RadioProps extends RadioRootProps {
   /** Controlled checked state. */
   checked?: boolean;

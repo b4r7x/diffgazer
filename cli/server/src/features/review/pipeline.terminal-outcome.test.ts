@@ -358,12 +358,12 @@ describe("terminal adapter outcomes reach the review receipt", () => {
     });
 
     expect(finalized.ok).toBe(false);
-    const persisted = await reviews.getReview(reviewId);
+    const persisted = await reviews.getReviewDetail(reviewId);
     expect(persisted.ok).toBe(true);
     if (!persisted.ok) return;
-    expect(persisted.value.execution?.receipt.outcome).toBe("cancelled");
-    expect(persisted.value.execution?.receipt.usageAvailability).toBe("reported");
-    expect(persisted.value.metadata.durationMs).toBe(10);
+    expect(persisted.value.review.execution?.receipt.outcome).toBe("cancelled");
+    expect(persisted.value.review.execution?.receipt.usageAvailability).toBe("reported");
+    expect(persisted.value.review.metadata.durationMs).toBe(10);
     deleteSessionForTests(reviewId);
   });
 });

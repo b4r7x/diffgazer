@@ -5,7 +5,6 @@ import { PopoverRoot } from "../popover/popover";
 import { PopoverTrigger } from "../popover/popover-trigger";
 import { TooltipContent } from "./tooltip-content";
 
-/** Props for tooltip. */
 export interface TooltipProps {
   /** Trigger element (shorthand mode) or full Tooltip.Trigger/Tooltip.Content composition. */
   children: ReactNode;

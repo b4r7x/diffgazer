@@ -77,7 +77,7 @@ const config = defineConfig((): ViteUserConfig => {
           // Same budget as the other script-heavy workspaces (cli/add): the docs suite
           // includes artifact-build, route-tree, and link-checker tests that spawn
           // builds and read the shipped corpus. They run 1.5-3.2s alone but blow past
-          // 10s when `turbo run test` fans out across all 17 packages at once.
+          // 10s when `turbo run test` fans out across every workspace at once.
           testTimeout: 30_000,
         }
       : undefined,

@@ -1,4 +1,4 @@
-import { createHighlighterCore, type LanguageInput, type ThemedToken } from "shiki/core";
+import { createHighlighterCore, type ThemedToken } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import type { CodeBlockLine } from "./types.js";
 
@@ -7,7 +7,6 @@ export type HighlightLanguage = "tsx" | "typescript" | "css" | "bash" | "json" |
 export interface CreateHighlighterOptions {
   theme: Record<string, unknown>;
   themeName: string;
-  langs?: LanguageInput[];
 }
 
 export type DocsHighlighter = Awaited<ReturnType<typeof createHighlighterCore>>;
@@ -45,7 +44,7 @@ export async function createDocsHighlighter(
   return createHighlighterCore({
     engine: createJavaScriptRegexEngine(),
     themes: [options.theme],
-    langs: options.langs ?? defaultLangs,
+    langs: defaultLangs,
   });
 }
 

@@ -1,6 +1,5 @@
 import type { ComponentPropsWithRef } from "react";
 
-/** Props for toc. */
 export interface TocProps extends Omit<ComponentPropsWithRef<"nav">, "title"> {
   /** Heading text and accessible label for the nav landmark. */
   title?: string;

@@ -9,7 +9,6 @@ export interface KeyboardHint {
   label: string;
 }
 
-/** Props for dialog keyboard hints. */
 export interface DialogKeyboardHintsProps extends ComponentProps<"div"> {
   hints: KeyboardHint[];
   /** Size variant. */

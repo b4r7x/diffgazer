@@ -2,7 +2,6 @@
 
 import { createContext, useContext } from "react";
 
-/** Context value shared by sidebar section. */
 export interface SidebarSectionContextValue {
   /**
    * When true, Sidebar.SectionTitle becomes a disclosure toggle that expands/collapses the

@@ -86,7 +86,7 @@ function resolveLocalShadcnBin() {
   return null;
 }
 
-// F-235 regression: shadcn's destination resolver flattens no-target
+// Regression: shadcn's destination resolver flattens no-target
 // `registry:ui` files to their basename whenever the `ui` alias's trailing
 // path segment isn't literally "ui" (it keys off that segment, not the item
 // name), collapsing the whole sidebar tree into one directory so every
@@ -319,7 +319,7 @@ async function runSmoke() {
     });
     console.log("OK: solo button install type-checks and builds with auto-installed theme");
 
-    // F-235 regression: under a real `shadcn add`, the sidebar tree must preserve
+    // Regression: under a real `shadcn add`, the sidebar tree must preserve
     // its component subdirectories when the configured `ui` alias's trailing
     // segment is not literally "ui", so its cross-folder relative imports resolve
     // and the tree type-checks and builds.

@@ -78,9 +78,7 @@ describe("RegistryItemSchema shadcn-compatible fields", () => {
 // (registry-types.ts) plus a path-containment refinement on registry files.
 // The installer (CLI) schema is a public consumption contract and MUST reject
 // absolute and parent-escaping file paths before any path is resolved against a
-// consumer's project root. These tests lock that contract: a valid relative item
-// parses under both schemas, the CLI schema rejects unsafe paths, and the field
-// sets must not drift apart.
+// consumer's project root.
 describe("RegistryItemSchema base/CLI compatibility", () => {
   const validItem = {
     name: "example",

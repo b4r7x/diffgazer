@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { avatarVariants } from "./avatar";
 import { useAvatarGroupContext } from "./avatar-context";
 
-/** Props for avatar indicator. */
 export interface AvatarIndicatorProps
   extends Omit<ComponentProps<"span">, "role">,
     VariantProps<typeof avatarVariants> {

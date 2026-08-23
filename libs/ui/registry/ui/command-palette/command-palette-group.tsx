@@ -3,7 +3,6 @@
 import { type ComponentPropsWithRef, type ReactNode, useId } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for command palette group. */
 export interface CommandPaletteGroupProps
   extends Omit<ComponentPropsWithRef<"div">, "children" | "role" | "aria-labelledby"> {
   /** Group heading rendered above the items. */

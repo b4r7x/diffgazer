@@ -3,7 +3,6 @@
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for callout content. */
 export interface CalloutContentProps extends ComponentProps<"div"> {
   /** Body content for the callout. */
   children: ReactNode;

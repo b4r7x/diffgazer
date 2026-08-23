@@ -1,23 +1,16 @@
 import { err, ok, type Result } from "@diffgazer/core/result";
-import {
-  type ExecutionResult,
-  type ReviewResult,
-  ReviewResultSchema,
-} from "@diffgazer/core/schemas/review";
-import type { Adapter, AdapterExecuteRequest } from "../../types.js";
+import { type ReviewResult, ReviewResultSchema } from "@diffgazer/core/schemas/review";
+import type { Adapter } from "../../types.js";
 import {
   assertParserEventKindAllowlisted,
   assertParserFieldPathAllowlisted,
   type CliCompatibilityRecord,
-  type CliCompatibilityTuple,
 } from "../cli-compatibility/compat.js";
 import {
-  buildCliCompatibilityTuple,
   type CliReviewDependencies,
   type CliReviewProduct,
   type CliTerminalOutput,
   createCliReviewAdapter,
-  executeCliReview,
 } from "../cli-review-driver.js";
 import { type CopilotJsonlFailureCode, parseCopilotJsonlStream } from "./jsonl.js";
 
@@ -142,14 +135,6 @@ export function parseCopilotJsonlTerminal(
   return ok(parsed.data);
 }
 
-export async function buildCopilotCliCompatibilityTuple(
-  request: AdapterExecuteRequest,
-  executablePath: string,
-  version: string,
-): Promise<CliCompatibilityTuple> {
-  return buildCliCompatibilityTuple("copilot-cli", request, executablePath, version);
-}
-
 const COPILOT_CLI_PRODUCT: CliReviewProduct = {
   productId: "copilot-cli",
   tmpPrefix: "copilot-cli-fixture-",
@@ -162,13 +147,6 @@ const COPILOT_CLI_PRODUCT: CliReviewProduct = {
   parseTerminalOutput: (output: CliTerminalOutput, record) =>
     parseCopilotJsonlTerminal(output.stdout, record),
 };
-
-export function executeCopilotCliReview(
-  request: AdapterExecuteRequest,
-  dependencies: CliReviewDependencies = {},
-): Promise<ExecutionResult> {
-  return executeCliReview(request, COPILOT_CLI_PRODUCT, dependencies);
-}
 
 export function createCopilotCliAdapter(dependencies?: CliReviewDependencies): Adapter {
   return createCliReviewAdapter(COPILOT_CLI_PRODUCT, dependencies);

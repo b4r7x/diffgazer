@@ -16,10 +16,7 @@ import { canProceed } from "./can-proceed.js";
 import type { OnboardingDraft } from "./defaults.js";
 import { getPlanNotice } from "./setup-plan.js";
 
-export type SettingsPayload = Pick<
-  SettingsConfig,
-  "defaultLenses" | "agentExecution" | "providerConsent"
->;
+type SettingsPayload = Pick<SettingsConfig, "defaultLenses" | "agentExecution" | "providerConsent">;
 
 type CreateConfigurationAction = Extract<ClientConfigurationAction, { action: "create" }>;
 type SelectConfigurationAction = Extract<ClientConfigurationAction, { action: "select" }>;

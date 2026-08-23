@@ -43,7 +43,6 @@ export type {
   RadioGroupNavigationDirection,
 };
 
-/** Props for radio group root. */
 type RadioGroupRootProps = Omit<
   ComponentPropsWithRef<"div">,
   | "children"

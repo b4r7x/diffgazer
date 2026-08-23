@@ -143,13 +143,14 @@ export const toggleGroupDoc: ComponentDoc = {
         type: '"sm" | "md"',
         required: false,
         defaultValue: '"sm"',
-        description: "Item size token.",
+        description:
+          'Item density token. "sm" is 36px, rising to a 44px target on coarse pointers; "md" is always a 44px target.',
       },
       variant: {
         type: toggleGroupVariantType,
         required: false,
         defaultValue: '"default"',
-        description: "Visual style variant.",
+        description: "Item style: default outlines, bracket adds [ ], pill fills, underline rules.",
       },
       orientation: {
         type: '"horizontal" | "vertical"',

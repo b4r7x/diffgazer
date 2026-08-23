@@ -2,14 +2,12 @@
 
 import { useEffect, useState } from "react";
 
-/** Options for use spinner animation. */
 interface UseSpinnerAnimationOptions {
   totalFrames: number;
   /** Resolved frame interval in milliseconds. */
   speed: number;
 }
 
-/** Provides spinner animation behavior. */
 export function useSpinnerAnimation({ totalFrames, speed }: UseSpinnerAnimationOptions): number {
   const [frame, setFrame] = useState(0);
 

@@ -46,7 +46,7 @@ Use `it.each` to collapse parameterizable cases (different keys → same action)
 
 **Every retained `vi.mock(...)` SHOULD carry a `// Boundary mock: <why>` comment** naming the specific boundary. This is a repo convention for reviewers and future audits; it is not wired into an automated CI gate today.
 
-**Mocking internal modules (sibling files, app composition, hooks owned by the same app) is forbidden.** When a test needs to isolate a unit from its compositional dependencies, refactor the unit for dependency injection (the `apps/web/src/features/home/components/presentation.tsx` split is the reference).
+**Mocking internal modules (sibling files, app composition, hooks owned by the same app) should be avoided, not reached for by default.** When a test needs to isolate a unit from its compositional dependencies, prefer refactoring the unit for dependency injection (the `apps/web/src/features/home/components/presentation.tsx` split is the reference). An internal mock that is retained because the sibling is itself a thin wrapper over one of the boundaries above must carry the same `// Boundary mock: <why>` comment naming that boundary; an unannotated internal mock is a review finding.
 
 ### 5. `userEvent` over `fireEvent`
 
@@ -163,7 +163,7 @@ non-empty `ModelInfo[]` via `catalogToModelInfo` from the `@diffgazer/core/catal
 surface. It is part of the `smoke` chain.
 
 On every run it validates the bundled offline snapshot (`CATALOG_SNAPSHOT`) — the
-design D6 guarantee that the picker is never blank on first run/offline — so a bad
+guarantee that the picker is never blank on first run/offline — so a bad
 snapshot regenerate is caught even with no network. This makes
 `DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke` pass offline.
 

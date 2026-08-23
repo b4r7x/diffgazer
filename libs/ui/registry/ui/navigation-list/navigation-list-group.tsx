@@ -25,7 +25,6 @@ import {
   useNavigationListGroupPositionContext,
 } from "./navigation-list-group-context";
 
-/** Props for navigation list group. */
 export interface NavigationListGroupProps {
   /** Group header text. */
   label: string;

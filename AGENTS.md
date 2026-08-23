@@ -159,6 +159,7 @@ Source-verified against MDN, Docusaurus, fumadocs, shadcn/ui docs, and tanstack.
 
 - Do not commit deterministic generated data under `libs/ui/docs/generated`, `libs/keys/docs/generated`, `libs/keys/artifacts/artifacts`, or `cli/add/src/generated`.
 - Keep public registries under `libs/ui/public/r` and `libs/keys/public/r` committed; they are the reviewable registry contract.
+- `libs/core/src/catalog/catalog-snapshot.ts`, `model-derived.ts`, and `provider-derived.ts` are committed outputs of `libs/core/scripts/generate-catalog-snapshot.ts`. Do not hand-edit them; regenerate with `pnpm --filter @diffgazer/core generate:catalog-snapshot` (also run by `prepare:artifacts`, offline and deterministic without `MODELSDEV_SOURCE`), so a post-prepare diff in these files is expected, not a surprise.
 - Run `pnpm run prepare:artifacts` before artifact validation, docs sync, root type-check, root tests, or release checks when generated files are missing or stale.
 
 ## Verification Gates

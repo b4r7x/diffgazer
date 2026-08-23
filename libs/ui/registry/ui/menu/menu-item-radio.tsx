@@ -18,7 +18,6 @@ import { useMenuItemInteractions } from "./use-menu-item-interactions";
 const RADIO_SELECTED = "(*)";
 const RADIO_UNSELECTED = "( )";
 
-/** Props for menu item radio. */
 export interface MenuItemRadioProps
   extends Omit<
     ComponentPropsWithRef<"div">,

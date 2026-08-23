@@ -15,7 +15,6 @@ import { StepperContext } from "./stepper-context";
 import { useStepCollection } from "./use-step-collection";
 import { useStepperState } from "./use-stepper-state";
 
-/** Props for stepper. */
 export interface StepperProps extends Omit<ComponentProps<"ol">, "children"> {
   /** Controlled set of currently expanded step ids. */
   expandedIds?: string[];
@@ -98,7 +97,6 @@ export function Stepper({
   );
 }
 
-/** Props for stepper live region. */
 interface StepperLiveRegionProps {
   /** Accessible label text. */
   label: string | undefined;

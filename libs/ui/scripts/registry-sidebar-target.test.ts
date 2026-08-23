@@ -88,7 +88,7 @@ describe("sidebar public registry contract placement", () => {
     item.files.filter((file) => file.type !== "registry:style");
 
   it("ships every registry:ui file with an @ui/ subdir-preserving target", () => {
-    // F-235: shadcn flattens no-target `registry:ui` files to their basename when
+    // shadcn flattens no-target `registry:ui` files to their basename when
     // the `ui` alias's trailing segment isn't literally "ui", colliding `index.ts`
     // files and breaking cross-folder imports. Every shipped `registry:ui` file
     // must instead pin an `@ui/<path-after-registry/ui/>` target so shadcn resolves

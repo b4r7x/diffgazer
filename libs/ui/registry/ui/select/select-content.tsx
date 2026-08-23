@@ -58,7 +58,6 @@ function SelectDropdownInitializer({
   return null;
 }
 
-/** Props for select content. */
 export interface SelectContentProps {
   /** Content rendered inside the component. */
   children: ReactNode;

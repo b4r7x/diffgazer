@@ -48,20 +48,10 @@ function getSelectableCollectionItemByValue(
   value: string | null | undefined
 ): SelectableCollectionItem | null
 
-function getSelectableCollectionItemValue(
-  items: SelectableCollectionItem[],
-  value: string | null | undefined
-): string | null
-
 function resolveSelectableCollectionItem(
   items: SelectableCollectionItem[],
   ...values: Array<string | null | undefined>
 ): SelectableCollectionItem | null
-
-function resolveSelectableCollectionItemValue(
-  items: SelectableCollectionItem[],
-  ...values: Array<string | null | undefined>
-): string | null
 ```
 
 ---
@@ -72,7 +62,7 @@ function resolveSelectableCollectionItemValue(
 import { useRef } from "react"
 import {
   getEnabledSelectableCollectionItems,
-  resolveSelectableCollectionItemValue,
+  resolveSelectableCollectionItem,
   useSelectableCollection,
 } from "@/lib/selectable-collection"
 
@@ -88,11 +78,8 @@ function CustomPicker({
   const containerRef = useRef<HTMLDivElement>(null)
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef)
   const enabledItems = getEnabledSelectableCollectionItems(items, disabled)
-  const tabTargetValue = resolveSelectableCollectionItemValue(
-    enabledItems,
-    highlighted,
-    value,
-  )
+  const tabTargetValue =
+    resolveSelectableCollectionItem(enabledItems, highlighted, value)?.value ?? null
 
   return (
     <div ref={containerRef} data-tab-target={tabTargetValue ?? undefined}>

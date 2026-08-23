@@ -13,7 +13,6 @@ import {
 import { SelectEmpty } from "./select-empty";
 import { isSelectSearchElement, type SelectSearchProps } from "./select-search";
 
-/** Props for listbox. */
 type ListboxProps = {
   /** ID applied to the rendered element. */
   id: string;
@@ -35,7 +34,6 @@ type ListboxProps = {
   onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
 };
 
-/** Props for searchable listbox. */
 export type SearchableListboxProps = Omit<ListboxProps, "onKeyDown">;
 
 interface PartitionWrapperProps extends Record<string, unknown> {

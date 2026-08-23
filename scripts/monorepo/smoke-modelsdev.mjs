@@ -32,7 +32,7 @@ async function loadHostedLiveProbeRunner() {
   }
 }
 
-// design D6: the diffgazer binary is tsup-bundled with `noExternal`, so the
+// The diffgazer binary is tsup-bundled with `noExternal`, so the
 // CATALOG_SNAPSHOT must be INLINED into the emitted bundle (not loaded from a
 // runtime fs json). The evidence is a model id/name pair derived from the
 // snapshot and absent from the separately bundled overlays.
@@ -97,9 +97,9 @@ async function run() {
       ? await loadHostedLiveProbeRunner()
       : null;
 
-  // The bundled snapshot is the always-available offline guarantee (design D6:
-  // the picker must never be blank on first run/offline). Validate it on every
-  // run so a bad snapshot regenerate is caught even without network.
+  // The bundled snapshot is the always-available offline guarantee: the picker
+  // must never be blank on first run/offline. Validate it on every run so a bad
+  // snapshot regenerate is caught even without network.
   for (const line of assertCatalogProviders(
     CATALOG_SNAPSHOT,
     enabledProviders,

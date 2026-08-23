@@ -15,7 +15,6 @@ interface UseSelectTypeaheadOptions {
   setHighlighted: (value: string) => void;
 }
 
-/** Provides select typeahead behavior. */
 export function useSelectTypeahead({
   readTypeaheadQuery,
   options,

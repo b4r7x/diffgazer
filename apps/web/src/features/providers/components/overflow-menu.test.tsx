@@ -7,9 +7,9 @@ import {
 } from "@diffgazer/core/testing/provider-fixtures";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { ProviderOverflowMenu, type ProviderOverflowMenuProps } from "./overflow-menu";
+import { ProviderOverflowMenu } from "./overflow-menu";
 
 function findRow(configurationId: string, rows = buildProviderRows()): ProviderListRow {
   const row = rows.find(
@@ -25,7 +25,10 @@ const NO_MODEL_ROW = findRow(
   buildProviderRows([configurationStatus(ZAI_CONFIGURATION, "model-missing")]),
 );
 
-type HarnessProps = Pick<ProviderOverflowMenuProps, "onAction" | "highlighted"> & {
+type HarnessProps = Pick<
+  ComponentProps<typeof ProviderOverflowMenu>,
+  "onAction" | "highlighted"
+> & {
   row: ProviderListRow;
 };
 

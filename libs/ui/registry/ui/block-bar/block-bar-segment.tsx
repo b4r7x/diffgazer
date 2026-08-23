@@ -23,10 +23,8 @@ const segmentVariants = cva("", {
   defaultVariants: { variant: "default" },
 });
 
-/** Allowed segment variant values. */
 export type SegmentVariant = NonNullable<VariantProps<typeof segmentVariants>["variant"]>;
 
-/** Props for block bar segment. */
 export interface BlockBarSegmentProps
   extends VariantProps<typeof segmentVariants>,
     Omit<ComponentProps<"span">, "children"> {

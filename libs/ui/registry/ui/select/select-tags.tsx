@@ -15,7 +15,6 @@ const selectTagsPlaceholderVariants = cva("", {
   defaultVariants: { variant: "default" },
 });
 
-/** Props for select tags. */
 export interface SelectTagsProps {
   /** String rendered when nothing is selected. Only available in multi-select mode. */
   placeholder?: string;

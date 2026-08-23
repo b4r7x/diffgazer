@@ -1,6 +1,7 @@
 import { existsSync, lstatSync, readdirSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { normalizeRegistryPath, type RegistryItem } from "./fs.js";
+import { normalizeRegistryPath } from "./fs.js";
+import type { RegistryItem } from "./types.js";
 
 const PRODUCTION_ROOTS = ["registry/ui", "registry/hooks", "registry/lib"] as const;
 const EXCLUDED_DIRECTORIES = new Set([

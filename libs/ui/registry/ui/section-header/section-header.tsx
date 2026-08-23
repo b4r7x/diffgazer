@@ -30,7 +30,6 @@ export const sectionHeaderVariants = cva("uppercase", {
   defaultVariants: { variant: "default", bordered: false, as: "h3" },
 });
 
-/** Props for section header. */
 export interface SectionHeaderProps
   extends ComponentProps<"h2">,
     VariantProps<typeof sectionHeaderVariants> {

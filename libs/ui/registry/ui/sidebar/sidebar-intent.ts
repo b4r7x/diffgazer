@@ -1,5 +1,4 @@
 // Color is decoration (WCAG 1.4.1) — consumers must pair intent with a glyph or text cue.
-/** Allowed sidebar intent values. */
 export type SidebarIntent = "neutral" | "info" | "success" | "warning" | "danger" | "accent";
 
 const INTENT_DICTIONARY: Record<string, SidebarIntent> = {

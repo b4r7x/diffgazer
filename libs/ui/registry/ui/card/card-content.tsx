@@ -1,7 +1,6 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for card content. */
 export type CardContentProps = ComponentPropsWithRef<"div">;
 
 /** Body content region. */

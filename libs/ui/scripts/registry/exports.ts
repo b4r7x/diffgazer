@@ -1,11 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
-import type { RegistryItem } from "./fs.js";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
+import { isRecord } from "./fs.js";
+import type { RegistryItem } from "./types.js";
 
 export function validatePublicExportShape(
   exportsMap: Record<string, unknown>,
@@ -50,24 +47,17 @@ function countProps(propsTable: Record<string, Record<string, unknown>>): number
   return Object.values(propsTable).reduce((sum, group) => sum + Object.keys(group).length, 0);
 }
 
-export function validatePublicComponentProps(
-  root: string,
-  items: RegistryItem[],
-  options?: { requireGeneratedDocs?: boolean },
-): string[] {
+export function validatePublicComponentProps(root: string, items: RegistryItem[]): string[] {
   const errors: string[] = [];
-  const requireGeneratedDocs = options?.requireGeneratedDocs === true;
 
   for (const item of items) {
     if (item.type !== REGISTRY_ITEM_TYPE.ui || item.meta?.hidden) continue;
 
     const dataPath = resolve(root, "docs/generated/components", `${item.name}.json`);
     if (!existsSync(dataPath)) {
-      if (requireGeneratedDocs) {
-        errors.push(
-          `${item.name}: missing generated docs at docs/generated/components/${item.name}.json. Run pnpm build:docs-data before validate:registry:docs.`,
-        );
-      }
+      errors.push(
+        `${item.name}: missing generated docs at docs/generated/components/${item.name}.json. Run pnpm build:docs-data before validate:registry:docs.`,
+      );
       continue;
     }
 

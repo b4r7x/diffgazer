@@ -178,8 +178,6 @@ export function OnboardingWizard() {
           </div>
         );
       }
-      default:
-        return null;
     }
   };
 

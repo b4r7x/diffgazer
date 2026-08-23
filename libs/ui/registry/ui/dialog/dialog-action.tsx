@@ -4,7 +4,6 @@ import type { FocusEventHandler, MouseEventHandler, ReactNode, Ref } from "react
 import { Button, type ButtonProps } from "../button/button";
 import { useDialogDismiss } from "./dialog-context";
 
-/** Props for dialog action. */
 export interface DialogActionProps
   extends Pick<
     ButtonProps,
@@ -17,7 +16,7 @@ export interface DialogActionProps
    * validation).
    */
   onClick?: MouseEventHandler<HTMLButtonElement>;
-  /** Called when focus occurs. */
+  /** Forwarded to the underlying button; the dialog adds no focus handling of its own. */
   onFocus?: FocusEventHandler<HTMLButtonElement>;
   /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLButtonElement>;

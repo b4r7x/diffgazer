@@ -41,11 +41,11 @@ function isHookDoc(value: object): value is HookDoc {
 
 export function createHookDocLoader(
   docsDir: string,
-  fileNameTransform?: (hookName: string) => string,
+  fileNameTransform: (hookName: string) => string,
 ): (hookName: string) => Promise<HookDoc | null> {
   const resolvedDocsDir = resolve(docsDir);
   return async (hookName: string): Promise<HookDoc | null> => {
-    const fileName = fileNameTransform ? fileNameTransform(hookName) : hookName;
+    const fileName = fileNameTransform(hookName);
     try {
       assertSafeRelativeFileName(fileName);
     } catch (err) {

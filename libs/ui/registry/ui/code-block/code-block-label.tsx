@@ -3,7 +3,6 @@
 import { type ComponentProps, useId, useLayoutEffect } from "react";
 import { useRequiredCodeBlockContext } from "./code-block-context";
 
-/** Props for code block label. */
 export type CodeBlockLabelProps = ComponentProps<"span">;
 
 /** Filename label, wired to figure's accessible name. */

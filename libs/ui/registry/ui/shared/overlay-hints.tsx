@@ -4,7 +4,6 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Kbd } from "../kbd/kbd";
 
-/** Props for overlay hints item. */
 export interface OverlayHintsItemProps extends Omit<ComponentProps<"span">, "children"> {
   /** Key names rendered as Kbd chips, in press order. */
   keys: string[];
@@ -45,7 +44,6 @@ function OverlayHintsItem({
   );
 }
 
-/** Props for overlay hints. */
 export interface OverlayHintsProps extends ComponentProps<"div"> {
   /** OverlayHints.Item children. */
   children: ReactNode;

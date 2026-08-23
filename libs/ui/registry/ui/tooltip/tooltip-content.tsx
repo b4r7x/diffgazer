@@ -3,7 +3,6 @@
 import { cn } from "@/lib/utils";
 import { PopoverContent, type PopoverContentProps } from "../popover/popover-content";
 
-/** Props for tooltip content. */
 export interface TooltipContentProps extends Omit<PopoverContentProps, "autoFocus" | "role"> {}
 
 /** Portal-rendered positioned content. */

@@ -110,14 +110,6 @@ export function getSelectableCollectionItemByValue(
   return items.find((item) => item.value === value && !item.disabled) ?? null;
 }
 
-/** Resolves a value only when it belongs to an enabled registered item. */
-export function getSelectableCollectionItemValue(
-  items: SelectableCollectionItem[],
-  value: string | null | undefined,
-): string | null {
-  return getSelectableCollectionItemByValue(items, value)?.value ?? null;
-}
-
 /** Resolves the first enabled registered item from preferred values, then falls back to the first enabled item. */
 export function resolveSelectableCollectionItem(
   items: SelectableCollectionItem[],
@@ -131,14 +123,6 @@ export function resolveSelectableCollectionItem(
   }
 
   return enabledItems[0] ?? null;
-}
-
-/** Resolves the public value for the first enabled registered item from preferred values. */
-export function resolveSelectableCollectionItemValue(
-  items: SelectableCollectionItem[],
-  ...values: Array<string | null | undefined>
-): string | null {
-  return resolveSelectableCollectionItem(items, ...values)?.value ?? null;
 }
 
 interface SelectableCollectionState {

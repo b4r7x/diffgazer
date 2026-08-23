@@ -15,7 +15,7 @@ const NOOP: Cursor = { draw: () => {}, cleanup: () => {} };
  * are inert otherwise (touch, reduced motion), leaving the native cursor.
  */
 export function initCursor(
-  root: ParentNode,
+  root: Document,
   flags: Flags,
   mouse: Mouse,
   signal?: AbortSignal,
@@ -60,10 +60,10 @@ export function initCursor(
   const reticle = root.querySelector<HTMLElement>("#reticle");
   if (!reticle) return { ...NOOP, cleanup: scope.cleanup };
 
-  document.documentElement.classList.add("reticle-on");
+  root.documentElement.classList.add("reticle-on");
   reticle.classList.add("on");
   scope.addCleanup(() => {
-    document.documentElement.classList.remove("reticle-on");
+    root.documentElement.classList.remove("reticle-on");
     reticle.classList.remove("on", "lock");
   });
 

@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useAccordionItemContext } from "./accordion-context";
 
-/** Props for accordion content. */
 export interface AccordionContentProps {
   /** Collapsible body content. */
   children: ReactNode;

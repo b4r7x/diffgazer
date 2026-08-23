@@ -1,4 +1,5 @@
 import { cleanup, render } from "ink-testing-library";
+import { useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { flush } from "../../testing/flush";
 import { CliThemeProvider } from "../../theme/provider";
@@ -12,14 +13,39 @@ const ARROW_UP = "\u001b[A";
 const ARROW_DOWN = "\u001b[B";
 const SPACE = " ";
 
-function renderGroup(props: Partial<Parameters<typeof CheckboxGroup>[0]> = {}) {
+function Harness({
+  onChange,
+  onHighlightChange,
+  disabled,
+}: {
+  onChange?: (value: string[]) => void;
+  onHighlightChange?: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const [value, setValue] = useState<string[]>([]);
+
+  return (
+    <CheckboxGroup
+      isActive
+      value={value}
+      onChange={(next) => {
+        setValue(next);
+        onChange?.(next);
+      }}
+      onHighlightChange={onHighlightChange}
+      disabled={disabled}
+    >
+      <CheckboxGroup.Item value="a" label="Alpha" />
+      <CheckboxGroup.Item value="b" label="Bravo" disabled />
+      <CheckboxGroup.Item value="c" label="Charlie" />
+    </CheckboxGroup>
+  );
+}
+
+function renderGroup(props: Parameters<typeof Harness>[0] = {}) {
   return render(
     <CliThemeProvider initialTheme="dark">
-      <CheckboxGroup isActive {...props}>
-        <CheckboxGroup.Item value="a" label="Alpha" />
-        <CheckboxGroup.Item value="b" label="Bravo" disabled />
-        <CheckboxGroup.Item value="c" label="Charlie" />
-      </CheckboxGroup>
+      <Harness {...props} />
     </CliThemeProvider>,
   );
 }

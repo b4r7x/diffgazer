@@ -122,7 +122,7 @@ async function readDetailed(id: string): Promise<Result<DetailedReviewRead, Stor
   }
 
   // Salvage older immutable reviews the strict write-side schema rejects so they
-  // remain readable through review and history views (F-446).
+  // remain readable through review and history views.
   const salvaged = lenientReadSavedReview(parseResult.value);
   if (salvaged !== null) {
     return ok({

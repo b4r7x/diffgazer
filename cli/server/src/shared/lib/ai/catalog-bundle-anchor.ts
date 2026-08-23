@@ -1,8 +1,8 @@
 import { CATALOG_SNAPSHOT } from "@diffgazer/core/catalog";
 
 /**
- * Retain the offline models.dev snapshot in the packaged diffgazer bundle
- * (design D6). Called from createApp so tsup cannot tree-shake the snapshot.
+ * Retain the offline models.dev snapshot in the packaged diffgazer bundle.
+ * Called from createApp so tsup cannot tree-shake the snapshot.
  */
 export function bundledCatalogSnapshotSize(): number {
   let count = 0;

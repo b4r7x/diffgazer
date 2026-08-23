@@ -1,6 +1,5 @@
 import { cva } from "class-variance-authority";
 
-/** Allowed item state values. */
 export type ItemState = "normal" | "focused" | "selected" | "disabled" | "disabledFocused";
 
 export function getItemState(options: {

@@ -7,9 +7,7 @@ import { SNAKE_FRAME_COUNT, SnakeGrid, type SpinnerSize } from "./spinner-snake-
 import { useSpinnerAnimation } from "./use-animation";
 
 export type { SpinnerSize } from "./spinner-snake-grid";
-/** Allowed spinner variant values. */
 export type SpinnerVariant = "snake" | "braille" | "dots" | "pulse";
-/** Allowed spinner label position values. */
 export type SpinnerLabelPosition = "right" | "left" | "top" | "bottom";
 export type SpinnerGap = "none" | "sm" | "md" | "lg";
 
@@ -24,7 +22,6 @@ const VARIANT_CONFIG: Record<SpinnerVariant, { frames: number; speed: number }> 
   pulse: { frames: PULSE_FRAMES.length, speed: 80 },
 };
 
-/** Class variants for spinner. */
 export const spinnerVariants = cva("inline-flex items-center font-mono", {
   variants: {
     size: {
@@ -48,7 +45,6 @@ export const spinnerVariants = cva("inline-flex items-center font-mono", {
   defaultVariants: { size: "md", labelPosition: "right", gap: "md" },
 });
 
-/** Props for spinner. */
 export interface SpinnerProps extends ComponentProps<"span">, VariantProps<typeof spinnerVariants> {
   /**
    * Animation style. Snake renders a 3x3 pixel grid; braille, dots, and pulse render text glyph

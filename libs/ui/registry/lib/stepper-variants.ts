@@ -60,14 +60,12 @@ export const stepperIndicatorVariants = cva(
       // Completed reads --primary, not --success: progress is a neutral control state, and the
       // status palette stays reserved for meaning (error keeps --error). --primary is monochrome
       // in both themes, so completed steps look the same in dark and light.
-      // ASCII — color the glyph by state.
       { variant: "ascii", status: "completed", className: "text-primary" },
       { variant: "ascii", status: "active", className: "text-foreground" },
       { variant: "ascii", status: "error", className: "text-error" },
       { variant: "ascii", status: "skipped", className: "text-muted-foreground opacity-60" },
       { variant: "ascii", status: "disabled", className: "text-muted-foreground opacity-40" },
 
-      // Numbered — invert active, fill completed/error, dashed skipped, dim disabled.
       {
         variant: "numbered",
         status: "completed",
@@ -86,14 +84,12 @@ export const stepperIndicatorVariants = cva(
       { variant: "numbered", status: "skipped", className: "border-dashed" },
       { variant: "numbered", status: "disabled", className: "opacity-40" },
 
-      // Bullet — single glyph color swap.
       { variant: "bullet", status: "completed", className: "text-primary" },
       { variant: "bullet", status: "active", className: "text-foreground" },
       { variant: "bullet", status: "error", className: "text-error" },
       { variant: "bullet", status: "skipped", className: "text-muted-foreground opacity-60" },
       { variant: "bullet", status: "disabled", className: "text-muted-foreground opacity-40" },
 
-      // Tag — color the border + label, invert active with bg-foreground.
       {
         variant: "tag",
         status: "completed",
@@ -116,7 +112,6 @@ export const stepperIndicatorVariants = cva(
       },
       { variant: "tag", status: "disabled", className: "opacity-40" },
 
-      // Progress — Unicode block bar color swap.
       { variant: "progress", status: "completed", className: "text-primary" },
       { variant: "progress", status: "active", className: "text-foreground" },
       { variant: "progress", status: "error", className: "text-error" },

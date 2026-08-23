@@ -20,7 +20,6 @@ import {
   serializeConfigV2,
 } from "../persistence/config.js";
 import {
-  literalSecretPath as canonicalLiteralSecretPath,
   decodeSecretsV1,
   decodeSecretsV2,
   SECRETS_SCHEMA_VERSION_V2,
@@ -92,8 +91,6 @@ const isDefiniteV1MigrationFailure = (cause: unknown, configBytes: Uint8Array | 
     return false;
   }
 };
-
-export const literalSecretPath = canonicalLiteralSecretPath;
 
 export const evidenceReferenceFor = (configurationId: string): string =>
   `evidence-${configurationId}`;

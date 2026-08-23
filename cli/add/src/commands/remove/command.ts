@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { computeIntegrity } from "@diffgazer/registry";
 import { createRemoveCommand, findOrphanedNpmDeps } from "@diffgazer/registry/cli";
 import {
-  adoptLegacyManifestLedger,
   ctx,
   type DiffgazerAddConfig,
   type ManifestItem,
@@ -75,9 +74,9 @@ function createRemoveCommandState(cwd: string): RemoveCommandState {
   return {
     // Rewritten from the parsed file, not the validated config, so unknown nested
     // config content survives the removal write untouched.
-    capturedConfig: adoptLegacyManifestLedger(loaded.raw) as DiffgazerAddConfig,
+    capturedConfig: loaded.raw as DiffgazerAddConfig,
     // The lock compares this against a re-read of the file, so it snapshots the
-    // file as it is on disk, before the ledger key is decoded.
+    // file exactly as it is on disk.
     configSnapshot: serializeConfigSnapshot(loaded.raw),
     resolvedConfig,
     manifest,

@@ -19,9 +19,7 @@ async function loadComponentSource(
   library: DocsLibraryId,
   name: string,
 ): Promise<SourceViewerContent> {
-  const component = await loadDocSourceData(library, "components", name, {
-    throwIfMissing: true,
-  });
+  const component = await loadDocSourceData(library, "components", name);
   if (!component) throw new Error(`Missing component source: ${library}/${name}`);
 
   return {
@@ -35,7 +33,7 @@ async function loadComponentSource(
 }
 
 async function loadHookSource(library: DocsLibraryId, name: string): Promise<SourceViewerContent> {
-  const hook = await loadDocSourceData(library, "hooks", name, { throwIfMissing: true });
+  const hook = await loadDocSourceData(library, "hooks", name);
   if (!hook) throw new Error(`Missing hook source: ${library}/${name}`);
 
   const files = hookSourceFiles(name, hook);

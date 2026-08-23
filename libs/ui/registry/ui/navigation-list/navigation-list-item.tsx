@@ -78,7 +78,6 @@ const treeRowVariants = cva("flex-1 flex items-center rounded-sm", {
       false: "",
     },
   },
-  // Disabled rows drop every hover affordance so they never invite a click.
   compoundVariants: [{ active: false, disabled: false, className: "hover:bg-secondary" }],
   defaultVariants: { active: false, selected: false, disabled: false },
 });
@@ -96,7 +95,6 @@ const contentVariants = cva("flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap
   },
 });
 
-/** Allowed density values. */
 type Density = NonNullable<VariantProps<typeof contentVariants>["density"]>;
 
 function hasChildOfType(children: ReactNode, childType: ElementType): boolean {
@@ -116,7 +114,6 @@ function hasStandaloneSubtitle(children: ReactNode): boolean {
   });
 }
 
-/** Props for navigation list item. */
 export interface NavigationListItemProps
   extends Omit<
     ComponentPropsWithRef<"div">,
@@ -192,8 +189,8 @@ export function NavigationListItem({
 
   let indicatorColorClass = disabled ? "bg-transparent" : "bg-transparent group-hover:bg-muted";
   if (isActive) {
-    // One inverted-row indicator colour. The old half-opacity `bar` branch made
-    // the same mark mean two things depending on the indicator width.
+    // One inverted-row indicator colour regardless of indicator width, so the mark never means
+    // two things.
     indicatorColorClass = "bg-primary-foreground";
   } else if (showsSelectedMarker) {
     indicatorColorClass = "bg-accent";

@@ -25,7 +25,7 @@ export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
             <span className="text-foreground">RO</span>
           </Panel.Header>
           <Panel.Content spacing="none">
-            {/* Decorative only: `inert` removes the mock Menu from keyboard/AT reach (F-233). */}
+            {/* Decorative only: `inert` removes the mock Menu from keyboard/AT reach. */}
             <div inert>
               <Menu selectedId="selected" onSelect={() => {}}>
                 <MenuItem id="normal">Normal Item</MenuItem>

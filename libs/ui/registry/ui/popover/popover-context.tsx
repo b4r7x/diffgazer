@@ -5,7 +5,6 @@ import { createContext, type RefObject, useContext } from "react";
 export type PopoverTriggerMode = "click" | "hover";
 export type PopoverPopupRole = "dialog" | "menu" | "listbox" | "tree" | "grid";
 
-/** Context value shared by popover. */
 export interface PopoverContextValue {
   /** Controlled open state. Pair with onOpenChange. */
   open: boolean;
@@ -19,23 +18,15 @@ export interface PopoverContextValue {
   popupRole?: PopoverPopupRole;
   /** Fired when the open state changes. */
   onOpenChange: (open: boolean) => void;
-  /** Called when trigger enter occurs. */
   onTriggerEnter: () => void;
-  /** Called when trigger focus occurs. */
   onTriggerFocus: () => void;
-  /** Called when pointer leaves the trigger. */
   onTriggerLeave: () => void;
-  /** Called when focus leaves the trigger. */
   onTriggerBlur: () => void;
-  /** Called when trigger click occurs. */
   onTriggerClick: () => void;
-  /** Called when trigger pointer down occurs. */
   onTriggerPointerDown: () => void;
   /** Suppresses immediate focus-open after dismissal. */
   markDismissed: () => void;
-  /** Called when content enter occurs. */
   onContentEnter: () => void;
-  /** Called when content leave occurs. */
   onContentLeave: () => void;
   /** When false, the popover never opens and trigger handlers are no-ops. */
   enabled: boolean;

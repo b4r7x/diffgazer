@@ -17,7 +17,6 @@ import {
   type DiffgazerAddConfig,
   DiffgazerAddConfigSchema,
   getRegistry,
-  LEGACY_MANIFEST_KEY,
   resolveConfig,
   VERSION,
 } from "../context.js";
@@ -342,8 +341,7 @@ function recoverInstalledItemsLedger(
   }
 
   const record = parsed as Record<string, unknown>;
-  const raw =
-    record.installedItems === undefined ? record[LEGACY_MANIFEST_KEY] : record.installedItems;
+  const raw = record.installedItems;
   if (raw === undefined) {
     return undefined;
   }

@@ -11,17 +11,15 @@ import {
   useMemo,
   useState,
 } from "react";
+import { mergeIds } from "@/lib/aria";
 import { PanelContext, type PanelContextValue } from "./panel-context";
 import { PanelDescription } from "./panel-description";
 import { PanelTitle } from "./panel-title";
 
 export type PanelElement = "div" | "article" | "section" | "aside";
 
-/** Allowed panel frame values. */
 export type PanelFrame = "hairline" | "rail" | "viewfinder" | "surface";
-/** Allowed panel tone values. */
 export type PanelTone = "info" | "success" | "warning" | "error" | "accent";
-/** Allowed panel density values. */
 export type PanelDensity = "default" | "compact";
 
 interface PanelOwnProps {
@@ -46,7 +44,6 @@ interface PanelOwnProps {
   focused?: boolean;
 }
 
-/** Props for panel. */
 export type PanelProps<T extends PanelElement = "div"> = Omit<
   ComponentPropsWithRef<T>,
   keyof PanelOwnProps | "as"
@@ -131,7 +128,7 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
     titleId: resolvedTitleId ?? titleId,
     hasRenderableTitle: resolvedTitleId !== null,
   });
-  const resolvedAriaDescribedBy = mergeAriaIds(ariaDescribedBy, resolvedDescriptionId);
+  const resolvedAriaDescribedBy = mergeIds(ariaDescribedBy, resolvedDescriptionId ?? undefined);
 
   return (
     <PanelContext value={contextValue}>
@@ -185,12 +182,6 @@ function findPanelChildId(
     if (nested !== null) return nested;
   }
   return null;
-}
-
-function mergeAriaIds(external: string | undefined, ownId: string | null): string | undefined {
-  const externalId = isNonEmptyString(external) ? external : undefined;
-  if (externalId && ownId) return `${externalId} ${ownId}`;
-  return externalId ?? ownId ?? undefined;
 }
 
 function resolvePanelAccessibleName({

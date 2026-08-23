@@ -1,12 +1,9 @@
-import { readFileSync } from "node:fs";
 import { isDeepStrictEqual } from "node:util";
 import { scanJsonRejectingDuplicateKeys } from "@diffgazer/core/json";
 import { z } from "zod";
-import { getGlobalSecretsPath } from "../../paths.js";
 import { type SecretBinding, SecretBindingSchema } from "../secret-bindings.js";
 import { type SecretsState, V1_MIGRATION_FAILED_MESSAGE } from "../types.js";
 import { scanJsonObjectProperties, splitJsonArrayElements } from "./config.js";
-import { literalCredentialFilePath } from "./credential-file-path.js";
 
 export const SECRETS_SCHEMA_VERSION_V2 = 2 as const;
 
@@ -273,21 +270,6 @@ const RawSecretsContainerSchema = z
     providers: z.record(z.string(), z.unknown()).optional(),
   })
   .strict();
-
-export const literalSecretPath = literalCredentialFilePath;
-
-export const loadSecretsV2 = (): SecretsDocumentV2 => {
-  let bytes: Uint8Array;
-  try {
-    bytes = new Uint8Array(readFileSync(getGlobalSecretsPath()));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return { schemaVersion: SECRETS_SCHEMA_VERSION_V2, bindings: [] };
-    }
-    throw error;
-  }
-  return decodeSecretsV2(bytes);
-};
 
 const parseSecretsContainer = (stored: z.infer<typeof RawSecretsContainerSchema>): SecretsState => {
   const storedProviders = stored.providers ?? {};

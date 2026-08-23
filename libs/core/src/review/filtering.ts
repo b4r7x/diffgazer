@@ -10,7 +10,6 @@ export function filterIssuesBySeverity(
   return issues.filter((issue) => severityFilter.has(issue.severity));
 }
 
-/** Toggles a severity in the active filter set, returning a new set. */
 export function toggleSeverity(
   filter: ReadonlySet<ReviewSeverity>,
   severity: ReviewSeverity,

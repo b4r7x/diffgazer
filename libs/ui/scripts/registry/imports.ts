@@ -4,10 +4,10 @@ import { parseKeysDependencyRef } from "@diffgazer/registry/schemas";
 import {
   extractLocalImports,
   normalizeRegistryPath,
-  type RegistryItem,
   readSourceFile,
   resolveImportToRegistryPath,
 } from "./fs.js";
+import type { RegistryItem } from "./types.js";
 
 function itemNamesByFile(items: RegistryItem[]): Map<string, string> {
   const namesByFile = new Map<string, string>();

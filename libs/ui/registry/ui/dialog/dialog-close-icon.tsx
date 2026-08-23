@@ -5,7 +5,6 @@ import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 import { useDialogDismiss } from "./dialog-context";
 
-/** Props for dialog close icon. */
 export interface DialogCloseIconProps
   extends Omit<ComponentProps<"button">, "type" | "children" | "aria-label" | "ref"> {
   /** Ref forwarded to the underlying element. */

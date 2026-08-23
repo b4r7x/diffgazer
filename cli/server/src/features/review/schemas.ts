@@ -35,7 +35,7 @@ export const ReviewListQuerySchema = z.object({
 // rejects absolute paths, drive letters, `..` segments, and NUL before values
 // reach `git diff -- <pathspecs>`. The git feature needs no equivalent guard
 // because GitDiffModeSchema excludes "files" mode, so it never takes pathspecs.
-// Non-ASCII is allowed because decoded git paths (F-090/F-013) are unicode.
+// Non-ASCII is allowed because decoded git paths are unicode.
 const RepoRelativePathSchema = z
   .string()
   .min(1)

@@ -5,7 +5,6 @@ import type { ComponentPropsWithRef, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { type KeyValueLayout, type KeyValueVariant, useKeyValueContext } from "./key-value-context";
 
-/** Props for key value item. */
 export interface KeyValueItemProps extends Omit<ComponentPropsWithRef<"dt">, "children"> {
   /** Label content rendered in a <dt>. */
   label: ReactNode;
@@ -24,7 +23,6 @@ export interface KeyValueItemProps extends Omit<ComponentPropsWithRef<"dt">, "ch
   valueClassName?: string;
 }
 
-/** Class variants for label. */
 export const keyValueLabelVariants = cva("text-muted-foreground", {
   variants: {
     bordered: {
@@ -52,7 +50,6 @@ export const keyValueLabelVariants = cva("text-muted-foreground", {
   defaultVariants: { bordered: false, layout: "horizontal" },
 });
 
-/** Class variants for value. */
 export const keyValueValueVariants = cva("", {
   variants: {
     variant: {

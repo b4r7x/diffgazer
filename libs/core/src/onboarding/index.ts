@@ -10,7 +10,6 @@ export {
   buildConfigPayload,
   buildSettingsPayload,
   type SaveWizardCallbacks,
-  type SettingsPayload,
 } from "./save-wizard.js";
 export {
   buildSetupPlan,

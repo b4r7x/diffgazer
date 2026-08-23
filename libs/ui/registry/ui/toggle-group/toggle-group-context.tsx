@@ -5,7 +5,6 @@ import type { SegmentedSize, SegmentedVariant } from "@/lib/segmented-variants";
 
 export type ToggleGroupSelectionMode = "single" | "multiple";
 
-/** Context value shared by toggle group. */
 export interface ToggleGroupContextValue {
   /** Returns whether the given item value is selected. */
   isItemSelected: (value: string) => boolean;
@@ -22,7 +21,6 @@ export interface ToggleGroupContextValue {
   highlightedValue: string | null;
   usesButtonSemantics: boolean;
   tabTargetValue: string | null;
-  /** Registers item with toggle group. */
   registerItem: (
     itemId: string,
     value: string,

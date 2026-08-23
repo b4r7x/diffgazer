@@ -3,7 +3,6 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for sidebar item label. */
 export interface SidebarItemLabelProps extends ComponentProps<"span"> {}
 
 // Hidden in rail mode so items collapse to icon-only rows. The accessible name

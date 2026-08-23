@@ -14,7 +14,6 @@ export interface ConfigDocumentV2 {
   readonly configurations: readonly DecodedProviderConfigurationRecord[];
   /** Present for an unmodified decode so a byte-identical round trip is possible. */
   readonly rawBytes?: Uint8Array;
-  readonly rawSettingsBytes?: Uint8Array;
 }
 
 /** A V1 provider entry is only executable after an explicit migration step. */

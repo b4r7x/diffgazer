@@ -2,18 +2,18 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { extractImportSpecifiers, listPublicRegistryEntries } from "@diffgazer/registry";
 import { hasUseClientDirective } from "@diffgazer/registry/build-checks";
-import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
+import { REGISTRY_ITEM_TYPE, RegistrySchema } from "@diffgazer/registry/schemas";
 import { validatePublicExportShape } from "./registry/exports.js";
 import {
   extractLocalImports,
   hasKeysRegistryDependency,
+  isRecord,
   normalizeRegistryPath,
-  type RegistryItem,
   resolveImportToRegistryPath,
 } from "./registry/fs.js";
 import { validateRegistryImportClosure } from "./registry/imports.js";
 import { validateOrphanFiles } from "./registry/orphans.js";
-import { type Registry, UiRegistrySchema } from "./registry/types.js";
+import type { Registry, RegistryItem } from "./registry/types.js";
 
 interface PackageJson {
   exports?: Record<string, unknown>;
@@ -47,13 +47,9 @@ function readJson(relativePath: string): unknown {
   return JSON.parse(readFileSync(resolve(ROOT, relativePath), "utf-8"));
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
 function readRegistry(): Registry {
   const data = readJson("registry/registry.json");
-  const registry = UiRegistrySchema.parse(data);
+  const registry = RegistrySchema.parse(data);
   return {
     ...registry,
     $schema: isRecord(data) && typeof data.$schema === "string" ? data.$schema : undefined,
@@ -309,7 +305,8 @@ function validateNoPublicKeysImports(): string[] {
     let data: { files?: { content?: string; path?: string }[] };
     try {
       data = JSON.parse(readFileSync(itemPath, "utf-8"));
-    } catch {
+    } catch (err) {
+      errors.push(`Public registry item "${entry}" is not valid JSON: ${(err as Error).message}`);
       continue;
     }
 

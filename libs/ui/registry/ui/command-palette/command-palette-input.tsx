@@ -9,7 +9,6 @@ import { getCommandPaletteItemDomId } from "./use-command-palette-state";
 
 const INPUT_NAVIGATION_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter"]);
 
-/** Props for command palette input. */
 export interface CommandPaletteInputProps {
   /** Search input placeholder. */
   placeholder?: string;
@@ -24,7 +23,7 @@ export interface CommandPaletteInputProps {
   suffix?: ReactNode;
   /** Accessible name for the default Esc close control. */
   closeLabel?: string;
-  /** Called when key down occurs. */
+  /** Called before the built-in command-palette key handling; call event.preventDefault() to suppress it. */
   onKeyDown?: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
   /** Additional class names merged onto the rendered element. */
   className?: string;

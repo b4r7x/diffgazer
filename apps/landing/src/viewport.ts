@@ -25,5 +25,5 @@ export const createMouse = (): Mouse => ({
   ny: 0,
 });
 
-export const isLight = (doc: Document = document): boolean =>
+export const isLight = (doc: Document): boolean =>
   doc.documentElement.dataset.sceneTheme === "light";

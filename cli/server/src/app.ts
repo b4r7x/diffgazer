@@ -65,7 +65,7 @@ export const createApp = (): Hono<AppEnv> => {
 
   // `shared/lib/config` cannot import `features/`, the session registry, or the
   // ai adapters, so the composition root supplies all three of its seams here:
-  //   - re-key, so a moved repo's review history follows the move (F-447);
+  //   - re-key, so a moved repo's review history follows the move;
   //     project persistence commits the new root only when it reports complete
   //   - leases, so deletion revokes, cancels, and drains admitted leases before
   //     secret material is removed; a drain timeout aborts the delete
@@ -158,7 +158,7 @@ export const createApp = (): Hono<AppEnv> => {
     }),
   );
 
-  // Health at root for container/load-balancer probes, and under /api for API client consistency
+  // Root health is the benchmark harness's unauthenticated liveness probe; /api/health mirrors it for API client consistency.
   app.route("/", healthRouter);
   app.route("/api", healthRouter);
   app.route("/api/config", configRouter);

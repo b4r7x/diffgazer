@@ -6,7 +6,6 @@ import { useNavigation } from "@/hooks/use-navigation";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./sidebar-context";
 
-/** Props for sidebar content. */
 export interface SidebarContentProps extends ComponentProps<"div"> {}
 
 /** Scrollable middle area. */

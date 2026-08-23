@@ -43,16 +43,13 @@ export interface BuildDocsDataResult {
   libsCount: number;
 }
 
-async function loadRegistry(registryPath: string, rootDir: string): Promise<Registry> {
+function loadRegistry(registryPath: string, rootDir: string): Registry {
   const resolvedRoot = resolve(rootDir);
   const resolvedRegistry = resolve(registryPath);
   if (!isWithinDir(resolvedRegistry, resolvedRoot)) {
     throw new Error(`Registry path "${registryPath}" escapes rootDir "${rootDir}"`);
   }
-  if (resolvedRegistry.endsWith(".json")) {
-    return RegistrySchema.parse(JSON.parse(readFileSync(resolvedRegistry, "utf-8")));
-  }
-  return RegistrySchema.parse((await import(resolvedRegistry)).default);
+  return RegistrySchema.parse(JSON.parse(readFileSync(resolvedRegistry, "utf-8")));
 }
 
 function buildLibsData(params: {
@@ -125,7 +122,7 @@ export async function buildDocsData(config: BuildDocsDataConfig): Promise<BuildD
   let componentsCount = 0;
   let libsCount = 0;
 
-  const registry = await loadRegistry(registryPath, rootDir);
+  const registry = loadRegistry(registryPath, rootDir);
   const highlighter = await createDocsHighlighter({
     theme: docsCodeTheme,
     themeName: DOCS_CODE_THEME_NAME,

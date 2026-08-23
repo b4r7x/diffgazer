@@ -1,5 +1,6 @@
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
+import { useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { flush } from "../../testing/flush";
 import { CliThemeProvider } from "../../theme/provider";
@@ -12,27 +13,49 @@ afterEach(() => {
 const ARROW_LEFT = "\u001b[D";
 const ARROW_RIGHT = "\u001b[C";
 
+function Harness({
+  initial = "a",
+  onChange,
+  listProps,
+}: {
+  initial?: string;
+  onChange?: (value: string) => void;
+  listProps?: Partial<Parameters<typeof Tabs.List>[0]>;
+}) {
+  const [value, setValue] = useState(initial);
+
+  return (
+    <Tabs
+      value={value}
+      onChange={(next) => {
+        setValue(next);
+        onChange?.(next);
+      }}
+    >
+      <Tabs.List isActive {...listProps}>
+        <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
+        <Tabs.Trigger value="b" disabled>
+          Bravo
+        </Tabs.Trigger>
+        <Tabs.Trigger value="c">Charlie</Tabs.Trigger>
+      </Tabs.List>
+      <Tabs.Content value="a">
+        <Text>Alpha panel</Text>
+      </Tabs.Content>
+      <Tabs.Content value="c">
+        <Text>Charlie panel</Text>
+      </Tabs.Content>
+    </Tabs>
+  );
+}
+
 function renderTabs(
   listProps: Partial<Parameters<typeof Tabs.List>[0]> = {},
-  rootProps: Partial<Parameters<typeof Tabs>[0]> = {},
+  harnessProps: { initial?: string; onChange?: (value: string) => void } = {},
 ) {
   return render(
     <CliThemeProvider initialTheme="dark">
-      <Tabs defaultValue="a" {...rootProps}>
-        <Tabs.List isActive {...listProps}>
-          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
-          <Tabs.Trigger value="b" disabled>
-            Bravo
-          </Tabs.Trigger>
-          <Tabs.Trigger value="c">Charlie</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="a">
-          <Text>Alpha panel</Text>
-        </Tabs.Content>
-        <Tabs.Content value="c">
-          <Text>Charlie panel</Text>
-        </Tabs.Content>
-      </Tabs>
+      <Harness {...harnessProps} listProps={listProps} />
     </CliThemeProvider>,
   );
 }
@@ -60,7 +83,7 @@ describe("Tabs navigation", () => {
 
   test("left arrow moves the active tab back and skips disabled triggers", async () => {
     const onChange = vi.fn();
-    const { lastFrame, stdin } = renderTabs({}, { defaultValue: "c", onChange });
+    const { lastFrame, stdin } = renderTabs({}, { initial: "c", onChange });
     await flush();
 
     stdin.write(ARROW_LEFT);
@@ -70,26 +93,14 @@ describe("Tabs navigation", () => {
     expect(lastFrame()).toContain("Alpha panel");
   });
 
-  test("wraps past the last tab when loop is true", async () => {
+  test("wraps past the last tab", async () => {
     const onChange = vi.fn();
-    const { stdin } = renderTabs({ loop: true }, { defaultValue: "c", onChange });
+    const { stdin } = renderTabs({}, { initial: "c", onChange });
     await flush();
 
     stdin.write(ARROW_RIGHT);
     await flush();
     expect(onChange).toHaveBeenLastCalledWith("a");
-  });
-
-  test("does not wrap past the last tab when loop is false", async () => {
-    const onChange = vi.fn();
-    const { lastFrame, stdin } = renderTabs({ loop: false }, { defaultValue: "c", onChange });
-    await flush();
-
-    stdin.write(ARROW_RIGHT);
-    await flush();
-    expect(onChange).not.toHaveBeenCalledWith("a");
-    expect(lastFrame()).toContain("Charlie panel");
-    expect(lastFrame()).not.toContain("Alpha panel");
   });
 
   test("ignores input when the list is inactive", async () => {

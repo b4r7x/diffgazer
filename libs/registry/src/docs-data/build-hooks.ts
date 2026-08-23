@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { REGISTRY_ITEM_TYPE, type Registry, type RegistryItem } from "../registry-types.js";
+import type { Registry, RegistryItem } from "../registry-types.js";
 import { compareCodeUnits } from "../utils/compare-code-units.js";
 import { resolveInside } from "../utils/fs.js";
 import { writeJson } from "../utils/json.js";
@@ -13,15 +13,10 @@ import type { EnrichedHookData } from "./types.js";
 export interface HooksConfig {
   contentDir: string;
   extraItems?: HookRegistryItem[];
-  filter?: (item: RegistryItem) => boolean;
-  mapItem?: (item: RegistryItem) => HookRegistryItem;
+  filter: (item: RegistryItem) => boolean;
+  mapItem: (item: RegistryItem) => HookRegistryItem;
   loadHookDoc: (hookName: string) => Promise<import("./types.js").HookDoc | null>;
   aggregateHooksFile?: string;
-  aggregateHooksItems?: HookRegistryItem[];
-}
-
-function defaultHookFilter(item: RegistryItem): boolean {
-  return item.type === REGISTRY_ITEM_TYPE.hook && !item.meta?.hidden;
 }
 
 export async function buildHooksData(params: {
@@ -40,15 +35,9 @@ export async function buildHooksData(params: {
   const { registry, hooksConfig, rootDir, examplesDir, outputDir, highlighter } = params;
   const errors: string[] = [];
 
-  const hookFilter = hooksConfig.filter ?? defaultHookFilter;
-  const defaultMap = (item: RegistryItem): HookRegistryItem => ({
-    name: item.name,
-    title: item.title,
-    description: item.description ?? "",
-    files: item.files,
-  });
-  const mapItem = hooksConfig.mapItem ?? defaultMap;
-  const registryHooks: HookRegistryItem[] = registry.items.filter(hookFilter).map(mapItem);
+  const registryHooks: HookRegistryItem[] = registry.items
+    .filter(hooksConfig.filter)
+    .map(hooksConfig.mapItem);
 
   const allHooks = [...registryHooks, ...(hooksConfig.extraItems ?? [])].sort((a, b) =>
     compareCodeUnits(a.name, b.name),
@@ -118,9 +107,8 @@ export async function buildHooksData(params: {
   console.log(`Wrote meta.json (${hooksCount} hook pages)`);
 
   if (hooksConfig.aggregateHooksFile) {
-    const aggregateItems = hooksConfig.aggregateHooksItems ?? registryHooks;
     const basicData = generateHooksSource({
-      items: aggregateItems,
+      items: registryHooks,
       rootDir,
       highlighter,
       themeName: DOCS_CODE_THEME_NAME,

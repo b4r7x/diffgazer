@@ -3,12 +3,14 @@ import { dirname, relative, resolve } from "node:path";
 import { extractImportSpecifiers } from "@diffgazer/registry";
 import { parseKeysDependencyRef } from "@diffgazer/registry/schemas";
 
-export type { RegistryFile, RegistryItem } from "./types.js";
-
 import type { RegistryItem } from "./types.js";
 
 const SOURCE_EXTENSIONS = ["", ".ts", ".tsx", ".js", ".jsx"] as const;
 const INDEX_FILES = ["index.ts", "index.tsx", "index.js", "index.jsx"] as const;
+
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
 
 export function normalizeRegistryPath(path: string): string {
   return path.replace(/\\/g, "/");

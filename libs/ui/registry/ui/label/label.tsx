@@ -4,7 +4,6 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentPropsWithRef, MouseEvent } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for label. */
 export interface LabelProps extends ComponentPropsWithRef<"label"> {
   /** Color token applied to the label text. */
   color?: LabelColor;
@@ -22,7 +21,6 @@ export interface LabelProps extends ComponentPropsWithRef<"label"> {
   required?: boolean;
 }
 
-/** Class variants for label. */
 export const labelVariants = cva("text-xs uppercase font-bold tracking-wider select-none", {
   variants: {
     color: {
@@ -36,7 +34,6 @@ export const labelVariants = cva("text-xs uppercase font-bold tracking-wider sel
   defaultVariants: { color: "default" },
 });
 
-/** Class variants for label wrapper. */
 export const labelWrapperVariants = cva(
   // The disabled dim lands on the label text only (group/label), not the wrapper:
   // the wrapped control already dims itself, and stacking two opacities made it

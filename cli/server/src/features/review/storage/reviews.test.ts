@@ -343,7 +343,7 @@ describe("reviews storage", () => {
   });
 
   it("persists executionSnapshot for non-completed terminal executions", async () => {
-    const { getReview, saveReview } = await loadStorage();
+    const { getReviewDetail, saveReview } = await loadStorage();
     const review = makeSavedReviewWithExecution("cancelled", "snapshot-test");
 
     const saved = await saveReview(
@@ -355,11 +355,11 @@ describe("reviews storage", () => {
     );
 
     expect(saved.ok).toBe(true);
-    const read = await getReview(REVIEW_ID);
+    const read = await getReviewDetail(REVIEW_ID);
     expect(read.ok).toBe(true);
     if (read.ok) {
-      expect(read.value.executionSnapshot?.receipt.outcome).toBe("cancelled");
-      expect(read.value.executionSnapshot?.executionFingerprint).toBe(
+      expect(read.value.review.executionSnapshot?.receipt.outcome).toBe("cancelled");
+      expect(read.value.review.executionSnapshot?.executionFingerprint).toBe(
         review.execution?.receipt.executionFingerprint,
       );
     }
@@ -423,7 +423,7 @@ describe("reviews storage", () => {
       expect(constructed).not.toContain(RAW_CREDENTIAL_SHA256);
       expect(constructed).toContain(CREDENTIAL_REFERENCE_IDENTITY);
 
-      const { getReview, saveReview } = await loadStorage();
+      const { getReviewDetail, saveReview } = await loadStorage();
       const saved = await saveReview(
         makeSaveOptions({
           reviewId: REVIEW_ID,
@@ -438,13 +438,13 @@ describe("reviews storage", () => {
       expect(durableJson).not.toContain(RAW_CREDENTIAL_SHA256);
       expect(durableJson).toContain(CREDENTIAL_REFERENCE_IDENTITY);
 
-      const read = await getReview(REVIEW_ID);
+      const read = await getReviewDetail(REVIEW_ID);
       expect(read.ok).toBe(true);
       if (read.ok) {
-        expect(read.value.execution).toEqual(execution);
-        expect(JSON.stringify(read.value)).not.toContain(RAW_CREDENTIAL_SHA256);
-        expect(read.value.executionSnapshot?.receipt).toEqual(execution.receipt);
-        expect(read.value.executionSnapshot?.receipt.credentialReferenceIdentity).toBe(
+        expect(read.value.review.execution).toEqual(execution);
+        expect(JSON.stringify(read.value.review)).not.toContain(RAW_CREDENTIAL_SHA256);
+        expect(read.value.review.executionSnapshot?.receipt).toEqual(execution.receipt);
+        expect(read.value.review.executionSnapshot?.receipt.credentialReferenceIdentity).toBe(
           CREDENTIAL_REFERENCE_IDENTITY,
         );
       }
@@ -454,7 +454,7 @@ describe("reviews storage", () => {
   });
 
   it("persists failed lens count through save, list, and detail reads", async () => {
-    const { getReview, listReviewPage, saveReview } = await loadStorage();
+    const { getReviewDetail, listReviewPage, saveReview } = await loadStorage();
 
     const saved = await saveReview(
       makeSaveOptions({
@@ -478,9 +478,9 @@ describe("reviews storage", () => {
     expect(listed.ok).toBe(true);
     if (listed.ok) expect(listed.value.items[0]?.failedLensCount).toBe(1);
 
-    const detail = await getReview(REVIEW_ID);
+    const detail = await getReviewDetail(REVIEW_ID);
     expect(detail.ok).toBe(true);
-    if (detail.ok) expect(detail.value.metadata.failedLensCount).toBe(1);
+    if (detail.ok) expect(detail.value.review.metadata.failedLensCount).toBe(1);
   });
 
   it("migrates a historical zero-issue failed-lens review for list and detail reads", async () => {
@@ -503,11 +503,11 @@ describe("reviews storage", () => {
     });
     const { failedLensCount: _omitted, ...legacyMetadata } = current.metadata;
     await writeSavedReview({ ...current, metadata: legacyMetadata });
-    const { getReview, listReviewPage } = await loadStorage();
+    const { getReviewDetail, listReviewPage } = await loadStorage();
 
     const [listed, detail] = await Promise.all([
       listReviewPage("/projects/test", { limit: 20 }),
-      getReview(REVIEW_ID),
+      getReviewDetail(REVIEW_ID),
     ]);
 
     expect(listed.ok).toBe(true);
@@ -520,7 +520,7 @@ describe("reviews storage", () => {
     }
     expect(detail.ok).toBe(true);
     if (detail.ok) {
-      expect(detail.value.metadata).toMatchObject({ issueCount: 0, failedLensCount: 1 });
+      expect(detail.value.review.metadata).toMatchObject({ issueCount: 0, failedLensCount: 1 });
     }
 
     await waitForSavedReview(REVIEW_ID, (review) => review.metadata.failedLensCount === 1);
@@ -898,10 +898,10 @@ describe("reviews storage", () => {
     }));
 
     try {
-      const { getReview } = await loadStorage();
+      const { getReviewDetail } = await loadStorage();
 
-      await expect(getReview("../escaped")).rejects.toThrow("Invalid review id");
-      await expect(getReview("/tmp/escaped")).rejects.toThrow("Invalid review id");
+      await expect(getReviewDetail("../escaped")).rejects.toThrow("Invalid review id");
+      await expect(getReviewDetail("/tmp/escaped")).rejects.toThrow("Invalid review id");
       expect(readFileSpy).not.toHaveBeenCalled();
     } finally {
       vi.doUnmock("node:fs/promises");
@@ -1284,9 +1284,9 @@ describe("reviews storage", () => {
     });
     await writeSavedReview(review);
 
-    const { getReview, listReviewPage } = await loadStorage();
+    const { getReviewDetail, listReviewPage } = await loadStorage();
     const listed = await listReviewPage("/proj/exec", { limit: 10 });
-    const read = await getReview(REVIEW_ID);
+    const read = await getReviewDetail(REVIEW_ID);
 
     expect(listed.ok).toBe(true);
     if (listed.ok) {
@@ -1295,11 +1295,11 @@ describe("reviews storage", () => {
     }
     expect(read.ok).toBe(true);
     if (read.ok) {
-      expect(read.value.execution?.receipt.executionFingerprint).toBe(
+      expect(read.value.review.execution?.receipt.executionFingerprint).toBe(
         review.execution?.receipt.executionFingerprint,
       );
-      expect(read.value.execution?.receipt.outcome).toBe("completed");
-      expect(read.value.result.issues).toHaveLength(2);
+      expect(read.value.review.execution?.receipt.outcome).toBe("completed");
+      expect(read.value.review.result.issues).toHaveLength(2);
     }
   });
 
@@ -1309,16 +1309,16 @@ describe("reviews storage", () => {
     });
     await writeSavedReview(legacy);
 
-    const { getReview, listReviewPage } = await loadStorage();
+    const { getReviewDetail, listReviewPage } = await loadStorage();
     const listed = await listReviewPage("/proj/legacy-exec", { limit: 10 });
-    const read = await getReview(REVIEW_ID);
+    const read = await getReviewDetail(REVIEW_ID);
 
     expect(listed.ok).toBe(true);
     if (listed.ok) expect(listed.value.items[0]?.issueCount).toBe(2);
     expect(read.ok).toBe(true);
     if (read.ok) {
-      expect(read.value.execution).toBeUndefined();
-      expect(read.value.result.issues).toHaveLength(2);
+      expect(read.value.review.execution).toBeUndefined();
+      expect(read.value.review.result.issues).toHaveLength(2);
     }
   });
 
@@ -1341,14 +1341,14 @@ describe("reviews storage", () => {
     await mkdir(reviewsDir(), { recursive: true });
     await writeFile(reviewPath(REVIEW_ID), `${JSON.stringify(rawReview, null, 2)}\n`, "utf-8");
 
-    const { getReview, listReviewPage } = await loadStorage();
-    const read = await getReview(REVIEW_ID);
+    const { getReviewDetail, listReviewPage } = await loadStorage();
+    const read = await getReviewDetail(REVIEW_ID);
     const listed = await listReviewPage("/proj/corrupt-exec", { limit: 10 });
 
     expect(read.ok).toBe(true);
     if (read.ok) {
-      expect(read.value.execution).toBeUndefined();
-      expect(read.value.result.issues.map((issue) => issue.id)).toEqual(["kept"]);
+      expect(read.value.review.execution).toBeUndefined();
+      expect(read.value.review.result.issues.map((issue) => issue.id)).toEqual(["kept"]);
     }
     expect(listed.ok).toBe(true);
     if (listed.ok) expect(listed.value.items[0]?.issueCount).toBe(1);
@@ -1580,7 +1580,7 @@ describe("reviews storage", () => {
       },
     });
     await writeSavedReview(legacy);
-    const { listReviewPage, getReview } = await loadStorage();
+    const { listReviewPage, getReviewDetail } = await loadStorage();
 
     const listResult = await listReviewPage("/projects/test", { limit: 20 });
     expect(listResult.ok).toBe(true);
@@ -1589,20 +1589,20 @@ describe("reviews storage", () => {
     }
     await waitForSavedReview(REVIEW_ID, (review) => review.metadata.highCount === 1);
 
-    const readResult = await getReview(REVIEW_ID);
+    const readResult = await getReviewDetail(REVIEW_ID);
     expect(readResult.ok).toBe(true);
     if (readResult.ok) {
-      expect(readResult.value.metadata).toMatchObject({ highCount: 1, mediumCount: 1 });
+      expect(readResult.value.review.metadata).toMatchObject({ highCount: 1, mediumCount: 1 });
     }
   });
 
   it("returns reviews through persisted files", async () => {
     await writeSavedReview(makeSavedReview());
-    const { getReview } = await loadStorage();
+    const { getReviewDetail } = await loadStorage();
 
-    const readResult = await getReview(REVIEW_ID);
+    const readResult = await getReviewDetail(REVIEW_ID);
     expect(readResult.ok).toBe(true);
-    if (readResult.ok) expect(readResult.value.metadata.id).toBe(REVIEW_ID);
+    if (readResult.ok) expect(readResult.value.review.metadata.id).toBe(REVIEW_ID);
   });
 
   it("scrubs the daemon path from a project index build failure warning", async () => {
@@ -1654,13 +1654,13 @@ describe("reviews storage", () => {
     const logModule = await import("../../../shared/lib/log.js");
     const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
 
-    const { saveReview, getReview } = await loadStorage();
+    const { saveReview, getReviewDetail } = await loadStorage();
     const result = await saveReview(makeSaveOptions({ reviewId: REVIEW_ID }));
 
     expect(result.ok).toBe(true);
-    const stored = await getReview(REVIEW_ID);
+    const stored = await getReviewDetail(REVIEW_ID);
     expect(stored.ok).toBe(true);
-    if (stored.ok) expect(stored.value.metadata.id).toBe(REVIEW_ID);
+    if (stored.ok) expect(stored.value.review.metadata.id).toBe(REVIEW_ID);
 
     expect(logSpy).toHaveBeenCalledWith(
       "warn",
@@ -1781,15 +1781,15 @@ describe("reviews storage", () => {
     // A genuinely JSON-corrupt file — surfaced as a warning, not salvaged.
     await writeFile(reviewPath(REVIEW_ID_2), "{ not json", "utf-8");
 
-    const { getReview, listReviewPage } = await loadStorage();
+    const { getReviewDetail, listReviewPage } = await loadStorage();
 
-    const read = await getReview(REVIEW_ID);
+    const read = await getReviewDetail(REVIEW_ID);
     expect(read.ok).toBe(true);
     if (read.ok) {
-      expect(read.value.result).not.toHaveProperty("summary");
-      const ids = read.value.result.issues.map((issue) => issue.id);
+      expect(read.value.review.result).not.toHaveProperty("summary");
+      const ids = read.value.review.result.issues.map((issue) => issue.id);
       expect(ids).toEqual(["ok", "zero"]);
-      const first = read.value.result.issues[0];
+      const first = read.value.review.result.issues[0];
       // Inverted float range floored and swapped to ascending.
       expect(first?.line_start).toBe(2);
       expect(first?.line_end).toBe(4);
@@ -1797,7 +1797,7 @@ describe("reviews storage", () => {
         expect.objectContaining({ excerpt: "retained legacy excerpt" }),
       ]);
       expect(first?.evidence[0]).not.toHaveProperty("range");
-      const second = read.value.result.issues[1];
+      const second = read.value.review.result.issues[1];
       // Non-positive line fields nulled.
       expect(second?.line_start).toBeNull();
       expect(second?.line_end).toBeNull();
@@ -1831,13 +1831,13 @@ describe("reviews storage", () => {
     await mkdir(reviewsDir(), { recursive: true });
     await writeFile(reviewPath(REVIEW_ID), `${JSON.stringify(rawReview, null, 2)}\n`, "utf-8");
 
-    const { getReview } = await loadStorage();
-    const read = await getReview(REVIEW_ID);
+    const { getReviewDetail } = await loadStorage();
+    const read = await getReviewDetail(REVIEW_ID);
 
     expect(read.ok).toBe(true);
     if (read.ok) {
-      expect(read.value.diff).toEqual(diff);
-      expect(read.value.result.issues.map((issue) => issue.id)).toEqual(["ok"]);
+      expect(read.value.review.diff).toEqual(diff);
+      expect(read.value.review.result.issues.map((issue) => issue.id)).toEqual(["ok"]);
     }
   });
 
@@ -1939,8 +1939,8 @@ describe("reviews storage", () => {
     await mkdir(reviewsDir(), { recursive: true });
     await writeFile(reviewPath(REVIEW_ID), `${JSON.stringify(rawReview, null, 2)}\n`, "utf-8");
 
-    const { getReview } = await loadStorage();
-    const read = await getReview(REVIEW_ID);
+    const { getReviewDetail } = await loadStorage();
+    const read = await getReviewDetail(REVIEW_ID);
     expect(read.ok).toBe(true);
 
     // The migration write-back is fire-and-forget through the FIFO review lock,
@@ -1980,7 +1980,7 @@ describe("reviews storage", () => {
     await writeFile(reviewPath(REVIEW_ID), rawBytes, "utf-8");
     const logModule = await import("../../../shared/lib/log.js");
     const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
-    const { getReview, listReviewPage } = await loadStorage();
+    const { getReviewDetail, listReviewPage } = await loadStorage();
     const warning = {
       kind: "invalid_issues_dropped" as const,
       reviewId: REVIEW_ID,
@@ -2010,11 +2010,11 @@ describe("reviews storage", () => {
     expect(fromIndex.value.warnings).toEqual([warning]);
     expect(fromIndex.value.items[0]).toMatchObject(expectedCounts);
 
-    const detail = await getReview(REVIEW_ID);
+    const detail = await getReviewDetail(REVIEW_ID);
     expect(detail.ok).toBe(true);
     if (detail.ok) {
-      expect(detail.value.metadata).toMatchObject(expectedCounts);
-      expect(detail.value.result.issues.map((issue) => issue.id)).toEqual([
+      expect(detail.value.review.metadata).toMatchObject(expectedCounts);
+      expect(detail.value.review.result.issues.map((issue) => issue.id)).toEqual([
         "kept-high",
         "kept-nit",
       ]);
@@ -2041,12 +2041,12 @@ describe("reviews storage", () => {
       }),
     );
 
-    const { getReview } = await loadStorage();
-    const read = await getReview(REVIEW_ID);
+    const { getReviewDetail } = await loadStorage();
+    const read = await getReviewDetail(REVIEW_ID);
 
     expect(read.ok).toBe(true);
     if (read.ok) {
-      expect(read.value.result.issues[0]).toMatchObject({ line_start: 4, line_end: 8 });
+      expect(read.value.review.result.issues[0]).toMatchObject({ line_start: 4, line_end: 8 });
     }
   });
 
@@ -2058,15 +2058,15 @@ describe("reviews storage", () => {
     });
     await writeSavedReview(review);
 
-    const { getReview } = await loadStorage();
-    const read = await getReview(REVIEW_ID);
+    const { getReviewDetail } = await loadStorage();
+    const read = await getReviewDetail(REVIEW_ID);
 
     expect(read.ok).toBe(true);
     if (!read.ok) return;
-    expect(read.value.execution?.receipt.executionFingerprint).toBe(
+    expect(read.value.review.execution?.receipt.executionFingerprint).toBe(
       review.execution?.receipt.executionFingerprint,
     );
-    expect(read.value.execution?.receipt.outcome).toBe(outcome);
+    expect(read.value.review.execution?.receipt.outcome).toBe(outcome);
   });
 
   it.each(
@@ -2085,22 +2085,22 @@ describe("reviews storage", () => {
     };
     await writeSavedReview(corruptOnDisk);
 
-    const { getReview, listReviewPage } = await loadStorage();
-    const read = await getReview(REVIEW_ID);
+    const { getReviewDetail, listReviewPage } = await loadStorage();
+    const read = await getReviewDetail(REVIEW_ID);
     const listed = await listReviewPage(review.metadata.projectPath, { limit: 10 });
 
     expect(read.ok).toBe(true);
     if (read.ok) {
-      expect(read.value.result.issues).toEqual([]);
-      expect(read.value.execution?.result.issues).toEqual([]);
-      expect(read.value.metadata.issueCount).toBe(0);
+      expect(read.value.review.result.issues).toEqual([]);
+      expect(read.value.review.execution?.result.issues).toEqual([]);
+      expect(read.value.review.metadata.issueCount).toBe(0);
     }
     expect(listed.ok).toBe(true);
     if (listed.ok) expect(listed.value.items[0]?.issueCount).toBe(0);
   });
 
   it("round-trips the findings a budget-exhausted review recorded", async () => {
-    const { saveReview, getReview, listReviewPage } = await loadStorage();
+    const { saveReview, getReviewDetail, listReviewPage } = await loadStorage();
     const issues = [
       makeIssue({ id: "kept-1", severity: "high", file: "a.ts" }),
       makeIssue({ id: "kept-2", severity: "medium", file: "b.ts" }),
@@ -2123,13 +2123,16 @@ describe("reviews storage", () => {
     );
 
     expect(saved.ok).toBe(true);
-    const read = await getReview(REVIEW_ID);
+    const read = await getReviewDetail(REVIEW_ID);
     const listed = await listReviewPage("/projects/test", { limit: 10 });
 
     expect(read.ok).toBe(true);
     if (read.ok) {
-      expect(read.value.result.issues.map((issue) => issue.id)).toEqual(["kept-1", "kept-2"]);
-      expect(read.value.metadata).toMatchObject({
+      expect(read.value.review.result.issues.map((issue) => issue.id)).toEqual([
+        "kept-1",
+        "kept-2",
+      ]);
+      expect(read.value.review.metadata).toMatchObject({
         issueCount: 2,
         failedLensCount: 1,
         terminalOutcome: "budget-exhausted",
@@ -2154,14 +2157,14 @@ describe("reviews storage", () => {
       },
     });
 
-    const { getReview } = await loadStorage();
-    const read = await getReview(REVIEW_ID);
+    const { getReviewDetail } = await loadStorage();
+    const read = await getReviewDetail(REVIEW_ID);
 
     expect(read.ok).toBe(true);
     if (read.ok) {
-      expect(read.value.execution?.receipt.outcome).toBe("transport-failed");
-      expect(read.value.result.issues).toEqual([]);
-      expect(read.value.execution?.result.issues).toEqual([]);
+      expect(read.value.review.execution?.receipt.outcome).toBe("transport-failed");
+      expect(read.value.review.result.issues).toEqual([]);
+      expect(read.value.review.execution?.result.issues).toEqual([]);
     }
   });
 

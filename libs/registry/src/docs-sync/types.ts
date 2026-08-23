@@ -13,12 +13,6 @@ export interface SyncDocsOptions {
   origin: string;
   sourceOrigin: string;
   syncSchemaVersion?: number;
-  afterSync?: (ctx: AfterSyncContext) => void;
-}
-
-export interface AfterSyncContext {
-  libraryId: string;
-  generatedDir: string;
 }
 
 export interface SyncDocsResult {

@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 import { BreadcrumbsContext } from "./breadcrumbs-context";
 import { BreadcrumbsItem, type BreadcrumbsItemProps } from "./breadcrumbs-item";
 
-/** Props for breadcrumbs. */
 export interface BreadcrumbsProps extends ComponentPropsWithRef<"nav"> {
   /** Separator rendered between items. Pass null to omit. */
   separator?: ReactNode;

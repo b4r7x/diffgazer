@@ -3,10 +3,8 @@
 import { createContext, useContext } from "react";
 
 export type KeyValueLayout = "horizontal" | "vertical";
-/** Allowed key value variant values. */
 export type KeyValueVariant = "default" | "warning" | "info" | "success" | "error";
 
-/** Context value shared by key value. */
 interface KeyValueContextValue {
   /**
    * Horizontal places label and value side-by-side; vertical stacks them. Propagated to

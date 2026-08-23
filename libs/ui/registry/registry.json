@@ -503,7 +503,7 @@
       "title": "Panel",
       "description": "Card-like container with composable header, title, description, content, row, and footer primitives",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "corner-label-variants", "utils"],
+      "registryDependencies": ["theme", "aria", "corner-label-variants", "utils"],
       "meta": {
         "client": true
       },
@@ -2317,7 +2317,7 @@
       "name": "aria",
       "type": "registry:lib",
       "title": "ARIA Utilities",
-      "description": "Shared ARIA helpers for form controls: resolveAriaInvalid, mergeIds, isHTMLElementForContainer.",
+      "description": "Shared ARIA helpers for form controls: resolveAriaInvalid, isAriaInvalid, mergeIds, isHTMLElementForContainer, isHTMLDialogElement.",
       "meta": {
         "client": false,
         "hidden": true

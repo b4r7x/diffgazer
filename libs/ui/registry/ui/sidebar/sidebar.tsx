@@ -13,7 +13,6 @@ import {
 import { SidebarProvider } from "./sidebar-provider";
 import { type SidebarVariant, sidebarContainerVariants } from "./sidebar-variants";
 
-/** Props for sidebar. */
 export interface SidebarProps extends ComponentProps<"nav"> {
   /**
    * Visual variant. "caret" reserves a chevron marker slot shown on the active row;

@@ -26,6 +26,7 @@ const RECENT_LIMIT = 4;
 interface SearchContextValue {
   open: boolean;
   setOpen: (open: boolean) => void;
+  /** Pages visited this session, most recent first. */
   recent: RecentDocsPage[];
   recordVisit: (page: RecentDocsPage) => void;
   scope: DocsSearchScope | null;
@@ -100,19 +101,16 @@ function useSearchContext(): SearchContextValue {
   return ctx;
 }
 
-/** Whether the command palette is open, and its setter. */
 export function useSearchOpen() {
   const { open, setOpen } = useSearchContext();
   return { open, setOpen };
 }
 
-/** Pages visited this session, most recent first, and the recorder for new visits. */
 export function useDocsHistory() {
   const { recent, recordVisit } = useSearchContext();
   return { recent, recordVisit };
 }
 
-/** Section indexes for the library that owns the current route, and its setter. */
 export function useDocsSearchScope() {
   const { scope, setScope } = useSearchContext();
   return { scope, setScope };

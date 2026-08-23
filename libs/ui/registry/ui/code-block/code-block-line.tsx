@@ -10,10 +10,8 @@ export interface CodeBlockToken {
   className?: string;
 }
 
-/** Allowed code block line state values. */
 export type CodeBlockLineState = "highlight" | "added" | "removed";
 
-/** Props for code block line. */
 export interface CodeBlockLineProps extends Omit<ComponentProps<"span">, "content" | "children"> {
   /** Line number rendered in the gutter. Omit to hide the gutter for this line. */
   number?: number;

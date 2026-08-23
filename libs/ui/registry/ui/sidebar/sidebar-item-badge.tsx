@@ -3,7 +3,6 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for sidebar item badge. */
 export interface SidebarItemBadgeProps extends ComponentProps<"span"> {}
 
 // Hidden in rail mode — badges (e.g. "new", counters) don't fit in a 48px rail.

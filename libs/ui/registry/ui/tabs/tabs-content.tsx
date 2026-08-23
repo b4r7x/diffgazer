@@ -7,7 +7,6 @@ import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
 
-/** Props for tabs content. */
 export interface TabsContentProps<TValue extends string = string> extends ComponentProps<"div"> {
   /** Stable identifier paired with the matching Tabs.Trigger. */
   value: TValue;

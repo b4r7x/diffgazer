@@ -29,7 +29,7 @@ export function projectIndexPath(projectPath: string): string {
 
 // Staleness signal gating the cross-project orphan reconcile: dropped when a saved
 // review could neither be indexed nor cleared by invalidation. Absent it, listings
-// serve straight from the per-project index (F-097).
+// serve straight from the per-project index.
 function projectReconcileMarkerPath(projectPath: string): string {
   return join(PROJECT_INDEX_DIR, `${projectHash(projectPath)}.reconcile`);
 }

@@ -9,12 +9,11 @@ import {
 import { createRequire } from "node:module";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEFAULT_PUBLIC_ORIGIN, resolvePublicOrigin } from "../src/lib/public-origin.ts";
+import { resolvePublicOrigin } from "../src/lib/public-origin.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DOCS_ROOT = resolve(HERE, "..");
 const require = createRequire(import.meta.url);
-export const DEFAULT_ORIGIN = DEFAULT_PUBLIC_ORIGIN;
 export const DOCS_CONTENT_ROOT = resolve(DOCS_ROOT, "content/docs");
 
 export interface PreRenderPage {

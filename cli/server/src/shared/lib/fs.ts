@@ -20,53 +20,45 @@ const isDirectoryFsyncUnsupported = (error: unknown): boolean =>
 const syncDirectory = async (directoryPath: string): Promise<void> => {
   const handle = await fs.promises.open(directoryPath, "r");
   let syncError: unknown;
-  let hasSyncError = false;
   try {
     await handle.sync();
   } catch (error) {
     if (!isDirectoryFsyncUnsupported(error)) {
       syncError = error;
-      hasSyncError = true;
     }
   }
 
   let closeError: unknown;
-  let hasCloseError = false;
   try {
     await handle.close();
   } catch (error) {
     closeError = error;
-    hasCloseError = true;
   }
 
-  if (hasSyncError) throw syncError;
-  if (hasCloseError) throw closeError;
+  if (syncError !== undefined) throw syncError;
+  if (closeError !== undefined) throw closeError;
 };
 
 const syncDirectorySync = (directoryPath: string): void => {
   const descriptor = fs.openSync(directoryPath, "r");
   let syncError: unknown;
-  let hasSyncError = false;
   try {
     fs.fsyncSync(descriptor);
   } catch (error) {
     if (!isDirectoryFsyncUnsupported(error)) {
       syncError = error;
-      hasSyncError = true;
     }
   }
 
   let closeError: unknown;
-  let hasCloseError = false;
   try {
     fs.closeSync(descriptor);
   } catch (error) {
     closeError = error;
-    hasCloseError = true;
   }
 
-  if (hasSyncError) throw syncError;
-  if (hasCloseError) throw closeError;
+  if (syncError !== undefined) throw syncError;
+  if (closeError !== undefined) throw closeError;
 };
 
 const ensureDirSync = (dirPath: string, mode: number = DEFAULT_DIR_MODE): void => {
@@ -168,7 +160,6 @@ export const writeJsonFileSyncExclusive = (
       } catch {}
     }
     if (tempCreated) {
-      // Best-effort cleanup of the temp name owned by this operation.
       try {
         fs.unlinkSync(tempPath);
       } catch {}
@@ -261,7 +252,6 @@ function atomicWriteFileSync(filePath: string, content: string, mode: number): v
       } catch {}
     }
     if (tempCreated) {
-      // Best-effort cleanup of the temp name owned by this operation.
       try {
         fs.unlinkSync(tempPath);
       } catch {}
@@ -290,7 +280,7 @@ export async function atomicWriteFile(
   } catch (error) {
     await handle?.close().catch(() => undefined);
     if (tempCreated) {
-      // Best-effort cleanup of the temp name owned by this operation.
+      // A failed unlink must not replace the error that brought us here.
       try {
         await fs.promises.unlink(tempPath);
       } catch {}

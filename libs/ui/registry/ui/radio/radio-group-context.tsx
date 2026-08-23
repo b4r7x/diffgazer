@@ -4,7 +4,6 @@ import { createContext, useContext } from "react";
 import type { SelectableVariant } from "@/lib/selectable-variants";
 import type { RadioSize } from "./radio";
 
-/** Context value shared by radio group. */
 export interface RadioGroupContextValue {
   /** Controlled selected value. */
   value?: string;
@@ -32,7 +31,6 @@ export interface RadioGroupContextValue {
   name?: string;
   /** Requires one enabled item to be selected. */
   required?: boolean;
-  /** Called when required invalid occurs. */
   onRequiredInvalid: () => void;
   tabTargetValue: string | null;
 }

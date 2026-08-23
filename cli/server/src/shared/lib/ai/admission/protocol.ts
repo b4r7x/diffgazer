@@ -1,8 +1,8 @@
-import type { RuntimeIdentity } from "@diffgazer/core/schemas/review";
+import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import {
-  buildReviewSchemaJson,
-  hashReviewSchemaJson,
-} from "../providers/cli-compatibility/review-schema.js";
+  buildLensReviewResultJsonSchema,
+  type RuntimeIdentity,
+} from "@diffgazer/core/schemas/review";
 
 /**
  * Revision of the admission/execution protocol this server speaks — deliberately
@@ -18,4 +18,6 @@ export const RUNTIME_IDENTITY: RuntimeIdentity = {
   version: ADMISSION_PROTOCOL_REVISION,
 };
 
-export const STRUCTURED_OUTPUT_SCHEMA_SHA256 = hashReviewSchemaJson(buildReviewSchemaJson());
+export const STRUCTURED_OUTPUT_SCHEMA_SHA256 = sha256CanonicalJsonSync(
+  buildLensReviewResultJsonSchema(),
+);

@@ -40,7 +40,6 @@ export function normalizeKeyInput<O>(
       options: third,
     };
   }
-  // first is Record<string, KeyHandler>, second (if present) is options
   // Cast needed: Array.isArray() doesn't narrow readonly arrays in TypeScript
   return {
     handlerMap: first as Record<string, KeyHandler>,

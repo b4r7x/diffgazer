@@ -90,7 +90,6 @@ function ollamaRoutes(
     models?: Array<Record<string, unknown>>;
     version?: string;
     chatBody?: (request: Request) => unknown;
-    onChat?: () => void;
   } = {},
 ): readonly MockRoute[] {
   return [
@@ -109,7 +108,6 @@ function ollamaRoutes(
       method: "POST",
       match: (url) => url.includes("/api/chat"),
       handler: async (request) => {
-        options.onChat?.();
         const payload = options.chatBody
           ? options.chatBody(request)
           : { message: { content: '{"issues":[]}' } };
@@ -124,7 +122,6 @@ function openAiRoutes(
     models?: Array<{ id: string }>;
     serverVersion?: string;
     chatBody?: (request: Request) => unknown;
-    onChat?: () => void;
   } = {},
 ): readonly MockRoute[] {
   return [
@@ -141,7 +138,6 @@ function openAiRoutes(
       method: "POST",
       match: (url) => url.includes("/chat/completions"),
       handler: async (request) => {
-        options.onChat?.();
         const payload = options.chatBody
           ? options.chatBody(request)
           : { choices: [{ message: { content: '{"issues":[]}' } }] };

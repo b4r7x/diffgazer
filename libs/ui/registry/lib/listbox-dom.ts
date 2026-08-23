@@ -33,7 +33,7 @@ export function getListboxOwnerSelector(containerRole: ContainerRole) {
 }
 
 /** Returns true when an item belongs to the current composite rather than a nested listbox/menu. */
-export function isOwnedListboxItem(
+function isOwnedListboxItem(
   element: HTMLElement,
   container: HTMLElement,
   containerRole: ContainerRole,

@@ -4,7 +4,6 @@ import { Children, type ComponentProps, isValidElement, type ReactNode } from "r
 import { PanelDescription } from "./panel-description";
 import { PanelTitle } from "./panel-title";
 
-/** Props for panel header. */
 export interface PanelHeaderProps extends ComponentProps<"div"> {
   /** Toggle the 4px foreground marker bar. Use "none" for rail or custom layouts. */
   marker?: "bar" | "none";

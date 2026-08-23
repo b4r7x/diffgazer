@@ -4,7 +4,6 @@ import { type ReactNode, useId, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { AccordionItemContext, useAccordionContext } from "./accordion-context";
 
-/** Props for accordion item. */
 export interface AccordionItemProps {
   /** Stable identifier matched against the Accordion value. */
   value: string;

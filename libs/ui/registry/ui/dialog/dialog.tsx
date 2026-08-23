@@ -4,7 +4,6 @@ import { type ReactNode, useCallback, useId, useMemo, useRef, useState } from "r
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { DialogContext } from "./dialog-context";
 
-/** Props for dialog. */
 export interface DialogProps {
   /** Controlled open state. Pair with onOpenChange. */
   open?: boolean;

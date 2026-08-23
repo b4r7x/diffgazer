@@ -114,7 +114,7 @@ function scriptSegments(script) {
 // CONTRIBUTING.md documents `pnpm run release-check` as the local mirror of the CI
 // no-publish readiness sequence (release-readiness.yml). Pin the gates the CI verify
 // job runs that were previously absent locally so a local pass cannot be a false
-// readiness signal (finding F-052). Intentionally CI-only, so NOT mirrored here:
+// readiness signal. Intentionally CI-only, so NOT mirrored here:
 // the event-range Gitleaks scan (separate action job; fetch-depth does not make it
 // a full-history scan), the CI
 // dirty-tree `git status --short` guards (a local worktree is expected to be dirty;
@@ -340,7 +340,7 @@ test("central artifact preparation runs an active schema-generation segment and 
   );
 });
 
-// F-030: preparation used to run `pnpm --filter <pkg> build` directly, which
+// Preparation used to run `pnpm --filter <pkg> build` directly, which
 // leaves no Turbo task record, so the root build's `turbo run build` re-entered
 // the same Registry/Keys/UI pipelines from scratch on every cold CI run. Running
 // preparation through Turbo produces the same task hashes the root graph asks
@@ -395,7 +395,7 @@ test("the root build hands the prepared packages to a single Turbo build graph",
   assert.equal(segments[1], "DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run build");
 });
 
-// F-178: `prepublishOnly` ran the full multi-workspace build and `prepack` then
+// `prepublishOnly` ran the full multi-workspace build and `prepack` then
 // ran it again, so publishing built twice. `prepack` fires on every pack, not
 // only on publish — smoke's tarball install, `attw --pack`, and the release-check
 // dry-runs all reach it — so it owns the build alone and the package gates live

@@ -5,7 +5,6 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { Checkbox, type CheckboxProps } from "./checkbox";
 import { useCheckboxGroupContext } from "./checkbox-group-context";
 
-/** Props for checkbox item. */
 export type CheckboxItemProps = Omit<
   CheckboxProps,
   | "checked"

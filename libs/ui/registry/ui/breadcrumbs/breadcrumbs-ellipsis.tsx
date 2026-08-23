@@ -3,7 +3,6 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for breadcrumbs ellipsis. */
 export interface BreadcrumbsEllipsisProps extends ComponentPropsWithRef<"span"> {
   /** Screen-reader text announcing collapsed levels. Defaults to "More". */
   label?: string;

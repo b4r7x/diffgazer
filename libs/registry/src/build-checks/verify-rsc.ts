@@ -15,7 +15,6 @@ interface RscRegistry {
 interface AssertRscClientDirectivesOptions {
   rootDir: string;
   registryPath: string;
-  packagePath?: string;
   /** Public client subpaths the consuming package ships outside its registry. */
   extraClientOutputs?: Record<string, string>;
 }
@@ -216,11 +215,10 @@ export function getPublicClientOutputMap(
 export function assertRscClientDirectives({
   rootDir,
   registryPath,
-  packagePath = resolve(rootDir, "package.json"),
   extraClientOutputs,
 }: AssertRscClientDirectivesOptions): void {
   const registry = JSON.parse(readFileSync(registryPath, "utf-8")) as RscRegistry;
-  const packageJson = JSON.parse(readFileSync(packagePath, "utf-8")) as {
+  const packageJson = JSON.parse(readFileSync(resolve(rootDir, "package.json"), "utf-8")) as {
     exports?: Record<string, string | { import?: string }>;
   };
 

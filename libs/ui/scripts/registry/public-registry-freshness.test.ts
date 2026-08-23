@@ -37,7 +37,7 @@ describe("committed public registry freshness", () => {
         (
           item: RegistryItem,
           options?: {
-            stylePolicy?: (itemName: string, filePath: string, content: string) => boolean;
+            stylePolicy?: (itemName: string, content: string) => boolean;
             readSourceFile?: (path: string) => string;
           },
         ) => RegistryItem
@@ -46,7 +46,7 @@ describe("committed public registry freshness", () => {
         (options: {
           rootDir: string;
           sourceRegistryPath?: string;
-        }) => (itemName: string, filePath: string, content: string) => boolean
+        }) => (itemName: string, content: string) => boolean
       >(transformModule, "createUiThemeStyleStripPolicy");
       const skipSourceItem = await loadExport<(item: RegistryItem) => boolean>(
         transformModule,

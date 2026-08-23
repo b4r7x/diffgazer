@@ -27,7 +27,6 @@ import {
 import { NavigationListGroup } from "./navigation-list-group";
 import { NavigationListItem } from "./navigation-list-item";
 
-/** Props for navigation list. */
 export interface NavigationListProps
   extends Omit<ComponentPropsWithRef<"div">, "children" | "onKeyDown" | "onSelect"> {
   /** Controlled selected item id. */

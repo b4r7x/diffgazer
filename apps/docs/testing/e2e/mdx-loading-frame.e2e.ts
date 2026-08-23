@@ -397,8 +397,9 @@ test("keeps the ghost TOC at the viewport when a reload restores a deep scroll o
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
 
-  // The reload can only restore an offset the router already persisted. (This storage
-  // TanStack Router's inline scroll-restoration script restores element offsets.
+  // The reload can only restore an offset the router already persisted, so the spec forces
+  // the offset and polls sessionStorage until TanStack Router's scroll-restoration entry
+  // lands.
   await page.goto("/ui/components/select");
   await expect(page.getByRole("navigation", { name: "On this page" })).toBeVisible();
   await page.evaluate((top) => {

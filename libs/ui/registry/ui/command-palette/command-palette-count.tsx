@@ -3,7 +3,7 @@
 import type { ComponentPropsWithRef } from "react";
 import { useCommandPaletteContext } from "./command-palette-context";
 
-/** Props for command palette count. The readout owns its own content. */
+/** The readout owns its own content. */
 export type CommandPaletteCountProps = Omit<ComponentPropsWithRef<"span">, "children">;
 
 /**

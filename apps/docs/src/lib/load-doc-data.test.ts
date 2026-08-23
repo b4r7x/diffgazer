@@ -74,9 +74,7 @@ describe("generated docs page data loader", () => {
   });
 
   it("loads page metadata without source-bearing hook files", async () => {
-    const data = await loadDocPageData("ui", "hooks", "controllable-state", {
-      throwIfMissing: true,
-    });
+    const data = await loadDocPageData("ui", "hooks", "controllable-state");
 
     expect(data).toMatchObject({
       name: "controllable-state",
@@ -87,15 +85,10 @@ describe("generated docs page data loader", () => {
     expect(JSON.stringify(data?.files)).not.toMatch(/raw|highlighted/);
   });
 
-  it("treats missing metadata as optional unless it is required", async () => {
-    await expect(
-      loadDocPageData("ui", "components", "missing-component-metadata"),
-    ).resolves.toBeNull();
-    await expect(
-      loadDocPageData("ui", "components", "missing-component-metadata", {
-        throwIfMissing: true,
-      }),
-    ).rejects.toThrow("Missing generated docs data: ui/components/missing-component-metadata");
+  it("rejects when metadata is missing", async () => {
+    await expect(loadDocPageData("ui", "components", "missing-component-metadata")).rejects.toThrow(
+      "Missing generated docs data: ui/components/missing-component-metadata",
+    );
   });
 });
 
@@ -103,9 +96,7 @@ describe("generated docs source data loader", () => {
   it("fetches component source from the exact public archive URL", async () => {
     const fetchMock = stubFetch(responseWithJson(componentSourceData));
 
-    const data = await loadDocSourceData("ui", "components", "select", {
-      throwIfMissing: true,
-    });
+    const data = await loadDocSourceData("ui", "components", "select");
 
     expect(fetchMock).toHaveBeenCalledWith("/source-data/ui/components/select.source.json");
     expect(data).toEqual(componentSourceData);
@@ -116,9 +107,7 @@ describe("generated docs source data loader", () => {
   it("fetches hook source from the hooks archive path", async () => {
     const fetchMock = stubFetch(responseWithJson(hookSourceData));
 
-    const data = await loadDocSourceData("keys", "hooks", "focus", {
-      throwIfMissing: true,
-    });
+    const data = await loadDocSourceData("keys", "hooks", "focus");
 
     expect(fetchMock).toHaveBeenCalledWith("/source-data/keys/hooks/focus.source.json");
     expect(data).toEqual(hookSourceData);
@@ -128,9 +117,7 @@ describe("generated docs source data loader", () => {
   it("loads and validates every file in a hook source archive", async () => {
     stubFetch(responseWithJson(hookSourceArchive));
 
-    const data = await loadDocSourceData("keys", "hooks", "focus", {
-      throwIfMissing: true,
-    });
+    const data = await loadDocSourceData("keys", "hooks", "focus");
 
     expect(data?.files).toEqual(hookSourceArchive.files);
   });
@@ -143,9 +130,9 @@ describe("generated docs source data loader", () => {
       }),
     );
 
-    await expect(
-      loadDocSourceData("keys", "hooks", "focus", { throwIfMissing: true }),
-    ).rejects.toThrow("Invalid generated docs data: keys/hooks/focus.source");
+    await expect(loadDocSourceData("keys", "hooks", "focus")).rejects.toThrow(
+      "Invalid generated docs data: keys/hooks/focus.source",
+    );
   });
 
   it("rejects unknown or unsafe archive paths before fetching", async () => {
@@ -163,17 +150,12 @@ describe("generated docs source data loader", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("treats a missing archive as optional unless it is required", async () => {
-    stubFetch(new Response(null, { status: 404 }), new Response(null, { status: 404 }));
+  it("rejects when the archive is missing", async () => {
+    stubFetch(new Response(null, { status: 404 }));
 
-    await expect(
-      loadDocSourceData("ui", "components", "missing-component-source"),
-    ).resolves.toBeNull();
-    await expect(
-      loadDocSourceData("ui", "components", "missing-component-source", {
-        throwIfMissing: true,
-      }),
-    ).rejects.toThrow("Missing generated docs data: ui/components/missing-component-source.source");
+    await expect(loadDocSourceData("ui", "components", "missing-component-source")).rejects.toThrow(
+      "Missing generated docs data: ui/components/missing-component-source.source",
+    );
   });
 
   it("rejects a response whose body is not valid JSON", async () => {
@@ -181,9 +163,9 @@ describe("generated docs source data loader", () => {
     vi.spyOn(response, "json").mockRejectedValue(new SyntaxError("Unexpected token"));
     stubFetch(response);
 
-    await expect(
-      loadDocSourceData("ui", "components", "select", { throwIfMissing: true }),
-    ).rejects.toThrow("Invalid generated docs data: ui/components/select.source");
+    await expect(loadDocSourceData("ui", "components", "select")).rejects.toThrow(
+      "Invalid generated docs data: ui/components/select.source",
+    );
   });
 
   it("rejects malformed source and allows a later retry", async () => {
@@ -201,12 +183,12 @@ describe("generated docs source data loader", () => {
       responseWithJson(componentSourceData),
     );
 
-    await expect(
-      loadDocSourceData("ui", "components", "select", { throwIfMissing: true }),
-    ).rejects.toThrow("Invalid generated docs data: ui/components/select.source");
-    await expect(
-      loadDocSourceData("ui", "components", "select", { throwIfMissing: true }),
-    ).resolves.toEqual(componentSourceData);
+    await expect(loadDocSourceData("ui", "components", "select")).rejects.toThrow(
+      "Invalid generated docs data: ui/components/select.source",
+    );
+    await expect(loadDocSourceData("ui", "components", "select")).resolves.toEqual(
+      componentSourceData,
+    );
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -235,8 +217,8 @@ describe("generated docs source data loader", () => {
       }),
     );
 
-    await expect(
-      loadDocSourceData("ui", "components", "select", { throwIfMissing: true }),
-    ).rejects.toThrow("Invalid generated docs data: ui/components/select.source");
+    await expect(loadDocSourceData("ui", "components", "select")).rejects.toThrow(
+      "Invalid generated docs data: ui/components/select.source",
+    );
   });
 });

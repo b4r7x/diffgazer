@@ -179,7 +179,6 @@ export function ApiKeyOverlay({
                 apiKey={value}
                 onApiKeyChange={setValue}
                 envVar={resolveCredentialEnvironmentVariable(row.product.productId)}
-                envVarReadOnly
                 isActive={open && !saving}
                 inputFocused={inputFocused}
                 onInputFocusedChange={setInputFocused}

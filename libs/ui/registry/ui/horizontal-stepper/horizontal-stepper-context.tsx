@@ -6,7 +6,6 @@ import type { HorizontalStepperVariant } from "./horizontal-stepper-variants";
 
 export type { HorizontalStepStatus, StepStatus };
 
-/** Context value shared by stepper. */
 interface StepperContextValue<TStep extends string = string> {
   /** Id of the active step. */
   value: TStep;

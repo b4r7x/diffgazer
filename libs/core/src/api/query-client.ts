@@ -7,9 +7,7 @@ function isClientHttpError(error: unknown): boolean {
 }
 
 /**
- * Builds a retry predicate that gives up on 4xx responses and retries other
- * failures up to `maxFailures` times. Surfaces (web, TUI) cap the attempts
- * without losing the shared 4xx give-up policy.
+ * Surfaces (web, TUI) cap the attempts without losing the shared 4xx give-up policy.
  */
 export function createQueryRetry(
   maxFailures: number,
@@ -24,11 +22,6 @@ const baseQueries: QueryClientConfig["defaultOptions"] = {
   },
 };
 
-/**
- * Creates a QueryClient seeded with shared defaults (60s stale time and a retry
- * policy that gives up on 4xx responses). Callers pass `overrides` to replace or
- * extend the query/mutation defaults for their environment.
- */
 export function createQueryClientBase(overrides?: QueryClientConfig): QueryClient {
   return new QueryClient({
     ...overrides,

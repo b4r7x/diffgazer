@@ -2,7 +2,6 @@
 
 import type { ChangeType, WordSegment } from "@/lib/diff";
 
-/** Allowed diff row state values. */
 export type DiffRowState = "added" | "removed" | "context" | "hunk" | "empty";
 
 /** Maps parsed change types to row data-state values. */
@@ -12,7 +11,6 @@ export const ROW_STATE: Record<ChangeType, DiffRowState> = {
   context: "context",
 };
 
-/** Resolves sr label. */
 export function resolveSrLabel(
   type: ChangeType,
   addedLineLabel: string,

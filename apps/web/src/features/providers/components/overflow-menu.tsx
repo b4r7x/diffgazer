@@ -16,7 +16,7 @@ export interface ProviderOverflowMenuState {
   onOpenChange: (open: boolean) => void;
 }
 
-export interface ProviderOverflowMenuProps {
+interface ProviderOverflowMenuProps {
   /** Derived once per selection so the renderer and the keyboard row cannot diverge. */
   layout: ProviderActionLayout;
   onAction: (control: ProviderRowControl) => void;

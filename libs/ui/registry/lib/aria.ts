@@ -6,14 +6,7 @@ export function resolveAriaInvalid(
   forceInvalid?: boolean,
 ) {
   if (forceInvalid) return true;
-  if (
-    ariaInvalid === true ||
-    ariaInvalid === "true" ||
-    ariaInvalid === "grammar" ||
-    ariaInvalid === "spelling"
-  ) {
-    return ariaInvalid;
-  }
+  if (isAriaInvalid(ariaInvalid)) return ariaInvalid;
   if (ariaInvalid === false || ariaInvalid === "false") return ariaInvalid;
   return undefined;
 }

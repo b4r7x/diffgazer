@@ -70,7 +70,6 @@ export function initTerminal(
   const cleanupObserver = observeOnce(
     terminal,
     () => void runTerminal(terminal, scope.signal, scope.active),
-    0.5,
   );
   scope.addCleanup(cleanupObserver);
   const wrap = terminal.parentElement;

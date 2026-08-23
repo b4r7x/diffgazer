@@ -3,7 +3,6 @@
 import { type ReactNode, useId } from "react";
 import { MenuLabel } from "./menu-label";
 
-/** Props for menu group. */
 export interface MenuGroupProps {
   /**
    * Optional label rendered via MenuLabel. When provided, the group is labelled via

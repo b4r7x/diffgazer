@@ -9,12 +9,12 @@ import {
   type CliCompatibilityRecord,
   HOSTILE_ATTEMPT_IDS,
 } from "./cli-compatibility/compat.js";
+import { buildCliCompatibilityTuple } from "./cli-review-driver.js";
 import {
   assertCodexArgvFlagsAllowlisted,
-  buildCodexCliCompatibilityTuple,
   buildCodexCliExecArgv,
   CODEX_CLI_ACCEPTED_FLAGS,
-  executeCodexCliReview,
+  createCodexCliAdapter,
   parseCodexOutputLastMessage,
 } from "./codex-cli.js";
 
@@ -191,7 +191,7 @@ async function createRuntimeMatchedRecord(
   overrides: Partial<CliCompatibilityRecord> = {},
 ): Promise<CliCompatibilityRecord> {
   const request = executeRequest();
-  const tuple = await buildCodexCliCompatibilityTuple(request, EXECUTABLE, VERSION);
+  const tuple = await buildCliCompatibilityTuple("codex-cli", request, EXECUTABLE, VERSION);
   return createCodexRecord({
     ...overrides,
     platform: {
@@ -316,11 +316,11 @@ describe("parseCodexOutputLastMessage", () => {
   });
 });
 
-describe("executeCodexCliReview contract", () => {
+describe("codex CLI adapter execute contract", () => {
   it("fails closed before spawning for a read-capable compatibility profile", async () => {
     const record = await createRuntimeMatchedRecord();
     let processStarted = false;
-    const result = await executeCodexCliReview(executeRequest(), {
+    const result = await createCodexCliAdapter({
       ...dependencies(record),
       runProcess: async () => {
         processStarted = true;
@@ -335,7 +335,7 @@ describe("executeCodexCliReview contract", () => {
           timedOut: false,
         };
       },
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("transport-failed");
     expect(processStarted).toBe(false);
@@ -343,7 +343,9 @@ describe("executeCodexCliReview contract", () => {
 
   it("preserves downstream execution behind the test-local admission seam", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCodexCliReview(executeRequest(), successDependencies(record));
+    const result = await createCodexCliAdapter(successDependencies(record)).execute(
+      executeRequest(),
+    );
 
     expect(result.receipt.outcome).toBe("completed");
     expect(result.result.issues).toEqual([]);
@@ -353,19 +355,19 @@ describe("executeCodexCliReview contract", () => {
   it("rejects an oversized result.json before parsing and settles measured bytes", async () => {
     const record = await createRuntimeMatchedRecord();
     const oversized = "x".repeat(limits.maxResponseBytes + 1);
-    const result = await executeCodexCliReview(executeRequest(), {
+    const result = await createCodexCliAdapter({
       ...successDependencies(record),
       readResultFile: async () => ok(oversized),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("transport-failed");
   });
 
   it("rejects absent compatibility record", async () => {
-    const absent = await executeCodexCliReview(executeRequest(), {
+    const absent = await createCodexCliAdapter({
       ...successDependencies(await createRuntimeMatchedRecord()),
       resolveCompatibilityRecord: async () => null,
-    });
+    }).execute(executeRequest());
 
     expect(absent.receipt.outcome).toBe("transport-failed");
     expect(absent.result.issues).toEqual([]);
@@ -375,7 +377,9 @@ describe("executeCodexCliReview contract", () => {
     const record = await createRuntimeMatchedRecord({
       model: { requested: "other-model", policyCheck: "accepted", rawOutputSha256: SHA_E },
     });
-    const result = await executeCodexCliReview(executeRequest(), successDependencies(record));
+    const result = await createCodexCliAdapter(successDependencies(record)).execute(
+      executeRequest(),
+    );
 
     expect(result.receipt.outcome).toBe("transport-failed");
     expect(result.result.issues).toEqual([]);
@@ -383,7 +387,7 @@ describe("executeCodexCliReview contract", () => {
 
   it("rejects event-only JSONL stdout completion", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCodexCliReview(executeRequest(), {
+    const result = await createCodexCliAdapter({
       ...successDependencies(record),
       runProcess: async () => ({
         exitCode: 0,
@@ -395,7 +399,7 @@ describe("executeCodexCliReview contract", () => {
         outputTruncated: false,
         timedOut: false,
       }),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("schema-failed");
     expect(result.result.issues).toEqual([]);
@@ -424,27 +428,27 @@ describe("executeCodexCliReview contract", () => {
 
   it("rejects version mismatch", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCodexCliReview(executeRequest(), {
+    const result = await createCodexCliAdapter({
       ...successDependencies(record),
       acquireVersion: async () => ok("9.9.9"),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("transport-failed");
   });
 
   it("rejects rejected model policy", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCodexCliReview(executeRequest(), {
+    const result = await createCodexCliAdapter({
       ...successDependencies(record),
       probeModelPolicy: async () => ok({ accepted: false, rawOutput: "missing model" }),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("transport-failed");
   });
 
   it("rejects nonzero exit", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCodexCliReview(executeRequest(), {
+    const result = await createCodexCliAdapter({
       ...successDependencies(record),
       runProcess: async () => ({
         exitCode: 1,
@@ -456,17 +460,17 @@ describe("executeCodexCliReview contract", () => {
         outputTruncated: false,
         timedOut: false,
       }),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("transport-failed");
   });
 
   it("rejects unavailable ambient auth", async () => {
     const record = await createRuntimeMatchedRecord();
-    const result = await executeCodexCliReview(executeRequest(), {
+    const result = await createCodexCliAdapter({
       ...successDependencies(record),
       probeAuth: async () => ok({ authStoreEvidence: "unavailable" }),
-    });
+    }).execute(executeRequest());
 
     expect(result.receipt.outcome).toBe("transport-failed");
   });
@@ -479,7 +483,7 @@ describe("executeCodexCliReview contract", () => {
     const previous = process.env[key];
     process.env[key] = "injected-secret";
     try {
-      await executeCodexCliReview(executeRequest(), {
+      await createCodexCliAdapter({
         ...successDependencies(record),
         runProcess: async (input) => {
           childEnv = { ...input.env };
@@ -495,7 +499,7 @@ describe("executeCodexCliReview contract", () => {
           };
         },
         readResultFile: async () => ok(JSON.stringify({ issues: [] })),
-      });
+      }).execute(executeRequest());
       expect(childEnv[key]).toBeUndefined();
     } finally {
       if (previous === undefined) {
@@ -517,7 +521,7 @@ describe("Codex prompt privacy and admitted wall time", () => {
     };
     let observed: { argv: readonly string[]; stdin: string; timeoutMs?: number } | null = null;
 
-    const result = await executeCodexCliReview(request, {
+    const result = await createCodexCliAdapter({
       ...successDependencies(record),
       runProcess: async (input) => {
         observed = { argv: input.argv, stdin: input.stdin, timeoutMs: input.timeoutMs };
@@ -532,7 +536,7 @@ describe("Codex prompt privacy and admitted wall time", () => {
           timedOut: false,
         };
       },
-    });
+    }).execute(request);
 
     expect(result.receipt.outcome).toBe("completed");
     const run = observed as unknown as { argv: string[]; stdin: string; timeoutMs?: number };

@@ -23,7 +23,7 @@ const ACCEPT_SHORTCUTS: Shortcut[] = [
 const NOT_NOW_SHORTCUTS: Shortcut[] = [{ ...BACK_SHORTCUT, label: PROVIDER_CONSENT_NOTICE.notNow }];
 const CLOSE_SHORTCUTS: Shortcut[] = [{ ...BACK_SHORTCUT, label: PROVIDER_CONSENT_NOTICE.close }];
 
-export interface ProviderConsentOverlayProps {
+interface ProviderConsentOverlayProps {
   /** The screen's gate; the overlay shows while it is open and answers to it. */
   gate: ProviderConsentGate;
 }

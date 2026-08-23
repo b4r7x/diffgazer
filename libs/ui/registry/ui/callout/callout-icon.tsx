@@ -13,7 +13,6 @@ const DEFAULT_ICON: Record<CalloutTone, ReactNode> = {
   success: "✓",
 };
 
-/** Props for callout icon. */
 export interface CalloutIconProps extends ComponentProps<"span"> {
   /** Custom icon content (character, emoji, or SVG). The icon is decorative and aria-hidden. */
   children?: ReactNode;

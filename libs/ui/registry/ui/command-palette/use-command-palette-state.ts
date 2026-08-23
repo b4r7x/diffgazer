@@ -16,7 +16,6 @@ import {
   useCommandPaletteItemRegistry,
 } from "./use-item-registry";
 
-/** Context value shared by command palette. */
 export interface CommandPaletteContextValue {
   /**
    * Controlled open state. Required to actually show the palette - wire a trigger button or
@@ -72,7 +71,6 @@ export function getCommandPaletteItemDomId(listId: string, id: string): string {
   return `${listId}-item-${encoded || "empty"}`;
 }
 
-/** Options for use command palette state. */
 export interface UseCommandPaletteStateOptions {
   /**
    * Controlled open state. Required to actually show the palette - wire a trigger button or
@@ -100,7 +98,6 @@ export interface UseCommandPaletteStateOptions {
   filter?: (value: string, search: string) => boolean;
 }
 
-/** Provides command palette state behavior. */
 export function useCommandPaletteState({
   open: controlledOpen,
   onOpenChange,

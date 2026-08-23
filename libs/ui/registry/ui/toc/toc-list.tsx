@@ -1,7 +1,6 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for toc list. */
 export type TocListProps = ComponentPropsWithRef<"ul">;
 
 /** List container for TOC items. */

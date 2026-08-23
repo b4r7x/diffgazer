@@ -34,7 +34,6 @@ const STATUS_SR_PREFIX: Record<StepStatus, string> = {
   disabled: "Disabled:",
 };
 
-/** Props for stepper trigger. */
 export interface StepperTriggerProps extends Omit<ComponentProps<"button">, "children" | "type"> {
   /** Step label rendered next to the indicator glyph. */
   children: ReactNode;

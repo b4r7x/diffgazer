@@ -22,6 +22,7 @@ import {
   RegistryItemSchema,
   RegistrySchema,
 } from "@diffgazer/registry/schemas";
+import { isRecord } from "./registry/fs.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const REGISTRY_PATH = resolve(ROOT, "registry/registry.json");
@@ -43,15 +44,6 @@ function isPublicItem(item: RegistryItem): boolean {
   return item.meta?.hidden !== true;
 }
 
-/**
- * Items that ship as installable registry primitives but do not own a
- * standalone docs page. Their docs live on a companion item's page (e.g.
- * horizontal-stepper is documented as a section of the stepper page).
- */
-function hasOwnDocsPage(item: RegistryItem): boolean {
-  return item.meta?.docsPage !== false;
-}
-
 function validateComponentDocOwnership(items: RegistryItem[]): void {
   const itemByName = new Map(items.map((item) => [item.name, item]));
   const invalidDocs = readdirSync(COMPONENT_DOCS_DIR, { withFileTypes: true })
@@ -65,9 +57,7 @@ function validateComponentDocOwnership(items: RegistryItem[]): void {
     .map((entry) => entry.name.slice(0, -3))
     .filter((name) => {
       const item = itemByName.get(name);
-      return (
-        !item || item.type !== REGISTRY_ITEM_TYPE.ui || !isPublicItem(item) || !hasOwnDocsPage(item)
-      );
+      return !item || item.type !== REGISTRY_ITEM_TYPE.ui || !isPublicItem(item);
     });
 
   if (invalidDocs.length > 0) {
@@ -88,11 +78,6 @@ function mapHookItem(item: RegistryItem): HookRegistryItem {
 }
 
 validateComponentDocOwnership(registryItems);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  if (!value || typeof value !== "object") return false;
-  return !Array.isArray(value);
-}
 
 // Every ComponentDoc field is optional, so the guard can only reject an export
 // that is not a doc object at all — a function, an array, or a doc whose two
@@ -386,16 +371,14 @@ function buildUiDocsData(): Promise<UiDocsDataBuildResult> {
     outputDir: resolve(ROOT, "docs/generated"),
     hooks: {
       contentDir: resolve(ROOT, "docs/content/hooks"),
-      filter: (item) =>
-        item.type === REGISTRY_ITEM_TYPE.hook && isPublicItem(item) && hasOwnDocsPage(item),
+      filter: (item) => item.type === REGISTRY_ITEM_TYPE.hook && isPublicItem(item),
       mapItem: mapHookItem,
       loadHookDoc,
       aggregateHooksFile: "ui-hooks.json",
     },
     components: {
       contentDir: resolve(ROOT, "docs/content/components"),
-      filter: (item) =>
-        item.type === REGISTRY_ITEM_TYPE.ui && isPublicItem(item) && hasOwnDocsPage(item),
+      filter: (item) => item.type === REGISTRY_ITEM_TYPE.ui && isPublicItem(item),
       processComponent,
     },
     libs: {

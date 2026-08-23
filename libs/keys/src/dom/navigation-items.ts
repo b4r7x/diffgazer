@@ -205,7 +205,7 @@ export function focusNavigationItem(
   container: HTMLElement | null,
   query: NavigationItemQuery & {
     value: string;
-    fallback?: "first" | "last" | "none";
+    fallback?: "first" | "last";
     preventScroll?: boolean;
   },
 ): string | null {

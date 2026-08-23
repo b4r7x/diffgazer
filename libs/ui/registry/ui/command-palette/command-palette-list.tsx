@@ -5,7 +5,6 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { cn } from "@/lib/utils";
 import { useCommandPaletteContext } from "./command-palette-context";
 
-/** Props for command palette list. */
 export interface CommandPaletteListProps
   extends Omit<ComponentPropsWithRef<"div">, "children" | "role" | "id"> {
   /** Content rendered inside the component. */

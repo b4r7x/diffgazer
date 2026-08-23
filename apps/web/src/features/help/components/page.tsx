@@ -17,7 +17,7 @@ import { useFocusWithin } from "@/hooks/use-focus-within";
 import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
 
 // "h → History" and the home sidebar jumps (o/t/p) are web-only live bindings,
-// so they stay appended here per F-242 per-surface-extras scoping.
+// so they stay appended here under per-surface-extras scoping.
 const SHORTCUTS: Shortcut[] = [
   ...HELP_SHORTCUTS,
   { key: "h", label: "Open History", context: "global" },

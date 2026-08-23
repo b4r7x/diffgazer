@@ -15,7 +15,6 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     origin: requestedOrigin,
     sourceOrigin,
     syncSchemaVersion = 3,
-    afterSync,
   } = options;
   assertSafeLibraryId(primaryLibraryId, "Primary library id");
   const libraryIds = new Set<string>();
@@ -63,7 +62,6 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     paths,
     origin,
     sourceOrigin,
-    afterSync,
   });
 
   writeSyncState(paths.stateFilePath, {

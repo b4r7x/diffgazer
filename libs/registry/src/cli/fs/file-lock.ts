@@ -392,7 +392,7 @@ function isProcessRunning(pid: number): boolean {
     process.kill(pid, 0);
     return true;
   } catch (error) {
-    return !(error instanceof Error && "code" in error && error.code === "ESRCH");
+    return !hasErrorCode(error, "ESRCH");
   }
 }
 
@@ -459,7 +459,7 @@ async function runWithFileLock<T>(
       if (reportedWait) options?.onDidWaitForLock?.();
       break;
     } catch (error) {
-      if (!(error instanceof Error && "code" in error && error.code === "EEXIST")) throw error;
+      if (!hasErrorCode(error, "EEXIST")) throw error;
       const current = await readFileLockSnapshot(lockPath, validateLockPath);
       if (current?.owner) {
         malformedLock = null;

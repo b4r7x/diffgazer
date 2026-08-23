@@ -164,7 +164,6 @@ function ollamaRoutes(
     redirected?: boolean;
     oversizeTags?: boolean;
     schemaInvalid?: boolean;
-    abortHonored?: boolean;
   } = {},
 ): readonly LocalHttpMockRoute[] {
   return [

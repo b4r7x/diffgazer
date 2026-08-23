@@ -46,17 +46,15 @@ function createMinimalManifest() {
 describe("buildRegistryArtifacts", () => {
   it("writes a manifest and newline-terminated fingerprint under the artifact root", () => {
     const root = createTempRoot();
-    const artifactRoot = "dist/artifacts";
 
     const result = buildRegistryArtifacts({
       rootDir: root,
-      artifactRoot,
       manifest: createMinimalManifest(),
       defaultOrigin: "https://example.com",
       inputs: [],
     });
 
-    expect(result.artifactRoot).toBe(join(root, artifactRoot));
+    expect(result.artifactRoot).toBe(join(root, "dist/artifacts"));
 
     const written = JSON.parse(readFileSync(result.manifestPath, "utf-8")) as Record<
       string,
@@ -163,6 +161,8 @@ describe("buildRegistryArtifacts", () => {
 
   it("runs build hooks as part of produced artifact output", () => {
     const root = createTempRoot();
+    mkdirSync(join(root, "source-dir"), { recursive: true });
+    writeFileSync(join(root, "source-dir", "file.txt"), "created before build");
 
     buildRegistryArtifacts({
       rootDir: root,
@@ -170,10 +170,6 @@ describe("buildRegistryArtifacts", () => {
       defaultOrigin: "https://example.com",
       inputs: [],
       copyDirs: [{ from: "source-dir", to: "copied" }],
-      beforeBuild: () => {
-        mkdirSync(join(root, "source-dir"), { recursive: true });
-        writeFileSync(join(root, "source-dir", "file.txt"), "created before build");
-      },
       afterCopy: ({ artifactRoot, origin }) => {
         writeFileSync(join(artifactRoot, "copied", "origin.txt"), origin);
       },

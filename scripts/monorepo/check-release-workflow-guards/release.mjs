@@ -7,7 +7,7 @@ import {
   stripExpressionDelimiters,
 } from "./workflow-source.mjs";
 
-// F-089: the privileged release job must only run for trusted push provenance
+// The privileged release job must only run for trusted push provenance
 // from this repository's main branch. Dropping any of these guards would let a
 // pull_request-origin Release Readiness run reach the OIDC/npm-token release
 // job, so guard each condition against silent removal.

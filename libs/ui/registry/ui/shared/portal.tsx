@@ -3,12 +3,11 @@
 import { type ReactNode, type RefObject, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  isPendingPortalContainer,
+  PENDING_PORTAL_CONTAINER,
   type PortalContainerValue,
   usePortalContainer,
 } from "./portal-context";
 
-/** Props for portal. */
 export interface PortalProps {
   /** Content rendered inside the component. */
   children: ReactNode;
@@ -65,6 +64,6 @@ export function Portal({ children, container }: PortalProps) {
     target = scopedContainer;
   }
 
-  if (!target || isPendingPortalContainer(target)) return null;
+  if (!target || target === PENDING_PORTAL_CONTAINER) return null;
   return createPortal(children, target);
 }

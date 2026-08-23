@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigationListItemContext } from "./navigation-list-item-context";
 
-/** Props for navigation list subtitle. */
 export interface NavigationListSubtitleProps {
   /** Secondary metadata text. Wired to aria-describedby. */
   children: ReactNode;

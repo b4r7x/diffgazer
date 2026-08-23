@@ -3,7 +3,6 @@ import type { ComponentPropsWithRef, ElementType } from "react";
 import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 
-/** Class variants for card. */
 export const cardVariants = cva("w-full relative rounded-sm bg-background", {
   variants: {
     surface: {
@@ -47,11 +46,9 @@ export const cardVariants = cva("w-full relative rounded-sm bg-background", {
   defaultVariants: { surface: "flat", size: "default", interactive: false },
 });
 
-/** Props for card own. */
 type CardOwnProps = VariantProps<typeof cardVariants>;
 type CardElement = "div" | "article" | "section" | "aside" | "a" | "button";
 
-/** Props for card. */
 export type CardProps<T extends CardElement = "div"> = Omit<
   ComponentPropsWithRef<T>,
   keyof CardOwnProps | "as"

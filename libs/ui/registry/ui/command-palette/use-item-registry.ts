@@ -17,7 +17,6 @@ export interface CommandPaletteItemRegistration {
   element: HTMLElement | null;
 }
 
-/** Options for command palette item registration. */
 export interface UseCommandPaletteItemRegistryOptions {
   listRef: RefObject<HTMLDivElement | null>;
 }

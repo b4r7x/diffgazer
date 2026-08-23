@@ -5,7 +5,6 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { Radio, type RadioProps } from "./radio";
 import { useRadioGroupContext } from "./radio-group-context";
 
-/** Props for radio group item. */
 export interface RadioGroupItemProps<TValue extends string = string>
   extends Omit<
     RadioProps,

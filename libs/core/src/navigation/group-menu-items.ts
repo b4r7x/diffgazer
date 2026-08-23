@@ -15,14 +15,9 @@ export interface MenuItemWithDivider {
 }
 
 /**
- * Annotates each item with whether a divider should be rendered before it.
- *
  * Output ordering matches the canonical `MENU_GROUP_RANK`
  * (review → navigation → system) regardless of the caller's input order.
  * Within each group, the relative order of items is preserved (stable sort).
- *
- * This guarantees the home menu rendering contract:
- * callers do not need to keep their menu definitions group-sorted.
  */
 export function withGroupDividers(items: readonly NavItem[]): MenuItemWithDivider[] {
   // Array.prototype.sort is stable, so equal-rank items keep the caller's input

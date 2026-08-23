@@ -29,7 +29,6 @@ const MENU_VALUE_GLYPHS: Partial<Record<MenuItemValueVariant, string>> = {
   "success-badge": "✓",
 };
 
-/** Props for menu item. */
 export interface MenuItemProps<TId extends string = string>
   extends Omit<
     ComponentPropsWithRef<"div">,

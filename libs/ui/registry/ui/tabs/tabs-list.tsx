@@ -21,7 +21,6 @@ import { useTabsContext } from "./tabs-context";
 
 type TabsListNativeProps = Omit<ComponentProps<"div">, "aria-orientation" | "role">;
 
-/** Props for tabs list. */
 export interface TabsListProps extends TabsListNativeProps {
   /** Allows horizontal triggers and their labels to wrap within the available width. */
   wrap?: boolean;

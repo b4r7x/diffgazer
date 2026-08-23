@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for menu label. */
 export interface MenuLabelProps {
   /** ID applied to the rendered element. */
   id?: string;

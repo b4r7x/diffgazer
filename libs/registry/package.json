@@ -4,8 +4,6 @@
   "description": "Reusable engine for building shadcn-compatible registries, artifacts, and docs sync",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -28,9 +26,6 @@
       "import": "./dist/imports/relative-js.js"
     }
   },
-  "files": [
-    "dist"
-  ],
   "engines": {
     "node": ">=22.0.0"
   },

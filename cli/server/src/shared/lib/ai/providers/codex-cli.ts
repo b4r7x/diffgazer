@@ -2,25 +2,21 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import {
-  type ExecutionResult,
+  buildLensReviewResultJsonSchema,
   type ReviewResult,
   ReviewResultSchema,
 } from "@diffgazer/core/schemas/review";
-import type { Adapter, AdapterExecuteRequest } from "../types.js";
+import type { Adapter } from "../types.js";
 import {
   assertParserFieldPathAllowlisted,
   type CliCompatibilityRecord,
-  type CliCompatibilityTuple,
   CODEX_STDIN_PROMPT_SENTINEL,
 } from "./cli-compatibility/compat.js";
-import { buildReviewSchemaJson } from "./cli-compatibility/review-schema.js";
 import {
-  buildCliCompatibilityTuple,
   type CliReviewDependencies,
   type CliReviewProduct,
   type CliTerminalOutput,
   createCliReviewAdapter,
-  executeCliReview,
 } from "./cli-review-driver.js";
 
 export const CODEX_CLI_ACCEPTED_FLAGS = [
@@ -156,14 +152,6 @@ function parseCodexTerminalOutput(
   return parsed;
 }
 
-export async function buildCodexCliCompatibilityTuple(
-  request: AdapterExecuteRequest,
-  executablePath: string,
-  version: string,
-): Promise<CliCompatibilityTuple> {
-  return buildCliCompatibilityTuple("codex-cli", request, executablePath, version);
-}
-
 const CODEX_CLI_PRODUCT: CliReviewProduct = {
   productId: "codex-cli",
   tmpPrefix: "codex-cli-fixture-",
@@ -172,7 +160,7 @@ const CODEX_CLI_PRODUCT: CliReviewProduct = {
   prepareFixture: async (fixtureRoot) => {
     await writeFile(
       path.join(fixtureRoot, REVIEW_SCHEMA_FILE),
-      JSON.stringify(buildReviewSchemaJson()),
+      JSON.stringify(buildLensReviewResultJsonSchema()),
       "utf8",
     );
   },
@@ -185,13 +173,6 @@ const CODEX_CLI_PRODUCT: CliReviewProduct = {
   assertArgvAllowed: assertCodexArgvFlagsAllowlisted,
   parseTerminalOutput: parseCodexTerminalOutput,
 };
-
-export function executeCodexCliReview(
-  request: AdapterExecuteRequest,
-  dependencies: CliReviewDependencies = {},
-): Promise<ExecutionResult> {
-  return executeCliReview(request, CODEX_CLI_PRODUCT, dependencies);
-}
 
 export function createCodexCliAdapter(dependencies?: CliReviewDependencies): Adapter {
   return createCliReviewAdapter(CODEX_CLI_PRODUCT, dependencies);

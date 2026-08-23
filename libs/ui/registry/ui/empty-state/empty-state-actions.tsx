@@ -1,7 +1,6 @@
 import type { ComponentPropsWithRef } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for empty state actions. */
 export type EmptyStateActionsProps = ComponentPropsWithRef<"div">;
 
 /** Optional action area for buttons/links. Gap adapts via context. */

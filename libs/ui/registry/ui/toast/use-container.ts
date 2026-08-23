@@ -15,7 +15,6 @@ function isHovered(node: HTMLElement): boolean {
   }
 }
 
-/** Provides toast container behavior. */
 export function useToastContainer(
   toasts: Toast[],
   dismissingIds: Set<string>,

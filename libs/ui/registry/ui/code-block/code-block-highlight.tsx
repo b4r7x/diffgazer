@@ -29,7 +29,6 @@ export type LowlightInstance = {
   highlightAuto(value: string): HastRoot;
 };
 
-/** Props for code block highlight. */
 export interface CodeBlockHighlightProps extends Omit<CodeBlockContentProps, "children"> {
   /** Source code to highlight. Each newline becomes a separate row. */
   code: string;

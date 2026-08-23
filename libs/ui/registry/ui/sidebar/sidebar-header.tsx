@@ -3,7 +3,6 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-/** Props for sidebar header. */
 export interface SidebarHeaderProps extends ComponentProps<"div"> {}
 
 /** Top section with bottom border. */

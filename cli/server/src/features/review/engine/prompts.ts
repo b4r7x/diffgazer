@@ -16,9 +16,9 @@ const PROMPT_CONTROL_BYTES = /[\x00-\x1f\x7f-\x9f]/g;
 
 /**
  * Escapes a path for inclusion in a prompt: XML-escapes angle brackets/quotes AND
- * strips CR/LF and C0/C1 control bytes. A decoded git path (F-090/F-013) can carry
+ * strips CR/LF and C0/C1 control bytes. A decoded git path can carry
  * a real newline, which would otherwise break out of an attribute or tag context
- * and land attacker-controlled text at top level (prompt injection, F-348).
+ * and land attacker-controlled text at top level (prompt injection).
  */
 const sanitizePromptPath = (value: string): string =>
   escapeXml(value.replace(PROMPT_CONTROL_BYTES, ""));

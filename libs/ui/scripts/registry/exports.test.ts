@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { validatePublicComponentProps, validatePublicExportShape } from "./exports.js";
-import type { RegistryItem } from "./fs.js";
+import type { RegistryItem } from "./types.js";
 
 describe("validatePublicExportShape", () => {
   it("accepts an export with top-level types and import", () => {
@@ -80,12 +80,9 @@ describe("validatePublicComponentProps", () => {
     expect(validatePublicComponentProps(dir, items)).toEqual([]);
   });
 
-  it("flags missing generated docs only when they are required", () => {
+  it("flags a public component with no generated docs", () => {
     const dir = setup({ "registry/registry.json": "{}" });
 
-    expect(validatePublicComponentProps(dir, items)).toEqual([]);
-    expect(validatePublicComponentProps(dir, items, { requireGeneratedDocs: true })[0]).toContain(
-      "missing generated docs",
-    );
+    expect(validatePublicComponentProps(dir, items)[0]).toContain("missing generated docs");
   });
 });

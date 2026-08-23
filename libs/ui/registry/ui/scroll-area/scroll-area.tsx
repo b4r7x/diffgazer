@@ -5,7 +5,6 @@ import type { ComponentPropsWithRef, KeyboardEvent } from "react";
 import { FOCUS_OUTLINE_INSET } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 
-/** Class variants for scroll area. */
 export const scrollAreaVariants = cva("relative scrollbar-thin rounded-[inherit]", {
   variants: {
     orientation: {
@@ -19,10 +18,8 @@ export const scrollAreaVariants = cva("relative scrollbar-thin rounded-[inherit]
   defaultVariants: { orientation: "vertical" },
 });
 
-/** Thin-scrollbar wrapper with vertical, horizontal, or both overflow directions. */
 export type ScrollOrientation = NonNullable<VariantProps<typeof scrollAreaVariants>["orientation"]>;
 
-/** Props for scroll area. */
 export interface ScrollAreaProps extends ComponentPropsWithRef<"div"> {
   /** Axes that overflow. Other axes are clipped. */
   orientation?: ScrollOrientation;

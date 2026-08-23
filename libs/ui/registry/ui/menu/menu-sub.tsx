@@ -40,7 +40,6 @@ import { getItemState, menuItemBase } from "./menu-item-variants";
 /** How a submenu presents itself. */
 export type MenuSubMode = "flyout" | "stack" | "auto";
 
-/** Context value shared by menu sub. */
 interface MenuSubContextValue {
   /** Controlled open state for the submenu. */
   open: boolean;
@@ -68,7 +67,6 @@ function useMenuSubContext(): MenuSubContextValue {
   return ctx;
 }
 
-/** Props for menu sub. */
 export interface MenuSubProps {
   /** Controlled open state for the submenu. */
   open?: boolean;
@@ -134,7 +132,6 @@ export function MenuSub({
   return <MenuSubContext value={ctx}>{children}</MenuSubContext>;
 }
 
-/** Props for menu sub trigger. */
 export interface MenuSubTriggerProps {
   /** Stable identifier for the submenu trigger item. */
   id: string;
@@ -255,7 +252,6 @@ export function MenuSubTrigger({
   );
 }
 
-/** Props for menu sub content. */
 export interface MenuSubContentProps {
   /** Menu items rendered inside the submenu floating panel. */
   children: ReactNode;

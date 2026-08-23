@@ -51,9 +51,7 @@ afterEach(() => {
 
 describe("SourceViewerBlock", () => {
   it("keeps the static component archive out of the initial server render", async () => {
-    const pageData = await loadDocPageData("ui", "components", "select", {
-      throwIfMissing: true,
-    });
+    const pageData = await loadDocPageData("ui", "components", "select");
     if (!pageData) throw new Error("Select docs data is missing");
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(responseWithJson(staticSourceData));
     vi.stubGlobal("fetch", fetchMock);
@@ -73,9 +71,7 @@ describe("SourceViewerBlock", () => {
 
   it("fetches the static archive only after opening and preserves paths, highlighting, and copy", async () => {
     const user = userEvent.setup();
-    const pageData = await loadDocPageData("ui", "components", "select", {
-      throwIfMissing: true,
-    });
+    const pageData = await loadDocPageData("ui", "components", "select");
     if (!pageData) throw new Error("Select docs data is missing");
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(responseWithJson(staticSourceData));
     vi.stubGlobal("fetch", fetchMock);
@@ -100,9 +96,7 @@ describe("SourceViewerBlock", () => {
   it("renders and copies all eight public use-navigation files", async () => {
     routerBoundary.pathname = "/keys/hooks/use-navigation";
     const user = userEvent.setup();
-    const pageData = await loadDocPageData("keys", "hooks", "use-navigation", {
-      throwIfMissing: true,
-    });
+    const pageData = await loadDocPageData("keys", "hooks", "use-navigation");
     if (!pageData) throw new Error("use-navigation docs data is missing");
 
     const expectedPaths = [

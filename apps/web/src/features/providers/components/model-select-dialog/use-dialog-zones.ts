@@ -2,9 +2,8 @@ import { useFocusZone, useKey } from "@diffgazer/keys";
 import { type RefCallback, type RefObject, useRef } from "react";
 import { dialogScope } from "@/hooks/use-dialog-scope";
 
-type FocusZone = "close" | "search" | "filters" | "list" | "footer";
-
 const MODEL_DIALOG_ZONES = ["close", "search", "filters", "list", "footer"] as const;
+type FocusZone = (typeof MODEL_DIALOG_ZONES)[number];
 
 // Registered as a dialog scope at module level: useFocusZone pushes it, so no
 // useDialogScope call would mark it.

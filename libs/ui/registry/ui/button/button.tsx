@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 
 const LazySpinner = lazy(() => import("../spinner/spinner").then((m) => ({ default: m.Spinner })));
 
-/** Class variants for button. */
 export const buttonVariants = cva(
   `inline-flex items-center justify-center wrap-break-word text-center font-mono transition-colors ${FOCUS_OUTLINE} cursor-pointer disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40`,
   {
@@ -81,11 +80,8 @@ export const buttonVariants = cva(
   },
 );
 
-/** Props for button variant. */
 type ButtonVariantProps = VariantProps<typeof buttonVariants>;
-/** Allowed button variant values. */
 type ButtonVariant = ButtonVariantProps["variant"];
-/** Allowed button size values. */
 type ButtonSize = ButtonVariantProps["size"];
 
 /** Shared visual and interaction props for every Button rendering mode. */
@@ -110,7 +106,6 @@ interface ButtonSharedProps {
   highlighted?: boolean;
 }
 
-/** Props for button as button. */
 export interface ButtonAsButtonProps
   extends ButtonHTMLAttributes<HTMLButtonElement>,
     ButtonSharedProps {
@@ -123,7 +118,6 @@ export interface ButtonAsButtonProps
   ref?: Ref<HTMLButtonElement>;
 }
 
-/** Props for button as anchor. */
 export interface ButtonAsAnchorProps
   extends AnchorHTMLAttributes<HTMLAnchorElement>,
     ButtonSharedProps {
@@ -136,13 +130,11 @@ export interface ButtonAsAnchorProps
   ref?: Ref<HTMLAnchorElement>;
 }
 
-/** Props for button. */
 export type ButtonProps<T extends HTMLElement = HTMLElement> =
   | ButtonAsButtonProps
   | ButtonAsAnchorProps
   | ButtonRenderPropProps<T>;
 
-/** Props for button render. */
 export interface ButtonRenderProps<T extends HTMLElement = HTMLElement> {
   /** Ref forwarded to the underlying element. */
   ref?: Ref<T>;
@@ -166,7 +158,6 @@ export interface ButtonRenderProps<T extends HTMLElement = HTMLElement> {
   tabIndex?: number;
 }
 
-/** Props for button render prop. */
 export interface ButtonRenderPropProps<T extends HTMLElement = HTMLElement>
   extends ButtonSharedProps {
   /** Additional class names merged onto the rendered element. */

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawn as spawnPty } from "node-pty";
 import stripAnsi from "strip-ansi";
+import { escapeRegExp } from "../lib/regexp.mjs";
 import { CommandFailedError, runArgv } from "../smoke-shared/command.mjs";
 
 const TUI_BOOT_TIMEOUT_MS = 30_000;
@@ -37,10 +38,6 @@ async function runFailureArgv(root, command, args, cwd = root) {
 
     return err.output;
   }
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function failTuiBoot(rejectPromise, terminal, bootTimer, exitTimer, message, output) {

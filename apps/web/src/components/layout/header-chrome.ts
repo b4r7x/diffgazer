@@ -19,7 +19,7 @@ export function useHeaderBackButtonRef(): RefObject<HTMLButtonElement | null> {
 export const CHROME_ZONE = "chrome";
 
 /** A screen's two-way link between its topmost keyboard boundary and the chrome. */
-export interface ChromeBackHandoff<Zone extends string> {
+interface ChromeBackHandoff<Zone extends string> {
   /** Moves focus to the header Back button and parks the screen's focus zone. */
   handOff: () => void;
   /** The zone ArrowDown returns to, for the parked footer's hint; null until something hands off, and again once the park ends. */

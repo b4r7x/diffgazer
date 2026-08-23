@@ -509,6 +509,7 @@
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
+        "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/corner-label-variants.json",
         "https://r.b4r7.dev/r/ui/utils.json"
       ],

@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { useSelectContext } from "./select-context";
 import { isActiveOptionVisible, toOptionId } from "./selection";
 
-/** Props for select search. */
 export interface SelectSearchProps {
   /** Placeholder shown when no value is present. */
   placeholder?: string;

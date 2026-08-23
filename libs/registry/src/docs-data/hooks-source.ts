@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { type RegistryFile, RegistryItemSchema } from "../registry-types.js";
 import { resolveInside } from "../utils/fs.js";
 import { findExamples } from "./examples.js";
-import { type DocsHighlighter, type HighlightLanguage, highlightCode } from "./highlight.js";
+import { type DocsHighlighter, highlightCode } from "./highlight.js";
 import type {
   CodeBlockLine,
   EnrichedHookData,
@@ -25,7 +25,6 @@ export interface GenerateHooksSourceOptions {
   rootDir: string;
   highlighter: DocsHighlighter;
   themeName: string;
-  lang?: HighlightLanguage;
 }
 
 export interface GenerateEnrichedHookDataOptions extends GenerateHooksSourceOptions {
@@ -52,9 +51,8 @@ function readPublicRegistryFiles(options: {
   rootDir: string;
   highlighter: DocsHighlighter;
   themeName: string;
-  lang: HighlightLanguage;
 }): HookSourceFileData[] | null {
-  const { item, rootDir, highlighter, themeName, lang } = options;
+  const { item, rootDir, highlighter, themeName } = options;
   const publicName = item.registryName ?? item.name;
   const itemPath = resolve(rootDir, "public/r", `${publicName}.json`);
   if (!existsSync(itemPath)) return null;
@@ -65,7 +63,7 @@ function readPublicRegistryFiles(options: {
     .map((file) => ({
       path: getDisplayPath(file),
       raw: file.content,
-      highlighted: highlightCode(highlighter, file.content, lang, themeName),
+      highlighted: highlightCode(highlighter, file.content, "typescript", themeName),
     }));
 
   return files.length > 0 ? files : null;
@@ -76,9 +74,8 @@ function readSourceFile(options: {
   rootDir: string;
   highlighter: DocsHighlighter;
   themeName: string;
-  lang: HighlightLanguage;
 }): HookSourceFileData | null {
-  const { item, rootDir, highlighter, themeName, lang } = options;
+  const { item, rootDir, highlighter, themeName } = options;
   const file = item.files[0];
   if (!file?.path) {
     console.warn(`Hook "${item.name}": no file path, skipping`);
@@ -94,7 +91,7 @@ function readSourceFile(options: {
   return {
     path: file.path,
     raw,
-    highlighted: highlightCode(highlighter, raw, lang, themeName),
+    highlighted: highlightCode(highlighter, raw, "typescript", themeName),
   };
 }
 
@@ -103,7 +100,6 @@ function readHookSourceFiles(options: {
   rootDir: string;
   highlighter: DocsHighlighter;
   themeName: string;
-  lang: HighlightLanguage;
 }): HookSourceFileData[] {
   const publicFiles = readPublicRegistryFiles(options);
   if (publicFiles) return publicFiles;
@@ -115,11 +111,11 @@ function readHookSourceFiles(options: {
 export function generateHooksSource(
   options: GenerateHooksSourceOptions,
 ): Record<string, HookSourceData> {
-  const { items, rootDir, highlighter, themeName, lang = "typescript" } = options;
+  const { items, rootDir, highlighter, themeName } = options;
   const data: Record<string, HookSourceData> = {};
 
   for (const item of items) {
-    const files = readHookSourceFiles({ item, rootDir, highlighter, themeName, lang });
+    const files = readHookSourceFiles({ item, rootDir, highlighter, themeName });
     const firstFile = files[0];
     if (!firstFile) continue;
 
@@ -142,20 +138,12 @@ export function generateHooksSource(
 export async function generateEnrichedHookData(
   options: GenerateEnrichedHookDataOptions,
 ): Promise<Record<string, EnrichedHookData>> {
-  const {
-    items,
-    rootDir,
-    highlighter,
-    themeName,
-    lang = "typescript",
-    loadHookDoc,
-    examplesDir,
-  } = options;
+  const { items, rootDir, highlighter, themeName, loadHookDoc, examplesDir } = options;
 
   const data: Record<string, EnrichedHookData> = {};
 
   for (const item of items) {
-    const files = readHookSourceFiles({ item, rootDir, highlighter, themeName, lang });
+    const files = readHookSourceFiles({ item, rootDir, highlighter, themeName });
     const firstFile = files[0];
     if (!firstFile) continue;
 

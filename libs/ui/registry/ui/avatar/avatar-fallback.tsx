@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { useAvatarContext } from "./avatar-context";
 import { useImageStatus } from "./use-image-status";
 
-/** Props for avatar fallback. */
 export interface AvatarFallbackProps {
   /** Cascading fallback image. Tried before rendering children. */
   src?: string;

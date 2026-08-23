@@ -21,7 +21,6 @@ import { useToastDismiss } from "./use-dismiss";
 
 const LazySpinner = lazy(() => import("../spinner/spinner").then((m) => ({ default: m.Spinner })));
 
-/** Props for toast. */
 interface ToastProps extends ToastType {
   /** Placement position. */
   position: ToastPosition;

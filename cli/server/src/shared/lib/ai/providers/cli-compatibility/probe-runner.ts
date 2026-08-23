@@ -5,6 +5,8 @@ import path from "node:path";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import { err, ok, type Result } from "@diffgazer/core/result";
+import { buildLensReviewResultJsonSchema } from "@diffgazer/core/schemas/review";
+import { executableCandidateNames } from "../../../executable-candidates.js";
 import {
   acquireCliVersion,
   type CliAuthProbe,
@@ -30,7 +32,6 @@ import {
   redactCliCompatibilityRecord,
   validateCliCompatibilityEvidence,
 } from "./record.js";
-import { buildReviewSchemaJson, hashReviewSchemaJson } from "./review-schema.js";
 
 const CLI_COMPATIBILITY_PROBE_OPT_IN_ENV = "DIFFGAZER_LIVE_PROBES" as const;
 
@@ -41,8 +42,7 @@ type CliCompatibilityUnsupportedField =
   | "model-policy"
   | "positive-fixture"
   | "negative-fixture"
-  | "terminal-parser"
-  | "network-opt-in";
+  | "terminal-parser";
 
 export type CliCompatibilityProbeResult =
   | Readonly<{ status: "supported"; record: CliCompatibilityRecord }>
@@ -146,21 +146,6 @@ function unsupported(
   return { status: "unsupported", field, reason };
 }
 
-const WINDOWS_DEFAULT_PATHEXT = ".COM;.EXE;.BAT;.CMD";
-
-/**
- * Windows vendor binaries are `codex.exe`/`copilot.cmd`, never the bare name, so a
- * PATHEXT-free search can never resolve on the two intended win32 platforms.
- */
-function executableCandidateNames(command: string): readonly string[] {
-  if (process.platform !== "win32") return [command];
-  const extensions = (process.env.PATHEXT ?? WINDOWS_DEFAULT_PATHEXT)
-    .split(";")
-    .map((extension) => extension.trim())
-    .filter((extension) => extension.length > 0);
-  return [...extensions.map((extension) => `${command}${extension}`), command];
-}
-
 /** Default `resolveExecutable` dependency: first PATH entry that is executable. */
 export async function defaultResolveExecutable(
   provider: CliCompatibilityProbeProvider,
@@ -239,9 +224,9 @@ export async function runCliCompatibilityProbe(
 
   try {
     await createDisposableFixtureCheckout(fixtureRoot);
-    const reviewSchemaJson = buildReviewSchemaJson();
+    const reviewSchemaJson = buildLensReviewResultJsonSchema();
     await writeFile(reviewSchemaPath, `${JSON.stringify(reviewSchemaJson)}\n`, "utf8");
-    const reviewSchemaSha256 = hashReviewSchemaJson(reviewSchemaJson);
+    const reviewSchemaSha256 = sha256CanonicalJsonSync(reviewSchemaJson);
 
     const ambientHome = process.env.HOME ?? process.env.USERPROFILE ?? homedir();
     const envResult = buildCliChildEnvironment(process.env, { ambientHome });

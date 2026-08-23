@@ -3,7 +3,6 @@
 import type { ComponentProps } from "react";
 import { useRequiredCodeBlockContext } from "./code-block-context";
 
-/** Props for code block header. */
 export type CodeBlockHeaderProps = ComponentProps<"div">;
 
 /** Header row (filename + actions); hidden in bare variant. */

@@ -14,6 +14,7 @@ import {
 import { RUNTIME_IDENTITY, STRUCTURED_OUTPUT_SCHEMA_SHA256 } from "../../ai/admission/protocol.js";
 import type { AdmissionEvidence } from "../admission-evidence.js";
 import { parseSettingsRecord } from "../persistence/config.js";
+import { literalCredentialFilePath } from "../persistence/credential-file-path.js";
 import { findSecretBinding } from "../persistence/secrets.js";
 import type {
   ConfigurationBudgetLimits,
@@ -32,7 +33,7 @@ import {
   workspaceAccountReferenceFor,
 } from "./credential-lifecycle.js";
 import { createCrudActions } from "./crud-actions.js";
-import { type DocumentStore, literalSecretPath } from "./document-store.js";
+import type { DocumentStore } from "./document-store.js";
 import { summaryForSupportedRecord } from "./projection.js";
 import type { ConfigurationSnapshot } from "./snapshot.js";
 import { createSnapshotSettingsActions } from "./snapshot-settings-actions.js";
@@ -57,12 +58,12 @@ export function createConfigurationActions(
 ) {
   const getSettings = (): SettingsConfig =>
     parseSettingsRecord(documents.getConfigDocument().settings).settings;
-  const v2Storage = () => (getSettings().secretsStorage === "keyring" ? "keyring" : "file");
+  const secretsStorage = () => getSettings().secretsStorage ?? "file";
 
   const credentialLifecycle = createCredentialLifecycle({
     secretIO,
-    getStorage: v2Storage,
-    literalSecretPath,
+    getStorage: secretsStorage,
+    literalSecretPath: literalCredentialFilePath,
     keyringSecretName: getConfigurationSecretName,
     encodeBytes: documents.encodeJsonBytes,
     canonicalEnv: (productId) => CREDENTIAL_ENV_VARS[productId as RunnableProductId] ?? null,

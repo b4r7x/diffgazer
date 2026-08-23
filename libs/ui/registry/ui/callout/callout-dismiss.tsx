@@ -6,7 +6,6 @@ import { FOCUS_OUTLINE } from "@/lib/focus-outline";
 import { cn } from "@/lib/utils";
 import { useCalloutContext } from "./callout-context";
 
-/** Props for callout dismiss. */
 export interface CalloutDismissProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Custom dismiss button content. */
   children?: ReactNode;

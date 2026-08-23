@@ -11,7 +11,6 @@ import {
   useAccordionItemContext,
 } from "./accordion-context";
 
-/** Class variants for trigger. */
 export const accordionTriggerVariants = cva(
   `flex w-full items-center gap-2 font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:cursor-not-allowed disabled:hover:text-muted-foreground ${FOCUS_OUTLINE} py-2 -mt-2 -mb-2 pointer-coarse:mt-0 pointer-coarse:mb-0 pointer-coarse:min-h-11`,
   {
@@ -32,10 +31,8 @@ export const accordionTriggerVariants = cva(
   },
 );
 
-/** Props for accordion trigger variant. */
 export type AccordionTriggerVariantProps = VariantProps<typeof accordionTriggerVariants>;
 
-/** Props for accordion trigger. */
 export interface AccordionTriggerProps
   extends Omit<ComponentPropsWithRef<"button">, "children">,
     Omit<VariantProps<typeof accordionTriggerVariants>, "disabled"> {

@@ -5,7 +5,6 @@ import { type ComponentPropsWithRef, type ReactNode, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { KeyValueContext, type KeyValueLayout } from "./key-value-context";
 
-/** Class variants for key value. */
 export const keyValueVariants = cva("grid", {
   variants: {
     layout: {
@@ -22,7 +21,6 @@ export const keyValueVariants = cva("grid", {
   defaultVariants: { layout: "horizontal", bordered: false },
 });
 
-/** Props for key value. */
 export interface KeyValueProps extends ComponentPropsWithRef<"dl"> {
   /**
    * Horizontal places label and value side-by-side; vertical stacks them. Propagated to

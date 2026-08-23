@@ -34,19 +34,14 @@ interface AfterCopyContext {
 
 export interface BuildRegistryArtifactsOptions {
   rootDir: string;
-  artifactRoot?: string;
   inputs?: string[];
   manifest: ArtifactManifest;
-  manifestFile?: string;
-  fingerprintFile?: string;
   ensurePublicRegistry?: Omit<EnsurePublicRegistryReadyOptions, "rootDir">;
   requiredPaths?: Array<string | RequiredPathEntry>;
   copyDirs?: CopyDirEntry[];
   rewriteDirs?: string[];
   originRaw?: string;
   defaultOrigin: string;
-  fromOrigin?: string;
-  beforeBuild?: () => void;
   afterCopy?: (context: AfterCopyContext) => void;
 }
 
@@ -63,23 +58,16 @@ export function buildRegistryArtifacts(
 ): BuildRegistryArtifactsResult {
   const {
     rootDir,
-    artifactRoot = DEFAULT_ARTIFACT_ROOT,
     manifest,
-    manifestFile = ARTIFACT_MANIFEST_FILENAME,
-    fingerprintFile = ARTIFACT_FINGERPRINT_FILENAME,
     ensurePublicRegistry: ensurePublicRegistryOptions,
     requiredPaths = [],
     copyDirs = [],
     rewriteDirs = [],
     originRaw = process.env.REGISTRY_ORIGIN,
     defaultOrigin,
-    fromOrigin = defaultOrigin,
-    beforeBuild,
     afterCopy,
   } = options;
   const inputs = options.inputs ?? manifest.inputs ?? [];
-
-  beforeBuild?.();
 
   if (ensurePublicRegistryOptions) {
     ensurePublicRegistryReady({
@@ -97,7 +85,7 @@ export function buildRegistryArtifacts(
   }
 
   const origin = normalizeOrigin(originRaw, { defaultOrigin });
-  const artifactRootPath = resolve(rootDir, artifactRoot);
+  const artifactRootPath = resolve(rootDir, DEFAULT_ARTIFACT_ROOT);
   resetDir(artifactRootPath);
 
   for (const copyEntry of copyDirs) {
@@ -116,7 +104,7 @@ export function buildRegistryArtifacts(
 
   for (const relativeDir of rewriteDirs) {
     rewriteOriginsInDir(resolve(artifactRootPath, relativeDir), {
-      fromOrigin,
+      fromOrigin: defaultOrigin,
       toOrigin: origin,
     });
   }
@@ -124,8 +112,8 @@ export function buildRegistryArtifacts(
   afterCopy?.({ rootDir, artifactRoot: artifactRootPath, origin });
 
   const fingerprint = computeArtifactFingerprint(rootDir, inputs, origin);
-  const manifestPath = resolve(artifactRootPath, manifestFile);
-  const fingerprintPath = resolve(artifactRootPath, fingerprintFile);
+  const manifestPath = resolve(artifactRootPath, ARTIFACT_MANIFEST_FILENAME);
+  const fingerprintPath = resolve(artifactRootPath, ARTIFACT_FINGERPRINT_FILENAME);
 
   writeJson(manifestPath, { ...manifest, origin });
   writeFileSync(fingerprintPath, `${fingerprint}\n`);

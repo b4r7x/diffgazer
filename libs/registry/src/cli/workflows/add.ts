@@ -36,8 +36,6 @@ export interface AddWorkflowPlan {
   missingDeps: string[];
   extraDependencies?: string[];
   headingMessage: string;
-  confirmMessage?: string;
-  warnBeforeApply?: string[];
   onDryRun?: () => void;
   onApplied?: (ctx: {
     resolvedNames: string[];
@@ -104,20 +102,13 @@ function validateAgainstRegistry(
   }
 }
 
-function emitPlanWarnings(plan: AddWorkflowPlan, dryRun: boolean): void {
+function emitPlanWarnings(plan: AddWorkflowPlan): void {
   if (plan.extraDependencies?.length) {
     info(`Also adding dependencies: ${plan.extraDependencies.join(", ")}`);
-  }
-
-  if (dryRun || !plan.warnBeforeApply) return;
-  for (const message of plan.warnBeforeApply) {
-    warn(message);
   }
 }
 
 function buildConfirmMessage(plan: AddWorkflowPlan, fileOps: FileOp[], all: boolean): string {
-  if (plan.confirmMessage) return plan.confirmMessage;
-
   const count = plan.resolvedNames.length;
   const prefix = all ? `Add ALL ${count}` : `Add ${count}`;
   return `${prefix} item(s) (${fileOps.length} files)?`;
@@ -130,7 +121,7 @@ async function buildAndValidatePlan<TConfig>(
 ): Promise<{ plan: AddWorkflowPlan; fileOps: FileOp[] }> {
   const plan = await options.buildPlan({ cwd: options.cwd, config, names, all: options.all });
   const fileOps = dedupeFileOpsStrict(plan.fileOps);
-  emitPlanWarnings(plan, options.dryRun);
+  emitPlanWarnings(plan);
   return { plan, fileOps };
 }
 

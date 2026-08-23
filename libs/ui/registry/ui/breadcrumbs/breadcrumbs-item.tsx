@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { BreadcrumbsContext, useBreadcrumbsContext } from "./breadcrumbs-context";
 import { BreadcrumbsLink } from "./breadcrumbs-link";
 
-/** Props for breadcrumbs item. */
 export interface BreadcrumbsItemProps extends ComponentPropsWithRef<"li"> {
   /**
    * Marks the item as the current page. Auto-applied to the last item when no item explicitly

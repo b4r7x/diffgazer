@@ -29,7 +29,6 @@ import {
 } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
 
-/** Allowed checkbox state values. */
 type CheckboxState = "indeterminate" | "checked" | "unchecked";
 
 function resolveCheckboxState(indeterminate: boolean, checked: boolean): CheckboxState {
@@ -38,13 +37,10 @@ function resolveCheckboxState(indeterminate: boolean, checked: boolean): Checkbo
   return "unchecked";
 }
 
-/** Allowed checkbox size values. */
 export type CheckboxSize = SelectableSize;
 
-/** Allowed checkbox variant values. */
 export type CheckboxVariant = SelectableVariant;
 
-/** Props for checkbox root. */
 type CheckboxRootProps = Omit<
   ComponentPropsWithRef<"div">,
   | "children"
@@ -63,7 +59,6 @@ type CheckboxRootProps = Omit<
   | "data-value"
 >;
 
-/** Props for checkbox. */
 export type CheckboxProps = CheckboxRootProps & {
   checked?: boolean | "indeterminate";
   defaultChecked?: boolean;

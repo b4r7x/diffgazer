@@ -39,8 +39,8 @@ export const Route = createFileRoute("/$lib/$")({
     if (!data) throw notFound();
 
     const [componentData, hookData] = await Promise.all([
-      loadDocPageData(library, "components", data.component, { throwIfMissing: true }),
-      loadDocPageData(library, "hooks", data.hook, { throwIfMissing: true }),
+      loadDocPageData(library, "components", data.component),
+      loadDocPageData(library, "hooks", data.hook),
       clientLoader.preload(data.path),
     ]);
 

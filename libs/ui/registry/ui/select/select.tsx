@@ -20,7 +20,6 @@ import { isSelectSearchElement } from "./select-search";
 import { containsSelectSearchElement, getNodeText } from "./selection";
 import { type UseSelectStateOptions, useSelectState } from "./use-select-state";
 
-/** Props for select base. */
 interface SelectBaseProps<TValue extends string = string>
   extends Omit<ComponentPropsWithoutRef<"div">, "defaultValue" | "onChange" | "id"> {
   /**
@@ -69,7 +68,6 @@ interface SelectBaseProps<TValue extends string = string>
   ref?: Ref<HTMLDivElement>;
 }
 
-/** Props for select in single-selection mode. */
 interface SelectSingleProps<TValue extends string = string> extends SelectBaseProps<TValue> {
   /** Enable multi-select. value/onChange become string[]. */
   multiple?: false;
@@ -81,7 +79,6 @@ interface SelectSingleProps<TValue extends string = string> extends SelectBasePr
   defaultValue?: TValue;
 }
 
-/** Props for select in multiple-selection mode. */
 interface SelectMultipleProps<TValue extends string = string> extends SelectBaseProps<TValue> {
   /** Enable multi-select. value/onChange become string[]. */
   multiple: true;
@@ -93,7 +90,6 @@ interface SelectMultipleProps<TValue extends string = string> extends SelectBase
   defaultValue?: TValue[];
 }
 
-/** Props for select. */
 export type SelectProps<TValue extends string = string> =
   | SelectSingleProps<TValue>
   | SelectMultipleProps<TValue>;

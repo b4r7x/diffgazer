@@ -58,7 +58,6 @@ export function useKey<Handlers extends Record<string, KeyHandler>>(
   options?: UseKeyOptions,
 ): void;
 
-/** Implementation for the `useKey` overloads. */
 export function useKey(
   first: string | readonly string[] | Record<string, KeyHandler>,
   second?: KeyHandler | UseKeyOptions,

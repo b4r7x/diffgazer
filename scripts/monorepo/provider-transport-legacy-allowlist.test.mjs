@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { listRepoFiles } from "./lib/files.mjs";
+import { escapeRegExp } from "./lib/regexp.mjs";
 
 const SCAN_EXCLUDE_PREFIXES = [".git/", "node_modules/", ".nuke/"];
 
@@ -129,10 +130,6 @@ const RETIRED_DOC_SUBJECTS = [
   "nvidia-api-catalog",
   "NVIDIA hosted API Catalog",
 ];
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 // One generator instead of a hand-copied pattern per subject: adding a retired
 // product to the list above extends both claim shapes at once. `[^\n]*` (not

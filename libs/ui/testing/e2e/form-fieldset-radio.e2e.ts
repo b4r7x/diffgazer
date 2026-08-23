@@ -101,13 +101,9 @@ test("initially CSS-hidden selection leaves forward and reverse Tab entry on a v
  * observes (below — the ancestor class flip, seen by the MutationObserver in
  * selectable-collection-observer.ts).
  *
- * A rule mutated at runtime through the CSSOM alone — insertRule/deleteRule on a
- * live sheet, replace/replaceSync on an adopted one — changes no DOM node, so
- * nothing here notices it. The observer used to patch CSSStyleSheet.prototype to
- * catch that case; 867f352e removed the patching deliberately and left these
- * assertions behind, where they had been failing ever since. They are gone rather
- * than reinstated: monkey-patching a platform prototype for it is not a trade the
- * library takes, and both reachable paths above stay guarded.
+ * A rule mutated at runtime through the CSSOM alone changes no DOM node and is
+ * deliberately not covered: patching CSSStyleSheet.prototype to catch it is not
+ * a trade the library takes.
  */
 test("external ancestor changes retarget radio Tab entry", async ({ page }) => {
   const dynamicRed = page.locator('[role="radio"][data-value="dynamic-red"]');

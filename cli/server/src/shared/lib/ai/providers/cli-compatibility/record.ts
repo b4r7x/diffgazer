@@ -291,14 +291,9 @@ export type CliCompatibilityMatchResult = Readonly<{
 }>;
 
 export class CliParserAllowlistError extends Error {
-  readonly fieldPath?: string;
-  readonly eventKind?: string;
-
-  constructor(message: string, details?: { fieldPath?: string; eventKind?: string }) {
+  constructor(message: string) {
     super(message);
     this.name = "CliParserAllowlistError";
-    this.fieldPath = details?.fieldPath;
-    this.eventKind = details?.eventKind;
   }
 }
 
@@ -416,9 +411,7 @@ export function assertParserFieldPathAllowlisted(
   fieldPath: string,
 ): void {
   if (!record.positiveFixture.terminal.acceptedFieldPaths.includes(fieldPath)) {
-    throw new CliParserAllowlistError(`Unrecorded parser field path: ${fieldPath}`, {
-      fieldPath,
-    });
+    throw new CliParserAllowlistError(`Unrecorded parser field path: ${fieldPath}`);
   }
 }
 
@@ -427,9 +420,7 @@ export function assertParserEventKindAllowlisted(
   eventKind: string,
 ): void {
   if (!record.positiveFixture.terminal.acceptedEventKinds.includes(eventKind)) {
-    throw new CliParserAllowlistError(`Unrecorded parser event kind: ${eventKind}`, {
-      eventKind,
-    });
+    throw new CliParserAllowlistError(`Unrecorded parser event kind: ${eventKind}`);
   }
 }
 

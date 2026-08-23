@@ -16,7 +16,6 @@ import { segmentedItemVariants } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { useToggleGroupContext } from "./toggle-group-context";
 
-/** Props for toggle group item. */
 export interface ToggleGroupItemProps
   extends Omit<ComponentPropsWithRef<"button">, "children" | "disabled" | "value"> {
   /** Stable identifier matched against the group value. */
