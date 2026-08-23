@@ -29,12 +29,14 @@ import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
-import { type KeyboardEvent, useRef, useState } from "react";
+import { type KeyboardEvent, type RefObject, useState } from "react";
+import { chromeReturnShortcut } from "@/components/layout/header-chrome";
 import { useFocusWithin } from "@/hooks/use-focus-within";
 import { ReviewClockProvider, useReviewClock } from "../hooks/use-clock";
 import {
   ALL_AGENTS_VALUE,
   type ProgressPaneActionButtonProps,
+  type ProgressZone,
   REVIEW_PROGRESS_CONTROLS,
   useReviewProgressKeyboard,
 } from "../hooks/use-progress-keyboard";
@@ -184,29 +186,50 @@ function ErrorDisplay({
   error,
   guidance,
   actions,
-  focus,
+  panelRef,
+  chromeReturnZone,
+  hasBack,
 }: {
   error: string;
   guidance: ReviewStreamErrorGuidance;
   actions: ErrorAction[];
-  /**
-   * Focus inside the panel, tracked by the parent because the footer it
-   * publishes names these keys only while the row holds focus. Only buttons
-   * take focus in here, so focus in the panel means the row has it - the zone
-   * alone would keep the mark lit after Tab moved on.
-   */
-  focus: ReturnType<typeof useFocusWithin<HTMLDivElement>>;
+  /** The error zone's container, owned by the keyboard hook that focuses into it. */
+  panelRef: RefObject<HTMLDivElement | null>;
+  /** The zone the header Back button returns to, for the parked legend. */
+  chromeReturnZone: ProgressZone | null;
+  hasBack: boolean;
 }) {
-  const panelRef = useRef<HTMLDivElement>(null);
+  // Only buttons take focus in here, so focus in the panel means the row has it
+  // - the zone alone would keep the mark lit after Tab moved on, and the legend
+  // below names the row's keys only while they are the ones bound.
+  const focus = useFocusWithin<HTMLDivElement>();
   const row = useActionRowNavigation({
     enabled: true,
     actionCount: actions.length,
-    // Scoped to the panel: the error layout stands the pane zone cycle down and
-    // Tab moves natively, so these keys belong to the row only while it holds
-    // focus. There is no content zone to exit up into either.
+    // Mount lands on the first way out: this row is the error layout's focus
+    // target, not the log behind it.
+    defaultZone: "actions",
+    // Scoped to the panel so the row's keys stand down the moment focus leaves
+    // it: in the log or parked on the header Back button, ←/→ must not yank
+    // focus back into the panel, and ↑ belongs to the chrome hand-off.
     containerRef: panelRef,
     canExitActions: false,
     onAction: (index) => actions[index]?.onAction(),
+  });
+  const focusedLabel = actions[row.focusedIndex]?.label;
+
+  // The error layout's only footer writer: the pane hook stands its own down
+  // there, so this names the keys the row binds while it holds focus, and the
+  // way back down while the chrome holds it instead.
+  usePageFooter({
+    shortcuts: focus.focusWithin
+      ? [
+          // A lone way out has nowhere to move to.
+          ...(actions.length > 1 ? [{ key: "←/→", label: "Move Action" }] : []),
+          ...(focusedLabel ? [{ key: "Enter/Space", label: focusedLabel }] : []),
+        ]
+      : chromeReturnShortcut(chromeReturnZone, { error: "Actions" }),
+    rightShortcuts: hasBack ? [BACK_SHORTCUT] : [],
   });
 
   return (
@@ -346,7 +369,6 @@ export function ReviewProgressView({
 
   const progressPaneFocus = useFocusWithin<HTMLElement>();
   const logPaneFocus = useFocusWithin<HTMLElement>();
-  const errorRowFocus = useFocusWithin<HTMLDivElement>();
   const liveness = useStreamLiveness({ events, isRunning });
 
   const reconnect = reviewId && onRetry ? () => onRetry(reviewId) : undefined;
@@ -377,7 +399,9 @@ export function ReviewProgressView({
     actionsRowRef,
     agentFilterRef,
     logContentRef,
+    errorPanelRef,
     snapshotDownloadsRef,
+    chromeReturnZone,
     handleFilterKeyDown,
     handleLogBoundary,
     isAgentFilterFocused,
@@ -419,19 +443,6 @@ export function ReviewProgressView({
             : undefined,
       })
     : [];
-
-  // The error layout's only footer writer: the pane hook stands its own down
-  // there, so this names the keys the error row binds while it holds focus and
-  // nothing races it for the legend. Outside the row the arrows still switch
-  // panes, which is the pane hook's business on every other layout.
-  usePageFooter({
-    shortcuts:
-      errorRowFocus.focusWithin && errorActions.length > 1
-        ? [{ key: "←/→", label: "Move Action" }]
-        : [],
-    rightShortcuts: onBack ? [BACK_SHORTCUT] : [],
-    enabled: hasError,
-  });
 
   const agentOptions = agents.map((agent) => ({
     id: agent.id,
@@ -586,7 +597,9 @@ export function ReviewProgressView({
                 error={error}
                 guidance={errorGuidance}
                 actions={errorActions}
-                focus={errorRowFocus}
+                panelRef={errorPanelRef}
+                chromeReturnZone={chromeReturnZone}
+                hasBack={Boolean(onBack)}
               />
             )}
             <ActivityLog
@@ -597,20 +610,16 @@ export function ReviewProgressView({
               startTime={startTime}
               lastEventAt={liveness.lastEventAt}
               onTopBoundaryReached={handleLogBoundary}
-              // While the zone cycle is active the pane brackets carry the focus
-              // signal, so the log drops its own tab stop and inset outline — the
-              // same treatment the progress pane's scroller gets above. The error
-              // layout has no zone cycle: Tab reaches the log there, so it keeps
-              // both.
-              tabIndex={hasError ? undefined : -1}
+              // The pane brackets carry the focus signal on every layout, so the
+              // log drops its own tab stop and inset outline — the same treatment
+              // the progress pane's scroller gets above. The error cycle reaches
+              // it as a zone target, not as a native tab stop.
+              tabIndex={-1}
               // Below md the page scroller owns the whole stack: the log opts out of
               // scrolling on both axes (one axis left non-visible forces the other back
               // to auto) and grows with its content, floored at the height that keeps
               // the pane reading as a log when the run has barely started.
-              className={cn(
-                "flex-1 min-h-0 px-2 pb-2 max-md:min-h-[45dvh] max-md:flex-none max-md:overflow-x-visible max-md:overflow-y-visible",
-                !hasError && "focus:outline-none",
-              )}
+              className="flex-1 min-h-0 px-2 pb-2 focus:outline-none max-md:min-h-[45dvh] max-md:flex-none max-md:overflow-x-visible max-md:overflow-y-visible"
             />
           </div>
         </Panel>

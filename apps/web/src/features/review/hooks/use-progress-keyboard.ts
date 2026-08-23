@@ -4,11 +4,13 @@ import {
   containsActiveElement,
   findNavigationItemByValue,
   getNavigationItems,
+  getTabbableElements,
   useFocusZone,
   useKey,
   useScopedNavigation,
 } from "@diffgazer/keys";
 import { type FocusEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { CHROME_ZONE, useChromeBackHandoff } from "@/components/layout/header-chrome";
 import { useStreamingReviewCancelRef } from "@/components/layout/streaming-review";
 import { isInteractiveTarget } from "@/features/review/lib/interactive-target";
 
@@ -37,9 +39,34 @@ export const ALL_AGENTS_VALUE = "all";
 // The downloads row and the pane's action buttons nest inside the progress
 // pane, and focus-sync resolves the first zone whose container holds focus - so
 // "downloads" and "actions" must be declared before "progress" or focusing a
-// nested button syncs the wrong zone.
-const PROGRESS_ZONES = ["downloads", "actions", "progress", "log", "filters"] as const;
-type ProgressZone = (typeof PROGRESS_ZONES)[number];
+// nested button syncs the wrong zone. The chrome is a park with no target of
+// its own.
+const PROGRESS_ZONES = [
+  "downloads",
+  "actions",
+  "progress",
+  "error",
+  "log",
+  "filters",
+  CHROME_ZONE,
+] as const;
+export type ProgressZone = (typeof PROGRESS_ZONES)[number];
+
+const PROGRESS_SCOPE = "review-progress";
+
+// The error layout is a single column: the error panel sits inside the log
+// pane, so there is no second pane for the arrows to reach and they stay with
+// the row that owns them. Down leaves the row for the evidence below it.
+function getZoneTransition(
+  zone: ProgressZone,
+  key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
+  hasError: boolean,
+): ProgressZone | null {
+  if (hasError) return zone === "error" && key === "ArrowDown" ? "log" : null;
+  if (key === "ArrowLeft" && zone === "log") return "progress";
+  if (key === "ArrowRight" && zone === "progress") return "log";
+  return null;
+}
 
 // ←/→ mean what the focused zone makes them mean, and the footer says which.
 // Every zone that can move is named only while its row is there to move: the
@@ -98,6 +125,7 @@ export function useReviewProgressKeyboard({
   const actionsRowRef = useRef<HTMLDivElement>(null);
   const agentFilterRef = useRef<HTMLDivElement>(null);
   const logContentRef = useRef<HTMLDivElement>(null);
+  const errorPanelRef = useRef<HTMLDivElement>(null);
   const snapshotDownloadsRef = useRef<HTMLFieldSetElement>(null);
   // The element behind focusedActionId, kept so the park below can still ask
   // whether the action it lost holds focus after it left the item query.
@@ -108,8 +136,8 @@ export function useReviewProgressKeyboard({
   // A claimed Tab must never land in a zone with nothing focusable.
   const enabledActionCount = actions.filter((action) => !action.disabled).length;
   // The chip row is a keyboard stop only once there are agents to choose
-  // between; the error layout stands the whole zone grammar down, so it has no
-  // chip stop either.
+  // between; the error layout cycles the error row against the log alone, so it
+  // has no chip stop either.
   const hasAgentFilterStop = hasAgentFilters && !hasError;
   const tabCycle = [
     "progress" as const,
@@ -118,6 +146,7 @@ export function useReviewProgressKeyboard({
     ...(hasAgentFilterStop ? (["filters"] as const) : []),
     "log" as const,
   ];
+  const errorTabCycle = ["error" as const, "log" as const];
 
   const getFocusedActionElement = () =>
     getNavigationItems(progressPaneRef.current, {
@@ -126,6 +155,8 @@ export function useReviewProgressKeyboard({
     }).find(containsActiveElement) ?? null;
   const getFirstEnabledActionElement = () =>
     getNavigationItems(progressPaneRef.current, PANE_ACTION_ITEMS)[0] ?? null;
+  const getLogRegion = () =>
+    logContentRef.current?.querySelector<HTMLElement>("[role='log']") ?? null;
   // Radiogroup entry lands on the checked radio - the row's own tab target.
   // Resolving the row itself would focus its first descendant, always "All".
   const getCheckedAgentChip = () =>
@@ -135,10 +166,10 @@ export function useReviewProgressKeyboard({
     });
 
   const { zone, setZone } = useFocusZone({
-    initial: "progress",
+    initial: hasError ? "error" : "progress",
     zones: PROGRESS_ZONES,
-    scope: "review-progress",
-    tabCycle: hasError ? undefined : tabCycle,
+    scope: PROGRESS_SCOPE,
+    tabCycle: hasError ? errorTabCycle : tabCycle,
     focus: {
       autoFocus: true,
       targets: {
@@ -152,10 +183,14 @@ export function useReviewProgressKeyboard({
           container: () => getFocusedActionElement() ?? actionsRowRef.current,
           target: getFirstEnabledActionElement,
         },
-        log: {
-          container: logContentRef,
-          target: () => logContentRef.current?.querySelector<HTMLElement>("[role='log']") ?? null,
+        error: {
+          container: errorPanelRef,
+          target: () => getTabbableElements(errorPanelRef.current)[0] ?? null,
         },
+        // The log region itself, not the column around it: the error panel
+        // shares that column, and a container holding focus is a container the
+        // zone move would not repair focus out of.
+        log: getLogRegion,
       },
     },
     // Leaving "downloads" or an action button for "progress" strands DOM focus
@@ -169,11 +204,21 @@ export function useReviewProgressKeyboard({
       if (!downloadsHoldFocus && getFocusedActionElement() == null) return;
       progressScrollRef.current?.focus({ preventScroll: true });
     },
-    transitions: ({ zone, key }) => {
-      if (key === "ArrowLeft" && zone === "log") return "progress";
-      if (key === "ArrowRight" && zone === "progress") return "log";
-      return null;
-    },
+    transitions: ({ zone, key }) => getZoneTransition(zone, key, hasError),
+  });
+
+  const chrome = useChromeBackHandoff({ zone, setZone, scope: PROGRESS_SCOPE });
+
+  // The error panel's top edge is the screen's: the row declines ArrowUp
+  // (there is no content zone under it to exit into), so up from anywhere in
+  // the panel is the way into the chrome, and the chrome's own ArrowDown is the
+  // way back.
+  useKey("ArrowUp", () => chrome.handOff(), {
+    scope: PROGRESS_SCOPE,
+    containerRef: errorPanelRef,
+    focusWithinOnly: true,
+    preventDefault: true,
+    enabled: hasError,
   });
 
   // Left/Right roam the snapshot download buttons; Tab keeps cycling panes.
@@ -307,9 +352,9 @@ export function useReviewProgressKeyboard({
   // when there is a chip row to reach: elsewhere ArrowUp stays native.
   const handleLogBoundary = hasAgentFilterStop ? () => setZone("filters") : undefined;
 
-  // The error layout stands this whole zone grammar down and publishes its own
-  // legend from the error row, so the hook leaves that screen's footer to it
-  // rather than writing an empty one over it.
+  // The error layout names the keys of the row it mounts on, published from the
+  // error panel itself, so the hook leaves that screen's footer to it rather
+  // than writing this pane legend over it.
   usePageFooter({
     shortcuts: [
       SWITCH_PANE_SHORTCUT,
@@ -353,7 +398,9 @@ export function useReviewProgressKeyboard({
     actionsRowRef,
     agentFilterRef,
     logContentRef,
+    errorPanelRef,
     snapshotDownloadsRef,
+    chromeReturnZone: chrome.returnZone,
     handleFilterKeyDown,
     handleLogBoundary,
     isAgentFilterFocused: zone === "filters",

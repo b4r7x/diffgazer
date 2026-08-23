@@ -8,11 +8,19 @@ import {
 } from "@diffgazer/core/review";
 import type { AgentState, LensStat } from "@diffgazer/core/schemas/events";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  type RenderOptions,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { FooterView } from "@/testing/footer-view";
+import { HeaderChromeHarness } from "@/testing/header-chrome";
 import { expectSingleReticle } from "@/testing/reticle";
 
 // Boundary mock: TanStack Router is the external routing library; progress shortcuts navigate through it.
@@ -110,7 +118,7 @@ function makeContextSnapshot() {
   };
 }
 
-function renderView(props: Partial<ReviewProgressViewProps> = {}) {
+function renderView(props: Partial<ReviewProgressViewProps> = {}, options?: RenderOptions) {
   return render(
     <KeyboardProvider>
       <FooterProvider>
@@ -133,6 +141,7 @@ function renderView(props: Partial<ReviewProgressViewProps> = {}) {
         <FooterView />
       </FooterProvider>
     </KeyboardProvider>,
+    options,
   );
 }
 
@@ -304,25 +313,164 @@ describe("ReviewProgressView", () => {
     expect(onCancel).not.toHaveBeenCalled();
   });
 
-  it("announces stream errors in an alert live region", async () => {
+  it("activates the focused error action with Enter while the alert keeps announcing", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
+    const onCancel = vi.fn();
 
-    renderView({
-      isRunning: false,
-      error: "Provider request failed",
-      onCancel: vi.fn(),
-      onBack,
-    });
+    renderView({ isRunning: false, error: "Provider request failed", onCancel, onBack });
 
     const alert = screen.getByRole("alert");
     expect(alert).toHaveAttribute("aria-live", "assertive");
     expect(alert).toHaveTextContent("Provider request failed");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Back to Home" })).toHaveFocus());
 
     await user.keyboard("{Enter}");
 
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
     expect(alert).toHaveTextContent("Provider request failed");
-    expect(onBack).not.toHaveBeenCalled();
+  });
+
+  it("focuses the first error action on mount and brackets the log pane", async () => {
+    const { container } = renderView({
+      isRunning: false,
+      error: "Provider request failed",
+      onBack: vi.fn(),
+    });
+
+    const back = screen.getByRole("button", { name: /back to home/i });
+    await waitFor(() => expect(back).toHaveFocus());
+    expect(back).toHaveAttribute("data-highlighted");
+    expect(screen.getByRole("region", { name: "Live Activity Log" })).toHaveAttribute(
+      "data-state",
+      "focused",
+    );
+    expectSingleReticle(container);
+
+    const log = screen.getByRole("log", { name: "Activity log" });
+    expect(log).toHaveAttribute("tabindex", "-1");
+    expect(log).not.toHaveFocus();
+  });
+
+  it("carries focus into the error row when a running review fails under it", async () => {
+    const tree = (props: Partial<ReviewProgressViewProps>) => (
+      <KeyboardProvider>
+        <FooterProvider>
+          <ReviewProgressView data={makeProgressData()} isRunning {...props} />
+          <FooterView />
+        </FooterProvider>
+      </KeyboardProvider>
+    );
+
+    const { rerender } = render(tree({ onCancel: vi.fn(), onBack: vi.fn() }));
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
+        "data-state",
+        "focused",
+      ),
+    );
+
+    rerender(tree({ onBack: vi.fn(), error: "Provider request failed" }));
+
+    const back = await screen.findByRole("button", { name: "Back to Home" });
+    await waitFor(() => expect(back).toHaveFocus());
+    expect(back).toHaveAttribute("data-highlighted");
+  });
+
+  it("hands the arrow up to the header Back and returns to the action it left", async () => {
+    const user = userEvent.setup();
+    const { container } = renderView(
+      { isRunning: false, error: "Provider request failed", onBack: vi.fn() },
+      { wrapper: HeaderChromeHarness },
+    );
+
+    const back = screen.getByRole("button", { name: "Back to Home" });
+    await waitFor(() => expect(back).toHaveFocus());
+
+    await user.keyboard("{ArrowUp}");
+
+    expect(screen.getByRole("button", { name: "Back" })).toHaveFocus();
+    expect(container.querySelector("[data-highlighted]")).toBeNull();
+    expect(screen.getByText("↓").parentElement).toHaveTextContent("Actions");
+
+    await user.keyboard("{ArrowDown}");
+
+    await waitFor(() => expect(back).toHaveFocus());
+    expect(back).toHaveAttribute("data-highlighted");
+    expect(screen.queryByText("↓")).not.toBeInTheDocument();
+    expectSingleReticle(container);
+  });
+
+  it("cycles Tab between the error actions and the log, skipping the lone All chip", async () => {
+    const user = userEvent.setup();
+    renderView({
+      isRunning: false,
+      error: "API key error",
+      transportFamily: "hosted-api",
+      onBack: vi.fn(),
+    });
+
+    const back = screen.getByRole("button", { name: "Back to Home" });
+    const log = screen.getByRole("log", { name: "Activity log" });
+    await waitFor(() => expect(back).toHaveFocus());
+
+    await user.tab();
+    expect(log).toHaveFocus();
+    expect(back).not.toHaveAttribute("data-highlighted");
+    expect(screen.queryByText("Move Action")).not.toBeInTheDocument();
+
+    await user.tab({ shift: true });
+    expect(back).toHaveFocus();
+    expect(screen.getByRole("radio", { name: "All" })).not.toHaveFocus();
+
+    // Outside the panes the cycle declines Tab, so controls rendered beside them
+    // keep their native keyboard path.
+    (document.activeElement as HTMLElement | null)?.blur();
+    // fireEvent retained: low-level Tab dispatch asserts the error layout does not prevent native Tab.
+    const prevented = !fireEvent.keyDown(document.body, { key: "Tab", code: "Tab" });
+    expect(prevented).toBe(false);
+  });
+
+  it("enters the log with the down arrow and leaves the up arrow native there", async () => {
+    const user = userEvent.setup();
+    renderView({
+      isRunning: false,
+      error: "Provider request failed",
+      onBack: vi.fn(),
+      data: makeProgressData({ events: makeLogEvents(2) }),
+    });
+
+    const log = screen.getByRole("log", { name: "Activity log" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Back to Home" })).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(log).toHaveFocus());
+
+    await user.keyboard("{ArrowUp}");
+    expect(log).toHaveFocus();
+  });
+
+  it("names the focused error action in the footer, with no move for a lone one", async () => {
+    renderView({ isRunning: false, error: "Provider request failed", onBack: vi.fn() });
+
+    const enter = await screen.findByText("Enter/Space");
+    expect(enter.parentElement).toHaveTextContent("Back to Home");
+    expect(screen.queryByText("Move Action")).not.toBeInTheDocument();
+    expect(screen.getByText("Esc").parentElement).toHaveTextContent("Back");
+  });
+
+  it("offers Move Action in the error footer once there is a second way out", async () => {
+    renderView({
+      isRunning: false,
+      error: "API key error",
+      transportFamily: "hosted-api",
+      onBack: vi.fn(),
+    });
+
+    expect(await screen.findByText("Move Action")).toBeInTheDocument();
+    expect(screen.getByText("Enter/Space").parentElement).toHaveTextContent("Back to Home");
+    expect(screen.getByText("Esc").parentElement).toHaveTextContent("Back");
   });
 
   it("sanitizes untrusted failure text before announcing it", () => {
@@ -474,49 +622,32 @@ describe("ReviewProgressView", () => {
       expect(screen.getByRole("button", { name: "Back to Home" })).toBeInTheDocument();
     });
 
-    it("moves between the error actions with the arrows and marks the one holding focus", async () => {
+    it("leads with View Run Details and steps the row without leaving the panel", async () => {
       const user = userEvent.setup();
       renderFailedRun({ onViewRun: vi.fn() });
       const viewRun = screen.getByRole("button", { name: "View Run Details" });
       const back = screen.getByRole("button", { name: "Back to Home" });
 
-      expect(screen.queryByText("Move Action")).not.toBeInTheDocument();
-
-      viewRun.focus();
-      await waitFor(() => expect(viewRun).toHaveAttribute("data-highlighted"));
+      await waitFor(() => expect(viewRun).toHaveFocus());
+      expect(viewRun).toHaveAttribute("data-highlighted");
       expect(screen.getByText("Move Action")).toBeInTheDocument();
 
       await user.keyboard("{ArrowRight}");
-
       expect(back).toHaveFocus();
       expect(back).toHaveAttribute("data-highlighted");
       expect(viewRun).not.toHaveAttribute("data-highlighted");
-    });
 
-    it("leaves the row's keys behind when focus does, so nothing marks a button it left", async () => {
-      const user = userEvent.setup();
-      renderFailedRun({ onViewRun: vi.fn() });
-      const viewRun = screen.getByRole("button", { name: "View Run Details" });
-      const back = screen.getByRole("button", { name: "Back to Home" });
-
-      viewRun.focus();
-      await waitFor(() => expect(viewRun).toHaveAttribute("data-highlighted"));
-
-      // Tab is native on this layout, so focus leaves the row for the log.
-      await user.tab();
-      expect(back).toHaveFocus();
-      await user.tab();
-      expect(screen.getByRole("log", { name: "Activity log" })).toHaveFocus();
-      expect(viewRun).not.toHaveAttribute("data-highlighted");
-      expect(back).not.toHaveAttribute("data-highlighted");
-      expect(screen.queryByText("Move Action")).not.toBeInTheDocument();
-
-      // ← would step the row back to [View Run Details] if it still claimed the
-      // key from outside the panel it belongs to; out there the arrows are the
-      // pane grammar's.
       await user.keyboard("{ArrowLeft}");
-      expect(viewRun).not.toHaveFocus();
-      expect(back).not.toHaveFocus();
+      expect(viewRun).toHaveFocus();
+
+      // The end of the row is the end of the move: no pane sits left of the
+      // error panel for the arrow to switch to.
+      await user.keyboard("{ArrowLeft}");
+      expect(viewRun).toHaveFocus();
+      expect(screen.getByRole("region", { name: "Live Activity Log" })).toHaveAttribute(
+        "data-state",
+        "focused",
+      );
     });
   });
 
@@ -1233,27 +1364,6 @@ describe("ReviewProgressView", () => {
     expect(screen.queryByText("f")).not.toBeInTheDocument();
   });
 
-  it("leaves native Tab available on the error screen", async () => {
-    const user = userEvent.setup();
-    renderView({
-      isRunning: false,
-      error: "API key error",
-      transportFamily: "hosted-api",
-      onBack: vi.fn(),
-    });
-
-    const back = await screen.findByRole("button", { name: "Back to Home" });
-    const configure = screen.getByRole("button", { name: "Configure Provider" });
-    back.focus();
-
-    // fireEvent retained: low-level Tab dispatch asserts the error state does not prevent native Tab.
-    const prevented = !fireEvent.keyDown(back, { key: "Tab", code: "Tab" });
-    expect(prevented).toBe(false);
-
-    await user.tab();
-    expect(configure).toHaveFocus();
-  });
-
   it("does not advertise pane switching on the error screen", async () => {
     renderView({ isRunning: false, error: "Provider request failed", onBack: vi.fn() });
 
@@ -1663,15 +1773,12 @@ describe("ReviewProgressView r retry grammar", () => {
 });
 
 describe("log focus custody", () => {
-  it("keeps the log out of the tab order while the zone cycle owns focus", () => {
-    renderView({ data: makeProgressData({ events: makeLogEvents(1) }) });
-
+  it("keeps the log out of the tab order on every layout, error included", () => {
+    const { unmount } = renderView({ data: makeProgressData({ events: makeLogEvents(1) }) });
     expect(screen.getByRole("log", { name: "Activity log" })).toHaveAttribute("tabindex", "-1");
-  });
+    unmount();
 
-  it("returns the log to the tab order in the error layout, where Tab moves naturally", () => {
     renderView({ error: "boom", data: makeProgressData({ events: makeLogEvents(1) }) });
-
-    expect(screen.getByRole("log", { name: "Activity log" })).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("log", { name: "Activity log" })).toHaveAttribute("tabindex", "-1");
   });
 });
