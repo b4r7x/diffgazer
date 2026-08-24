@@ -190,7 +190,6 @@ describe("executeReview", () => {
 
 const PIPELINE_LIMITS: ExecutionLimits = Object.freeze({
   maxInputTokens: 40_000,
-  maxOutputTokens: 8_000,
   maxResponseBytes: 8_000_000,
   wallTimeMs: 300_000,
   maxRetries: 1,

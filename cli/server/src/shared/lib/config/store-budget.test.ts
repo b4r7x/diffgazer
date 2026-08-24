@@ -1,5 +1,6 @@
 import { CATALOG_SNAPSHOT } from "@diffgazer/core/catalog";
 import { describe, expect, it } from "vitest";
+import { PLANNING_OUTPUT_TOKENS } from "../ai/budget/cost.js";
 import { budgetWithinModelObservation, DEFAULT_CONFIGURATION_BUDGET } from "./store.js";
 import { configPath, loadStore, readJson, secretsPath, writeJson } from "./store.test-support.js";
 
@@ -7,22 +8,25 @@ const CEREBRAS_ENDPOINT = "https://api.cerebras.ai/v1";
 const CREATED_AT = "2026-01-01T00:00:00.000Z";
 
 describe("configuration budget ceilings", () => {
-  it("ships a conservative default output cap below common provider maxima", () => {
-    expect(DEFAULT_CONFIGURATION_BUDGET.outputTokens).toBe(8_192);
-  });
-
-  it("clamps output and input to a bundled catalog observation", () => {
+  it("reserves the catalog output ceiling out of the model context window", () => {
     const clamped = budgetWithinModelObservation(DEFAULT_CONFIGURATION_BUDGET, {
       contextTokens: 131_072,
       outputTokens: 32_768,
     });
 
-    expect(clamped.outputTokens).toBe(8_192);
-    expect(clamped.inputTokens).toBe(122_880);
+    expect(clamped.inputTokens).toBe(98_304);
   });
 
-  it("never widens configured local caps", () => {
-    const budget = { ...DEFAULT_CONFIGURATION_BUDGET, inputTokens: 4_096, outputTokens: 2_048 };
+  it("reserves nothing when the catalog publishes no output ceiling", () => {
+    const clamped = budgetWithinModelObservation(DEFAULT_CONFIGURATION_BUDGET, {
+      contextTokens: 131_072,
+    });
+
+    expect(clamped.inputTokens).toBe(131_072);
+  });
+
+  it("never widens the configured local input cap", () => {
+    const budget = { ...DEFAULT_CONFIGURATION_BUDGET, inputTokens: 4_096 };
     const clamped = budgetWithinModelObservation(budget, {
       contextTokens: 131_072,
       outputTokens: 32_768,
@@ -81,23 +85,20 @@ describe("configuration budget ceilings", () => {
     if (!selected.ok) return;
     expect(selected.value.configuration?.selectedModelId).toBe("gpt-oss-120b");
     const persisted = readJson<{
-      configurations: Array<{ budget: { inputTokens: number; outputTokens: number } }>;
+      configurations: Array<{ budget: { inputTokens: number } }>;
     }>(configPath());
     expect(persisted.configurations[0]?.budget).toEqual({
       ...DEFAULT_CONFIGURATION_BUDGET,
-      outputTokens: 8_192,
-      inputTokens: 122_880,
+      inputTokens: 98_304,
     });
   });
 
   it("clamps a legacy persisted budget on load without rewriting the user's file", async () => {
     // Far above any published ceiling, so the catalog observation is provably
     // the binding constraint and the assertion survives a snapshot refresh.
-    const legacyBudget = {
-      ...DEFAULT_CONFIGURATION_BUDGET,
-      inputTokens: 5_000_000,
-      outputTokens: 1_000_000,
-    };
+    const decodedLegacyBudget = { ...DEFAULT_CONFIGURATION_BUDGET, inputTokens: 5_000_000 };
+    // Persisted files still carry the retired outputTokens dimension; reads strip it.
+    const legacyBudget = { ...decodedLegacyBudget, outputTokens: 1_000_000 };
     const catalogLimit = CATALOG_SNAPSHOT.cerebras?.models["gpt-oss-120b"]?.limit;
     if (catalogLimit?.context === undefined || catalogLimit.output === undefined) {
       throw new Error("Bundled snapshot is missing cerebras/gpt-oss-120b limits");
@@ -147,9 +148,8 @@ describe("configuration budget ceilings", () => {
     if (!current.ok) return;
     const entry = current.value.config.configurations[0];
     expect(entry?.status === "supported" ? entry.record.budget : null).toEqual({
-      ...legacyBudget,
-      outputTokens: catalogLimit.output,
-      inputTokens: catalogLimit.context - catalogLimit.output,
+      ...decodedLegacyBudget,
+      inputTokens: catalogLimit.context - Math.min(catalogLimit.output, PLANNING_OUTPUT_TOKENS),
     });
     const persisted = readJson<{
       configurations: Array<{ budget: { inputTokens: number; outputTokens: number } }>;

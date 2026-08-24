@@ -17,6 +17,7 @@ import { makeReviewLifecycleBase } from "../testing/review-lifecycle-base";
 const apiMocks = vi.hoisted(() => ({
   clearActiveSession: vi.fn(),
   createReview: vi.fn(),
+  getActiveReviewSession: vi.fn(),
   refetchInit: vi.fn(),
   useCreateReview: vi.fn(),
   useConfigurationInit: vi.fn(),
@@ -26,6 +27,7 @@ const apiMocks = vi.hoisted(() => ({
 const CREATED_REVIEW_ID = "22222222-2222-4222-8222-222222222222";
 
 vi.mock("@diffgazer/core/api/hooks", () => ({
+  useApi: () => ({ getActiveReviewSession: apiMocks.getActiveReviewSession }),
   useCreateReview: apiMocks.useCreateReview,
   useConfigurationInit: apiMocks.useConfigurationInit,
   useReviewLifecycleBase: apiMocks.useReviewLifecycleBase,
@@ -43,6 +45,7 @@ afterEach(() => {
 
 beforeEach(() => {
   apiMocks.refetchInit.mockResolvedValue(undefined);
+  apiMocks.getActiveReviewSession.mockResolvedValue({ session: null });
   apiMocks.createReview.mockImplementation(async ({ mode = "staged" }: { mode?: ReviewMode }) =>
     makeCreateReviewResponse({ reviewId: CREATED_REVIEW_ID, session: { mode } }),
   );
@@ -449,5 +452,67 @@ describe("useReviewLifecycle resume and start routing", () => {
 
     expect(result.current.state.gate).toBe("running");
     expect(apiMocks.createReview).not.toHaveBeenCalled();
+  });
+});
+
+describe("useReviewLifecycle attach to a running review", () => {
+  const ACTIVE_REVIEW_ID = "33333333-3333-4333-8333-333333333333";
+
+  function rejectStartAsInProgress() {
+    apiMocks.createReview.mockRejectedValue(
+      Object.assign(new Error("A review is already running."), {
+        code: "REVIEW_IN_PROGRESS",
+        status: 409,
+      }),
+    );
+    apiMocks.useReviewLifecycleBase.mockImplementation((options: UseReviewLifecycleBaseOptions) =>
+      makeReviewLifecycleBase({ reviewId: options.reviewId ?? null }),
+    );
+  }
+
+  test("streams the already-running review instead of failing the start", async () => {
+    rejectStartAsInProgress();
+    apiMocks.getActiveReviewSession.mockResolvedValue({
+      session: {
+        reviewId: ACTIVE_REVIEW_ID,
+        mode: "staged",
+        startedAt: "2026-08-23T10:00:00.000Z",
+        headCommit: "abc123",
+        statusHash: "hash",
+      },
+    });
+
+    const { result, rerender } = renderHook(() => useReviewLifecycle({ mode: "staged" }));
+
+    await act(async () => {
+      expect(await result.current.start("staged")).toBe("started");
+    });
+    rerender();
+
+    expect(apiMocks.getActiveReviewSession).toHaveBeenCalledWith("staged");
+    expect(result.current.state.startError).toBeNull();
+    expect(result.current.state.phase).toBe("streaming");
+    await waitFor(() => {
+      expect(result.current.state.reviewId).toBe(ACTIVE_REVIEW_ID);
+    });
+  });
+
+  test("keeps the neutral start error when the running review cannot be read", async () => {
+    rejectStartAsInProgress();
+    apiMocks.getActiveReviewSession.mockRejectedValue(new Error("sessions unavailable"));
+
+    const { result } = renderHook(() => useReviewLifecycle({ mode: "staged" }));
+
+    await act(async () => {
+      expect(await result.current.start("staged")).toBe("failed");
+    });
+
+    expect(result.current.state.startError).toEqual({
+      title: "Review Already Running",
+      message:
+        "A review is already running for this configuration. Diffgazer runs one review at a time, so a new one cannot start until the running review finishes or is cancelled.",
+      recovery: "open-active-review",
+    });
+    expect(result.current.state.phase).toBe("summary");
   });
 });

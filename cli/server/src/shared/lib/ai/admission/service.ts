@@ -144,9 +144,10 @@ function hashExecutionFingerprintSync(input: {
 }
 
 /**
- * Reserves the whole admitted envelope, including the worst case the admitted
- * model can bill for it. The worst case is reserved unclamped so a spend cap
- * below it denies admission instead of admitting a request it cannot cover.
+ * Reserves the whole admitted input envelope and the worst case the admitted
+ * model can bill for it plus the planned answer length. The worst case is
+ * reserved in full so a spend cap below it denies admission instead of
+ * admitting a request it cannot cover.
  * Transports with no established price (local CLI and local HTTP, and any model
  * the bundled catalog does not price) bill nothing through this ledger and
  * reserve nothing; the token and byte caps remain their bound.
@@ -158,7 +159,6 @@ function conservativeAttemptEstimate(
 ): AttemptEstimate {
   return {
     inputTokens: limits.maxInputTokens,
-    outputTokens: limits.maxOutputTokens,
     responseBytes: limits.maxResponseBytes,
     wallTimeMs: limits.wallTimeMs,
     costUsd: estimateWorstCaseCostUsd(productId, modelId, limits) ?? 0,

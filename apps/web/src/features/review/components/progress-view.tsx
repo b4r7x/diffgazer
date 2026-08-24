@@ -4,10 +4,7 @@ import { formatDuration } from "@diffgazer/core/format";
 import {
   classifyReviewStreamError,
   getPartialFailureWarning,
-  hasCompletedLens,
-  isProviderRecoveryError,
   type LogStreamState,
-  PERSISTED_RUN_ERROR_CODES,
   type ReviewEvent,
   type ReviewStreamErrorGuidance,
   sanitizePresentationText,
@@ -20,7 +17,7 @@ import {
   type ProgressStepData,
   type ReviewProgressMetrics,
 } from "@diffgazer/core/schemas/presentation";
-import { useActionRowNavigation } from "@diffgazer/keys";
+import { clampIndex, useActionRowNavigation } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
@@ -28,7 +25,6 @@ import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { useNavigate } from "@tanstack/react-router";
 import { type KeyboardEvent, type RefObject, useState } from "react";
 import { chromeReturnShortcut } from "@/components/layout/header-chrome";
 import { useFocusWithin } from "@/hooks/use-focus-within";
@@ -69,8 +65,6 @@ export interface ReviewProgressViewProps {
   contextRefreshError?: string | null;
   onRetryContextRefresh?: () => void;
   onRetry?: (reviewId: string) => void;
-  /** Opens the saved record of a run that failed after at least one lens reported. */
-  onViewRun?: (reviewId: string) => void;
   onViewResults?: () => void;
   onCancel?: () => void;
   onBack?: () => void;
@@ -140,41 +134,25 @@ interface ErrorAction {
   label: string;
   onAction: () => void;
   variant: "secondary" | "outline";
-  className?: string;
 }
 
 /**
- * The ways forward a failed stream offers. The run the review already produced
- * leads: it is the only action that shows work the user has paid for. Home
- * follows, then whatever the guidance itself can repair.
+ * The ways forward a dropped stream offers. Every other settled failure leaves
+ * the live screen for the full-frame gate card, so this panel only ever speaks
+ * for a transport that can be picked up again: Home, then the reconnect.
  */
 function buildErrorActions({
   guidance,
-  onViewRun,
   onBack,
-  onOpenProviders,
   onRetry,
 }: {
   guidance: ReviewStreamErrorGuidance;
-  onViewRun?: () => void;
   onBack?: () => void;
-  onOpenProviders: () => void;
   onRetry?: () => void;
 }): ErrorAction[] {
   const actions: ErrorAction[] = [];
-  if (onViewRun) {
-    actions.push({ label: "View Run Details", onAction: onViewRun, variant: "outline" });
-  }
   if (onBack) {
     actions.push({ label: "Back to Home", onAction: onBack, variant: "secondary" });
-  }
-  if (isProviderRecoveryError(guidance.kind)) {
-    actions.push({
-      label: guidance.ctaLabel,
-      onAction: onOpenProviders,
-      variant: "outline",
-      className: "border-warning text-warning-text hover:bg-warning/10",
-    });
   }
   if (guidance.kind === "transport" && onRetry) {
     actions.push({ label: guidance.ctaLabel, onAction: onRetry, variant: "outline" });
@@ -257,7 +235,6 @@ function ErrorDisplay({
                 {...row.getActionProps(index)}
                 variant={action.variant}
                 bracket
-                className={action.className}
                 highlighted={focus.focusWithin && row.focusedIndex === index}
                 onClick={action.onAction}
               >
@@ -356,7 +333,6 @@ export function ReviewProgressView({
   contextRefreshError,
   onRetryContextRefresh,
   onRetry,
-  onViewRun,
   onViewResults,
   onCancel,
   onBack,
@@ -365,7 +341,6 @@ export function ReviewProgressView({
   const { steps, events, agents, lensStats, metrics, startTime, contextSnapshot, notices } = data;
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const hasError = Boolean(error);
-  const navigate = useNavigate();
 
   const progressPaneFocus = useFocusWithin<HTMLElement>();
   const logPaneFocus = useFocusWithin<HTMLElement>();
@@ -393,6 +368,15 @@ export function ReviewProgressView({
     ...(onViewResults && !hasError ? [{ id: "view-results" }] : []),
   ];
 
+  // The chip row's own order, so [ and ] walk exactly what the eye sees, and
+  // wrap where the row ends.
+  const cycleAgentFilter = (direction: 1 | -1) => {
+    const chips = [ALL_AGENTS_VALUE, ...agents.map((agent) => agent.meta.name)];
+    const index = chips.indexOf(agentFilter ?? ALL_AGENTS_VALUE);
+    const next = chips[clampIndex(index, direction, chips.length, true)] ?? ALL_AGENTS_VALUE;
+    setAgentFilter(next === ALL_AGENTS_VALUE ? null : next);
+  };
+
   const {
     progressPaneRef,
     progressScrollRef,
@@ -416,27 +400,16 @@ export function ReviewProgressView({
     hasSnapshotDownloads: !isRunning && contextSnapshot != null,
     hasAgentFilters: agents.length > 0,
     activeAgentFilter: agentFilter,
+    onCycleAgentFilter: cycleAgentFilter,
     actions: paneActions,
   });
 
   const errorGuidance = error ? classifyReviewStreamError(error, errorCode, transportFamily) : null;
 
-  // Only a failure the server reported from the report step has a record on
-  // disk, and PERSISTED_RUN_ERROR_CODES is that step's whole vocabulary. A
-  // cancel, a lost session and a failed save all settle before the write and can
-  // reach this screen with a completed lens streamed, so the offer is an
-  // allow-list rather than a deny-list. The saved record is the offer's source:
-  // the stream still holds findings the server may have dropped, and two screens
-  // must not disagree about a run.
-  const savedRunExists =
-    hasCompletedLens(lensStats) && PERSISTED_RUN_ERROR_CODES.includes(errorCode ?? "");
-  const viewRun = onViewRun && reviewId && savedRunExists ? () => onViewRun(reviewId) : undefined;
   const errorActions = errorGuidance
     ? buildErrorActions({
         guidance: errorGuidance,
-        onViewRun: viewRun,
         onBack,
-        onOpenProviders: () => navigate({ to: "/settings/providers" }),
         onRetry:
           errorGuidance.kind === "transport" && reviewId && onRetry
             ? () => onRetry(reviewId)

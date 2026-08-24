@@ -1,4 +1,6 @@
 import {
+  reviewQueries,
+  useApi,
   useCreateReview,
   useReviewLifecycleBase,
   useReviewSessionCache,
@@ -14,6 +16,7 @@ import {
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue, ReviewMode, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { toast } from "@diffgazer/ui/components/toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useConfigData } from "@/hooks/use-config";
@@ -48,7 +51,9 @@ export function useReviewLifecycle({
   const { loadState, isReady, selectedReadiness, selectedConfiguration } = useConfigData();
   const createReview = useCreateReview();
   const providerConsent = useProviderConsent();
+  const api = useApi();
   const reviewSessionCache = useReviewSessionCache();
+  const queryClient = useQueryClient();
   const transitionRef = useRef<symbol | null>(null);
   const [isTransitionPending, setIsTransitionPending] = useState(false);
   const [startError, setStartError] = useState<ReviewStartErrorDescription | null>(null);
@@ -207,6 +212,14 @@ export function useReviewLifecycle({
   // rather than stacking on it: nobody needs a Back that returns to the failure.
   const handleViewRun = (reviewId: string) => {
     clearActiveSession(reviewId);
+    // The saved record may have been fetched while the run was still streaming,
+    // and that copy says "fall back to the stream" — the screen this replaces.
+    // It stays fresh for a minute, so the summary would reuse it; invalidating
+    // makes it read the finished run from the server instead.
+    void queryClient.invalidateQueries({
+      queryKey: reviewQueries.detail(api, reviewId).queryKey,
+      exact: true,
+    });
     navigate({
       to: "/review/{-$reviewId}",
       params: { reviewId },

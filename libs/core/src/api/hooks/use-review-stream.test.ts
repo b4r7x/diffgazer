@@ -6,7 +6,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { Result } from "../../result.js";
 import { err, ok } from "../../result.js";
-import type { StreamReviewError } from "../../review/index.js";
+import { classifyReviewStreamError, type StreamReviewError } from "../../review/index.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 import { requireValue } from "../../testing/assertions.js";
 import { createDeferred } from "../../testing/deferred.js";
@@ -277,6 +277,44 @@ describe("useReviewStream", () => {
     await act(async () => {
       resumeDeferred.resolve(ok(fakeResumeResult("cancel-terminal-review")));
       await requireValue(resumePromise, "cancel terminal resume promise");
+    });
+  });
+
+  it("codes a failed cancel as a transport error so the live screen is retained", async () => {
+    const resumeDeferred = createDeferred<Result<ResumeReviewResult, StreamReviewError>>();
+    const resumeReviewStream = vi
+      .fn<BoundApi["resumeReviewStream"]>()
+      .mockReturnValue(resumeDeferred.promise);
+    const cancelReviewSession = vi.fn().mockRejectedValue(new Error("cancel endpoint down"));
+    const api = createApi({ resumeReviewStream, cancelReviewSession });
+
+    const { result } = renderHook(() => useReviewStream(), {
+      wrapper: createWrapper(api),
+    });
+
+    let resumePromise: Promise<Result<void, StreamReviewError>> | undefined;
+    act(() => {
+      resumePromise = result.current.resume("failed-cancel-review");
+    });
+
+    await waitFor(() => expect(result.current.state.reviewId).toBe("failed-cancel-review"));
+
+    let cancelOutcome: CancelReviewOutcome | null | undefined;
+    await act(async () => {
+      cancelOutcome = await result.current.cancel("failed-cancel-review");
+    });
+
+    expect(cancelOutcome).toEqual({ status: "error", message: "cancel endpoint down" });
+    expect(result.current.state.error).toBe("cancel endpoint down");
+    expect(result.current.state.errorCode).toBe("STREAM_ERROR");
+    expect(
+      classifyReviewStreamError(result.current.state.error ?? "", result.current.state.errorCode)
+        .kind,
+    ).toBe("transport");
+
+    await act(async () => {
+      resumeDeferred.resolve(ok(fakeResumeResult("failed-cancel-review")));
+      await requireValue(resumePromise, "failed cancel resume promise");
     });
   });
 

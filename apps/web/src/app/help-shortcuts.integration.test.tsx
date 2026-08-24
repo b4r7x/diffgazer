@@ -282,6 +282,7 @@ function buildHomeProps(
     needsTrust: false,
     repoRoot: "/repo",
     resumableSession: null,
+    refetchActiveSession: vi.fn(async () => ({ status: "read" as const, session: null })),
     highlighted: null,
     searchError: undefined,
     onHighlightChange: vi.fn(),

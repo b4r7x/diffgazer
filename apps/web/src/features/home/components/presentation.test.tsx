@@ -54,6 +54,7 @@ function buildProps(overrides: Partial<HomePagePresentationProps> = {}): HomePag
     onHighlightChange: vi.fn(),
     navigate: createNavigateMock().navigate,
     createReview: vi.fn(async () => ({ reviewId: "rev-new" })),
+    refetchActiveSession: vi.fn(async () => ({ status: "read" as const, session: null })),
     requireProviderConsent: (action) => action(),
     clearScopedRouteState: vi.fn(),
     shutdown: vi.fn(async (): Promise<ShutdownResult> => ({ status: "closed" })),
@@ -413,6 +414,144 @@ describe("HomePagePresentation — startReview error surfacing", () => {
     expect(screen.getByText(remediation)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Open Providers" }));
     expect(navigateMock.mock).toHaveBeenCalledWith({ to: "/settings/providers" });
+  });
+
+  it("opens the running review when the refused start matches the live session's mode", async () => {
+    const navigateMock = createNavigateMock();
+    const createReview = vi.fn(async () => {
+      throw makeApiError("A review is already running", "REVIEW_IN_PROGRESS", 409);
+    });
+    const refetchActiveSession = vi.fn(async () => ({
+      status: "read" as const,
+      session: { reviewId: "rev-live", mode: "unstaged" as const },
+    }));
+    const user = userEvent.setup();
+    renderPresentation(
+      buildProps({ navigate: navigateMock.navigate, createReview, refetchActiveSession }),
+    );
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+
+    await waitFor(() =>
+      expect(navigateMock.mock).toHaveBeenCalledWith({
+        to: "/review/{-$reviewId}",
+        params: { reviewId: "rev-live" },
+        search: { mode: "unstaged", live: true },
+      }),
+    );
+    expect(refetchActiveSession).toHaveBeenCalled();
+    // What happened is reported, not raised: the attach toast is informational,
+    // so it never takes the assertive role="alert" path a failure would.
+    const notice = await screen.findByText("Opened the Running Review");
+    expect(notice.closest('[role="alert"]')).toBeNull();
+    expect(screen.queryByText("Review Already Running")).not.toBeInTheDocument();
+  });
+
+  it("offers the running review instead of opening it when it belongs to the other mode", async () => {
+    const navigateMock = createNavigateMock();
+    const createReview = vi.fn(async () => {
+      throw makeApiError("A review is already running", "REVIEW_IN_PROGRESS", 409);
+    });
+    const refetchActiveSession = vi.fn(async () => ({
+      status: "read" as const,
+      session: { reviewId: "rev-staged", mode: "staged" as const },
+    }));
+    const user = userEvent.setup();
+    renderPresentation(
+      buildProps({ navigate: navigateMock.navigate, createReview, refetchActiveSession }),
+    );
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+
+    expect(await screen.findByText("Review Already Running")).toBeInTheDocument();
+    // The refusal names both modes, so the user knows the running review is not
+    // the one they asked for before deciding to open it.
+    expect(
+      screen.getByText(
+        "The running review covers staged changes. Open it, or cancel it before starting one for unstaged changes.",
+      ),
+    ).toBeInTheDocument();
+    expect(navigateMock.mock).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Open Running Review" }));
+
+    expect(navigateMock.mock).toHaveBeenCalledWith({
+      to: "/review/{-$reviewId}",
+      params: { reviewId: "rev-staged" },
+      search: { mode: "staged", live: true },
+    });
+  });
+
+  it("falls back to the session read at mount when the refused start cannot re-read one", async () => {
+    const navigateMock = createNavigateMock();
+    const createReview = vi.fn(async () => {
+      throw makeApiError("A review is already running", "REVIEW_IN_PROGRESS", 409);
+    });
+    const user = userEvent.setup();
+    renderPresentation(
+      buildProps({
+        navigate: navigateMock.navigate,
+        createReview,
+        refetchActiveSession: vi.fn(async () => ({ status: "unreadable" as const })),
+        resumableSession: { reviewId: "rev-cached", mode: "unstaged" },
+      }),
+    );
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+
+    await waitFor(() =>
+      expect(navigateMock.mock).toHaveBeenCalledWith({
+        to: "/review/{-$reviewId}",
+        params: { reviewId: "rev-cached" },
+        search: { mode: "unstaged", live: true },
+      }),
+    );
+    expect(await screen.findByText("Opened the Running Review")).toBeInTheDocument();
+  });
+
+  it("ignores the session read at mount when the re-read authoritatively finds none", async () => {
+    const navigateMock = createNavigateMock();
+    const createReview = vi.fn(async () => {
+      throw makeApiError("A review is already running", "REVIEW_IN_PROGRESS", 409);
+    });
+    const user = userEvent.setup();
+    renderPresentation(
+      buildProps({
+        navigate: navigateMock.navigate,
+        createReview,
+        refetchActiveSession: vi.fn(async () => ({ status: "read" as const, session: null })),
+        resumableSession: { reviewId: "rev-finished", mode: "unstaged" },
+      }),
+    );
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+
+    expect(await screen.findByText("Review Already Running")).toBeInTheDocument();
+    expect(navigateMock.mock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Open Running Review" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the plain refusal on screen when no running review can be read", async () => {
+    const navigateMock = createNavigateMock();
+    const createReview = vi.fn(async () => {
+      throw makeApiError("A review is already running", "REVIEW_IN_PROGRESS", 409);
+    });
+    const refetchActiveSession = vi.fn(async () => {
+      throw new Error("active session unavailable");
+    });
+    const user = userEvent.setup();
+    renderPresentation(
+      buildProps({ navigate: navigateMock.navigate, createReview, refetchActiveSession }),
+    );
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+
+    expect(await screen.findByText("Review Already Running")).toBeInTheDocument();
+    expect(
+      screen.getByText(/A review is already running for this configuration\./),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open Running Review" })).not.toBeInTheDocument();
+    expect(navigateMock.mock).not.toHaveBeenCalled();
   });
 
   it("clears the starting state when the start fails, handing the menu back", async () => {

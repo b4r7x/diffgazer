@@ -55,6 +55,17 @@ export function HomePage() {
       repoRoot={repoRoot}
       resumableSession={resumableSession}
       isResumeUnavailable={unstagedActive.isError || stagedActive.isError}
+      refetchActiveSession={async () => {
+        // Both modes are re-read: the review the server refused for may be the
+        // other mode's, and a session found anywhere answers the question even
+        // if the sibling read failed.
+        const reads = await Promise.all([unstagedActive.refetch(), stagedActive.refetch()]);
+        const session = reads.map((read) => read.data?.session).find(Boolean) ?? null;
+        if (session === null && reads.some((read) => read.isError)) {
+          return { status: "unreadable" };
+        }
+        return { status: "read", session };
+      }}
       highlighted={highlighted}
       searchError={typeof search.error === "string" ? search.error : undefined}
       onHighlightChange={setHighlighted}

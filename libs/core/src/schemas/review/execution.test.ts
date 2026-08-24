@@ -30,7 +30,6 @@ const INSTALLATION_ID = "codex-installation-1";
 
 const limits = {
   maxInputTokens: 20_000,
-  maxOutputTokens: 4_000,
   maxResponseBytes: 1_048_576,
   wallTimeMs: 120_000,
   maxRetries: 2,
@@ -278,11 +277,6 @@ describe("canonical execution hashes", () => {
       changed: { ...evidenceKey, limits: { ...limits, maxInputTokens: 20_001 } },
     },
     {
-      label: "output-token limit",
-      base: evidenceKey,
-      changed: { ...evidenceKey, limits: { ...limits, maxOutputTokens: 4_001 } },
-    },
-    {
       label: "response-byte limit",
       base: evidenceKey,
       changed: { ...evidenceKey, limits: { ...limits, maxResponseBytes: 1_048_577 } },
@@ -357,7 +351,7 @@ describe("canonical execution hashes", () => {
     };
 
     expect(receipt.executionFingerprint).toBe(
-      "bbecc7ff3c26fdfa9545e8365eaab225dd7872cd564c55bf1da5b80d0cdb05c3",
+      "ebbd4da18233a9bc508f7c7daf4691166fc764a2276d9cbbaeb97525a0ac6018",
     );
     expect(hashExecutionReceiptFingerprintSync(input)).toBe(receipt.executionFingerprint);
     expect(hashExecutionReceiptFingerprintSync({ ...input, modelId: "openai/gpt-4.1" })).not.toBe(
@@ -366,7 +360,7 @@ describe("canonical execution hashes", () => {
     expect(
       hashExecutionReceiptFingerprintSync({
         ...input,
-        limits: { ...limits, maxOutputTokens: limits.maxOutputTokens + 1 },
+        limits: { ...limits, maxInputTokens: limits.maxInputTokens + 1 },
       }),
     ).not.toBe(receipt.executionFingerprint);
     expect(
@@ -474,7 +468,7 @@ describe("execution contracts", () => {
     expect(
       ExecutionReceiptSchema.safeParse({
         ...receipt,
-        limits: { ...limits, maxOutputTokens: limits.maxOutputTokens + 1 },
+        limits: { ...limits, maxInputTokens: limits.maxInputTokens + 1 },
       }).success,
     ).toBe(false);
     expect(
@@ -863,11 +857,6 @@ describe("execution contracts", () => {
     ).toBe(false);
     expect(
       ExecutionReceiptSchema.safeParse(
-        makeReceipt({ usage: { outputTokens: limits.maxOutputTokens + 1 } }),
-      ).success,
-    ).toBe(false);
-    expect(
-      ExecutionReceiptSchema.safeParse(
         makeReceipt({ usageAvailability: "reported", usage: undefined }),
       ).success,
     ).toBe(false);
@@ -885,13 +874,11 @@ describe("execution contracts", () => {
   it("allows over-cap reported usage only for budget-exhausted receipts", () => {
     const overCapUsages: ReadonlyArray<NormalizedUsage> = [
       { inputTokens: limits.maxInputTokens + 1 },
-      { outputTokens: limits.maxOutputTokens + 1 },
-      { totalTokens: limits.maxInputTokens + limits.maxOutputTokens + 1 },
     ];
     const inCapUsage: NormalizedUsage = {
       inputTokens: limits.maxInputTokens,
-      outputTokens: limits.maxOutputTokens,
-      totalTokens: limits.maxInputTokens + limits.maxOutputTokens,
+      outputTokens: 4_000,
+      totalTokens: limits.maxInputTokens + 4_000,
     };
 
     for (const usage of [...overCapUsages, inCapUsage]) {

@@ -20,7 +20,6 @@ import { executeReviewGeneration } from "./generate.js";
 
 const CONTRACT_TEST_LIMITS = Object.freeze({
   maxInputTokens: 32,
-  maxOutputTokens: 8,
   maxResponseBytes: 1_024,
   wallTimeMs: 5_000,
   maxRetries: 1,

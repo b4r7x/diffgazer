@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import type { Result } from "@diffgazer/core/result";
 import { READINESS_PRESENTATION } from "@diffgazer/core/schemas/config";
 import { describe, expect, it, vi } from "vitest";
@@ -209,6 +210,70 @@ describe("configuration test action", () => {
       ok: true,
       value: { status: "conformance-pending", ready: false },
     });
+  });
+
+  it("reports the pre-change verdict carrying the retired output-token limit instead of dropping it in silence", async () => {
+    await registerProbe(passingProbe);
+    const store = await loadStore();
+    const configurationId = await createAdmittedConfiguration(store);
+    succeed(await store.runConfigurationAction({ action: "test", configurationId }));
+    const admitted = await readEvidence(store, configurationId);
+    if (!admitted) throw new Error("expected an admitted verdict");
+
+    // What a pre-change release actually persisted: the output-token limit inside
+    // the key, and a hash taken over that key. The limit is gone from the key
+    // schema now, so the proof is unmatchable and the tuple must be re-proved —
+    // the point of this test is that the downgrade is announced, not silent.
+    const retiredKey = {
+      ...admitted.evidenceKey,
+      limits: { ...admitted.evidenceKey.limits, maxOutputTokens: 40_000 },
+    };
+    writeJson(evidencePathFor(configurationId), {
+      ...admitted,
+      evidenceKey: retiredKey,
+      evidenceKeyHash: sha256CanonicalJsonSync(retiredKey),
+    });
+    vi.resetModules();
+    const restarted = await loadStore();
+    await expect(restarted.ready()).resolves.toMatchObject({ ok: true });
+
+    expect(await readEvidence(restarted, configurationId)).toBeNull();
+    expect(mockLog).toHaveBeenCalledWith("warn", "config_evidence_load_failed", {
+      code: "CONFIGURATION_UNSUPPORTED",
+      operation: "load-evidence",
+      configurationId,
+      reason: "invalid-evidence",
+    });
+    const inspected = succeed(
+      await restarted.runConfigurationAction({ action: "inspect", configurationId }),
+    );
+    expect(inspected.readiness).toMatchObject({ status: "conformance-pending", ready: false });
+  });
+
+  it("reports a verdict file it cannot parse instead of dropping it in silence", async () => {
+    await registerProbe(passingProbe);
+    const store = await loadStore();
+    const configurationId = await createAdmittedConfiguration(store);
+    succeed(await store.runConfigurationAction({ action: "test", configurationId }));
+    const admitted = await readEvidence(store, configurationId);
+    if (!admitted) throw new Error("expected an admitted verdict");
+
+    writeJson(evidencePathFor(configurationId), { ...admitted, status: "probably" });
+    vi.resetModules();
+    const restarted = await loadStore();
+    await expect(restarted.ready()).resolves.toMatchObject({ ok: true });
+
+    expect(await readEvidence(restarted, configurationId)).toBeNull();
+    expect(mockLog).toHaveBeenCalledWith("warn", "config_evidence_load_failed", {
+      code: "CONFIGURATION_UNSUPPORTED",
+      operation: "load-evidence",
+      configurationId,
+      reason: "invalid-evidence",
+    });
+    const inspected = succeed(
+      await restarted.runConfigurationAction({ action: "inspect", configurationId }),
+    );
+    expect(inspected.readiness).toMatchObject({ status: "conformance-pending", ready: false });
   });
 
   it("refuses a verdict stamped with a protocol revision or review schema this server does not speak", async () => {

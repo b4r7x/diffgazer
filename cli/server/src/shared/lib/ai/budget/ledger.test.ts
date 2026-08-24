@@ -4,14 +4,12 @@ import {
   type AttemptActual,
   type AttemptEstimate,
   createBudgetLedger,
-  effectiveExecutionLimits,
   ZERO_FINDINGS,
 } from "./ledger.js";
 
 function sampleLimits(overrides: Partial<ExecutionLimits> = {}): ExecutionLimits {
   return {
     maxInputTokens: 10_000,
-    maxOutputTokens: 2_000,
     maxResponseBytes: 1_000_000,
     wallTimeMs: 60_000,
     maxRetries: 2,
@@ -24,7 +22,6 @@ function sampleLimits(overrides: Partial<ExecutionLimits> = {}): ExecutionLimits
 function estimate(overrides: Partial<AttemptEstimate> = {}): AttemptEstimate {
   return {
     inputTokens: 100,
-    outputTokens: 50,
     responseBytes: 1_024,
     wallTimeMs: 1_000,
     costUsd: 0.01,
@@ -48,15 +45,13 @@ const measuredOverrunCases = [
     limits: { maxInputTokens: 5 },
     reservation: estimate({
       inputTokens: 4,
-      outputTokens: 0,
       responseBytes: 0,
       wallTimeMs: 0,
       costUsd: 0,
     }),
-    actual: { inputTokens: 6, outputTokens: 0, wallTimeMs: 0 },
+    actual: { inputTokens: 6, wallTimeMs: 0 },
     committed: estimate({
       inputTokens: 6,
-      outputTokens: 0,
       responseBytes: 0,
       wallTimeMs: 0,
       costUsd: 0,
@@ -68,15 +63,13 @@ const measuredOverrunCases = [
     limits: { maxResponseBytes: 5 },
     reservation: estimate({
       inputTokens: 0,
-      outputTokens: 0,
       responseBytes: 4,
       wallTimeMs: 0,
       costUsd: 0,
     }),
-    actual: { inputTokens: 0, outputTokens: 0, responseBytes: 6, wallTimeMs: 0 },
+    actual: { inputTokens: 0, responseBytes: 6, wallTimeMs: 0 },
     committed: estimate({
       inputTokens: 0,
-      outputTokens: 0,
       responseBytes: 6,
       wallTimeMs: 0,
       costUsd: 0,
@@ -88,62 +81,19 @@ const measuredOverrunCases = [
     limits: { maxCostUsd: 0.05 },
     reservation: estimate({
       inputTokens: 0,
-      outputTokens: 0,
       responseBytes: 0,
       wallTimeMs: 0,
       costUsd: 0.03,
     }),
-    actual: { inputTokens: 0, outputTokens: 0, wallTimeMs: 0, costUsd: 0.06 },
+    actual: { inputTokens: 0, wallTimeMs: 0, costUsd: 0.06 },
     committed: estimate({
       inputTokens: 0,
-      outputTokens: 0,
       responseBytes: 0,
       wallTimeMs: 0,
       costUsd: 0.06,
     }),
   },
 ] satisfies readonly MeasuredOverrunCase[];
-
-describe("effectiveExecutionLimits", () => {
-  it("provider limits cannot widen local limits", () => {
-    const local = sampleLimits({
-      maxInputTokens: 1_000,
-      maxOutputTokens: 500,
-      maxResponseBytes: 100_000,
-      wallTimeMs: 30_000,
-      maxRetries: 1,
-      maxConcurrency: 2,
-      maxCostUsd: 0.25,
-    });
-
-    const widened = effectiveExecutionLimits(local, {
-      maxInputTokens: 2_000_000,
-      maxOutputTokens: 500_000,
-      maxResponseBytes: 50_000_000,
-      wallTimeMs: 600_000,
-      maxRetries: 10,
-      maxConcurrency: 16,
-      maxCostUsd: 50,
-    });
-
-    expect(widened).toEqual(local);
-  });
-
-  it("provider limits may only reduce configured local caps", () => {
-    const local = sampleLimits({ maxInputTokens: 10_000, maxOutputTokens: 2_000 });
-
-    expect(
-      effectiveExecutionLimits(local, {
-        maxInputTokens: 4_000,
-        maxOutputTokens: 8_000,
-      }),
-    ).toEqual({
-      ...local,
-      maxInputTokens: 4_000,
-      maxOutputTokens: 2_000,
-    });
-  });
-});
 
 describe("BudgetLedger concurrency", () => {
   it("does not over-reserve concurrency slots beyond maxConcurrency", () => {
@@ -226,7 +176,6 @@ describe("BudgetLedger cancellation", () => {
     expect(ledger.snapshot()).toMatchObject({
       committed: estimate({
         inputTokens: 0,
-        outputTokens: 0,
         responseBytes: 0,
         wallTimeMs: 0,
         costUsd: 0,
@@ -328,14 +277,12 @@ describe("BudgetLedger settlement", () => {
 
     const settled = ledger.settleAttempt(reservation.value, {
       inputTokens: 120,
-      outputTokens: 40,
       wallTimeMs: 900,
     });
 
     expect(settled.ok).toBe(true);
     expect(ledger.snapshot().committed).toEqual({
       inputTokens: 120,
-      outputTokens: 40,
       responseBytes: 0,
       wallTimeMs: 900,
       costUsd: 0,
@@ -350,7 +297,6 @@ describe("BudgetLedger settlement", () => {
 
     const settled = ledger.settleAttempt(reservation.value, {
       inputTokens: 1,
-      outputTokens: 1,
       wallTimeMs: 1,
       responseBytes: 1_024,
     });
@@ -401,7 +347,6 @@ describe("BudgetLedger settlement", () => {
 function emptyUsage(): AttemptEstimate {
   return {
     inputTokens: 0,
-    outputTokens: 0,
     responseBytes: 0,
     wallTimeMs: 0,
     costUsd: 0,

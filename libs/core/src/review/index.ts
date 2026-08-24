@@ -68,6 +68,7 @@ export {
   type LogStreamState,
   type PartialFailureWarning,
   PERSISTED_RUN_ERROR_CODES,
+  savedRunExists,
 } from "./presentation/agent-status.js";
 export {
   getAlternateReviewMode,

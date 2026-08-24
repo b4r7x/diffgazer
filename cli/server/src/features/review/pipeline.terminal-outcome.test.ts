@@ -34,7 +34,6 @@ import { createSession, deleteSessionForTests } from "./stream/store.js";
 
 const LIMITS: ExecutionLimits = Object.freeze({
   maxInputTokens: 40_000,
-  maxOutputTokens: 8_000,
   maxResponseBytes: 8_000_000,
   wallTimeMs: 300_000,
   maxRetries: 1,
@@ -136,7 +135,6 @@ function authorizedClient(plan: AdmittedExecutionPlan, outcome: TerminalOutcome)
   const budgetLedger = createBudgetLedger(plan.limits);
   const budgetReservation = budgetLedger.reserveAttempt({
     inputTokens: plan.limits.maxInputTokens,
-    outputTokens: plan.limits.maxOutputTokens,
     responseBytes: plan.limits.maxResponseBytes,
     wallTimeMs: plan.limits.wallTimeMs,
     costUsd: plan.limits.maxCostUsd,

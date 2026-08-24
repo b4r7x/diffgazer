@@ -1,5 +1,7 @@
+import type { BoundApi } from "@diffgazer/core/api";
 import type { ReviewGate, UseReviewLifecycleBaseResult } from "@diffgazer/core/api/hooks";
 import {
+  useApi,
   useConfigurationInit,
   useCreateReview,
   useReviewLifecycleBase,
@@ -47,6 +49,15 @@ export function getDisplayPhase(input: {
   if (!input.hasStarted) return "loading";
   if (input.isCompleting) return "completing";
   return input.phase;
+}
+
+async function readActiveReviewId(api: BoundApi, mode: ReviewMode): Promise<string | null> {
+  try {
+    const { session } = await api.getActiveReviewSession(mode);
+    return session?.reviewId ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function unconfiguredReadiness(): Readiness {
@@ -112,6 +123,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   retryConfig: () => Promise<void>;
   reset: (options?: { clearActiveSession?: boolean }) => void;
 } {
+  const api = useApi();
   const initQuery = useConfigurationInit();
   const initData = initQuery.data;
   const createReview = useCreateReview();
@@ -230,7 +242,17 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
       setStartedReviewId(result.reviewId);
       return "started";
     } catch (err) {
-      setStartError(describeReviewStartError(err));
+      const description = describeReviewStartError(err);
+      if (description.recovery === "open-active-review") {
+        // The refused start already has a run: resume its stream instead of
+        // rendering the terminal error view.
+        const activeReviewId = await readActiveReviewId(api, selectedMode);
+        if (activeReviewId) {
+          setStartedReviewId(activeReviewId);
+          return "started";
+        }
+      }
+      setStartError(description);
       return "failed";
     }
   }

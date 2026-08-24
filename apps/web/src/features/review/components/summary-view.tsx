@@ -48,9 +48,8 @@ const SUMMARY_ZONE = "summary";
 type SummaryZone = typeof SUMMARY_ZONE | typeof CHROME_ZONE;
 
 // The action row, the summary region and the header chrome bind different keys,
-// so the legend names the zone that holds focus: ←/→ is inert inside the region,
-// and the keys that do work there - the scroll keys, and Tab back to the row -
-// are named nowhere else.
+// so the legend names the zone that holds focus: the scroll keys and Tab into
+// the row are named nowhere else.
 function getSummaryShortcuts({
   parked,
   returnZone,
@@ -67,19 +66,17 @@ function getSummaryShortcuts({
   // back is left, and only while a hand-off left something to go back to.
   if (parked) return chromeReturnShortcut(returnZone, { summary: "Summary" });
 
-  // A run with no findings to open leaves a lone [← Back] with nowhere to move
-  // to, so that screen names the one key the row still binds instead: the way
-  // back up into the region.
-  if (inActions) {
-    if (!canOpenResults) return [{ key: "↑", label: "Summary" }];
-    return [
-      { key: "←/→", label: "Move Action" },
-      { key: "Enter", label: "View Results" },
-    ];
-  }
+  // A run with no results to open has no action row at all, so the region is
+  // the only zone left and Tab leads out of the page, not into a row.
+  if (!canOpenResults) return [{ key: "↑/↓", label: "Scroll" }];
 
-  const openResults: Shortcut[] = canOpenResults ? [{ key: "Enter", label: "View Results" }] : [];
-  return [{ key: "↑/↓", label: "Scroll" }, { key: "Tab", label: "Actions" }, ...openResults];
+  if (inActions) return [{ key: "Enter", label: "View Results" }];
+
+  return [
+    { key: "↑/↓", label: "Scroll" },
+    { key: "Tab", label: "Actions" },
+    { key: "Enter", label: "View Results" },
+  ];
 }
 
 export function ReviewSummaryView({
@@ -144,15 +141,14 @@ export function ReviewSummaryView({
   const panelRef = useRef<HTMLDivElement>(null);
   const panelFocus = useFocusWithin<HTMLDivElement>();
   const [inChrome, setInChrome] = useState(false);
-  const actions = canOpenResults ? [onBack, onEnterReview] : [onBack];
+  const actions = canOpenResults ? [onEnterReview] : [];
   const footer = useActionRowNavigation({
     enabled: true,
     actionCount: actions.length,
-    defaultZone: "actions",
     // Mount lands on [View Results]: the primary action is this screen's focus
-    // target, not the summary region. With no results to open, the row falls
-    // back to its first enabled action, [← Back].
-    defaultIndex: 1,
+    // target, not the summary region. With no results to open there is no row,
+    // and mount focus falls through to the region below.
+    defaultZone: "actions",
     // Scoped to the panel so the row's keys stand down the moment focus leaves
     // it: parked on the header Back button, ←/→/↑ must not yank focus back into
     // the page, and ↓ belongs to the chrome hand-off below.
@@ -263,32 +259,22 @@ export function ReviewSummaryView({
             <RunDetailsPanel notices={notices} lensRows={lensRows} />
           </div>
         </ScrollArea>
-        {/* Back is rendered, not just bound to Escape, so leaving the summary
-            is discoverable by pointer. */}
-        <Panel.Footer className="flex-wrap justify-center gap-3">
-          <Button
-            {...footer.getActionProps(0)}
-            variant="outline"
-            size="lg"
-            bracket
-            highlighted={footer.inActions && footer.focusedIndex === 0}
-            onClick={onBack}
-          >
-            <span aria-hidden="true">←</span> Back
-          </Button>
-          {canOpenResults && (
+        {/* The header ← Back is the screen's only Back, so the row carries the
+            one action the summary adds: opening the results it produced. */}
+        {canOpenResults && (
+          <Panel.Footer className="flex-wrap justify-center gap-3">
             <Button
-              {...footer.getActionProps(1)}
+              {...footer.getActionProps(0)}
               variant="primary"
               size="lg"
               bracket
-              highlighted={footer.inActions && footer.focusedIndex === 1}
+              highlighted={footer.inActions && footer.focusedIndex === 0}
               onClick={onEnterReview}
             >
               View Results
             </Button>
-          )}
-        </Panel.Footer>
+          </Panel.Footer>
+        )}
       </Panel>
       <div aria-hidden className="grow-[2]" />
     </div>

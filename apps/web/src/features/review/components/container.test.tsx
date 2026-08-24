@@ -5,8 +5,13 @@ import {
   type UseReviewLifecycleBaseResult,
 } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
-import { CONFIGURE_PROVIDER_LABEL, createInitialReviewState } from "@diffgazer/core/review";
+import {
+  CONFIGURE_PROVIDER_LABEL,
+  createInitialReviewState,
+  type ReviewStateErrorCode,
+} from "@diffgazer/core/review";
 import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
+import type { LensStat } from "@diffgazer/core/schemas/events";
 import {
   configurationStatus,
   GEMINI_CONFIGURATION,
@@ -118,6 +123,43 @@ function unreachableLocalInit() {
   ]);
 }
 
+function makeStreamFailure(options: {
+  error: string;
+  errorCode: ReviewStateErrorCode | null;
+  lensStats?: LensStat[];
+  isStreaming?: boolean;
+}) {
+  return makeLifecycleBaseReturn({
+    gate: "terminal-error",
+    stream: {
+      state: {
+        ...createInitialReviewState(),
+        reviewId: "review-1",
+        hasCompleted: false,
+        notices: [],
+        error: options.error,
+        errorCode: options.errorCode,
+        isStreaming: options.isStreaming ?? false,
+        orchestratorStats: { lensStats: options.lensStats ?? [] },
+      },
+      abort: vi.fn(),
+      cancel: vi.fn().mockResolvedValue(null),
+      resume: vi.fn().mockResolvedValue(undefined),
+      isStreamControllerActive: vi.fn().mockReturnValue(false),
+    },
+    checks: {
+      isNoDiffError: false,
+      isTerminalStreamError: true,
+      loadingMessage: null,
+    },
+  });
+}
+
+const SAVED_RUN_LENS_STATS: LensStat[] = [
+  { lensId: "correctness", issueCount: 1, status: "success" },
+  { lensId: "security", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+];
+
 function renderReviewContainer(props: Partial<ComponentProps<typeof ReviewContainer>> = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -155,94 +197,127 @@ describe("ReviewContainer configuration gates", () => {
     mockUseReviewLifecycleBase.mockReturnValue(makeLifecycleBaseReturn());
   });
 
-  it("renders stream failures inside the progress view instead of a terminal dead end", async () => {
+  it("replaces the dead live screen with the gate card, no raw diagnostics", async () => {
     mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
     mockUseReviewLifecycleBase.mockReturnValue(
-      makeLifecycleBaseReturn({
-        gate: "terminal-error",
-        stream: {
-          state: {
-            ...createInitialReviewState(),
-            reviewId: "review-1",
-            hasCompleted: false,
-            notices: [],
-            error: "Bearer sk-live-secret-12345678",
-            isStreaming: false,
-          },
-          abort: vi.fn(),
-          cancel: vi.fn().mockResolvedValue(null),
-          resume: vi.fn().mockResolvedValue(undefined),
-          isStreamControllerActive: vi.fn().mockReturnValue(false),
-        },
-        checks: {
-          isNoDiffError: false,
-          isTerminalStreamError: true,
-          loadingMessage: null,
-        },
-      }),
+      makeStreamFailure({ error: "Bearer sk-live-secret-12345678", errorCode: null }),
     );
 
     const { container } = renderReviewContainer();
 
-    await waitFor(() => {
-      expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
-    });
-    expect(screen.queryByRole("heading", { name: "Review failed" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Review Error" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back to Home" })).toBeInTheDocument();
+    // Nothing of the live layout survives: the stream that fed it is over.
+    expect(screen.queryByRole("region", { name: "Progress" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Live Activity Log" })).not.toBeInTheDocument();
     expect(container.textContent).not.toMatch(/sk-live-secret/i);
   });
 
-  it("offers the saved run when a stream failure still got a lens out", async () => {
+  it("leads the gate card with the providers jump when the guidance can repair it", async () => {
     const user = userEvent.setup();
+    mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeStreamFailure({ error: "The API key was rejected.", errorCode: "API_KEY_MISSING" }),
+    );
+
+    renderReviewContainer();
+
+    expect(await screen.findByRole("heading", { name: "API Key Error" })).toBeInTheDocument();
+    expect(screen.getByText("The API key was rejected.")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Progress" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "/settings/providers" }),
+      );
+    });
+  });
+
+  it("opens the saved run itself once a failure that got a lens out settles", async () => {
     routeParams.reviewId = "review-1";
     mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
     mockUseReviewLifecycleBase.mockReturnValue(
-      makeLifecycleBaseReturn({
-        gate: "terminal-error",
-        stream: {
-          state: {
-            ...createInitialReviewState(),
-            reviewId: "review-1",
-            hasCompleted: false,
-            notices: [],
-            error: "Review budget exhausted at maxInputTokens (119808).",
-            errorCode: "BUDGET_EXHAUSTED",
-            isStreaming: false,
-            orchestratorStats: {
-              lensStats: [
-                { lensId: "correctness", issueCount: 1, status: "success" },
-                {
-                  lensId: "security",
-                  issueCount: 0,
-                  status: "failed",
-                  errorCode: "BUDGET_EXHAUSTED",
-                },
-              ],
-            },
-          },
-          abort: vi.fn(),
-          cancel: vi.fn().mockResolvedValue(null),
-          resume: vi.fn().mockResolvedValue(undefined),
-          isStreamControllerActive: vi.fn().mockReturnValue(false),
-        },
-        checks: {
-          isNoDiffError: false,
-          isTerminalStreamError: true,
-          loadingMessage: null,
-        },
+      makeStreamFailure({
+        error: "Review budget exhausted at maxInputTokens (119808).",
+        errorCode: "BUDGET_EXHAUSTED",
+        lensStats: SAVED_RUN_LENS_STATS,
+      }),
+    );
+
+    const { rerender } = renderReviewContainer();
+
+    // Non-live: the saved record is the single account of what the run
+    // produced, and it replaces the dead progress screen without a keypress.
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/review/{-$reviewId}",
+        params: { reviewId: "review-1" },
+        search: { mode: "staged" },
+        replace: true,
+      });
+    });
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+
+    rerender(<ReviewContainer mode="staged" />);
+
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays on the live screen with Retry when the stream drops mid-run", async () => {
+    routeParams.reviewId = "review-1";
+    mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeStreamFailure({
+        error: "The review stream was interrupted.",
+        errorCode: "STREAM_ERROR",
+        lensStats: SAVED_RUN_LENS_STATS,
       }),
     );
 
     renderReviewContainer();
 
-    await user.click(await screen.findByRole("button", { name: "View Run Details" }));
+    expect(await screen.findByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
 
-    // Non-live: the saved record is the single account of what the run produced.
-    expect(mockNavigate).toHaveBeenCalledWith({
-      to: "/review/{-$reviewId}",
-      params: { reviewId: "review-1" },
-      search: { mode: "staged" },
-      replace: true,
-    });
+  it("keeps the live screen when the cancel request itself fails", async () => {
+    routeParams.reviewId = "review-1";
+    mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
+    // A cancel that never reached the server says nothing about the run, so it
+    // is coded as transport and keeps its Retry instead of a terminal gate.
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeStreamFailure({
+        error: "Failed to cancel the review session.",
+        errorCode: "STREAM_ERROR",
+      }),
+    );
+
+    renderReviewContainer();
+
+    expect(await screen.findByRole("region", { name: "Progress" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Review Error" })).not.toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("leaves a still-running stream on the progress screen", async () => {
+    routeParams.reviewId = "review-1";
+    mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeStreamFailure({
+        error: "Review budget exhausted at maxInputTokens (119808).",
+        errorCode: "BUDGET_EXHAUSTED",
+        lensStats: SAVED_RUN_LENS_STATS,
+        isStreaming: true,
+      }),
+    );
+
+    renderReviewContainer();
+
+    expect(await screen.findByRole("region", { name: "Progress" })).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("shows the retryable error gate when configuration init fails", async () => {

@@ -4,10 +4,9 @@ import {
   classifyReviewStreamError,
   type FailedTerminalOutcome,
   getAlternateReviewMode,
-  hasCompletedLens,
   isProviderRecoveryError,
   mapStepsToProgressDataWithAgents,
-  PERSISTED_RUN_ERROR_CODES,
+  savedRunExists,
 } from "@diffgazer/core/review";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { BACK_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
@@ -73,7 +72,6 @@ function ReviewTerminalErrorView({
   guidance,
   onBack,
   recovery,
-  onViewRun,
 }: {
   title: string;
   error: string;
@@ -81,21 +79,12 @@ function ReviewTerminalErrorView({
   onBack: () => void;
   /** Set when the failure is fixed on the providers screen; adds the `p` recovery shortcut, named by the CTA. */
   recovery?: { label: string; open: () => void };
-  /** Set when the failed run reached disk with lens results worth reading. */
-  onViewRun?: () => void;
 }): ReactElement {
   usePageFooter({
-    shortcuts: [
-      ...(onViewRun ? ACTION_SHORTCUTS : []),
-      ...(recovery ? [getProviderRecoveryShortcut(recovery.label)] : []),
-    ],
+    shortcuts: recovery ? [...ACTION_SHORTCUTS, getProviderRecoveryShortcut(recovery.label)] : [],
     rightShortcuts: BACK_SHORTCUTS,
   });
-  // A dead end keeps its single Back button and carries the recovery CTA on `p`
-  // alone. Once there is a run worth reading the screen is a row, and the CTA
-  // joins it as a button too: the web error panel offers both side by side.
-  const recoveryAction = onViewRun ? recovery : undefined;
-  const actionCount = (onViewRun ? 1 : 0) + (recoveryAction ? 1 : 0) + 1;
+  const actionCount = (recovery ? 1 : 0) + 1;
   // Each button owns its own Enter; the row owns Left/Right and the single mark.
   const actions = useActionRow({ actionCount });
   useInput(
@@ -120,18 +109,9 @@ function ReviewTerminalErrorView({
         ) : null}
       </Callout>
       <Box gap={2}>
-        {onViewRun ? (
-          <Button variant="primary" isActive={actions.isActionActive(0)} onPress={onViewRun}>
-            View Run Details
-          </Button>
-        ) : null}
-        {recoveryAction ? (
-          <Button
-            variant="secondary"
-            isActive={actions.isActionActive(1)}
-            onPress={recoveryAction.open}
-          >
-            {recoveryAction.label}
+        {recovery ? (
+          <Button variant="secondary" isActive={actions.isActionActive(0)} onPress={recovery.open}>
+            {recovery.label}
           </Button>
         ) : null}
         <Button
@@ -205,6 +185,29 @@ function ReviewStreamContainer({
       void start(mode);
     }
   }, [mode, reviewId, start, state.initState.status]);
+
+  const isSettledError =
+    state.gate === "terminal-error" ||
+    (Boolean(state.error) && state.phase !== "streaming" && state.phase !== "completing");
+  // A saved run whose lenses got somewhere is worth opening instead of ending on
+  // a dead end. Same gate as the web container.
+  const failedRunId = state.reviewId;
+  const canViewRun =
+    isSettledError &&
+    failedRunId !== null &&
+    onViewRunDetails !== undefined &&
+    savedRunExists(state.completion.lensStats, state.errorCode);
+  const hasOpenedFailedRun = useRef(false);
+
+  // Navigation, not derived state: the settled run hands the screen off to its
+  // saved record once, without waiting for a keypress. The failure screen stays
+  // for everything with nothing on disk to open.
+  useEffect(() => {
+    if (!canViewRun || hasOpenedFailedRun.current) return;
+    hasOpenedFailedRun.current = true;
+    reset({ clearActiveSession: true });
+    onViewRunDetails(failedRunId);
+  }, [canViewRun, failedRunId, onViewRunDetails, reset]);
 
   if (state.initState.status === "loading") {
     return <ReviewLoadingView message="Loading configuration..." />;
@@ -285,10 +288,7 @@ function ReviewStreamContainer({
     );
   }
 
-  if (
-    state.gate === "terminal-error" ||
-    (state.error && state.phase !== "streaming" && state.phase !== "completing")
-  ) {
+  if (isSettledError) {
     const error = state.error ?? "Review failed.";
     const guidance = classifyReviewStreamError(
       error,
@@ -298,15 +298,6 @@ function ReviewStreamContainer({
     const recovery = isProviderRecoveryError(guidance.kind)
       ? { label: guidance.ctaLabel, open: goToProviderSettings }
       : undefined;
-    // A saved run whose lenses got somewhere is worth opening instead of ending
-    // on a dead end. Same gate as the web error panel, down to the CTA it sits
-    // beside: a failure the providers screen fixes still offers the run.
-    const failedRunId = state.reviewId;
-    const canViewRun =
-      failedRunId !== null &&
-      onViewRunDetails !== undefined &&
-      PERSISTED_RUN_ERROR_CODES.includes(state.errorCode ?? "") &&
-      hasCompletedLens(state.completion.lensStats);
     return (
       <ReviewTerminalErrorView
         title={guidance.title}
@@ -314,14 +305,6 @@ function ReviewStreamContainer({
         guidance={guidance.guidance}
         onBack={handleGateBack}
         recovery={recovery}
-        onViewRun={
-          canViewRun
-            ? () => {
-                reset({ clearActiveSession: true });
-                onViewRunDetails(failedRunId);
-              }
-            : undefined
-        }
       />
     );
   }

@@ -34,7 +34,6 @@ const INSTALLATION_ID = "codex-installation-1";
 
 const limits = {
   maxInputTokens: 20_000,
-  maxOutputTokens: 4_000,
   maxResponseBytes: 1_048_576,
   wallTimeMs: 120_000,
   maxRetries: 2,

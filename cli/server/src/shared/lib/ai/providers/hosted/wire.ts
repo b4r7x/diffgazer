@@ -1,7 +1,6 @@
 import type { HostedApiProductId } from "@diffgazer/core/schemas/config";
 import type {
   EvidenceKey,
-  ExecutionLimits,
   NormalizedUsage,
   UsageAvailability,
 } from "@diffgazer/core/schemas/review";
@@ -11,12 +10,11 @@ import { HOSTED_PROFILES, USAGE_FIELDS } from "./profiles.js";
 import type { HostedProductProfile } from "./types.js";
 
 /**
- * Thinking tokens bill as output and are spent from `maxOutputTokens`, so an
- * uncapped thinking model can exhaust the admitted budget before emitting the
- * structured answer. 2_048 caps thought spend while leaving at least 6k of the
- * default 8_192 budget for the answer. The Gemini 2.5 Pro API minimum for this
- * field is 128, so this must stay >= 128. The value is an owner-tunable
- * quality/cost trade.
+ * Thinking tokens bill as output, so an uncapped thinking model can spend most
+ * of the model's output ceiling on thought before emitting the structured
+ * answer. 2_048 caps thought spend while leaving room for the answer. The
+ * Gemini 2.5 Pro API minimum for this field is 128, so this must stay >= 128.
+ * The value is an owner-tunable quality/cost trade.
  */
 const GEMINI_THINKING_BUDGET_TOKENS = 2_048;
 
@@ -273,14 +271,12 @@ export function buildRequestInit(
     evidenceKey: EvidenceKey;
     prompt: string;
     systemPrompt?: string;
-    limits: ExecutionLimits;
     structuredOutputSchema?: Record<string, unknown>;
     workspaceAccountId?: string | null;
     signal?: AbortSignal;
   }>,
 ): RequestInit {
   const profile = HOSTED_PROFILES[input.productId];
-  const maxOutputTokens = input.limits.maxOutputTokens;
   const headers: Record<string, string> = {
     "content-type": "application/json",
     accept: "application/json",
@@ -298,7 +294,6 @@ export function buildRequestInit(
           : {}),
         generationConfig: {
           temperature: 0,
-          maxOutputTokens,
           responseMimeType: "application/json",
           ...(isGeminiThinkingDefaultModel(input.evidenceKey.modelId)
             ? { thinkingConfig: { thinkingBudget: GEMINI_THINKING_BUDGET_TOKENS } }
@@ -315,7 +310,6 @@ export function buildRequestInit(
       body = {
         model: input.evidenceKey.modelId,
         messages: buildOpenAiMessages(input.prompt, input.systemPrompt),
-        max_tokens: maxOutputTokens,
         temperature: 0,
         stream: false,
         provider: { require_parameters: true },
@@ -331,7 +325,6 @@ export function buildRequestInit(
       body = {
         model: input.evidenceKey.modelId,
         messages: buildOpenAiMessages(input.prompt, input.systemPrompt),
-        max_tokens: maxOutputTokens,
         temperature: 0,
         stream: false,
         response_format: buildOpenAiResponseFormat(profile, input.structuredOutputSchema),

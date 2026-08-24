@@ -230,8 +230,8 @@ describe("review error-guidance presentation", () => {
       code: "REVIEW_IN_PROGRESS",
       title: "Review Already Running",
       message:
-        "A review is already running for this configuration. Wait for it to finish or cancel it, then start a new one.",
-      recovery: null,
+        "A review is already running for this configuration. Diffgazer runs one review at a time, so a new one cannot start until the running review finishes or is cancelled.",
+      recovery: "open-active-review",
     },
   ])("describes $code review start failures", ({ code, title, message, recovery }) => {
     const error = Object.assign(new Error("API key not found"), { code, status: 400 });

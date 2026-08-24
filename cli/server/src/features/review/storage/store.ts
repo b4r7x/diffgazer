@@ -1,7 +1,7 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
-import { safeParseJson } from "@diffgazer/core/json";
+import { safeParseJson, sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import { UuidSchema } from "@diffgazer/core/schemas/fields";
 import { type SavedReview, SavedReviewSchema } from "@diffgazer/core/schemas/review";
@@ -101,6 +101,75 @@ async function safeAtomicWrite(path: string, content: string): Promise<Result<vo
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// The immutable receipt identity is the SHA-256 of this exact projection; a
+// missing field hashes as `null`, so a malformed receipt simply fails to match
+// instead of throwing on the canonical-JSON encode.
+function fingerprintInput(receipt: Record<string, unknown>, limits: unknown): unknown {
+  return {
+    authentication: receipt.authentication ?? null,
+    configurationId: receipt.configurationId ?? null,
+    configurationRevision: receipt.configurationRevision ?? null,
+    credentialReferenceIdentity: receipt.credentialReferenceIdentity ?? null,
+    installationId: receipt.installationId ?? null,
+    productId: receipt.productId ?? null,
+    transportFamily: receipt.transportFamily ?? null,
+    modelId: receipt.modelId ?? null,
+    normalizedEndpoint: receipt.normalizedEndpoint ?? null,
+    region: receipt.region ?? null,
+    workspaceAccountReference: receipt.workspaceAccountReference ?? null,
+    runtime: receipt.runtime ?? null,
+    structuredOutputSchemaSha256: receipt.structuredOutputSchemaSha256 ?? null,
+    noticeVersion: receipt.noticeVersion ?? null,
+    limits,
+  };
+}
+
+/**
+ * No surface ever let a user choose an output-token budget, so a persisted
+ * `limits.maxOutputTokens` is the retired default's fossil rather than a
+ * choice. Records written while it existed hashed their execution fingerprint
+ * over limits that included it, so dropping the key alone would leave every one
+ * of them failing the receipt identity check and losing its outcome to the
+ * lenient salvage. The identity is therefore re-derived over the retired
+ * domain, and only when the record still proves its own legacy fingerprint —
+ * a hand-edited receipt fails that proof and is left to fail validation.
+ */
+function migrateRetiredOutputTokenLimit(execution: unknown): unknown {
+  if (!isRecord(execution) || !isRecord(execution.receipt)) return execution;
+  const { receipt } = execution;
+  if (!isRecord(receipt.limits) || !("maxOutputTokens" in receipt.limits)) return execution;
+
+  const legacyFingerprint = sha256CanonicalJsonSync(fingerprintInput(receipt, receipt.limits));
+  if (legacyFingerprint !== receipt.executionFingerprint) return execution;
+
+  const { maxOutputTokens: _retired, ...limits } = receipt.limits;
+  const executionFingerprint = sha256CanonicalJsonSync(fingerprintInput(receipt, limits));
+  return {
+    ...execution,
+    // The durable snapshot mirrors its receipt's identity, so it moves with it.
+    ...(execution.executionFingerprint === receipt.executionFingerprint
+      ? { executionFingerprint }
+      : {}),
+    receipt: { ...receipt, limits, executionFingerprint },
+  };
+}
+
+function migrateRetiredLimits(input: unknown): unknown {
+  if (!isRecord(input)) return input;
+  const migrated = { ...input };
+  if ("executionSnapshot" in migrated) {
+    migrated.executionSnapshot = migrateRetiredOutputTokenLimit(migrated.executionSnapshot);
+  }
+  if ("execution" in migrated) {
+    migrated.execution = migrateRetiredOutputTokenLimit(migrated.execution);
+  }
+  return migrated;
+}
+
 async function readDetailed(id: string): Promise<Result<DetailedReviewRead, StoreError>> {
   const readResult = await safeReadFile(reviewFilePath(id));
   if (!readResult.ok) return readResult;
@@ -112,7 +181,8 @@ async function readDetailed(id: string): Promise<Result<DetailedReviewRead, Stor
     return err(createStoreError("PARSE_ERROR", `review: ${parseResult.error}`));
   }
 
-  const validation = SavedReviewSchema.safeParse(parseResult.value);
+  const record = migrateRetiredLimits(parseResult.value);
+  const validation = SavedReviewSchema.safeParse(record);
   if (validation.success) {
     return ok({
       item: normalizeSavedReviewLineFields(validation.data),
@@ -123,7 +193,7 @@ async function readDetailed(id: string): Promise<Result<DetailedReviewRead, Stor
 
   // Salvage older immutable reviews the strict write-side schema rejects so they
   // remain readable through review and history views.
-  const salvaged = lenientReadSavedReview(parseResult.value);
+  const salvaged = lenientReadSavedReview(record);
   if (salvaged !== null) {
     return ok({
       item: normalizeSavedReviewLineFields(salvaged.item),

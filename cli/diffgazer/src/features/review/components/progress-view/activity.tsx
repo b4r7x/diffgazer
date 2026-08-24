@@ -1,12 +1,16 @@
 import { getPartialFailureWarning, type ReviewEvent } from "@diffgazer/core/review";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import type { AgentState, LensStat } from "@diffgazer/core/schemas/events";
+import { clampIndex } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import { type ReactElement, useState } from "react";
 import { Callout } from "../../../../components/ui/callout";
 import { SectionHeader } from "../../../../components/ui/section-header";
 import { useTheme } from "../../../../theme/provider";
 import { ActivityLog } from "../activity-log";
+
+// [ and ] step the lens filter, mirroring the web progress pane; f keeps its forward step.
+const SOURCE_FILTER_STEPS: Record<string, 1 | -1> = { f: 1, "]": 1, "[": -1 };
 
 export interface ReviewProgressActivityProps {
   width: string;
@@ -39,9 +43,11 @@ export function ReviewProgressActivity({
 
   useInput(
     (input) => {
-      if (input !== "f" || sourceOptions.length === 0) return;
+      const step = SOURCE_FILTER_STEPS[input];
+      if (step !== 1 && step !== -1) return;
+      const positions = sourceOptions.length + 1; // "All agents" at 0, then one slot per agent
       const currentIndex = activeSourceFilter ? sourceOptions.indexOf(activeSourceFilter) + 1 : 0;
-      const nextIndex = (currentIndex + 1) % (sourceOptions.length + 1);
+      const nextIndex = clampIndex(currentIndex, step, positions, true);
       setSourceFilter(nextIndex === 0 ? null : (sourceOptions[nextIndex - 1] ?? null));
     },
     { isActive: sourceOptions.length > 0 },
@@ -66,7 +72,7 @@ export function ReviewProgressActivity({
 
       {sourceOptions.length > 0 ? (
         <Text color={tokens.muted} wrap="truncate-end">
-          Filter [f]: {activeSourceFilter ?? "All agents"}
+          Filter [f] [/]: {activeSourceFilter ?? "All agents"}
         </Text>
       ) : null}
 

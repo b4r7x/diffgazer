@@ -973,8 +973,8 @@ describe("ReviewPage live review phase transitions", () => {
     return user;
   }
 
-  // The summary screen has three back affordances — the app header link, the Esc
-  // shortcut, and the in-page Back button — and all three run this handler.
+  // The summary screen's back affordances — the app header link and the Esc
+  // shortcut — both run this handler.
   it("uses the safe home fallback for direct navigation via Escape", async () => {
     const user = await openSummary();
 
@@ -1010,17 +1010,14 @@ describe("ReviewPage live review phase transitions", () => {
     expect(mockBack).not.toHaveBeenCalled();
   });
 
-  it("offers View Results beside a single Back button that runs the Escape handler", async () => {
+  it("offers View Results as the summary's only action and no Back of its own", async () => {
     routeState.canGoBack = true;
-    const user = await openSummary();
+    await openSummary();
 
+    // Leaving the summary belongs to the header ← Back and Esc; a second Back
+    // in the page pointed at the same target.
     expect(screen.getByRole("button", { name: /view results/i })).toBeVisible();
-    expect(screen.getAllByRole("button", { name: /back/i })).toHaveLength(1);
-
-    await user.click(screen.getByRole("button", { name: /back/i }));
-
-    expect(mockBack).toHaveBeenCalledTimes(1);
-    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
   });
 });
 

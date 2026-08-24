@@ -4,13 +4,12 @@ import type { ExecutionLimits } from "@diffgazer/core/schemas/review";
 /** Immutable admitted execution limits enforced by the per-review ledger. */
 export type BudgetLimits = ExecutionLimits;
 
-/** Which hard limit was exhausted. Keys match {@link ExecutionLimits}. */
+/** Which hard limit was exhausted. */
 export type BudgetLimitKey = keyof BudgetLimits;
 
 /** Conservative per-attempt reservation inputs supplied before dispatch. */
 export type AttemptEstimate = {
   inputTokens: number;
-  outputTokens: number;
   responseBytes: number;
   wallTimeMs: number;
   costUsd: number;
@@ -23,7 +22,6 @@ export type AttemptEstimate = {
  */
 export type AttemptActual = {
   inputTokens: number;
-  outputTokens: number;
   wallTimeMs: number;
   responseBytes?: number;
   costUsd?: number;
@@ -65,20 +63,9 @@ export type BudgetSnapshot = {
 
 type UsageTotals = AttemptEstimate;
 
-const LIMIT_KEYS = [
-  "maxInputTokens",
-  "maxOutputTokens",
-  "maxResponseBytes",
-  "wallTimeMs",
-  "maxRetries",
-  "maxConcurrency",
-  "maxCostUsd",
-] as const satisfies readonly BudgetLimitKey[];
-
 function emptyUsage(): UsageTotals {
   return {
     inputTokens: 0,
-    outputTokens: 0,
     responseBytes: 0,
     wallTimeMs: 0,
     costUsd: 0,
@@ -99,7 +86,6 @@ function assertFiniteNonNegative(value: number, label: string) {
 
 function validateEstimate(estimate: AttemptEstimate) {
   assertNonNegativeInteger(estimate.inputTokens, "inputTokens");
-  assertNonNegativeInteger(estimate.outputTokens, "outputTokens");
   assertNonNegativeInteger(estimate.responseBytes, "responseBytes");
   assertNonNegativeInteger(estimate.wallTimeMs, "wallTimeMs");
   assertFiniteNonNegative(estimate.costUsd, "costUsd");
@@ -109,7 +95,6 @@ function validateEstimate(estimate: AttemptEstimate) {
 function settledUsage(actual: AttemptActual): AttemptEstimate {
   return {
     inputTokens: actual.inputTokens,
-    outputTokens: actual.outputTokens,
     responseBytes: actual.responseBytes ?? 0,
     wallTimeMs: actual.wallTimeMs,
     costUsd: actual.costUsd ?? 0,
@@ -118,7 +103,6 @@ function settledUsage(actual: AttemptActual): AttemptEstimate {
 
 function addUsage(target: UsageTotals, delta: AttemptEstimate) {
   target.inputTokens += delta.inputTokens;
-  target.outputTokens += delta.outputTokens;
   target.responseBytes += delta.responseBytes;
   target.wallTimeMs += delta.wallTimeMs;
   target.costUsd += delta.costUsd;
@@ -130,7 +114,6 @@ const COST_TOLERANCE_USD = 1e-9;
 function drawDown(remaining: AttemptEstimate, settled: AttemptEstimate): AttemptEstimate {
   return {
     inputTokens: Math.min(remaining.inputTokens, settled.inputTokens),
-    outputTokens: Math.min(remaining.outputTokens, settled.outputTokens),
     responseBytes: Math.min(remaining.responseBytes, settled.responseBytes),
     wallTimeMs: Math.min(remaining.wallTimeMs, settled.wallTimeMs),
     costUsd: Math.min(remaining.costUsd, settled.costUsd),
@@ -139,7 +122,6 @@ function drawDown(remaining: AttemptEstimate, settled: AttemptEstimate): Attempt
 
 function subtractUsage(target: UsageTotals, delta: AttemptEstimate) {
   target.inputTokens -= delta.inputTokens;
-  target.outputTokens -= delta.outputTokens;
   target.responseBytes -= delta.responseBytes;
   target.wallTimeMs -= delta.wallTimeMs;
   target.costUsd -= delta.costUsd;
@@ -151,29 +133,6 @@ function createExhausted(limit: BudgetLimitKey): BudgetExhaustedOutcome {
     limit,
     result: ZERO_FINDINGS,
   };
-}
-
-/**
- * Provider-advertised maxima may only reduce a configured local cap; they never
- * widen Diffgazer's admitted execution limits.
- */
-export function effectiveExecutionLimits(
-  localLimits: BudgetLimits,
-  providerLimits?: Partial<BudgetLimits>,
-): BudgetLimits {
-  if (!providerLimits) {
-    return localLimits;
-  }
-
-  const effective = { ...localLimits };
-  for (const key of LIMIT_KEYS) {
-    const providerValue = providerLimits[key];
-    if (providerValue === undefined) {
-      continue;
-    }
-    effective[key] = Math.min(localLimits[key], providerValue) as BudgetLimits[typeof key];
-  }
-  return effective;
 }
 
 export function createBudgetLedger(limits: BudgetLimits): BudgetLedger {
@@ -341,7 +300,6 @@ export class BudgetLedger {
   private projectedUsage(delta: AttemptEstimate): UsageTotals {
     return {
       inputTokens: this.committed.inputTokens + this.reserved.inputTokens + delta.inputTokens,
-      outputTokens: this.committed.outputTokens + this.reserved.outputTokens + delta.outputTokens,
       responseBytes:
         this.committed.responseBytes + this.reserved.responseBytes + delta.responseBytes,
       wallTimeMs: this.committed.wallTimeMs + this.reserved.wallTimeMs + delta.wallTimeMs,
@@ -353,9 +311,6 @@ export class BudgetLedger {
     const projected = this.projectedUsage(delta);
     if (projected.inputTokens > this.limits.maxInputTokens) {
       return "maxInputTokens";
-    }
-    if (projected.outputTokens > this.limits.maxOutputTokens) {
-      return "maxOutputTokens";
     }
     if (projected.responseBytes > this.limits.maxResponseBytes) {
       return "maxResponseBytes";

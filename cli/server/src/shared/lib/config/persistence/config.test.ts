@@ -42,15 +42,17 @@ const captureError = (action: () => unknown): Error => {
   throw new Error("Expected action to throw an Error");
 };
 
-const budget = {
+const decodedBudget = {
   inputTokens: 32_000,
-  outputTokens: 8_000,
   responseBytes: 65_536,
   wallTimeMs: 60_000,
   retries: 2,
   concurrency: 1,
   perReview: 40_000,
 };
+
+/** Persisted files still carry the retired outputTokens dimension; reads strip it. */
+const budget = { ...decodedBudget, outputTokens: 8_000 };
 
 const supportedRecord = {
   schemaVersion: 2,
@@ -91,7 +93,7 @@ describe("V2 configuration persistence", () => {
         revision: 3,
         acknowledgement: { noticeId: "gemini-hosted-api", noticeVersion: 1 },
         evidenceReference: "evidence-gemini-3",
-        budget,
+        budget: decodedBudget,
       },
     });
   });

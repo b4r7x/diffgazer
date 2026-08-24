@@ -150,7 +150,7 @@ export function ReviewStartErrorView({
   actionsDisabled?: boolean;
 }) {
   const back = { label: "Back to Home", onAction: onBack };
-  if (startError.recovery === null) {
+  if (startError.recovery !== "configure-provider") {
     return (
       <FailureView
         title={startError.title}

@@ -119,7 +119,6 @@ type ResponseAccounting = Readonly<{
 
 function accountResponse(
   limits: ExecutionLimits,
-  admittedLimits: ExecutionLimits,
   reportedUsage: NormalizedUsage | null,
   attemptUsage: NormalizedUsage | null,
   responseBytes: number,
@@ -140,18 +139,14 @@ function accountResponse(
     return { limits: nextLimits, usage: reportedUsage, status: "unavailable" };
   }
 
+  // Cumulative input is the enforced token dimension; there is no total-token
+  // bound, so a long answer never retroactively exhausts a paid-for attempt.
   const nextInputTokens = limits.maxInputTokens - (attemptUsage.inputTokens ?? 0);
-  const nextOutputTokens = limits.maxOutputTokens - (attemptUsage.outputTokens ?? 0);
-  const totalTokenLimit = admittedLimits.maxInputTokens + admittedLimits.maxOutputTokens;
-  const overCap =
-    nextInputTokens < 0 ||
-    nextOutputTokens < 0 ||
-    (usage.totalTokens !== undefined && usage.totalTokens > totalTokenLimit);
+  const overCap = nextInputTokens < 0;
   return {
     limits: {
       ...nextLimits,
       maxInputTokens: nextInputTokens,
-      maxOutputTokens: nextOutputTokens,
     },
     usage,
     status: overCap ? "budget-exhausted" : "accounted",
@@ -256,9 +251,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
     if (!profile.malformedOutputRetry || attemptCount >= maxAttempts) return "stop";
     if (!currentAttemptUsageAvailable || reportedUsage === null) return "stop";
     if (remainingLimits.maxInputTokens < promptInputEstimate) return "budget-exhausted";
-    if (remainingLimits.maxOutputTokens <= 0 || remainingLimits.maxResponseBytes <= 0) {
-      return "budget-exhausted";
-    }
+    if (remainingLimits.maxResponseBytes <= 0) return "budget-exhausted";
     return "retry";
   };
 
@@ -288,7 +281,6 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         evidenceKey,
         prompt: request.prompt,
         systemPrompt: request.systemPrompt,
-        limits: remainingLimits,
         structuredOutputSchema: context.structuredOutputSchema,
         workspaceAccountId: context.workspaceAccountId,
         signal: deadline.signal,
@@ -370,7 +362,6 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
       const previousReportedUsage: NormalizedUsage | null = reportedUsage;
       const accounting = accountResponse(
         remainingLimits,
-        admittedLimits,
         previousReportedUsage,
         parsed.usage,
         responseBytes,

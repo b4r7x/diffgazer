@@ -26,19 +26,32 @@ interface ProgressScreenProps {
   onCancel?: () => void;
   cancelDisabled?: boolean;
   hasError?: boolean;
+  hasAgentFilters?: boolean;
+  onCycleAgentFilter?: (direction: 1 | -1) => void;
 }
 
 function ProgressScreen({
   onCancel,
   cancelDisabled = false,
   hasError = false,
+  hasAgentFilters = false,
+  onCycleAgentFilter,
 }: ProgressScreenProps) {
   const { progressPaneRef, progressScrollRef, agentFilterRef, logContentRef } =
-    useReviewProgressKeyboard({ onCancel, cancelDisabled, hasError });
+    useReviewProgressKeyboard({
+      onCancel,
+      cancelDisabled,
+      hasError,
+      hasAgentFilters,
+      onCycleAgentFilter,
+    });
   return (
     <section ref={progressPaneRef} aria-label="Progress">
       <div ref={progressScrollRef} tabIndex={-1} />
       <div ref={agentFilterRef} />
+      {/* The screen has no text field of its own; this one stands in for any
+          control a pane may grow, where the bare keys belong to the typing. */}
+      <input aria-label="Note" />
       <div ref={logContentRef} />
     </section>
   );
@@ -142,5 +155,37 @@ describe("useReviewProgressKeyboard q semantics", () => {
 
     expect(onCancel).not.toHaveBeenCalled();
     expect(shutdown).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("useReviewProgressKeyboard lens cycling", () => {
+  it("steps the lens filter backward and forward, and keeps out of a text field", async () => {
+    const user = userEvent.setup();
+    const onCycleAgentFilter = vi.fn();
+    const router = createProgressRouter({ hasAgentFilters: true, onCycleAgentFilter });
+    render(<RouterProvider router={router} />);
+
+    await user.keyboard("]");
+    // "[[" is userEvent's escape for a literal [ - a bare [ opens a key descriptor.
+    await user.keyboard("[[");
+
+    expect(onCycleAgentFilter.mock.calls).toEqual([[1], [-1]]);
+
+    await user.click(screen.getByRole("textbox", { name: "Note" }));
+    await user.keyboard("][[");
+
+    expect(onCycleAgentFilter).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("textbox", { name: "Note" })).toHaveValue("][");
+  });
+
+  it("leaves the brackets dead while the run has no agents to filter by", async () => {
+    const user = userEvent.setup();
+    const onCycleAgentFilter = vi.fn();
+    const router = createProgressRouter({ onCycleAgentFilter });
+    render(<RouterProvider router={router} />);
+
+    await user.keyboard("][[");
+
+    expect(onCycleAgentFilter).not.toHaveBeenCalled();
   });
 });

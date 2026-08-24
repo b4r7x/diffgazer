@@ -39,7 +39,6 @@ const TIMESTAMP = "2026-01-01T00:00:00.000Z";
 
 const BUDGET = {
   inputTokens: 200_000,
-  outputTokens: 40_000,
   responseBytes: 8_000_000,
   wallTimeMs: 300_000,
   retries: 0,

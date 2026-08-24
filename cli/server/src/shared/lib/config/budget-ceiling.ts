@@ -5,7 +5,7 @@ import {
 } from "@diffgazer/core/catalog";
 import type { RunnableProductId } from "@diffgazer/core/schemas/config";
 import type { ExecutionLimits } from "@diffgazer/core/schemas/review";
-import { effectiveExecutionLimits } from "../ai/budget/ledger.js";
+import { PLANNING_OUTPUT_TOKENS } from "../ai/budget/cost.js";
 import type {
   ConfigurationBudgetLimits,
   SupportedProviderConfigurationRecord,
@@ -14,7 +14,6 @@ import type {
 export function executionLimitsFromBudget(budget: ConfigurationBudgetLimits): ExecutionLimits {
   return Object.freeze({
     maxInputTokens: budget.inputTokens,
-    maxOutputTokens: budget.outputTokens,
     maxResponseBytes: budget.responseBytes,
     wallTimeMs: budget.wallTimeMs,
     maxRetries: budget.retries,
@@ -24,26 +23,22 @@ export function executionLimitsFromBudget(budget: ConfigurationBudgetLimits): Ex
 }
 
 /**
- * Provider-advertised ceilings may only reduce configured local caps. Admission
- * projects the returned budget verbatim into execution limits.
+ * Provider-advertised ceilings may only reduce configured local caps. The input
+ * cap is whatever the model's context window leaves once the planned answer
+ * length is reserved — the same reservation the cost estimate prices, so the
+ * two never disagree; a catalog without an output limit reserves nothing.
  */
 export function budgetWithinModelObservation(
   budget: ConfigurationBudgetLimits,
   observation: Pick<CatalogModelObservation, "contextTokens" | "outputTokens">,
 ): ConfigurationBudgetLimits {
-  let limits = effectiveExecutionLimits(executionLimitsFromBudget(budget), {
-    maxOutputTokens: observation.outputTokens,
-  });
-  if (observation.contextTokens !== undefined) {
-    const maxInputTokens = observation.contextTokens - limits.maxOutputTokens;
-    if (maxInputTokens > 0) {
-      limits = effectiveExecutionLimits(limits, { maxInputTokens });
-    }
-  }
+  if (observation.contextTokens === undefined) return budget;
+  const availableInputTokens =
+    observation.contextTokens - Math.min(observation.outputTokens ?? 0, PLANNING_OUTPUT_TOKENS);
+  if (availableInputTokens <= 0) return budget;
   return {
     ...budget,
-    inputTokens: limits.maxInputTokens,
-    outputTokens: limits.maxOutputTokens,
+    inputTokens: Math.min(budget.inputTokens, availableInputTokens),
   };
 }
 

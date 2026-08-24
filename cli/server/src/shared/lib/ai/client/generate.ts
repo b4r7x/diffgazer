@@ -91,7 +91,6 @@ function actualFromReceipt(receipt: ExecutionResult["receipt"]): AttemptActual {
   const pricing = resolveModelPricing(receipt.productId, receipt.modelId);
   return {
     inputTokens,
-    outputTokens,
     wallTimeMs,
     ...(pricing ? { costUsd: estimateUsageCostUsd(pricing, { inputTokens, outputTokens }) } : {}),
   };
@@ -317,7 +316,6 @@ export async function executeReviewGeneration(
     const finishedAt = new Date().toISOString();
     const settleFailure = budgetLedger.commitAttemptUsage(budgetReservation, {
       inputTokens: 0,
-      outputTokens: 0,
       wallTimeMs: Math.max(0, Date.parse(finishedAt) - Date.parse(startedAt)),
     });
     if (!settleFailure.ok) {

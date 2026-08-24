@@ -28,7 +28,6 @@ import { toInitializedAIClient } from "./initialize.js";
 
 const GENERATE_TEST_LIMITS: ExecutionLimits = Object.freeze({
   maxInputTokens: 40,
-  maxOutputTokens: 8,
   maxResponseBytes: 512,
   wallTimeMs: 2_000,
   maxRetries: 1,
@@ -224,7 +223,7 @@ describe("review generation hard limits", () => {
     expect(result.execution.receipt.outcome).toBe("completed");
     expect(result.execution.receipt.attemptCount).toBe(1);
     expect(ledger.snapshot().committed.inputTokens).toBe(7);
-    expect(ledger.snapshot().committed.outputTokens).toBe(2);
+    expect(result.execution.receipt.usage?.outputTokens).toBe(2);
   });
 
   it.each(
@@ -297,7 +296,7 @@ describe("review generation hard limits", () => {
     }
   });
 
-  it("settles output-token usage against the admitted maxOutputTokens budget", async () => {
+  it("reports provider output tokens on the receipt without metering them", async () => {
     const plan = admittedPlan("gemini");
     const adapter = clientTestCreateMockAdapter("gemini", async () =>
       clientTestExecutionResult(plan, "completed", {
@@ -313,7 +312,8 @@ describe("review generation hard limits", () => {
     });
 
     expect(result.execution.receipt.outcome).toBe("completed");
-    expect(ledger.snapshot().committed.outputTokens).toBe(6);
+    expect(result.execution.receipt.usage?.outputTokens).toBe(6);
+    expect(ledger.snapshot().committed.inputTokens).toBe(4);
   });
 
   it("commits exact over-limit provider usage before returning budget exhaustion", async () => {
@@ -322,7 +322,7 @@ describe("review generation hard limits", () => {
     const adapter = clientTestCreateMockAdapter("gemini", async () =>
       clientTestExecutionResult(plan, "budget-exhausted", {
         usageAvailability: "reported",
-        usage: { inputTokens: 4, outputTokens: 9, totalTokens: 13 },
+        usage: { inputTokens: 41, outputTokens: 9, totalTokens: 50 },
       }),
     );
     const ledger = createBudgetLedger(tightLimits);
@@ -339,12 +339,12 @@ describe("review generation hard limits", () => {
     });
 
     expect(result.execution.receipt.outcome).toBe("budget-exhausted");
-    expect(result.execution.receipt.usage).toMatchObject({ inputTokens: 4, outputTokens: 9 });
+    expect(result.execution.receipt.usage).toMatchObject({ inputTokens: 41, outputTokens: 9 });
     expect(result.execution.result.issues).toEqual([]);
     expect(ledger.snapshot()).toMatchObject({
-      committed: expect.objectContaining({ inputTokens: 4, outputTokens: 9 }),
+      committed: expect.objectContaining({ inputTokens: 41 }),
       settledAttempts: 1,
-      exhaustedLimit: "maxOutputTokens",
+      exhaustedLimit: "maxInputTokens",
       inFlightAttempts: 1,
     });
 
@@ -355,7 +355,6 @@ describe("review generation hard limits", () => {
     expect(ledger.snapshot()).toMatchObject({
       reserved: {
         inputTokens: 0,
-        outputTokens: 0,
         responseBytes: 0,
         wallTimeMs: 0,
         costUsd: 0,
@@ -538,7 +537,6 @@ describe("review budget across lenses", () => {
     expect(first.execution.receipt.outcome).toBe("completed");
     expect(second.execution.receipt.outcome).toBe("completed");
     expect(ledger.snapshot().committed.inputTokens).toBe(8);
-    expect(ledger.snapshot().committed.outputTokens).toBe(6);
   });
 
   it("aggregates usage from parallel lens dispatches onto one review reservation", async () => {
@@ -559,7 +557,7 @@ describe("review budget across lenses", () => {
     for (const result of results) {
       expect(result.execution.receipt.outcome).toBe("completed");
     }
-    expect(ledger.snapshot().committed.outputTokens).toBe(6);
+    expect(ledger.snapshot().committed.inputTokens).toBe(8);
   });
 
   it("keeps metering later lenses after one adapter throw", async () => {
@@ -580,7 +578,7 @@ describe("review budget across lenses", () => {
 
     const second = await executeReviewGeneration({ authorization, prompt: "short" });
     expect(second.execution.receipt.outcome).toBe("completed");
-    expect(ledger.snapshot().committed.outputTokens).toBe(6);
+    expect(ledger.snapshot().committed.inputTokens).toBe(4);
     expect(ledger.snapshot().inFlightAttempts).toBe(1);
   });
 
@@ -693,7 +691,7 @@ describe("review budget across lenses", () => {
     const adapter = clientTestCreateMockAdapter("gemini", async () =>
       clientTestExecutionResult(plan, "completed", {
         usageAvailability: "reported",
-        usage: { inputTokens: 4, outputTokens: 6, totalTokens: 10 },
+        usage: { inputTokens: 21, outputTokens: 6, totalTokens: 27 },
       }),
     );
     const { authorization, ledger } = authorize(plan, adapter);
@@ -701,15 +699,15 @@ describe("review budget across lenses", () => {
     const first = await executeReviewGeneration({ authorization, prompt: "short" });
     expect(first.execution.receipt.outcome).toBe("completed");
 
-    // 6 + 6 output tokens passes the admitted maxOutputTokens of 8.
+    // 21 + 21 input tokens passes the admitted maxInputTokens of 40.
     const second = await executeReviewGeneration({ authorization, prompt: "short" });
     expect(second.execution.receipt.outcome).toBe("budget-exhausted");
     expect(second.execution.result.issues).toEqual([]);
-    expect(second.diagnostic.safeMessage).toContain("maxOutputTokens");
+    expect(second.diagnostic.safeMessage).toContain("maxInputTokens");
     expect(ledger.snapshot()).toMatchObject({
-      committed: expect.objectContaining({ outputTokens: 12 }),
+      committed: expect.objectContaining({ inputTokens: 42 }),
       settledAttempts: 2,
-      exhaustedLimit: "maxOutputTokens",
+      exhaustedLimit: "maxInputTokens",
     });
   });
 });
@@ -778,7 +776,6 @@ describe("review generation usage rules", () => {
     expect(result.execution.receipt.usageAvailability).toBe("unavailable");
     expect(result.execution.receipt.usage).toBeUndefined();
     expect(ledger.snapshot().committed.inputTokens).toBe(0);
-    expect(ledger.snapshot().committed.outputTokens).toBe(0);
   });
 });
 

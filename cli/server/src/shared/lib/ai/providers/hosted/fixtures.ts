@@ -80,7 +80,6 @@ const STRUCTURED_OUTPUT_SCHEMA = {
 
 const DEFAULT_LIMITS = {
   maxInputTokens: 20_000,
-  maxOutputTokens: 4_000,
   maxResponseBytes: 1_048_576,
   wallTimeMs: 120_000,
   maxRetries: 2,

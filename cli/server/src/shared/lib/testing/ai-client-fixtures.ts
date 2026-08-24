@@ -25,7 +25,6 @@ export const CLIENT_TEST_SECRET_LITERAL = "sk-live-provider-secret-value";
 
 const DEFAULT_CLIENT_TEST_LIMITS: ExecutionLimits = Object.freeze({
   maxInputTokens: 32_000,
-  maxOutputTokens: 8_000,
   maxResponseBytes: 65_536,
   wallTimeMs: 60_000,
   maxRetries: 2,

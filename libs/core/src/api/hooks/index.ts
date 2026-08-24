@@ -16,6 +16,7 @@ export { ApiProvider, useApi } from "./context.js";
 export { type DiagnosticsData, refreshAllDiagnostics, useDiagnosticsData } from "./diagnostics.js";
 export { guardQueryState, matchQueryState } from "./match-query-state.js";
 export { configQueries } from "./queries/config.js";
+export { reviewQueries } from "./queries/review.js";
 export {
   useActiveReviewSession,
   useCreateReview,

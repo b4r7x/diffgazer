@@ -225,16 +225,13 @@ describe("ReviewScreen", () => {
         : { status: "pending" as const },
     );
 
-    const { stdin, lastFrame } = renderReviewScreen({
+    const { lastFrame } = renderReviewScreen({
       screen: "review",
       reviewId: "review-123",
       mode: "staged",
       live: true,
     });
 
-    expect(lastFrame() ?? "").toContain("[ View Run Details ]");
-
-    stdin.write("\r");
     await waitUntil(() => (lastFrame() ?? "").includes("BUDGET EXHAUSTED"));
 
     const frame = lastFrame() ?? "";

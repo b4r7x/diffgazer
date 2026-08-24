@@ -30,7 +30,6 @@ const LLAMA_CPP_ENDPOINT = LOCAL_OPENAI_PRESET_ENDPOINTS["llama-cpp"];
 
 const LIMITS = {
   maxInputTokens: 20_000,
-  maxOutputTokens: 4_000,
   maxResponseBytes: 1_048_576,
   wallTimeMs: 120_000,
   maxRetries: 2,
@@ -1055,8 +1054,7 @@ describe("local generation contract", () => {
       "ollama",
       () => ollamaRoutes({ chatBody: () => ({ message: { content: '{"issues":[]}' } }) }),
       EVIDENCE_KEY,
-      (body: Record<string, unknown>) =>
-        (body.options as { num_predict?: number } | undefined)?.num_predict,
+      (body: Record<string, unknown>) => body.options,
     ],
     [
       "local-openai",
@@ -1072,9 +1070,9 @@ describe("local generation contract", () => {
         modelId: "local-model",
         runtime: { identity: "llama-cpp", version: "b-version-2026-07" },
       } satisfies EvidenceKey,
-      (body: Record<string, unknown>) => body.max_tokens as number | undefined,
+      (body: Record<string, unknown>) => body.max_tokens,
     ],
-  ] as const)("sends the admitted output-token ceiling as the %s runtime's hard stop", async (productId, routes, evidenceKey, readCap) => {
+  ] as const)("sends no output-token ceiling to the %s runtime, which self-caps at its model maximum", async (productId, routes, evidenceKey, readCap) => {
     let chatBody: Record<string, unknown> | undefined;
     const fetch = createMockFetch(
       routes().map((route) =>
@@ -1099,7 +1097,7 @@ describe("local generation contract", () => {
     });
 
     expect(result.receipt.outcome).toBe("completed");
-    expect(readCap(chatBody ?? {})).toBe(LIMITS.maxOutputTokens);
+    expect(readCap(chatBody ?? {})).toBeUndefined();
   });
 
   it("enforces one cumulative response-byte budget across discovery and generation", async () => {

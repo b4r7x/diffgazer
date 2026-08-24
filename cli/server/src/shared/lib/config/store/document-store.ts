@@ -312,12 +312,7 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
         entry.record.productId,
         entry.record.selectedModelId,
       );
-      if (
-        budget.inputTokens === entry.record.budget.inputTokens &&
-        budget.outputTokens === entry.record.budget.outputTokens
-      ) {
-        return entry;
-      }
+      if (budget.inputTokens === entry.record.budget.inputTokens) return entry;
       changed = true;
       const nextRecord: SupportedProviderConfigurationRecord = { ...entry.record, budget };
       return {
@@ -337,9 +332,21 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
       const record = entry.record;
       if (record.evidenceReference !== evidenceReferenceFor(record.configurationId)) continue;
       const read = readJsonFileSyncSafe<unknown>(evidencePath(record.evidenceReference));
-      if (read.status !== "ok") continue;
-      const parsed = AdmissionEvidenceSchema.safeParse(read.data);
-      if (parsed.success) evidenceByConfiguration.set(record.configurationId, parsed.data);
+      const parsed = read.status === "ok" ? AdmissionEvidenceSchema.safeParse(read.data) : null;
+      if (parsed?.success) {
+        evidenceByConfiguration.set(record.configurationId, parsed.data);
+        continue;
+      }
+      // A dropped proof silently downgrades the configuration to unproven, so
+      // say so: the next test re-proves it, but the drop must be observable.
+      // A referenced file that is missing or corrupt is the same drop as a
+      // parse failure — the reference proves evidence was persisted once.
+      log("warn", "config_evidence_load_failed", {
+        code: "CONFIGURATION_UNSUPPORTED",
+        operation: "load-evidence",
+        configurationId: record.configurationId,
+        reason: read.status === "ok" ? "invalid-evidence" : read.status,
+      });
     }
   };
 

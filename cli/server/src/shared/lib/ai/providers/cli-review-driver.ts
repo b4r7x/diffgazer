@@ -159,7 +159,6 @@ async function executeCliReview(
     const elapsedMs = Math.max(0, Date.parse(finishedAt) - Date.parse(startedAt));
     return {
       inputTokens: 0,
-      outputTokens: 0,
       responseBytes: Math.min(responseBytesConsumed, limits.maxResponseBytes),
       wallTimeMs: Math.min(elapsedMs, limits.wallTimeMs),
       costUsd: 0,

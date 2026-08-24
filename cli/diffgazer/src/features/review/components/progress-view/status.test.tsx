@@ -179,9 +179,55 @@ describe("ReviewProgressView (TUI) status", () => {
     stdin.write("f");
     await flush();
 
-    expect(lastFrame() ?? "").toContain("Filter [f]: Detective");
+    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Detective");
     expect(lastFrame() ?? "").toContain("detective-only-event");
     expect(lastFrame() ?? "").not.toContain("guardian-only-event");
+  });
+
+  test("steps the activity log source filter both ways with the bracket keys", async () => {
+    const { lastFrame, stdin } = renderView({
+      agents: [makeAgent("detective"), makeAgent("guardian")],
+    });
+
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("Filter [f] [/]: All agents"));
+
+    stdin.write("]");
+    await flush();
+    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Detective");
+
+    stdin.write("]");
+    await flush();
+    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Guardian");
+
+    // Forward off the last agent wraps back to the unfiltered log.
+    stdin.write("]");
+    await flush();
+    expect(lastFrame() ?? "").toContain("Filter [f] [/]: All agents");
+
+    // Backward off "All agents" wraps to the far end of the row.
+    stdin.write("[");
+    await flush();
+    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Guardian");
+
+    stdin.write("[");
+    await flush();
+    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Detective");
+  });
+
+  test("ignores a pasted chunk that names an Object prototype key", async () => {
+    const { lastFrame, stdin } = renderView({
+      agents: [makeAgent("detective"), makeAgent("guardian")],
+    });
+
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("Filter [f] [/]: All agents"));
+
+    stdin.write("]");
+    await flush();
+    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Detective");
+
+    stdin.write("constructor");
+    await flush();
+    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Detective");
   });
 
   test("publishes the context save action after streaming completes", async () => {

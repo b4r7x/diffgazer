@@ -2,13 +2,16 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import { getProviderDisplay } from "@diffgazer/core/providers";
 import {
   CONFIGURE_PROVIDER_LABEL,
+  classifyReviewStreamError,
   ENTER_API_KEY_LABEL,
   type FailedTerminalOutcome,
   isCredentialReconnectReadiness,
   mapStepsToProgressData,
+  savedRunExists,
 } from "@diffgazer/core/review";
 import type { ReviewMode, UsageAvailability } from "@diffgazer/core/schemas/review";
 import { Navigate } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { useConfigActions, useConfigData } from "@/hooks/use-config";
 import { type ReviewCompleteData, useReviewLifecycle } from "../hooks/use-lifecycle";
@@ -20,6 +23,7 @@ import {
 } from "./api-key-missing-view";
 import { NoChangesView } from "./no-changes-view";
 import { ReviewProgressView } from "./progress-view";
+import { ReviewTerminalErrorView } from "./terminal-error-view";
 
 export type { ReviewCompleteData };
 
@@ -92,6 +96,43 @@ function ReviewStreamContainer({
     handleSetupProvider,
     handleSwitchMode,
   } = useReviewLifecycle({ mode, allowResumeWithoutSetup, onComplete, onStreamNotFound });
+
+  // A failure the server reported after the write has a saved run behind it,
+  // and that record — not this dead live screen — is the account of what the
+  // run produced. So the container hands over the moment the stream settles
+  // instead of parking on a progress view whose only remaining use is one
+  // keypress.
+  const settledError = !state.isStreaming && state.error ? state.error : null;
+  const settledRunWithRecord =
+    settledError &&
+    state.reviewId &&
+    savedRunExists(state.orchestratorStats.lensStats, state.errorCode)
+      ? state.reviewId
+      : null;
+  // Everything else that settles is a dead end and takes the whole frame: the
+  // log behind it stopped and the live layout has nothing left to show. A
+  // dropped transport is the exception — its Retry reconnects a run that is
+  // still going, so that one stays on the progress screen.
+  const settledFailure =
+    settledError && !settledRunWithRecord
+      ? {
+          error: settledError,
+          guidance: classifyReviewStreamError(
+            settledError,
+            state.errorCode,
+            selectedConfiguration?.transportFamily,
+          ),
+        }
+      : null;
+  const advancedRunId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!settledRunWithRecord || advancedRunId.current === settledRunWithRecord) {
+      return;
+    }
+    advancedRunId.current = settledRunWithRecord;
+    handleViewRun(settledRunWithRecord);
+  }, [settledRunWithRecord, handleViewRun]);
 
   const steps = mapStepsToProgressData(state.steps);
   const filesIncludedInPrompt = state.fileProgress.completed.length;
@@ -204,6 +245,18 @@ function ReviewStreamContainer({
     );
   }
 
+  if (settledFailure && settledFailure.guidance.kind !== "transport") {
+    return (
+      <ReviewTerminalErrorView
+        error={settledFailure.error}
+        guidance={settledFailure.guidance}
+        onBack={handleBack}
+        onConfigureProvider={handleSetupProvider}
+        actionsDisabled={isTransitionPending}
+      />
+    );
+  }
+
   // View Results skips the completion delay, so it is offered only once the
   // completion machine is actually delaying: the report step can finish while
   // the stream is still deduping issues, and skipping then would hand over a
@@ -219,7 +272,6 @@ function ReviewStreamContainer({
       contextRefreshError={contextRefreshError}
       onRetryContextRefresh={retryContextRefresh}
       onRetry={handleRetry}
-      onViewRun={handleViewRun}
       onViewResults={isCompleting ? handleViewResults : undefined}
       onCancel={handleCancel}
       onBack={handleBack}

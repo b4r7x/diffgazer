@@ -130,7 +130,6 @@ export function createLocalHttpAdapter(
           auth,
           fetcher,
           maxResponseBytes: responseByteBudget.requestLimit(),
-          maxOutputTokens: limits.maxOutputTokens,
           responseByteBudget,
           deadlineMs: deadline.remainingMs(),
           schema: reviewResultJsonSchema(),

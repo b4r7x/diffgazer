@@ -29,7 +29,6 @@ const RUNTIME: RuntimeIdentity = { identity: "diffgazer-server", version: "1.2.3
 
 const BUDGET = {
   inputTokens: 32_000,
-  outputTokens: 8_000,
   responseBytes: 65_536,
   wallTimeMs: 60_000,
   retries: 2,

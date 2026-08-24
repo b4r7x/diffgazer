@@ -11,7 +11,6 @@ import {
 
 const limits = {
   maxInputTokens: 20_000,
-  maxOutputTokens: 4_000,
   maxResponseBytes: 1_048_576,
   wallTimeMs: 120_000,
   maxRetries: 2,
@@ -83,7 +82,7 @@ describe("admission evidence", () => {
     ["runtime", { runtime: { identity: "diffgazer-server", version: "1.2.4" } }],
     ["schema", { structuredOutputSchemaSha256: "2".repeat(64) }],
     ["notice", { noticeVersion: 2 }],
-    ["limits", { limits: { ...limits, maxOutputTokens: 4_001 } }],
+    ["limits", { limits: { ...limits, maxInputTokens: 20_001 } }],
   ] as const)("invalidates the tuple when %s changes", (_label, patch) => {
     const changed = { ...evidenceKey, ...patch } as EvidenceKey;
     expect(hashAdmissionEvidenceKeySync(changed)).not.toBe(

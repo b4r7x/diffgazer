@@ -12,7 +12,6 @@ const encoder = new TextEncoder();
 
 const budget = {
   inputTokens: 32_000,
-  outputTokens: 8_000,
   responseBytes: 65_536,
   wallTimeMs: 60_000,
   retries: 2,
@@ -126,6 +125,16 @@ describe("server V2 provider configuration records", () => {
       encoder.encode(JSON.stringify({ ...legacyRecord, productId: "retired-product" })),
     );
     expect(unknownProduct.status).toBe("unknown");
+  });
+
+  it("strips the retired outputTokens budget from a persisted record on read", () => {
+    const persisted = { ...supportedRecord(), budget: { ...budget, outputTokens: 8_192 } };
+
+    const decoded = decodeProviderConfigurationRecord(encoder.encode(JSON.stringify(persisted)));
+    expect(decoded.status).toBe("supported");
+    if (decoded.status !== "supported") return;
+    expect(decoded.record.budget).toEqual(budget);
+    expect("outputTokens" in decoded.record.budget).toBe(false);
   });
 
   it("does not accept a supported record carrying secret input", () => {

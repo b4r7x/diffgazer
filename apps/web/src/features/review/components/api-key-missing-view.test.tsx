@@ -363,7 +363,10 @@ describe("ReviewStartErrorView", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it("offers only the way home when nothing on the providers screen can fix the start", () => {
+  it.each([
+    null,
+    "open-active-review",
+  ] as const)("offers only the way home when the providers screen cannot fix the start (recovery: %s)", (recovery) => {
     render(
       <KeyboardProvider>
         <FooterProvider>
@@ -371,7 +374,7 @@ describe("ReviewStartErrorView", () => {
             startError={{
               title: "Review Already Running",
               message: "A review is already running for this configuration.",
-              recovery: null,
+              recovery,
             }}
             onConfigureProvider={vi.fn()}
             onBack={vi.fn()}

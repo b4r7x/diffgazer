@@ -1,6 +1,7 @@
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import {
   hashExecutionReceiptFingerprintSync,
   type SavedReview,
@@ -64,7 +65,6 @@ function makeReview(id: string = REVIEW_ID): SavedReview {
 
 const limits = {
   maxInputTokens: 20_000,
-  maxOutputTokens: 4_000,
   maxResponseBytes: 1_048_576,
   wallTimeMs: 120_000,
   maxRetries: 2,
@@ -117,6 +117,36 @@ function makeExecutionReceipt(
       noticeVersion: receipt.noticeVersion,
       limits: receipt.limits,
     }),
+  };
+}
+
+// Records written while the output-token budget still existed hashed both the
+// receipt identity and its durable snapshot over limits that carried it, so a
+// fossil fixture has to hash the legacy domain the writer used rather than the
+// current fingerprint-input schema.
+function makeFossilSnapshot(snapshot: NonNullable<SavedReview["executionSnapshot"]>) {
+  const limits = { ...snapshot.receipt.limits, maxOutputTokens: 8192 };
+  const executionFingerprint = sha256CanonicalJsonSync({
+    authentication: null,
+    configurationId: snapshot.receipt.configurationId,
+    configurationRevision: snapshot.receipt.configurationRevision,
+    credentialReferenceIdentity: snapshot.receipt.credentialReferenceIdentity,
+    installationId: snapshot.receipt.installationId,
+    productId: snapshot.receipt.productId,
+    transportFamily: snapshot.receipt.transportFamily,
+    modelId: snapshot.receipt.modelId,
+    normalizedEndpoint: snapshot.receipt.normalizedEndpoint,
+    region: null,
+    workspaceAccountReference: null,
+    runtime: snapshot.receipt.runtime,
+    structuredOutputSchemaSha256: snapshot.receipt.structuredOutputSchemaSha256,
+    noticeVersion: snapshot.receipt.noticeVersion,
+    limits,
+  });
+  return {
+    ...snapshot,
+    executionFingerprint,
+    receipt: { ...snapshot.receipt, limits, executionFingerprint },
   };
 }
 
@@ -384,5 +414,60 @@ describe("reviewStore", () => {
     if (!detailed.ok) return;
     expect(detailed.value.diagnostics).toBeNull();
     expect(JSON.stringify(detailed.value.item)).not.toContain(tempHome);
+  });
+
+  it("recovers the receipt of a fossil review fingerprinted over the retired output-token budget", async () => {
+    const { reviewStore } = await loadStore();
+    const review = makeReviewWithExecution(REVIEW_ID, "completed", "a");
+    const snapshot = review.executionSnapshot;
+    expect(snapshot).toBeDefined();
+    if (!snapshot) return;
+    const { execution: _runtimeView, ...durable } = review;
+    await writeRawReview(
+      REVIEW_ID,
+      JSON.stringify({
+        ...durable,
+        executionSnapshot: makeFossilSnapshot(snapshot),
+      }),
+    );
+
+    const detailed = await reviewStore.readDetailed(REVIEW_ID);
+
+    expect(detailed.ok).toBe(true);
+    if (!detailed.ok) return;
+    expect(detailed.value.salvaged).toBe(false);
+    expect(detailed.value.item.execution?.receipt.outcome).toBe("completed");
+    expect(detailed.value.item.execution?.receipt.limits).not.toHaveProperty("maxOutputTokens");
+    expect(detailed.value.item.execution?.receipt.executionFingerprint).toBe(
+      snapshot.receipt.executionFingerprint,
+    );
+    expect(detailed.value.item.executionSnapshot?.executionFingerprint).toBe(
+      snapshot.executionFingerprint,
+    );
+  });
+
+  it("leaves a fossil review whose receipt was hand-edited to the salvage", async () => {
+    const { reviewStore } = await loadStore();
+    const review = makeReviewWithExecution(REVIEW_ID, "completed", "a");
+    const snapshot = review.executionSnapshot;
+    expect(snapshot).toBeDefined();
+    if (!snapshot) return;
+    const { execution: _runtimeView, ...durable } = review;
+    const fossil = makeFossilSnapshot(snapshot);
+    await writeRawReview(
+      REVIEW_ID,
+      JSON.stringify({
+        ...durable,
+        executionSnapshot: { ...fossil, receipt: { ...fossil.receipt, modelId: "openai/gpt-4.1" } },
+      }),
+    );
+
+    const detailed = await reviewStore.readDetailed(REVIEW_ID);
+
+    expect(detailed.ok).toBe(true);
+    if (!detailed.ok) return;
+    expect(detailed.value.salvaged).toBe(true);
+    expect(detailed.value.diagnostics?.droppedExecution).toBe(true);
+    expect(detailed.value.item.execution).toBeUndefined();
   });
 });

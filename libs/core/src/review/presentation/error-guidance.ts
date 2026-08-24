@@ -134,8 +134,8 @@ export function getConfigurationNotReadyCopy(input: {
 export interface ReviewStartErrorDescription {
   title: string;
   message: string;
-  /** Set when the fix lives on the providers screen, so surfaces can offer the jump. */
-  recovery: "configure-provider" | null;
+  /** Set when the failure has a forward path: the providers screen, or the review already running. */
+  recovery: "configure-provider" | "open-active-review" | null;
 }
 
 export function describeReviewStartError(error: unknown): ReviewStartErrorDescription {
@@ -180,8 +180,8 @@ export function describeReviewStartError(error: unknown): ReviewStartErrorDescri
       return {
         title: "Review Already Running",
         message:
-          "A review is already running for this configuration. Wait for it to finish or cancel it, then start a new one.",
-        recovery: null,
+          "A review is already running for this configuration. Diffgazer runs one review at a time, so a new one cannot start until the running review finishes or is cancelled.",
+        recovery: "open-active-review",
       };
     case "KEYRING_READ_FAILED":
       return {

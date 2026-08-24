@@ -1,7 +1,7 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { NavigableMenuAction } from "@diffgazer/core/navigation";
 import { isMenuActionDisabled, resolveHomeMenuActivation } from "@diffgazer/core/navigation";
-import { describeReviewStartError } from "@diffgazer/core/review";
+import { describeReviewStartError, type ReviewStartErrorDescription } from "@diffgazer/core/review";
 import type { HomeContextInfo, MenuAction, Shortcut } from "@diffgazer/core/schemas/presentation";
 import {
   MAIN_MENU_SHORTCUTS,
@@ -31,6 +31,13 @@ type CreateReview = (input: {
   mode: Exclude<ReviewMode, "files">;
 }) => Promise<{ reviewId: string }>;
 type ResumableSession = { reviewId: string; mode: ReviewMode };
+/**
+ * A re-read that answered is tagged apart from one that could not: an
+ * authoritative "no session" must not be papered over with the mount-time value.
+ */
+export type ActiveSessionRead =
+  | { status: "read"; session: ResumableSession | null }
+  | { status: "unreadable" };
 
 // The trust prompt hides the menu, so the web footer keeps advertising the two
 // app-wide jump keys it would otherwise show as menu rows. The TUI trust panel
@@ -64,6 +71,8 @@ export interface HomePagePresentationProps {
   resumableSession: ResumableSession | null;
   /** Set when the active-session requests failed, so an absent session is unknown, not none. */
   isResumeUnavailable?: boolean;
+  /** Reads the live active session of either mode, so a refused start can open it. */
+  refetchActiveSession: () => Promise<ActiveSessionRead>;
   highlighted: MenuAction | null;
   searchError: string | undefined;
   onHighlightChange: (id: MenuAction | null) => void;
@@ -82,6 +91,7 @@ export function HomePagePresentation({
   repoRoot,
   resumableSession,
   isResumeUnavailable = false,
+  refetchActiveSession,
   highlighted,
   searchError,
   onHighlightChange,
@@ -131,6 +141,51 @@ export function HomePagePresentation({
     });
   };
 
+  // The server refuses a second review while one is live. The running review is
+  // what the user asked for, so the same mode opens it outright; another mode
+  // cannot be swapped for it and is offered instead of forced.
+  const openRunningReview = async (
+    mode: Exclude<ReviewMode, "files">,
+    refusal: ReviewStartErrorDescription,
+  ) => {
+    // A re-read that fails leaves the running review as unknown as it was before
+    // it, so the refusal falls back to what the mount-time read already knew. A
+    // re-read that answered is trusted outright, including its "none" — the
+    // mount-time value may name a review that has since finished.
+    const read = await refetchActiveSession().catch(
+      (): ActiveSessionRead => ({ status: "unreadable" }),
+    );
+    const session = read.status === "unreadable" ? resumableSession : read.session;
+    if (!isMountedRef.current) return;
+    if (session === null) {
+      toast.error(refusal.title, { message: refusal.message });
+      return;
+    }
+    if (session.mode === mode) {
+      navigateToReview(session.reviewId, mode);
+      toast.info("Opened the Running Review", {
+        message:
+          "A review was already running, so Diffgazer opened it instead of starting a new one.",
+      });
+      return;
+    }
+    const toastId = toast.error(refusal.title, {
+      message: `The running review covers ${session.mode} changes. Open it, or cancel it before starting one for ${mode} changes.`,
+      action: (
+        <Button
+          variant="link"
+          size="sm"
+          onClick={() => {
+            toast.dismiss(toastId);
+            navigateToReview(session.reviewId, session.mode);
+          }}
+        >
+          Open Running Review
+        </Button>
+      ),
+    });
+  };
+
   const startReview = async (mode: Exclude<ReviewMode, "files">, action: MenuAction) => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
@@ -140,7 +195,12 @@ export function HomePagePresentation({
       if (isMountedRef.current) navigateToReview(reviewId, mode);
     } catch (error) {
       if (!isMountedRef.current) return;
-      const { title, message, recovery } = describeReviewStartError(error);
+      const description = describeReviewStartError(error);
+      if (description.recovery === "open-active-review") {
+        await openRunningReview(mode, description);
+        return;
+      }
+      const { title, message, recovery } = description;
       // Error toasts persist until dismissed, so a start the providers screen
       // can fix carries the jump instead of leaving the user to find it.
       const toastId = toast.error(title, {

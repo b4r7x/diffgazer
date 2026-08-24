@@ -164,7 +164,6 @@ export function promptAttemptEstimate(
 ): AttemptEstimate {
   return {
     inputTokens: estimateReviewInputTokens(input),
-    outputTokens: limits.maxOutputTokens,
     responseBytes: limits.maxResponseBytes,
     wallTimeMs: limits.wallTimeMs,
     costUsd: limits.maxCostUsd,
@@ -173,14 +172,13 @@ export function promptAttemptEstimate(
 
 /**
  * Conservative pre-dispatch reservation for transports that cannot estimate a
- * prompt cost: full admitted response/wall-time budget, clamped token budgets.
+ * prompt cost: full admitted response/wall-time budget, clamped input tokens.
  */
 export function conservativeAttemptEstimate(
   limits: AdapterExecuteRequest["evidenceKey"]["limits"],
 ): AttemptEstimate {
   return {
     inputTokens: Math.min(limits.maxInputTokens, 4_096),
-    outputTokens: Math.min(limits.maxOutputTokens, 1_024),
     responseBytes: limits.maxResponseBytes,
     wallTimeMs: limits.wallTimeMs,
     costUsd: 0,

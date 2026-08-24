@@ -22,7 +22,6 @@ export { budgetForSelectedModel, budgetWithinModelObservation } from "./budget-c
 /** The budget every configuration is created with, and the limits admission projects from it. */
 export const DEFAULT_CONFIGURATION_BUDGET: ConfigurationBudgetLimits = {
   inputTokens: 200_000,
-  outputTokens: 8_192,
   responseBytes: 8_000_000,
   wallTimeMs: 300_000,
   // One retry so the profiles that declare a malformed-output retry can take it;

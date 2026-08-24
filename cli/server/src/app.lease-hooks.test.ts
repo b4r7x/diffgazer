@@ -43,7 +43,6 @@ describe("createApp configuration lease hooks", () => {
       executionFingerprint: "f".repeat(64),
       limits: {
         maxInputTokens: 100,
-        maxOutputTokens: 100,
         maxResponseBytes: 100,
         wallTimeMs: 1000,
         maxRetries: 0,

@@ -14,7 +14,6 @@ const NOW = "2026-07-31T12:05:00.000Z";
 const ORIGINAL_GEMINI_KEY = process.env.GEMINI_KEY;
 const LIMITS = {
   maxInputTokens: 32_000,
-  maxOutputTokens: 8_000,
   maxResponseBytes: 65_536,
   wallTimeMs: 60_000,
   maxRetries: 2,
@@ -23,7 +22,6 @@ const LIMITS = {
 } as const;
 const BUDGET = {
   inputTokens: LIMITS.maxInputTokens,
-  outputTokens: LIMITS.maxOutputTokens,
   responseBytes: LIMITS.maxResponseBytes,
   wallTimeMs: LIMITS.wallTimeMs,
   retries: LIMITS.maxRetries,
@@ -308,7 +306,7 @@ describe("server V2 readiness calculation", () => {
     expect(
       computeProviderReadiness({
         ...base,
-        configuration: hostedRecord({ budget: { ...BUDGET, outputTokens: 8_001 } }),
+        configuration: hostedRecord({ budget: { ...BUDGET, inputTokens: 32_001 } }),
       }),
     ).toMatchObject(staleTuple);
     expect(

@@ -807,8 +807,8 @@ describe("POST /api/review/reviews", () => {
     expect(describeReviewStartError(raised)).toEqual({
       title: "Review Already Running",
       message:
-        "A review is already running for this configuration. Wait for it to finish or cancel it, then start a new one.",
-      recovery: null,
+        "A review is already running for this configuration. Diffgazer runs one review at a time, so a new one cannot start until the running review finishes or is cancelled.",
+      recovery: "open-active-review",
     });
   });
 

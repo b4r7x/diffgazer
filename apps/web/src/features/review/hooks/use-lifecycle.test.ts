@@ -1,11 +1,15 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
-import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { ApiProvider, useReview } from "@diffgazer/core/api/hooks";
 import { sessionTerminationCopy } from "@diffgazer/core/review";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
-import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
+import {
+  makeCreateReviewResponse,
+  makeIssue,
+  makeReviewMetadata,
+} from "@diffgazer/core/testing/factories";
 import {
   CODEX_CLI_CONFIGURATION,
   configurationStatus,
@@ -258,8 +262,8 @@ describe("useReviewLifecycle no-diff alternate start", () => {
       {
         title: "Review Already Running",
         message:
-          "A review is already running for this configuration. Wait for it to finish or cancel it, then start a new one.",
-        recovery: null,
+          "A review is already running for this configuration. Diffgazer runs one review at a time, so a new one cannot start until the running review finishes or is cancelled.",
+        recovery: "open-active-review",
       },
     ],
   ])("holds a %s start failure as review-screen state instead of a toast when the alternate review cannot be created", async (code, message, startError) => {
@@ -671,6 +675,42 @@ describe("useReviewLifecycle View Run Details", () => {
       search: { mode: "unstaged" },
       replace: true,
     });
+  });
+
+  it("drops the mid-run detail cache so the saved run is read again, not served stale", async () => {
+    const reviewId = "11111111-1111-4111-8111-111111111111";
+    const savedReview = {
+      metadata: makeReviewMetadata({ id: reviewId }),
+      gitContext: { branch: "main", commit: "abc123", fileCount: 1, additions: 0, deletions: 0 },
+    };
+    const getReview = vi
+      .fn<BoundApi["getReview"]>()
+      // Fetched while the run was still streaming: no result yet, so the screen
+      // falls back to the stream that has since died.
+      .mockResolvedValueOnce({ review: { ...savedReview, result: { issues: [] } } })
+      .mockResolvedValue({ review: { ...savedReview, result: { issues: [makeIssue()] } } });
+    mockApi.getReview = getReview;
+    const base = makeRunningBaseReturn();
+    base.stream.state.error = "Review budget exhausted at maxInputTokens (119808).";
+    base.stream.state.errorCode = ReviewErrorCode.BUDGET_EXHAUSTED;
+    base.checks.isTerminalStreamError = true;
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+
+    const { result } = renderHook(
+      () => ({
+        lifecycle: useReviewLifecycle({ mode: "unstaged" }),
+        saved: useReview(reviewId),
+      }),
+      { wrapper: Wrapper },
+    );
+
+    await waitFor(() => expect(result.current.saved.data?.review.result.issues).toEqual([]));
+
+    act(() => result.current.lifecycle.handleViewRun(reviewId));
+
+    // The entry is still fresh by staleTime, so without dropping it the saved
+    // summary would keep resolving to the dead live screen.
+    await waitFor(() => expect(result.current.saved.data?.review.result.issues).toHaveLength(1));
   });
 });
 

@@ -91,7 +91,6 @@ const ConfigurationEvidenceReferenceSchema = z
 const BudgetLimitSchema = z.number().int().positive().max(2_147_483_647);
 const ConfigurationBudgetLimitsSchema = z.strictObject({
   inputTokens: BudgetLimitSchema,
-  outputTokens: BudgetLimitSchema,
   responseBytes: BudgetLimitSchema,
   wallTimeMs: BudgetLimitSchema,
   retries: z.number().int().nonnegative().max(100),
@@ -234,6 +233,20 @@ function backfillAcknowledgementNoticeId(input: unknown): unknown {
   };
 }
 
+/**
+ * No surface has ever let a user choose an output-token budget, so a persisted
+ * `budget.outputTokens` is the retired default's fossil rather than a choice.
+ * The strict budget schema would reject the whole record over it.
+ */
+function stripRetiredOutputTokensBudget(input: unknown): unknown {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return input;
+  const { budget } = input as Record<string, unknown>;
+  if (!budget || typeof budget !== "object" || !("outputTokens" in budget)) return input;
+  const remaining = { ...(budget as Record<string, unknown>) };
+  delete remaining.outputTokens;
+  return { ...input, budget: remaining };
+}
+
 /** Decode one record, retaining the exact bytes for unknown/future records. */
 export function decodeProviderConfigurationRecord(
   inputBytes: Uint8Array,
@@ -252,7 +265,7 @@ export function decodeProviderConfigurationRecord(
     return { status: "unknown", rawBytes };
   }
   const supported = SupportedProviderConfigurationRecordSchema.safeParse(
-    backfillAcknowledgementNoticeId(input),
+    stripRetiredOutputTokensBudget(backfillAcknowledgementNoticeId(input)),
   );
   if (supported.success) return { status: "supported", record: supported.data, rawBytes };
 

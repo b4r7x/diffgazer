@@ -134,7 +134,6 @@ beforeEach(() => {
 });
 
 const ESC = "\u001b";
-const ARROW_RIGHT = "\u001b[C";
 
 const PARTIAL_LENS_STATS: LensStat[] = [
   { lensId: "correctness", issueCount: 1, status: "success" },
@@ -143,6 +142,12 @@ const PARTIAL_LENS_STATS: LensStat[] = [
   { lensId: "simplicity", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
   { lensId: "tests", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
 ];
+
+const FAILED_LENS_STATS: LensStat[] = PARTIAL_LENS_STATS.map((lens) => ({
+  ...lens,
+  issueCount: 0,
+  status: "failed" as const,
+}));
 
 function makeOrchestratorComplete(lensStats: LensStat[]): ReviewEvent {
   return {
@@ -381,7 +386,7 @@ describe("ReviewContainer", () => {
     expect(apiMocks.clearActiveSession).toHaveBeenCalledWith("staged", "review-123");
   });
 
-  test("offers the saved run when a lens completed before the review failed", async () => {
+  test("opens the saved run without a keypress when a lens completed before the review failed", async () => {
     const onViewRunDetails = vi.fn();
     apiMocks.useReviewLifecycleBase.mockReturnValue(
       makeReviewLifecycleBase({
@@ -394,24 +399,21 @@ describe("ReviewContainer", () => {
       }),
     );
 
-    const { stdin, lastFrame } = renderContainer({ onViewRunDetails, showFooterProbe: true });
+    renderContainer({ onViewRunDetails });
 
-    await waitUntil(() => (lastFrame() ?? "").includes("Left/Right Actions"));
-    const frame = frameText(lastFrame());
-    expect(frame).toContain("Budget Exhausted");
-    expect(frame).toContain("Reduce the review scope or raise the configured budget");
-    expect(frame).toContain("[ View Run Details ]");
-    expect(frame).toContain("Footer left: Left/Right Actions, Enter Select right: Esc Back");
-
-    stdin.write("\r");
     await waitUntil(() => onViewRunDetails.mock.calls.length === 1);
-
     expect(onViewRunDetails).toHaveBeenCalledWith("review-123");
     // The failed run is over: home must not keep offering it as resumable.
     expect(apiMocks.clearActiveSession).toHaveBeenCalledWith("staged", "review-123");
+
+    // One shot: the hand-off happens once per settled run, not once per render.
+    await flush();
+    await flush();
+    expect(onViewRunDetails).toHaveBeenCalledTimes(1);
   });
 
-  test("keeps the dead end when no lens completed", () => {
+  test("keeps the dead end when no lens completed", async () => {
+    const onViewRunDetails = vi.fn();
     apiMocks.useReviewLifecycleBase.mockReturnValue(
       makeReviewLifecycleBase({
         error: "Review budget exhausted at maxInputTokens (119808).",
@@ -419,24 +421,19 @@ describe("ReviewContainer", () => {
         gate: "terminal-error",
         isTerminalStreamError: true,
         reviewId: "review-123",
-        events: [
-          makeOrchestratorComplete(
-            PARTIAL_LENS_STATS.map((lens) => ({
-              ...lens,
-              issueCount: 0,
-              status: "failed" as const,
-              errorCode: "BUDGET_EXHAUSTED",
-            })),
-          ),
-        ],
+        events: [makeOrchestratorComplete(FAILED_LENS_STATS)],
       }),
     );
 
-    const frame = frameText(renderContainer({ onViewRunDetails: vi.fn() }).lastFrame());
+    const { lastFrame } = renderContainer({ onViewRunDetails });
+    await flush();
 
+    const frame = frameText(lastFrame());
     expect(frame).toContain("Budget Exhausted");
     expect(frame).not.toContain("View Run Details");
     expect(frame).toContain("[ Back ]");
+    // Nothing reached disk, so the screen stays put instead of handing off.
+    expect(onViewRunDetails).not.toHaveBeenCalled();
   });
 
   test("keeps the dead end when the run ended before it reached disk", () => {
@@ -475,7 +472,7 @@ describe("ReviewContainer", () => {
     expect(frame).toContain("[ Back ]");
   });
 
-  test("offers the providers CTA beside the run when a recoverable failure reported a lens", async () => {
+  test("shrinks a recoverable dead end to the recovery CTA and Back", async () => {
     const onViewRunDetails = vi.fn();
     apiMocks.useReviewLifecycleBase.mockReturnValue(
       makeReviewLifecycleBase({
@@ -484,29 +481,45 @@ describe("ReviewContainer", () => {
         gate: "terminal-error",
         isTerminalStreamError: true,
         reviewId: "review-123",
-        events: [makeOrchestratorComplete(PARTIAL_LENS_STATS)],
+        events: [makeOrchestratorComplete(FAILED_LENS_STATS)],
       }),
     );
 
     const { stdin, lastFrame } = renderContainer({ onViewRunDetails, showFooterProbe: true });
+    await flush();
 
-    await waitUntil(() => (lastFrame() ?? "").includes("Left/Right Actions"));
     const frame = frameText(lastFrame());
-    // Web parity: the run the review already paid for and the CTA that repairs
-    // the failure are offered together, Back last.
-    expect(frame).toContain("[ View Run Details ]");
     expect(frame).toContain("[ Change model ]");
     expect(frame).toContain("[ Back ]");
+    expect(frame).not.toContain("View Run Details");
     expect(frame).toContain(
       "Footer left: Left/Right Actions, Enter Select, p Change model right: Esc Back",
     );
+    expect(onViewRunDetails).not.toHaveBeenCalled();
 
-    stdin.write(ARROW_RIGHT);
-    await flush();
-    stdin.write("\r");
+    stdin.write("p");
 
     await waitUntil(() => (lastFrame() ?? "").includes("Route: settings/providers"));
-    expect(onViewRunDetails).not.toHaveBeenCalled();
+  });
+
+  test("leaves a dead end on Esc", async () => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        error: "Adapter response failed schema validation.",
+        errorCode: ReviewErrorCode.MODEL_INCOMPATIBLE,
+        gate: "terminal-error",
+        isTerminalStreamError: true,
+        reviewId: "review-123",
+        events: [makeOrchestratorComplete(FAILED_LENS_STATS)],
+      }),
+    );
+
+    const { stdin, lastFrame } = renderContainer({ onViewRunDetails: vi.fn() });
+    await flush();
+
+    stdin.write(ESC);
+
+    await waitUntil(() => (lastFrame() ?? "").includes("Home route"));
   });
 
   test("shows the admission fast-fail inline with the server remediation and a providers jump", async () => {

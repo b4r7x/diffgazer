@@ -19,7 +19,6 @@ const FINGERPRINT_B = "b".repeat(64);
 
 const LIMITS: ExecutionLimits = {
   maxInputTokens: 100_000,
-  maxOutputTokens: 20_000,
   maxResponseBytes: 4_000_000,
   wallTimeMs: 120_000,
   maxRetries: 0,

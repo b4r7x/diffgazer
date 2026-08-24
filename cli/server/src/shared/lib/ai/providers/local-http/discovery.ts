@@ -30,7 +30,12 @@ const LOCAL_HTTP_DISCOVERY_DEADLINE_MS = 30_000;
 
 /** The wording the hosted conformance probe sends, so both attest the same ask. */
 const PROBE_PROMPT = 'Return {"issues":[]} as JSON.';
-/** A conforming answer is `{"issues":[]}`; anything longer is not conformance. */
+
+/**
+ * Output stop for the conformance probe only, so a rambling local model cannot
+ * spend the full discovery deadline and byte ceiling proving it can emit `{}`.
+ * Review generation carries no ceiling; this is not an admitted execution limit.
+ */
 const PROBE_MAX_OUTPUT_TOKENS = 256;
 
 /** OpenAI-strict wire schema for local generation (`strict: true` on local-openai). */
@@ -369,8 +374,6 @@ export type LocalGenerationInput = Readonly<{
   auth: LocalHttpAuth;
   fetcher: LocalHttpFetch;
   maxResponseBytes: number;
-  /** Admitted output-token ceiling, sent as the runtime's own hard stop. */
-  maxOutputTokens: number;
   deadlineMs?: number;
   /** Structured-output contract sent to the runtime; the probe contract is conformance-only. */
   schema: Record<string, unknown>;
@@ -392,7 +395,10 @@ function generationMessages(input: LocalGenerationInput): Array<Record<string, s
     : [{ role: "user", content: input.prompt }];
 }
 
-function generationBody(input: LocalGenerationInput): Readonly<{
+function generationBody(
+  input: LocalGenerationInput,
+  maxOutputTokens: number | undefined,
+): Readonly<{
   pathname: string;
   body: Record<string, unknown>;
 }> {
@@ -404,9 +410,7 @@ function generationBody(input: LocalGenerationInput): Readonly<{
         stream: false,
         messages: generationMessages(input),
         format: input.schema,
-        // Ollama's hard output stop. Without it the runtime uses its own default,
-        // so the admitted maxOutputTokens would be advisory only.
-        options: { num_predict: input.maxOutputTokens },
+        ...(maxOutputTokens === undefined ? {} : { options: { num_predict: maxOutputTokens } }),
       },
     };
   }
@@ -416,7 +420,7 @@ function generationBody(input: LocalGenerationInput): Readonly<{
       model: input.modelId,
       stream: false,
       messages: generationMessages(input),
-      max_tokens: input.maxOutputTokens,
+      ...(maxOutputTokens === undefined ? {} : { max_tokens: maxOutputTokens }),
       response_format: {
         type: "json_schema",
         json_schema: {
@@ -440,11 +444,15 @@ function extractGeneratedObject(productId: LocalHttpProductId, payload: unknown)
   return objectFromMessageContent(content);
 }
 
-/** One bounded local generation call returning the runtime's structured object. */
+/**
+ * One bounded local generation call returning the runtime's structured object.
+ * `maxOutputTokens` is the conformance probe's own stop; review dispatch omits it.
+ */
 export async function generateLocalHttpObject(
   input: LocalGenerationInput,
+  maxOutputTokens?: number,
 ): Promise<Result<unknown, LocalGenerationFailure>> {
-  const request = generationBody(input);
+  const request = generationBody(input, maxOutputTokens);
   const response = await localHttpRequest({
     endpoint: input.endpoint,
     pathname: request.pathname,
@@ -537,12 +545,14 @@ export async function probeLocalHttpConformance(
     auth: input.auth,
     fetcher,
     maxResponseBytes: LOCAL_HTTP_DISCOVERY_MAX_RESPONSE_BYTES,
-    maxOutputTokens: PROBE_MAX_OUTPUT_TOKENS,
     deadlineMs: LOCAL_HTTP_DISCOVERY_DEADLINE_MS,
     schema: REVIEW_RESULT_JSON_SCHEMA,
   } as const;
 
-  const generation = await generateLocalHttpObject({ ...probeRequest, signal: input.signal });
+  const generation = await generateLocalHttpObject(
+    { ...probeRequest, signal: input.signal },
+    PROBE_MAX_OUTPUT_TOKENS,
+  );
   if (!generation.ok) {
     if (generation.error.code === "cancelled") {
       return ok("cancellation-failed");
@@ -559,7 +569,10 @@ export async function probeLocalHttpConformance(
 
   const abort = new AbortController();
   abort.abort();
-  const abortProbe = await generateLocalHttpObject({ ...probeRequest, signal: abort.signal });
+  const abortProbe = await generateLocalHttpObject(
+    { ...probeRequest, signal: abort.signal },
+    PROBE_MAX_OUTPUT_TOKENS,
+  );
   if (abortProbe.ok || abortProbe.error.code !== "cancelled") {
     return ok("cancellation-failed");
   }

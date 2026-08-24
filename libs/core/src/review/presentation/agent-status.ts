@@ -191,6 +191,23 @@ export const PERSISTED_RUN_ERROR_CODES: readonly string[] = [
   ReviewErrorCode.AI_ERROR,
 ];
 
+/**
+ * Whether a failed run left a record on disk that a screen can open. Only a
+ * failure the server reported from the report step has one, and
+ * {@link PERSISTED_RUN_ERROR_CODES} is that step's whole vocabulary; a cancel, a
+ * lost session and a failed save all settle before the write and can still
+ * reach a screen with a completed lens streamed, so this is an allow-list
+ * rather than a deny-list. The saved record is the source both surfaces read:
+ * the stream still holds findings the server may have dropped, and two screens
+ * must not disagree about a run.
+ */
+export function savedRunExists(
+  lensStats: readonly LensStat[] | undefined,
+  errorCode: string | null | undefined,
+): boolean {
+  return hasCompletedLens(lensStats) && PERSISTED_RUN_ERROR_CODES.includes(errorCode ?? "");
+}
+
 function getLensAgentName(lensId: LensId): string {
   return AGENT_METADATA[LENS_TO_AGENT[lensId]].name;
 }

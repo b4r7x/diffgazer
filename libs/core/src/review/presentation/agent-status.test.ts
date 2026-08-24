@@ -13,6 +13,7 @@ import {
   hasCompletedLens,
   isAgentHeartbeatEvent,
   PERSISTED_RUN_ERROR_CODES,
+  savedRunExists,
 } from "./agent-status.js";
 
 function makeAgent(
@@ -261,6 +262,31 @@ describe("PERSISTED_RUN_ERROR_CODES", () => {
     expect(PERSISTED_RUN_ERROR_CODES).not.toContain(ReviewErrorCode.CANCELLED);
     expect(PERSISTED_RUN_ERROR_CODES).not.toContain(ReviewErrorCode.SESSION_NOT_FOUND);
     expect(PERSISTED_RUN_ERROR_CODES).not.toContain(ReviewErrorCode.INTERNAL_ERROR);
+  });
+});
+
+describe("savedRunExists", () => {
+  const completed: LensStat[] = [{ lensId: "security", issueCount: 0, status: "success" }];
+
+  it("is true once a lens reported and the run failed after the save", () => {
+    expect(savedRunExists(completed, ReviewErrorCode.AI_ERROR)).toBe(true);
+  });
+
+  it("is false for a transport error, which never reaches the save", () => {
+    expect(savedRunExists(completed, "STREAM_ERROR")).toBe(false);
+  });
+
+  it("is false when no lens reported, so there is nothing to open", () => {
+    expect(
+      savedRunExists(
+        [{ lensId: "security", issueCount: 0, status: "failed" }],
+        ReviewErrorCode.AI_ERROR,
+      ),
+    ).toBe(false);
+  });
+
+  it("is false without an error code", () => {
+    expect(savedRunExists(completed, null)).toBe(false);
   });
 });
 

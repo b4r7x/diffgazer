@@ -46,7 +46,6 @@ const transportFacadeTypes: {
 
 const limits = {
   maxInputTokens: 20_000,
-  maxOutputTokens: 4_000,
   maxResponseBytes: 1_048_576,
   wallTimeMs: 120_000,
   maxRetries: 2,
@@ -802,8 +801,8 @@ describe("admitted attempt accounting", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("reduces the provider output allowance after a billed malformed attempt", async () => {
-    const retryLimits = { ...limits, maxInputTokens: 40, maxOutputTokens: 10 } as const;
+  it("retries a billed malformed attempt without sending an output cap", async () => {
+    const retryLimits = { ...limits, maxInputTokens: 40 } as const;
     const fetch = vi
       .fn()
       .mockResolvedValueOnce(
@@ -833,8 +832,8 @@ describe("admitted attempt accounting", () => {
     });
 
     expect(result.receipt.outcome).toBe("completed");
-    expect(requestBodyAt(fetch, 0).max_tokens).toBe(10);
-    expect(requestBodyAt(fetch, 1).max_tokens).toBe(7);
+    expect(requestBodyAt(fetch, 0)).not.toHaveProperty("max_tokens");
+    expect(requestBodyAt(fetch, 1)).not.toHaveProperty("max_tokens");
   });
 
   it("does not issue a retry when the reported prompt leaves insufficient input budget", async () => {
@@ -1175,6 +1174,30 @@ describe("admitted attempt accounting", () => {
     });
   });
 
+  it("keeps a completed answer whose total tokens exceed the input cap", async () => {
+    const review = { issues: [makeIssue()] };
+    const fetch = mockFetchResponse(
+      openAiSuccessBody(review, {
+        prompt_tokens: limits.maxInputTokens - 1_000,
+        completion_tokens: 5_000,
+        total_tokens: limits.maxInputTokens + 4_000,
+      }),
+    );
+
+    const result = await executeHostedReview({
+      ...executeRequest("groq"),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.result.issues).toHaveLength(1);
+    expect(result.receipt.usage).toMatchObject({
+      inputTokens: limits.maxInputTokens - 1_000,
+      outputTokens: 5_000,
+      totalTokens: limits.maxInputTokens + 4_000,
+    });
+  });
+
   it("honours an admitted maxRetries of 0 over the provider's malformed-output retry", async () => {
     const fetch = vi.fn(
       async () =>
@@ -1246,7 +1269,7 @@ describe("gemini thinking budget", () => {
     return requestBodyAt(fetch, 0).generationConfig as Record<string, unknown>;
   }
 
-  it("bounds thought spend for a thinking-by-default model without lowering the admitted output budget", async () => {
+  it("bounds thought spend for a thinking-by-default model without capping the model's output", async () => {
     const fetch = mockFetchResponse(googleSuccessBody({ issues: [] }));
 
     const result = await executeHostedReview({
@@ -1255,8 +1278,12 @@ describe("gemini thinking budget", () => {
     });
 
     expect(result.receipt.outcome).toBe("completed");
-    expect(generationConfig(fetch).thinkingConfig).toEqual({ thinkingBudget: 2_048 });
-    expect(generationConfig(fetch).maxOutputTokens).toBe(limits.maxOutputTokens);
+    expect(generationConfig(fetch)).toEqual({
+      temperature: 0,
+      responseMimeType: "application/json",
+      thinkingConfig: { thinkingBudget: 2_048 },
+      responseSchema: STRUCTURED_OUTPUT_SCHEMA,
+    });
   });
 
   it("bounds thought spend for the registry's suggested gemini model", async () => {

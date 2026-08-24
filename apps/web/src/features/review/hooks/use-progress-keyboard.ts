@@ -1,7 +1,12 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { BACK_SHORTCUT, SWITCH_PANE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+import {
+  BACK_SHORTCUT,
+  type Shortcut,
+  SWITCH_PANE_SHORTCUT,
+} from "@diffgazer/core/schemas/presentation";
 import {
   containsActiveElement,
+  DECLINE,
   findNavigationItemByValue,
   getNavigationItems,
   getTabbableElements,
@@ -10,7 +15,11 @@ import {
   useScopedNavigation,
 } from "@diffgazer/keys";
 import { type FocusEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
-import { CHROME_ZONE, useChromeBackHandoff } from "@/components/layout/header-chrome";
+import {
+  CHROME_ZONE,
+  chromeReturnShortcut,
+  useChromeBackHandoff,
+} from "@/components/layout/header-chrome";
 import { useStreamingReviewCancelRef } from "@/components/layout/streaming-review";
 import { isInteractiveTarget } from "@/features/review/lib/interactive-target";
 
@@ -98,6 +107,8 @@ interface UseReviewProgressKeyboardOptions {
   hasAgentFilters?: boolean;
   /** The chip the filter row has checked; null is the "All" chip. Zone entry lands on it. */
   activeAgentFilter?: string | null;
+  /** Steps the lens filter one chip backward (-1) or forward (1), wrapping; bound to [ and ]. */
+  onCycleAgentFilter?: (direction: 1 | -1) => void;
   /** The pane's rendered action buttons in DOM order; traversal and zone entry skip disabled entries. */
   actions?: readonly { id: string; disabled?: boolean }[];
 }
@@ -118,6 +129,7 @@ export function useReviewProgressKeyboard({
   hasSnapshotDownloads = false,
   hasAgentFilters = false,
   activeAgentFilter = null,
+  onCycleAgentFilter,
   actions = [],
 }: UseReviewProgressKeyboardOptions) {
   const progressPaneRef = useRef<HTMLElement>(null);
@@ -220,6 +232,25 @@ export function useReviewProgressKeyboard({
     preventDefault: true,
     enabled: hasError,
   });
+
+  // The progress pane's top edge is the screen's too, but only once the
+  // scroller is at the top: with history above, ArrowUp is still the scroll the
+  // browser makes it. The zone gate keeps the download and action rows nested in
+  // this scroller out of the hand-off - they answer to their own row.
+  useKey(
+    "ArrowUp",
+    () => {
+      if ((progressScrollRef.current?.scrollTop ?? 0) > 0) return DECLINE;
+      return chrome.handOff();
+    },
+    {
+      scope: PROGRESS_SCOPE,
+      containerRef: progressScrollRef,
+      focusWithinOnly: true,
+      preventDefault: true,
+      enabled: !hasError && zone === "progress",
+    },
+  );
 
   // Left/Right roam the snapshot download buttons; Tab keeps cycling panes.
   useScopedNavigation({
@@ -331,10 +362,20 @@ export function useReviewProgressKeyboard({
     },
     { enabled: hasAgentFilterStop },
   );
+  // The lens the log is read through, changed where the user already stands:
+  // the brackets step the chip row's selection without taking focus off the
+  // pane, so reading the log and narrowing it are the same gesture.
+  useKey(
+    ["[", "]"],
+    (event) => {
+      onCycleAgentFilter?.(event.key === "[" ? -1 : 1);
+    },
+    { enabled: hasAgentFilterStop },
+  );
 
   // The agent ToggleGroup claims vertical arrows as extra horizontal moves, so
-  // they are intercepted before its navigation handler: ArrowDown stays a zone
-  // move into the log and ArrowUp stays inert instead of moving chips.
+  // they are intercepted before its navigation handler: ArrowDown is a zone move
+  // into the log and ArrowUp hands the row's top edge to the header Back.
   const handleFilterKeyDown = (event: KeyboardEvent) => {
     if (event.key === "ArrowDown") {
       event.preventDefault();
@@ -343,38 +384,59 @@ export function useReviewProgressKeyboard({
     }
     if (event.key === "ArrowUp") {
       event.preventDefault();
+      chrome.handOff();
     }
   };
 
   // The log's top edge continues up into the chip row above it - the mirror of
-  // the chips' ArrowDown. The log reports the boundary only when there is
-  // nothing left to scroll or page back to, and it is handed a listener only
-  // when there is a chip row to reach: elsewhere ArrowUp stays native.
-  const handleLogBoundary = hasAgentFilterStop ? () => setZone("filters") : undefined;
+  // the chips' ArrowDown - and with no chip row in between it continues into the
+  // chrome instead. The log reports the boundary only when there is nothing left
+  // to scroll or page back to. On the error layout the panel above the log owns
+  // the hand-off, so the log's ArrowUp stays native there.
+  const logTopBoundary = hasAgentFilterStop ? () => setZone("filters") : () => chrome.handOff();
+  const handleLogBoundary = hasError ? undefined : logTopBoundary;
+
+  const paneShortcuts: Shortcut[] = [
+    SWITCH_PANE_SHORTCUT,
+    {
+      key: "←/→",
+      label: getArrowShortcutLabel(
+        zone,
+        enabledActionCount,
+        hasSnapshotDownloads,
+        hasAgentFilterStop,
+      ),
+    },
+    ...(zone === "filters" && hasAgentFilterStop ? [{ key: "↓", label: "Log" }] : []),
+    // Two distinct gestures on the same chip row: the brackets move the lens
+    // from wherever focus is, f walks focus onto the chips themselves.
+    ...(hasAgentFilterStop
+      ? [
+          { key: "[/]", label: "Filter" },
+          { key: "f", label: "Filters" },
+        ]
+      : []),
+    ...(onViewResults ? [{ key: "Enter", label: "View Results" }] : []),
+    ...(onRetryRecovery ? [REVIEW_PROGRESS_CONTROLS.retry] : []),
+    ...(onCancel
+      ? [{ ...REVIEW_PROGRESS_CONTROLS.cancel, key: "c/q", disabled: cancelDisabled }]
+      : []),
+  ];
 
   // The error layout names the keys of the row it mounts on, published from the
   // error panel itself, so the hook leaves that screen's footer to it rather
-  // than writing this pane legend over it.
+  // than writing this pane legend over it. Parked on the chrome the pane legend
+  // names keys the user has left behind, so the only move it still advertises
+  // there is the way back down.
   usePageFooter({
-    shortcuts: [
-      SWITCH_PANE_SHORTCUT,
-      {
-        key: "←/→",
-        label: getArrowShortcutLabel(
-          zone,
-          enabledActionCount,
-          hasSnapshotDownloads,
-          hasAgentFilterStop,
-        ),
-      },
-      ...(zone === "filters" && hasAgentFilterStop ? [{ key: "↓", label: "Log" }] : []),
-      ...(hasAgentFilterStop ? [{ key: "f", label: "Filter" }] : []),
-      ...(onViewResults ? [{ key: "Enter", label: "View Results" }] : []),
-      ...(onRetryRecovery ? [REVIEW_PROGRESS_CONTROLS.retry] : []),
-      ...(onCancel
-        ? [{ ...REVIEW_PROGRESS_CONTROLS.cancel, key: "c/q", disabled: cancelDisabled }]
-        : []),
-    ],
+    shortcuts:
+      zone === CHROME_ZONE
+        ? chromeReturnShortcut(chrome.returnZone, {
+            progress: "Progress",
+            filters: "Filters",
+            log: "Log",
+          })
+        : paneShortcuts,
     rightShortcuts: onBack ? [BACK_SHORTCUT] : [],
     enabled: !hasError,
   });

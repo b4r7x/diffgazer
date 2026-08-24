@@ -150,26 +150,6 @@ function validateReceiptUsage(
         path: ["usage", "inputTokens"],
       });
     }
-    if (
-      receipt.usage.outputTokens !== undefined &&
-      receipt.usage.outputTokens > receipt.limits.maxOutputTokens
-    ) {
-      context.addIssue({
-        code: "custom",
-        message: "Reported output usage exceeds the admitted output-token limit",
-        path: ["usage", "outputTokens"],
-      });
-    }
-    if (
-      receipt.usage.totalTokens !== undefined &&
-      receipt.usage.totalTokens > receipt.limits.maxInputTokens + receipt.limits.maxOutputTokens
-    ) {
-      context.addIssue({
-        code: "custom",
-        message: "Reported total usage exceeds the admitted token limits",
-        path: ["usage", "totalTokens"],
-      });
-    }
   }
   if (receipt.outcome === "completed" && receipt.usageAvailability === "required-missing") {
     context.addIssue({

@@ -195,23 +195,25 @@ describe("ReviewSummaryView", () => {
     expect(screen.queryByText("src/db.ts:0")).not.toBeInTheDocument();
   });
 
-  it("exposes a visible Back control that leaves the summary like Escape does", async () => {
+  it("leaves the summary with Escape and adds no Back of its own to the panel", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     renderSummary({ onBack });
 
-    // Escape alone left the summary with no pointer-reachable exit.
-    await user.click(screen.getByRole("button", { name: "Back" }));
-    expect(onBack).toHaveBeenCalledTimes(1);
+    // The header ← Back is the screen's only Back; the panel's own copy pointed
+    // at the same target and read as a second, different exit.
+    expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
 
     await user.keyboard("{Escape}");
-    expect(onBack).toHaveBeenCalledTimes(2);
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it("focuses and highlights [View Results] on mount instead of the summary region", async () => {
+  it("puts [View Results] alone in the action row and lands mount focus on it", async () => {
     renderSummary();
 
     const viewResults = screen.getByRole("button", { name: /view results/i });
+    expect(screen.getAllByRole("button")).toEqual([viewResults]);
+
     await waitFor(() => expect(viewResults).toHaveFocus());
     expect(viewResults).toHaveAttribute("data-highlighted");
     expect(screen.getByRole("region", { name: "Review summary" })).not.toHaveFocus();
@@ -235,43 +237,17 @@ describe("ReviewSummaryView", () => {
     expectSingleReticle(container);
   });
 
-  it("moves focus and highlight between the actions with arrow keys", async () => {
-    const user = userEvent.setup();
-    renderSummary();
-    const viewResults = screen.getByRole("button", { name: /view results/i });
-    const back = screen.getByRole("button", { name: "Back" });
-    await waitFor(() => expect(viewResults).toHaveFocus());
-
-    await user.keyboard("{ArrowLeft}");
-    expect(back).toHaveFocus();
-    expect(back).toHaveAttribute("data-highlighted");
-    expect(viewResults).not.toHaveAttribute("data-highlighted");
-
-    await user.keyboard("{ArrowRight}");
-    expect(viewResults).toHaveFocus();
-    expect(viewResults).toHaveAttribute("data-highlighted");
-    expect(back).not.toHaveAttribute("data-highlighted");
-  });
-
   it("drops the action highlight when Shift+Tab moves focus to the summary region", async () => {
     const user = userEvent.setup();
     const { container } = renderSummary();
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
-    );
+    const viewResults = screen.getByRole("button", { name: /view results/i });
+    await waitFor(() => expect(viewResults).toHaveFocus());
 
     await user.tab({ shift: true });
-    const back = screen.getByRole("button", { name: "Back" });
-    expect(back).toHaveFocus();
-
-    await user.tab({ shift: true });
-    // The region wears no ring of its own, so a mark left on [← Back] would be
-    // the only control mark on screen - on a button that does not have focus.
+    // The region wears no ring of its own, so a mark left on [View Results]
+    // would be the only control mark on screen - on a button without focus.
     expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
-    expect(back).not.toHaveAttribute("data-highlighted");
-    expect(screen.getByRole("button", { name: /view results/i })).not.toHaveAttribute(
-      "data-highlighted",
-    );
+    expect(viewResults).not.toHaveAttribute("data-highlighted");
     expectSingleReticle(container);
   });
 
@@ -288,9 +264,9 @@ describe("ReviewSummaryView", () => {
     // Nothing to scroll here (jsdom has no layout), so ↓ is a pure zone move; the
     // overflowing case is pinned below.
     await user.keyboard("{ArrowDown}");
-    const back = screen.getByRole("button", { name: "Back" });
-    expect(back).toHaveFocus();
-    expect(back).toHaveAttribute("data-highlighted");
+    const viewResults = screen.getByRole("button", { name: /view results/i });
+    expect(viewResults).toHaveFocus();
+    expect(viewResults).toHaveAttribute("data-highlighted");
   });
 
   it("returns to the actions when ArrowDown reaches the bottom of an overflowing summary", async () => {
@@ -312,9 +288,9 @@ describe("ReviewSummaryView", () => {
 
     await user.keyboard("{End}");
     await user.keyboard("{ArrowDown}");
-    const back = screen.getByRole("button", { name: "Back" });
-    expect(back).toHaveFocus();
-    expect(back).toHaveAttribute("data-highlighted");
+    const viewResults = screen.getByRole("button", { name: /view results/i });
+    expect(viewResults).toHaveFocus();
+    expect(viewResults).toHaveAttribute("data-highlighted");
   });
 
   it("names the keys of the zone that holds focus in the footer", async () => {
@@ -325,15 +301,17 @@ describe("ReviewSummaryView", () => {
     );
     const legend = screen.getByRole("contentinfo");
 
-    expect(within(legend).getByText("Move Action")).toBeInTheDocument();
+    // A one-action row has nothing to move between, so it names only the key
+    // that acts.
+    expect(within(legend).getByText("View Results")).toBeInTheDocument();
+    expect(within(legend).queryByText("Scroll")).not.toBeInTheDocument();
 
     await user.keyboard("{ArrowUp}");
     expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
 
-    // ←/→ does nothing inside the region; the keys that do work there are named.
+    // The keys that do work inside the region are named there, and nowhere else.
     expect(await within(legend).findByText("Scroll")).toBeInTheDocument();
     expect(within(legend).getByText("Actions")).toBeInTheDocument();
-    expect(within(legend).queryByText("Move Action")).not.toBeInTheDocument();
   });
 
   it("scrolls the summary region with arrow and page keys after ArrowUp focuses it", async () => {
@@ -474,20 +452,28 @@ describe("ReviewSummaryView failure mode", () => {
       onEnterReview,
     });
 
+    // Nothing left to act on, so the screen carries no action row at all.
     expect(screen.queryByRole("button", { name: /view results/i })).not.toBeInTheDocument();
-    // Mount focus falls to the row's first enabled action instead of vanishing.
-    const back = screen.getByRole("button", { name: "Back" });
-    await waitFor(() => expect(back).toHaveFocus());
+    expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
+
+    // Mount focus falls to the summary region instead of vanishing.
+    const region = screen.getByRole("region", { name: "Review summary" });
+    await waitFor(() => expect(region).toHaveFocus());
     expectSingleReticle(container);
 
     await user.keyboard("{Enter}");
     expect(onEnterReview).not.toHaveBeenCalled();
 
+    // ↓ at the bottom of the range has no row to hand back to and leaves focus
+    // where it is.
+    await user.keyboard("{ArrowDown}");
+    expect(region).toHaveFocus();
+
     const legend = within(screen.getByRole("contentinfo"));
     expect(legend.queryByText("View Results")).not.toBeInTheDocument();
-    expect(legend.queryByText("Move Action")).not.toBeInTheDocument();
-    // The row's one remaining key is named instead of an empty legend.
-    expect(legend.getByText("Summary")).toBeInTheDocument();
+    expect(legend.queryByText("Actions")).not.toBeInTheDocument();
+    // The region is the only zone, so its own keys are what the legend names.
+    expect(legend.getByText("Scroll")).toBeInTheDocument();
   });
 
   it("says the run got nowhere without congratulating a clean sheet", () => {
@@ -517,10 +503,10 @@ describe("ReviewSummaryView chrome hand-off", () => {
     );
   }
 
-  // The harness renders the shell's Back button before the screen, and the
-  // summary's own footer control carries the same accessible name.
-  function backButtons() {
-    return screen.getAllByRole("button", { name: "Back" });
+  // The harness renders the shell's Back button before the screen; the summary
+  // adds none of its own, so this is the only Back on the page.
+  function chromeBack() {
+    return screen.getByRole("button", { name: "Back" });
   }
 
   async function park(user: ReturnType<typeof userEvent.setup>) {
@@ -530,10 +516,19 @@ describe("ReviewSummaryView chrome hand-off", () => {
     await user.keyboard("{ArrowUp}");
     expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
     await user.keyboard("{ArrowUp}");
-    const [chromeBack] = backButtons();
-    await waitFor(() => expect(chromeBack).toHaveFocus());
-    return chromeBack;
+    const back = chromeBack();
+    await waitFor(() => expect(back).toHaveFocus());
+    return back;
   }
+
+  it("renders exactly one Back on the summary, the header chrome one", async () => {
+    renderSummaryWithChrome();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
+    );
+
+    expect(screen.getAllByRole("button", { name: /back/i })).toEqual([chromeBack()]);
+  });
 
   it("hands focus to the header Back from the top of the region and returns it with ArrowDown", async () => {
     const user = userEvent.setup();
@@ -552,18 +547,16 @@ describe("ReviewSummaryView chrome hand-off", () => {
     const user = userEvent.setup();
     renderSummaryWithChrome();
 
-    const chromeBack = await park(user);
-    const [, summaryBack] = backButtons();
+    const parkedBack = await park(user);
     const viewResults = screen.getByRole("button", { name: /view results/i });
 
     await user.keyboard("{ArrowLeft}");
     await user.keyboard("{ArrowRight}");
     await user.keyboard("{ArrowUp}");
 
-    expect(chromeBack).toHaveFocus();
+    expect(parkedBack).toHaveFocus();
     // Nothing in the page is marked either: the mark follows focus, and focus
     // is in the chrome.
-    expect(summaryBack).not.toHaveAttribute("data-highlighted");
     expect(viewResults).not.toHaveAttribute("data-highlighted");
   });
 
@@ -578,7 +571,6 @@ describe("ReviewSummaryView chrome hand-off", () => {
     expect(legend.getByText("Back")).toBeInTheDocument();
     expect(legend.queryByText("View Results")).not.toBeInTheDocument();
     expect(legend.queryByText("Scroll")).not.toBeInTheDocument();
-    expect(legend.queryByText("Move Action")).not.toBeInTheDocument();
   });
 
   it("ends the park when Tab carries focus back into the page", async () => {
@@ -600,14 +592,14 @@ describe("ReviewSummaryView chrome hand-off", () => {
     // And the arrow is native on the Back button again: this park is over, so
     // Shift+Tab back to the chrome reaches it the way Tab does.
     await user.tab({ shift: true });
-    const [chromeBack] = backButtons();
-    expect(chromeBack).toHaveFocus();
+    const parkedBack = chromeBack();
+    expect(parkedBack).toHaveFocus();
     // The legend must not name a return the arrow will decline.
     expect(legend.queryByText("Summary")).not.toBeInTheDocument();
 
     await user.keyboard("{ArrowDown}");
 
-    expect(chromeBack).toHaveFocus();
+    expect(parkedBack).toHaveFocus();
     expect(region).not.toHaveFocus();
   });
 
@@ -618,18 +610,16 @@ describe("ReviewSummaryView chrome hand-off", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
     );
-    expect(legend.getByText("Move Action")).toBeInTheDocument();
+    expect(legend.getByText("View Results")).toBeInTheDocument();
 
     // Into the region, then out of the page the way Tab goes: the row's keys are
     // scoped to the panel, so out here every one of them is inert.
     await user.keyboard("{ArrowUp}");
     expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
     await user.tab({ shift: true });
-    const [chromeBack] = backButtons();
-    expect(chromeBack).toHaveFocus();
+    expect(chromeBack()).toHaveFocus();
 
     expect(await legend.findByText("Back")).toBeInTheDocument();
-    expect(legend.queryByText("Move Action")).not.toBeInTheDocument();
     expect(legend.queryByText("View Results")).not.toBeInTheDocument();
     expect(legend.queryByText("Scroll")).not.toBeInTheDocument();
     // No arrow took focus up, so there is no way back to name either.
@@ -647,12 +637,12 @@ describe("ReviewSummaryView chrome hand-off", () => {
     await user.keyboard("{ArrowUp}");
     expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
     await user.tab({ shift: true });
-    const [chromeBack, summaryBack] = backButtons();
-    expect(chromeBack).toHaveFocus();
+    const parkedBack = chromeBack();
+    expect(parkedBack).toHaveFocus();
 
     await user.keyboard("{ArrowDown}");
 
-    expect(chromeBack).toHaveFocus();
-    expect(summaryBack).not.toHaveFocus();
+    expect(parkedBack).toHaveFocus();
+    expect(screen.getByRole("region", { name: "Review summary" })).not.toHaveFocus();
   });
 });

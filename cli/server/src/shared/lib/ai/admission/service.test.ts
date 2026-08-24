@@ -14,7 +14,8 @@ import {
   createEnvironmentSecretBinding,
   type SecretBinding,
 } from "../../config/secret-bindings.js";
-import { createBudgetLedger } from "../budget/ledger.js";
+import { estimateWorstCaseCostUsd, PLANNING_OUTPUT_TOKENS } from "../budget/cost.js";
+import { type BudgetLedger, createBudgetLedger } from "../budget/ledger.js";
 import { ADAPTER_REGISTRY } from "../providers/registry.js";
 import {
   type AdmissionServiceDependencies,
@@ -43,7 +44,6 @@ const ORIGINAL_GEMINI_KEY = process.env.GEMINI_KEY;
 
 const BUDGET = {
   inputTokens: 32_000,
-  outputTokens: 8_000,
   responseBytes: 65_536,
   wallTimeMs: 60_000,
   retries: 2,
@@ -155,12 +155,11 @@ function createDependencies(
 }
 
 describe("buildExpectedEvidenceKey", () => {
-  it("clamps execution limits to the selected model's bundled catalog observation", () => {
+  it("derives the input ceiling from the selected model's bundled catalog observation", () => {
     // Far above any published ceiling, so the catalog observation is provably
     // the binding constraint and the assertion survives a snapshot refresh.
     const legacyBudget = {
       inputTokens: 5_000_000,
-      outputTokens: 1_000_000,
       responseBytes: 8_000_000,
       wallTimeMs: 300_000,
       retries: 0,
@@ -190,8 +189,11 @@ describe("buildExpectedEvidenceKey", () => {
       workspaceAccountReference: null,
     });
 
-    expect(key.limits.maxOutputTokens).toBe(catalogLimit.output);
-    expect(key.limits.maxInputTokens).toBe(catalogLimit.context - catalogLimit.output);
+    // Reservations plan for an answer of PLANNING_OUTPUT_TOKENS, not the whole
+    // catalog ceiling, so the input envelope keeps the rest of the window.
+    expect(key.limits.maxInputTokens).toBe(
+      catalogLimit.context - Math.min(catalogLimit.output, PLANNING_OUTPUT_TOKENS),
+    );
   });
 });
 
@@ -441,7 +443,6 @@ describe("authorizeReviewExecution", () => {
     });
     const first = ledger.reserveAttempt({
       inputTokens: 1,
-      outputTokens: 1,
       responseBytes: 1,
       wallTimeMs: 1,
       costUsd: 0.01,
@@ -652,6 +653,28 @@ describe("admission spend and model gates", () => {
     );
 
     expect(result.ok).toBe(true);
+  });
+
+  it("reserves the whole input envelope and the planned worst-case bill", async () => {
+    const ledgers: BudgetLedger[] = [];
+    const dependencies = createDependencies(readySnapshot(), {
+      createBudgetLedger: (limits: ExecutionLimits) => {
+        const ledger = createBudgetLedger(limits);
+        ledgers.push(ledger);
+        return ledger;
+      },
+    });
+
+    const result = await authorizeReviewExecution("gemini-primary", dependencies);
+
+    expect(result.ok).toBe(true);
+    expect(ledgers).toHaveLength(1);
+    const admittedLimits = ledgers[0]?.limits;
+    const reserved = ledgers[0]?.snapshot().reserved;
+    expect(reserved?.inputTokens).toBe(admittedLimits?.maxInputTokens);
+    expect(reserved?.costUsd).toBe(
+      admittedLimits && estimateWorstCaseCostUsd("gemini", "gemini-2.5-flash", admittedLimits),
+    );
   });
 
   it("denies admission for a configuration with no selected model", async () => {

@@ -6,7 +6,7 @@ import {
   reviewReducer,
   sanitizePresentationText,
 } from "@diffgazer/core/review";
-import type { AgentState, LensStat } from "@diffgazer/core/schemas/events";
+import type { AgentState } from "@diffgazer/core/schemas/events";
 import { KeyboardProvider } from "@diffgazer/keys";
 import {
   act,
@@ -22,12 +22,6 @@ import { describe, expect, it, vi } from "vitest";
 import { FooterView } from "@/testing/footer-view";
 import { HeaderChromeHarness } from "@/testing/header-chrome";
 import { expectSingleReticle } from "@/testing/reticle";
-
-// Boundary mock: TanStack Router is the external routing library; progress shortcuts navigate through it.
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
-}));
-
 import {
   type ReviewProgressData,
   ReviewProgressView,
@@ -132,7 +126,6 @@ function renderView(props: Partial<ReviewProgressViewProps> = {}, options?: Rend
           contextRefreshError={props.contextRefreshError}
           onRetryContextRefresh={props.onRetryContextRefresh}
           onRetry={props.onRetry}
-          onViewRun={props.onViewRun}
           onViewResults={props.onViewResults}
           onCancel={props.onCancel}
           onBack={props.onBack}
@@ -463,14 +456,36 @@ describe("ReviewProgressView", () => {
   it("offers Move Action in the error footer once there is a second way out", async () => {
     renderView({
       isRunning: false,
-      error: "API key error",
-      transportFamily: "hosted-api",
+      error: "Connection closed unexpectedly",
+      errorCode: "STREAM_ERROR",
+      reviewId: "active-review",
+      onRetry: vi.fn(),
       onBack: vi.fn(),
     });
 
     expect(await screen.findByText("Move Action")).toBeInTheDocument();
     expect(screen.getByText("Enter/Space").parentElement).toHaveTextContent("Back to Home");
     expect(screen.getByText("Esc").parentElement).toHaveTextContent("Back");
+  });
+
+  it("offers no retry action for a failure the stream cannot pick back up", async () => {
+    const onRetry = vi.fn();
+    renderView({
+      isRunning: false,
+      error: "Provider rejected the request",
+      errorCode: "PROVIDER_REJECTED",
+      reviewId: "active-review",
+      onRetry,
+      onBack: vi.fn(),
+    });
+
+    // Only a dropped transport can be reconnected: every other failure leaves
+    // Home as the single way out.
+    expect(await screen.findByRole("button", { name: "Back to Home" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Fix provider" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Move Action")).not.toBeInTheDocument();
+    expect(onRetry).not.toHaveBeenCalled();
   });
 
   it("sanitizes untrusted failure text before announcing it", () => {
@@ -505,7 +520,7 @@ describe("ReviewProgressView", () => {
     expect(onRetry).toHaveBeenCalledWith("active-review");
   });
 
-  it("keeps API-key recovery pointed at provider settings without offering stream retry", () => {
+  it("leaves provider repair to the gate card instead of offering it inline", () => {
     renderView({
       isRunning: false,
       error: "Credentials rejected",
@@ -518,137 +533,47 @@ describe("ReviewProgressView", () => {
     });
 
     expect(screen.getByText("event-0")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Configure Provider" })).toBeInTheDocument();
+    // Only a dropped transport still runs under this panel, so the row keeps
+    // the way home and nothing else; every other failure took the whole frame.
+    expect(screen.queryByRole("button", { name: "Configure Provider" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back to Home" })).toBeInTheDocument();
   });
 
-  it.each([
-    {
-      errorCode: "MODEL_INCOMPATIBLE",
-      error: "Adapter response failed schema validation.",
-      title: "Model Incompatible",
-      cta: "Change model",
-    },
-    {
-      errorCode: "PROVIDER_REJECTED",
-      error: "Groq rejected the credential (HTTP 401).",
-      title: "Provider Rejected the Request",
-      cta: "Fix provider",
-    },
-  ])("offers the providers screen for a $errorCode failure", ({ errorCode, error, title, cta }) => {
+  it("steps the transport row between home and the reconnect without leaving the panel", async () => {
+    const user = userEvent.setup();
     renderView({
       isRunning: false,
-      error,
-      errorCode,
-      transportFamily: "hosted-api",
+      error: "Connection closed unexpectedly",
+      errorCode: "STREAM_ERROR",
       reviewId: "active-review",
       onRetry: vi.fn(),
       onBack: vi.fn(),
     });
 
-    expect(screen.getByRole("alert")).toHaveTextContent(title);
-    expect(screen.getByRole("alert")).toHaveTextContent(error);
-    expect(screen.getByRole("button", { name: cta })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
-  });
+    const back = screen.getByRole("button", { name: "Back to Home" });
+    const retry = screen.getByRole("button", { name: "Retry" });
 
-  describe("a failure that still produced a run", () => {
-    const BUDGET_ERROR = "Review budget exhausted at maxInputTokens (119808).";
+    await waitFor(() => expect(back).toHaveFocus());
+    expect(back).toHaveAttribute("data-highlighted");
+    expect(screen.getByText("Move Action")).toBeInTheDocument();
 
-    function makeLensStats(completed: number): LensStat[] {
-      return [
-        ...Array.from({ length: completed }, (_, index) => ({
-          lensId: index === 0 ? ("correctness" as const) : ("performance" as const),
-          issueCount: 1,
-          status: "success" as const,
-        })),
-        { lensId: "security", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
-      ];
-    }
+    await user.keyboard("{ArrowRight}");
+    expect(retry).toHaveFocus();
+    expect(retry).toHaveAttribute("data-highlighted");
+    expect(back).not.toHaveAttribute("data-highlighted");
 
-    function renderFailedRun(props: Partial<ReviewProgressViewProps> = {}) {
-      return renderView({
-        isRunning: false,
-        error: BUDGET_ERROR,
-        errorCode: "BUDGET_EXHAUSTED",
-        reviewId: "review-1",
-        onBack: vi.fn(),
-        data: makeProgressData({ lensStats: makeLensStats(1) }),
-        ...props,
-      });
-    }
+    await user.keyboard("{ArrowLeft}");
+    expect(back).toHaveFocus();
 
-    it("offers the saved run when a lens completed, with guidance that names the remedy", async () => {
-      const user = userEvent.setup();
-      const onViewRun = vi.fn();
-
-      renderFailedRun({ onViewRun });
-
-      const alert = screen.getByRole("alert");
-      expect(alert).toHaveTextContent("Budget Exhausted");
-      expect(alert).toHaveTextContent("Reduce the review scope or raise the configured budget");
-
-      await user.click(screen.getByRole("button", { name: "View Run Details" }));
-
-      expect(onViewRun).toHaveBeenCalledWith("review-1");
-    });
-
-    it("keeps the dead end when no lens completed", () => {
-      renderFailedRun({
-        onViewRun: vi.fn(),
-        data: makeProgressData({ lensStats: makeLensStats(0) }),
-      });
-
-      expect(screen.queryByRole("button", { name: "View Run Details" })).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Back to Home" })).toBeInTheDocument();
-    });
-
-    it("keeps the dead end when saving the run is what failed", () => {
-      renderFailedRun({ onViewRun: vi.fn(), errorCode: "INTERNAL_ERROR" });
-
-      expect(screen.queryByRole("button", { name: "View Run Details" })).not.toBeInTheDocument();
-    });
-
-    // A cancel and a lost session both settle inside finalizeReview *before*
-    // saveReview runs, so the lens the stream already reported has no record
-    // behind it: the offer would navigate to a review that was never written.
-    it.each([
-      "CANCELLED",
-      "GENERATION_FAILED",
-    ])("keeps the dead end for a %s failure the server settled before saving", (errorCode) => {
-      renderFailedRun({ onViewRun: vi.fn(), errorCode });
-
-      expect(screen.queryByRole("button", { name: "View Run Details" })).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Back to Home" })).toBeInTheDocument();
-    });
-
-    it("leads with View Run Details and steps the row without leaving the panel", async () => {
-      const user = userEvent.setup();
-      renderFailedRun({ onViewRun: vi.fn() });
-      const viewRun = screen.getByRole("button", { name: "View Run Details" });
-      const back = screen.getByRole("button", { name: "Back to Home" });
-
-      await waitFor(() => expect(viewRun).toHaveFocus());
-      expect(viewRun).toHaveAttribute("data-highlighted");
-      expect(screen.getByText("Move Action")).toBeInTheDocument();
-
-      await user.keyboard("{ArrowRight}");
-      expect(back).toHaveFocus();
-      expect(back).toHaveAttribute("data-highlighted");
-      expect(viewRun).not.toHaveAttribute("data-highlighted");
-
-      await user.keyboard("{ArrowLeft}");
-      expect(viewRun).toHaveFocus();
-
-      // The end of the row is the end of the move: no pane sits left of the
-      // error panel for the arrow to switch to.
-      await user.keyboard("{ArrowLeft}");
-      expect(viewRun).toHaveFocus();
-      expect(screen.getByRole("region", { name: "Live Activity Log" })).toHaveAttribute(
-        "data-state",
-        "focused",
-      );
-    });
+    // The end of the row is the end of the move: no pane sits left of the
+    // error panel for the arrow to switch to.
+    await user.keyboard("{ArrowLeft}");
+    expect(back).toHaveFocus();
+    expect(screen.getByRole("region", { name: "Live Activity Log" })).toHaveAttribute(
+      "data-state",
+      "focused",
+    );
   });
 
   it("renders streamed server notices in a non-blocking live region", () => {
@@ -771,7 +696,7 @@ describe("ReviewProgressView", () => {
     );
   });
 
-  it("continues the pane cycle into the log with Tab from the agent filters", async () => {
+  it("enters the log pane on the log region, never the chip row, with Tab from the agent filters", async () => {
     const user = userEvent.setup();
     renderView({
       data: makeProgressData({ agents: [makeAgent()] }),
@@ -790,7 +715,7 @@ describe("ReviewProgressView", () => {
     await waitFor(() => expect(allChip).toHaveFocus());
   });
 
-  it("keeps vertical arrows off the agent chips: ArrowUp stays put, ArrowDown enters the log", async () => {
+  it("leaves the chip row's ArrowUp hand-off a safe no-op when no chrome is mounted", async () => {
     const user = userEvent.setup();
     renderView({ data: makeProgressData({ agents: [makeAgent()] }) });
 
@@ -798,8 +723,19 @@ describe("ReviewProgressView", () => {
     const allChip = screen.getByRole("radio", { name: "All" });
     await waitFor(() => expect(allChip).toHaveFocus());
 
+    // With a header the hand-off lands on Back; without one there is nothing to
+    // hand to, and the chips must not absorb the key as a horizontal move.
     await user.keyboard("{ArrowUp}");
     expect(allChip).toHaveFocus();
+    expect(allChip).toBeChecked();
+  });
+
+  it("moves from the agent chips into the log with ArrowDown", async () => {
+    const user = userEvent.setup();
+    renderView({ data: makeProgressData({ agents: [makeAgent()] }) });
+
+    await user.keyboard("f");
+    await waitFor(() => expect(screen.getByRole("radio", { name: "All" })).toHaveFocus());
 
     await user.keyboard("{ArrowDown}");
     await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
@@ -973,9 +909,12 @@ describe("ReviewProgressView", () => {
     await waitFor(() => expect(detective).toHaveFocus());
   });
 
-  it("leaves ArrowUp in the log native when the run has no chip row to reach", async () => {
+  it("hands ArrowUp at the top of the log to the header Back when the run has no chip row", async () => {
     const user = userEvent.setup();
-    renderView({ isRunning: true, data: makeProgressData({ events: makeLogEvents(5) }) });
+    renderView(
+      { isRunning: true, data: makeProgressData({ events: makeLogEvents(5) }) },
+      { wrapper: HeaderChromeHarness },
+    );
 
     await waitFor(() =>
       expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
@@ -988,9 +927,168 @@ describe("ReviewProgressView", () => {
     await user.keyboard("{Tab}");
     await waitFor(() => expect(log).toHaveFocus());
 
-    // fireEvent retained: the contract is the keydown's defaultPrevented verdict -- with no chip
-    // row above it, ArrowUp must stay with the scroller -- which userEvent does not expose.
-    expect(fireEvent.keyDown(log, { key: "ArrowUp" })).toBe(true);
+    await user.keyboard("{ArrowUp}");
+    const back = screen.getByRole("button", { name: "Back" });
+    await waitFor(() => expect(back).toHaveFocus());
+    expect(screen.getByText("\u2193").parentElement).toHaveTextContent("Log");
+
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(log).toHaveFocus());
+    expect(screen.queryByText("\u2193")).not.toBeInTheDocument();
+  });
+
+  it("hands ArrowUp at the top of the progress scroller to the header Back", async () => {
+    const user = userEvent.setup();
+    renderView({ isRunning: true }, { wrapper: HeaderChromeHarness });
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+    const scroller = document.activeElement as HTMLElement;
+
+    // Scrolled away from the top the scroller keeps the key: there is content above.
+    scroller.scrollTop = 120;
+    await user.keyboard("{ArrowUp}");
+    expect(scroller).toHaveFocus();
+
+    scroller.scrollTop = 0;
+    await user.keyboard("{ArrowUp}");
+    const back = screen.getByRole("button", { name: "Back" });
+    await waitFor(() => expect(back).toHaveFocus());
+    expect(screen.getByText("\u2193").parentElement).toHaveTextContent("Progress");
+
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(scroller).toHaveFocus());
+    expect(screen.queryByText("\u2193")).not.toBeInTheDocument();
+  });
+
+  it("hands ArrowUp from the agent chip row to the header Back", async () => {
+    const user = userEvent.setup();
+    renderView(
+      { isRunning: true, data: makeProgressData({ agents: [makeAgent()] }) },
+      { wrapper: HeaderChromeHarness },
+    );
+
+    await user.keyboard("f");
+    const allChip = screen.getByRole("radio", { name: "All" });
+    await waitFor(() => expect(allChip).toHaveFocus());
+
+    await user.keyboard("{ArrowUp}");
+    const back = screen.getByRole("button", { name: "Back" });
+    await waitFor(() => expect(back).toHaveFocus());
+    expect(screen.getByText("\u2193").parentElement).toHaveTextContent("Filters");
+
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(allChip).toHaveFocus());
+  });
+
+  it("keeps ArrowUp inside the download and action rows nested under the scroller", async () => {
+    const user = userEvent.setup();
+    renderView(
+      {
+        isRunning: false,
+        onViewResults: vi.fn(),
+        data: makeProgressData({ contextSnapshot: makeContextSnapshot() }),
+      },
+      { wrapper: HeaderChromeHarness },
+    );
+
+    const back = screen.getByRole("button", { name: "Back" });
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
+        "data-state",
+        "focused",
+      ),
+    );
+
+    await user.keyboard("{Tab}");
+    const download = screen.getByRole("button", { name: "Download .txt" });
+    await waitFor(() => expect(download).toHaveFocus());
+    await user.keyboard("{ArrowUp}");
+    expect(download).toHaveFocus();
+    expect(back).not.toHaveFocus();
+
+    await user.keyboard("{Tab}");
+    const viewResults = screen.getByRole("button", { name: "View Results" });
+    await waitFor(() => expect(viewResults).toHaveFocus());
+    await user.keyboard("{ArrowUp}");
+    expect(viewResults).toHaveFocus();
+    expect(back).not.toHaveFocus();
+  });
+
+  it("cycles the lens filter with ] and [ without moving focus or zone", async () => {
+    const user = userEvent.setup();
+    renderView({
+      isRunning: true,
+      data: makeProgressData({ agents: [makeAgent(), makeDetective()] }),
+    });
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+    const scroller = document.activeElement as HTMLElement;
+
+    const allChip = screen.getByRole("radio", { name: "All" });
+    const guardian = screen.getByRole("radio", { name: /Guardian/ });
+    const detective = screen.getByRole("radio", { name: /Detective/ });
+
+    await user.keyboard("]");
+    await waitFor(() => expect(guardian).toBeChecked());
+    expect(scroller).toHaveFocus();
+
+    await user.keyboard("]");
+    await waitFor(() => expect(detective).toBeChecked());
+
+    await user.keyboard("]");
+    await waitFor(() => expect(allChip).toBeChecked());
+
+    // "[[" is userEvent's escape for a literal [ - a bare [ opens a key descriptor.
+    await user.keyboard("[[");
+    await waitFor(() => expect(detective).toBeChecked());
+
+    await user.keyboard("[[");
+    await waitFor(() => expect(guardian).toBeChecked());
+    expect(scroller).toHaveFocus();
+    expect(progressPane).toHaveAttribute("data-state", "focused");
+  });
+
+  it("cycles the lens filter with ] from the download, action and chip rows too", async () => {
+    const user = userEvent.setup();
+    renderView({
+      isRunning: false,
+      onViewResults: vi.fn(),
+      data: makeProgressData({
+        agents: [makeAgent(), makeDetective()],
+        contextSnapshot: makeContextSnapshot(),
+      }),
+    });
+
+    const guardian = screen.getByRole("radio", { name: /Guardian/ });
+    const detective = screen.getByRole("radio", { name: /Detective/ });
+    const allChip = screen.getByRole("radio", { name: "All" });
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
+        "data-state",
+        "focused",
+      ),
+    );
+
+    await user.keyboard("{Tab}");
+    const download = screen.getByRole("button", { name: "Download .txt" });
+    await waitFor(() => expect(download).toHaveFocus());
+    await user.keyboard("]");
+    await waitFor(() => expect(guardian).toBeChecked());
+    expect(download).toHaveFocus();
+
+    await user.keyboard("{Tab}");
+    const viewResults = screen.getByRole("button", { name: "View Results" });
+    await waitFor(() => expect(viewResults).toHaveFocus());
+    await user.keyboard("]");
+    await waitFor(() => expect(detective).toBeChecked());
+    expect(viewResults).toHaveFocus();
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(detective).toHaveFocus());
+    await user.keyboard("]");
+    await waitFor(() => expect(allChip).toBeChecked());
   });
 
   it("continues past the last action into the log, and stops at the first one", async () => {
@@ -1345,22 +1443,36 @@ describe("ReviewProgressView", () => {
     expectSingleReticle(container);
   });
 
-  it("advertises the Filter shortcut while the run has agents to filter by", async () => {
+  it("advertises the bracket lens cycling beside the f chip jump while the run has agents", async () => {
+    const user = userEvent.setup();
     renderView({
       isRunning: true,
       onCancel: vi.fn(),
       data: makeProgressData({ agents: [makeAgent()] }),
     });
 
-    expect(await screen.findByText("Filter")).toBeInTheDocument();
-    expect(screen.getByText("f")).toBeInTheDocument();
+    // Two gestures on the same row, named apart: the brackets move the lens,
+    // f walks focus onto the chips.
+    expect(await screen.findByText("[/]")).toBeInTheDocument();
+    expect(screen.getByText("[/]").parentElement).toContainElement(screen.getByText("Filter"));
+    expect(screen.getByText("f").parentElement).toContainElement(screen.getByText("Filters"));
+
+    await user.keyboard("f");
+    await waitFor(() => expect(screen.getByRole("radio", { name: "All" })).toHaveFocus());
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(screen.getByRole("log")).toHaveFocus());
+
+    expect(screen.getByText("[/]").parentElement).toContainElement(screen.getByText("Filter"));
+    expect(screen.getByText("f").parentElement).toContainElement(screen.getByText("Filters"));
   });
 
-  it("drops the Filter shortcut when the run has no agents to filter by", async () => {
+  it("drops the Filter shortcuts when the run has no agents to filter by", async () => {
     renderView({ isRunning: true, onCancel: vi.fn() });
 
     expect(await screen.findByRole("button", { name: "Cancel" })).toBeInTheDocument();
     expect(screen.queryByText("Filter")).not.toBeInTheDocument();
+    expect(screen.queryByText("Filters")).not.toBeInTheDocument();
+    expect(screen.queryByText("[/]")).not.toBeInTheDocument();
     expect(screen.queryByText("f")).not.toBeInTheDocument();
   });
 

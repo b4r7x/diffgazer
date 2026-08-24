@@ -8,7 +8,7 @@ import {
   makeCreateReviewResponse,
 } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { Toaster } from "@diffgazer/ui/components/toast";
+import { Toaster, toast } from "@diffgazer/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -83,8 +83,21 @@ function renderHomePage(api = createTestApi()) {
   return render(<HomePage />, { wrapper: Wrapper });
 }
 
+// The toast store outlives a render, so a toast one row raises would otherwise
+// leak into the next row's role queries. Draining goes through the public
+// dismiss API and waits for the Toaster to unmount them.
+async function drainToasts() {
+  const { unmount } = render(<Toaster />);
+  act(() => {
+    toast.dismiss();
+  });
+  await waitFor(() => expect(document.querySelectorAll('[data-slot="toast"]')).toHaveLength(0));
+  unmount();
+}
+
 describe("HomePage composition", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await drainToasts();
     mockNavigate.mockReset();
     setActiveSessions(null, null);
 
@@ -157,6 +170,69 @@ describe("HomePage composition", () => {
       ),
     );
     expect(api.saveSettings).toHaveBeenCalledOnce();
+  });
+
+  it("opens the running review the server refused the start for", async () => {
+    const user = userEvent.setup();
+    const running = makeActiveReviewSession({
+      reviewId: "22222222-2222-4222-8222-222222222222",
+      mode: "unstaged",
+    });
+    // The server refuses because that review is live, and the active-session
+    // endpoint reports it from that moment on — nothing was resumable at mount.
+    mockCreateReview.mockImplementation(async () => {
+      setActiveSessions(running, null);
+      const refusal = new Error("A review is already running") as Error & {
+        status: number;
+        code: string;
+      };
+      refusal.status = 409;
+      refusal.code = "REVIEW_IN_PROGRESS";
+      throw refusal;
+    });
+    renderHomePage();
+
+    await user.click(await screen.findByRole("menuitem", { name: "Review Unstaged" }));
+
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/review/{-$reviewId}",
+        params: { reviewId: running.reviewId },
+        search: { mode: "unstaged", live: true },
+      }),
+    );
+    expect(await screen.findByText("Opened the Running Review")).toBeInTheDocument();
+  });
+
+  it("offers the running review of the other mode the server refused the start for", async () => {
+    const user = userEvent.setup();
+    const running = makeActiveReviewSession({
+      reviewId: "33333333-3333-4333-8333-333333333333",
+      mode: "staged",
+    });
+    // The live review covers staged changes, so the unstaged re-read reports
+    // nothing: only re-reading both modes can name the review that refused it.
+    mockCreateReview.mockImplementation(async () => {
+      setActiveSessions(null, running);
+      const refusal = new Error("A review is already running") as Error & {
+        status: number;
+        code: string;
+      };
+      refusal.status = 409;
+      refusal.code = "REVIEW_IN_PROGRESS";
+      throw refusal;
+    });
+    renderHomePage();
+
+    await user.click(await screen.findByRole("menuitem", { name: "Review Unstaged" }));
+
+    await user.click(await screen.findByRole("button", { name: "Open Running Review" }));
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/review/{-$reviewId}",
+      params: { reviewId: running.reviewId },
+      search: { mode: "staged", live: true },
+    });
   });
 
   it("keeps trusted home actions when configuration init succeeds", async () => {

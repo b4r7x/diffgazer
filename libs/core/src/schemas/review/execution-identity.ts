@@ -39,7 +39,6 @@ const ExecutionSafeVersionSchema = z
 export const ExecutionLimitsSchema = z
   .strictObject({
     maxInputTokens: ExecutionPositiveIntegerSchema,
-    maxOutputTokens: ExecutionPositiveIntegerSchema,
     maxResponseBytes: ExecutionPositiveIntegerSchema,
     wallTimeMs: ExecutionPositiveIntegerSchema,
     maxRetries: ExecutionNonnegativeIntegerSchema,

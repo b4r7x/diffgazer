@@ -124,7 +124,10 @@ export function useReviewStream() {
     } catch (error) {
       const message = getErrorMessage(error, "Failed to cancel the review session.");
       if (isCurrentCancel()) {
-        dispatch({ type: "ERROR", error: message });
+        // A cancel that never reached the server says nothing about the run: it
+        // stays transport-class so the live screen keeps its retry/cancel grammar
+        // instead of being replaced by a terminal gate card.
+        dispatch({ type: "ERROR", error: message, errorCode: "STREAM_ERROR" });
       }
       return { status: "error", message };
     }
