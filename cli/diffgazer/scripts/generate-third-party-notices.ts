@@ -113,6 +113,15 @@ function readLicenseText(packageDir: string, packageJson: PackageJson): string |
       readFileSync(resolve(WORKSPACE_ROOT, "libs/keys/LICENSE"), "utf-8"),
     );
   }
+  if (packageJson.name === "sugar-high" && packageJson.license === "MIT") {
+    // sugar-high declares MIT (package.json license field, README "License" section) but
+    // publishes no license text anywhere — the npm tarballs (2.0.2-2.1.0) and the upstream
+    // repository carry no LICENSE file — so the standard MIT text is vendored here,
+    // attributed to the project rather than an invented personal copyright line.
+    return normalizeLicenseText(
+      readFileSync(resolve(PACKAGE_ROOT, "scripts/licenses/sugar-high-MIT.txt"), "utf-8"),
+    );
+  }
   if (packageJson.name === "@hono/zod-validator" && packageJson.license === "MIT") {
     // Its published tarball declares MIT but omits LICENSE; the Hono distribution's
     // MIT notice supplies the same project/author attribution instead of inventing one.

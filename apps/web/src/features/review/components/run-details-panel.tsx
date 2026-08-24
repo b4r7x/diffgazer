@@ -16,7 +16,7 @@ export function RunDetailsPanel({ notices, lensRows }: RunDetailsPanelProps) {
   if (notices.length === 0 && lensRows.length === 0) return null;
 
   return (
-    <Panel aria-label="Run details">
+    <Panel density="compact" aria-label="Run details">
       <Panel.Label variant="border" aria-hidden="true">
         Run Details
       </Panel.Label>

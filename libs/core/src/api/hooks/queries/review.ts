@@ -4,7 +4,11 @@ import {
   queryOptions,
   skipToken,
 } from "@tanstack/react-query";
-import type { ReviewCursor, ReviewMode } from "../../../schemas/review/index.js";
+import type {
+  CreateReviewOutcome,
+  ReviewCursor,
+  ReviewMode,
+} from "../../../schemas/review/index.js";
 import type { BoundApi } from "../../bound.js";
 
 export const reviewQueries = {
@@ -36,6 +40,16 @@ export const reviewQueries = {
       queryKey: [...reviewQueries.all(), "active-session", mode] as const,
       queryFn: ({ signal }) => api.getActiveReviewSession(mode, signal),
       staleTime: 0,
+    }),
+
+  // Client-authored and never fetched: what the create response reported about
+  // the run it opened, recorded so the review screen that the create opens
+  // renders the outcome the server already decided rather than waiting for the
+  // stream to replay it.
+  createOutcome: (reviewId: string | undefined) =>
+    queryOptions<CreateReviewOutcome>({
+      queryKey: [...reviewQueries.all(), "create-outcome", reviewId] as const,
+      queryFn: skipToken,
     }),
 
   // Key carries no reviewId: the queryFn ignores it, so a reviewId in the key

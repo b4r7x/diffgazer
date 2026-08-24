@@ -35,8 +35,8 @@ export function CategoryStatsTable({ categories, className }: CategoryStatsTable
             {/* Category names stay neutral on purpose: hue is the severity vocabulary
                 on this screen, and tinting categories made the same colors mean two
                 different things side by side. */}
-            <td className="py-3">{category.name}</td>
-            <td className="py-3 text-right font-bold">{category.count}</td>
+            <td className="py-2">{category.name}</td>
+            <td className="py-2 text-right font-bold">{category.count}</td>
           </tr>
         ))}
       </tbody>

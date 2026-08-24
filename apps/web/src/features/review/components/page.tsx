@@ -59,10 +59,10 @@ export function ReviewPage() {
     reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null,
   );
   const [streamNotFound, setStreamNotFound] = useState(false);
-  // Which of a saved run's two screens is showing. "auto" defers to the route:
-  // a deep link that names a finding opens the results, everything else opens
-  // the summary. Both moves between them are explicit, so returning from a deep
-  // link's results screen reaches the summary instead of re-resolving the link.
+  // Which of a saved run's two screens is showing. "auto" defers to the run and
+  // the route (resolved in one place below). Both moves between them are
+  // explicit, so returning from an auto-opened results screen reaches the
+  // summary instead of re-resolving the landing rule.
   const [savedScreen, setSavedScreen] = useState<"auto" | "summary" | "results">("auto");
   const notFoundReportedRef = useRef<string | null>(null);
   const reportErrorReportedRef = useRef<string | null>(null);
@@ -142,14 +142,20 @@ export function ReviewPage() {
         />
       );
     }
-    // A run that reported lenses opens at its summary whether or not it
-    // finished; the terminal data carries the `outcome` the summary reports.
+    // A run that reported lenses is worth reopening whether or not it finished.
+    // A completed one that found something opens at its findings: reopening it
+    // is a request to read them. A run that found nothing, and a failed one,
+    // open at the summary, where the receipt and the remedy are told in full;
+    // the terminal data carries the `outcome` it reports.
     if (savedOutcome.kind === "results" || savedOutcome.kind === "terminal") {
       const savedIssueId = resolveValidIssueId(savedOutcome.data.issues, initialIssueId);
       const failedOutcome =
         savedOutcome.kind === "terminal" ? savedOutcome.data.outcome : undefined;
+      const hasFindings = savedOutcome.data.issues.length > 0;
       const showResults =
-        savedScreen === "results" || (savedScreen === "auto" && savedIssueId !== null);
+        savedScreen === "results" ||
+        (savedScreen === "auto" &&
+          (savedIssueId !== null || (failedOutcome === undefined && hasFindings)));
 
       if (!showResults) {
         return (
@@ -168,9 +174,9 @@ export function ReviewPage() {
           droppedDuplicates={savedOutcome.data.droppedDuplicates}
           lensStats={savedOutcome.data.lensStats}
           outcome={failedOutcome}
-          // A deep link into a completed run skipped the summary, so there is
-          // nothing to return to. A failed run always keeps the way back: its
-          // summary is where the outcome and the remedy are told in full.
+          // Escape leaves the route from a deep-linked completed run, the
+          // contract a shared issue link is written against. Every other
+          // results landing keeps the summary one keystroke away.
           onBackToSummary={
             savedIssueId && !failedOutcome ? undefined : () => setSavedScreen("summary")
           }

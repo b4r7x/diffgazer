@@ -4,10 +4,11 @@ import {
   toEvidencePresentation,
 } from "@diffgazer/core/review";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { CodeBlock } from "@diffgazer/ui/components/code-block";
+import { CodeBlock, type CodeBlockToken } from "@diffgazer/ui/components/code-block";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { PathValue } from "@/components/shared/path-value";
+import { highlightExcerpt } from "../../lib/highlight-excerpt";
 import { FixPlanChecklist } from "../fix-plan-checklist";
 
 export function DetailsTabContent({
@@ -116,7 +117,8 @@ export function DetailsTabContent({
 const EMPTY_EVIDENCE_EXCERPT = "(empty excerpt)";
 
 function CodeEvidence({ item }: { item: Extract<EvidencePresentation, { kind: "code" }> }) {
-  const lines = item.excerpt.length > 0 ? item.excerpt.split(/\r?\n/) : [EMPTY_EVIDENCE_EXCERPT];
+  const lines: (string | CodeBlockToken[])[] =
+    item.excerpt.length > 0 ? highlightExcerpt(item.excerpt, item.file) : [EMPTY_EVIDENCE_EXCERPT];
 
   return (
     // Rail, not the default enclosure: an aside annotates the issue prose it sits
@@ -137,8 +139,11 @@ function CodeEvidence({ item }: { item: Extract<EvidencePresentation, { kind: "c
           <span className="shrink-0">File:&nbsp;</span>
           <PathValue value={item.file} className="text-foreground/80" />
         </div>
+        {/* Excerpts are real source, so indentation carries meaning and the block
+            scrolls horizontally; its scroll region is in the tab order and pans
+            with the arrow keys ScrollArea gives a focused region. */}
         <CodeBlock label={`${item.label}: ${item.title}`}>
-          <CodeBlock.Content tabIndex={-1}>
+          <CodeBlock.Content>
             {lines.map((line, offset) => (
               <CodeBlock.Line
                 key={`${item.ordinal}:${offset}`}

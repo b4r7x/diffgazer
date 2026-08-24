@@ -270,7 +270,7 @@ export function ReviewSummaryView({
         >
           {/* pt-4 keeps the corner labels the inner panels hang above their
               top border clear of the scrollport's clipped edge. */}
-          <div className="flex flex-col gap-6 pt-4">
+          <div className="flex flex-col gap-4 pt-4">
             <ReviewCompleteSummary
               stats={stats}
               severityCounts={summary.severityCounts}

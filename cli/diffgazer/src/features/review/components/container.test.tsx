@@ -637,6 +637,30 @@ describe("ReviewContainer", () => {
     await waitUntil(() => (lastFrame() ?? "").includes("Route: settings/providers"));
   });
 
+  test("a run the create call answered opens on the no-changes view instead of the progress frame", async () => {
+    // The admitted-outcome case: no stream event has landed yet, so the run
+    // still looks freshly started — steps unwalked, no error, no reviewId.
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        gate: "no-diff",
+        isNoDiffError: true,
+        hasStarted: false,
+        steps: [],
+        issues: [],
+        events: [],
+        reviewId: null,
+        startedAt: null,
+      }),
+    );
+
+    const { lastFrame } = renderContainer({
+      initialRoute: { screen: "review", mode: "staged", live: true },
+    });
+
+    expect(lastFrame() ?? "").toContain("No staged changes");
+    expect(lastFrame() ?? "").not.toContain("Live Activity Log");
+  });
+
   test("Switch Mode from an unconfigured resumed no-diff review opens provider setup without resetting first", async () => {
     apiMocks.useConfigurationInit.mockReturnValue({
       data: makeUnconfiguredInitResponse(),

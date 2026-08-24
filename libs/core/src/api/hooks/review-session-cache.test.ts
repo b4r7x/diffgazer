@@ -97,7 +97,11 @@ describe("review active-session cache helpers", () => {
   it("caches a created unstaged active session under its mode key and clears by review id", async () => {
     const unstaged = makeActiveSession({ mode: "unstaged" });
     const harness = setup({
-      createReview: vi.fn(async () => ({ reviewId: unstaged.reviewId, session: unstaged })),
+      createReview: vi.fn(async () => ({
+        reviewId: unstaged.reviewId,
+        session: unstaged,
+        outcome: "running" as const,
+      })),
     });
     api = harness.api;
 
@@ -157,6 +161,7 @@ describe("review active-session cache helpers", () => {
       createReview: vi.fn(async () => ({
         reviewId: createdSession.reviewId,
         session: createdSession,
+        outcome: "running" as const,
       })),
     });
     api = harness.api;

@@ -62,7 +62,7 @@ describe("HistoryInsightsPane", () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it("renders the severity tag and title on one line with the location on its own line", () => {
+  it("keeps the location out of the issue label and on its own row", () => {
     render(
       <HistoryInsightsPane
         runId="run-1"
@@ -79,15 +79,53 @@ describe("HistoryInsightsPane", () => {
       />,
     );
 
-    // The single-line ellipsis itself is CSS, which jsdom does not compute; what
-    // is assertable is the two-line shape it exists for — tag and title share the
-    // first line, and the location is a separate element below rather than text
-    // trailing the title.
-    const title = screen.getByText("Missing coverage for server state");
-    const location = screen.getByText("header.tsx:70");
+    // Column alignment is CSS, which jsdom does not compute; what is assertable
+    // is the structure it rests on — the severity tag and title form the row's
+    // label, the location is a separate described-by row after them.
+    const option = screen.getByRole("option");
+    expect(option).toHaveAccessibleName(/^\[Medium\]\s*Missing coverage for server state$/);
+    expect(option).toHaveAccessibleDescription("header.tsx:70");
+    expect(option).toHaveTextContent(
+      /\[Medium\]\s*Missing coverage for server state\s*header\.tsx:70/,
+    );
+  });
 
-    expect(title.parentElement).toContainElement(screen.getByText("[Medium]"));
-    expect(title.parentElement).not.toContainElement(location);
+  it("lays the row out as glyph, severity, title, then location", () => {
+    render(
+      <HistoryInsightsPane
+        runId="run-1"
+        severityCounts={null}
+        issues={[
+          makeIssue({
+            id: "issue-1",
+            severity: "medium",
+            title: "Missing coverage for server state",
+            file: "src/components/layout/header.tsx",
+            line_start: 70,
+          }),
+        ]}
+      />,
+    );
+
+    // The title element spreads its children into the row grid, so the grid's
+    // first track is filled by the glyph the list's indicator renders, not by
+    // anything this pane writes. Flatten the title away to read the real order.
+    const option = screen.getByRole("option");
+    const labelId = option.getAttribute("aria-labelledby");
+    const title = labelId === null ? null : document.getElementById(labelId);
+    const grid = title?.parentElement ?? null;
+    expect(grid).not.toBeNull();
+
+    const tracks = Array.from(grid?.children ?? []).flatMap((child) =>
+      child === title ? Array.from(child.children) : [child],
+    );
+
+    expect(tracks.map((element) => element.textContent)).toEqual([
+      "\u258C",
+      "[Medium]",
+      "Missing coverage for server state",
+      "header.tsx:70",
+    ]);
   });
 
   it("falls back to the file name when a run issue has no line location", () => {

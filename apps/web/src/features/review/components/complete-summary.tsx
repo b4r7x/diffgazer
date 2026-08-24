@@ -73,12 +73,13 @@ export function ReviewCompleteSummary({
   const missingFindings = failure ? buildMissingLensIssuesNotice(lensStats) : "";
 
   return (
-    <div className={cn("flex flex-col gap-6", className)}>
+    <div className={cn("flex flex-col gap-4", className)}>
       {/* tone repaints border-color only, so the corner chip - which tracks the
           enclosure through --panel-border-color - would keep the neutral edge;
           lifting --panel-border puts chip and frame on the same colour. */}
       <Panel
         tone={failure ? "error" : "success"}
+        density="compact"
         aria-label="Run status"
         className={
           failure
@@ -129,11 +130,11 @@ export function ReviewCompleteSummary({
         </Panel.Content>
       </Panel>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Labelled panels, like every other block of information in the app.
             The frames stay at rest: the single reticle belongs to the page
             panel enclosing the summary, claimed while focus sits inside it. */}
-        <Panel aria-label="Severity breakdown">
+        <Panel density="compact" aria-label="Severity breakdown">
           <Panel.Label variant="border" aria-hidden="true">
             Severity Breakdown
           </Panel.Label>
@@ -152,6 +153,7 @@ export function ReviewCompleteSummary({
             pairing and says so across the whole row: stretched to a half-width
             column it read as a box with a lost sentence in it. */}
         <Panel
+          density="compact"
           aria-label="Issues by category"
           className={hasCategories ? undefined : "col-span-full"}
         >

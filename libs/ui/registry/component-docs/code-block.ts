@@ -112,6 +112,12 @@ export const codeBlockDoc: ComponentDoc = {
       description: "Language identifier used by labels and syntax-highlighting selectors.",
     },
     {
+      attribute: "data-wrap",
+      appliesTo: "CodeBlock.Content",
+      values: '"on"',
+      description: "Present when `wrap` soft-wraps long lines instead of scrolling them.",
+    },
+    {
       attribute: "data-state",
       appliesTo: "CodeBlock.Line",
       values: '"highlight" | "added" | "removed"',
@@ -186,6 +192,13 @@ export const codeBlockDoc: ComponentDoc = {
         required: false,
         defaultValue: "true",
         description: "Auto-split mode only. Renders a line-number gutter for string children.",
+      },
+      wrap: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description:
+          "Soft-wraps long lines instead of scrolling them horizontally. The line's flex row is the hanging indent, so continuation lines land under the code column, past the gutter. Use it for prose-like content in a code shell; leave it off for source, where indentation carries meaning.",
       },
       children: {
         type: "string | ReactNode",
@@ -300,6 +313,13 @@ export const codeBlockDoc: ComponentDoc = {
         required: false,
         defaultValue: "true",
         description: "Renders a line-number gutter when true.",
+      },
+      wrap: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description:
+          "Soft-wraps long lines instead of scrolling them horizontally. The line's flex row is the hanging indent, so continuation lines land under the code column, past the gutter. Use it for prose-like content in a code shell; leave it off for source, where indentation carries meaning.",
       },
       lineStates: {
         type: 'Record<number, "highlight" | "added" | "removed">',

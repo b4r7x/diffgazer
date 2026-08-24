@@ -1,18 +1,21 @@
 /** @vitest-environment jsdom */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { err, ok, type Result } from "../../result.js";
 import type { StreamReviewError } from "../../review/index.js";
 import { type SettingsConfig, SettingsConfigSchema } from "../../schemas/config/index.js";
-import { ReviewErrorCode } from "../../schemas/review/index.js";
+import { type CreateReviewOutcome, ReviewErrorCode } from "../../schemas/review/index.js";
 import { createDeferred } from "../../testing/deferred.js";
+import { makeActiveReviewSession } from "../../testing/factories.js";
 import { makeReadiness } from "../../testing/provider-fixtures.js";
 import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
 import type { ResumeReviewResult } from "../review.js";
 import type { ReviewContextResponse } from "../types.js";
 import { reviewQueries } from "./queries/review.js";
+import { useCreateReview } from "./review.js";
 import { useReviewLifecycleBase } from "./use-review-lifecycle-base.js";
 
 // Parsed through the real schema so a fixture cannot claim a settings state the
@@ -547,5 +550,82 @@ describe("useReviewLifecycleBase transport reconnect", () => {
     });
 
     await waitFor(() => expect(resumeReviewStream).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe("useReviewLifecycleBase create outcome", () => {
+  function createOutcomeHarness(outcome: CreateReviewOutcome) {
+    const session = makeActiveReviewSession({ mode: "unstaged" });
+    return createTestQueryWrapper({
+      api: {
+        getSettings: vi.fn(async () => makeSettings()),
+        createReview: vi.fn(async () => ({ reviewId: session.reviewId, session, outcome })),
+        // The stream is attached but silent: nothing has been replayed yet, so
+        // the gate under test can only come from the create response.
+        resumeReviewStream: vi.fn(() => new Promise<never>(() => {})),
+        getReviewContext: vi.fn(),
+      },
+    });
+  }
+
+  function useStartedReview() {
+    const create = useCreateReview();
+    const [reviewId, setReviewId] = useState<string | undefined>();
+    const lifecycle = useReviewLifecycleBase({
+      configLoading: false,
+      readiness: makeReadiness("ready"),
+      reviewId,
+      onComplete: vi.fn(),
+    });
+    return { create, setReviewId, lifecycle };
+  }
+
+  it("opens a review the create call already answered on the no-diff gate", async () => {
+    const harness = createOutcomeHarness("no-diff");
+
+    const { result } = renderHook(useStartedReview, { wrapper: harness.Wrapper });
+
+    await act(async () => {
+      const response = await result.current.create.mutateAsync({ mode: "unstaged" });
+      result.current.setReviewId(response.reviewId);
+    });
+
+    expect(result.current.lifecycle.gate).toBe("no-diff");
+    expect(result.current.lifecycle.checks.isNoDiffError).toBe(true);
+    expect(result.current.lifecycle.checks.loadingMessage).toBeNull();
+    // No event has been replayed, so the gate is the create response's answer
+    // rather than the stream's.
+    expect(result.current.lifecycle.stream.state.errorCode).toBeNull();
+  });
+
+  it("opens a run the create call already failed on the terminal-error gate", async () => {
+    const harness = createOutcomeHarness("failed");
+
+    const { result } = renderHook(useStartedReview, { wrapper: harness.Wrapper });
+
+    await act(async () => {
+      const response = await result.current.create.mutateAsync({ mode: "unstaged" });
+      result.current.setReviewId(response.reviewId);
+    });
+
+    expect(result.current.lifecycle.gate).toBe("terminal-error");
+    expect(result.current.lifecycle.checks.isTerminalStreamError).toBe(true);
+    expect(result.current.lifecycle.checks.loadingMessage).toBeNull();
+    expect(result.current.lifecycle.stream.state.errorCode).toBeNull();
+  });
+
+  it("leaves a run the create call reported as running on its running gate", async () => {
+    const harness = createOutcomeHarness("running");
+
+    const { result } = renderHook(useStartedReview, { wrapper: harness.Wrapper });
+
+    await act(async () => {
+      const response = await result.current.create.mutateAsync({ mode: "unstaged" });
+      result.current.setReviewId(response.reviewId);
+    });
+
+    expect(result.current.lifecycle.gate).not.toBe("no-diff");
+    expect(result.current.lifecycle.checks.isNoDiffError).toBe(false);
+    expect(result.current.lifecycle.start.canStart).toBe(true);
   });
 });

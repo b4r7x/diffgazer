@@ -68,6 +68,8 @@ export {
   type ActiveReviewSessionResponse,
   ActiveReviewSessionResponseSchema,
   ActiveReviewSessionSchema,
+  type CreateReviewOutcome,
+  CreateReviewOutcomeSchema,
   type CreateReviewResponse,
   CreateReviewResponseSchema,
   ParsedDiffSchema,

@@ -29,7 +29,7 @@ export function IssuePreviewItem({
   return (
     <div
       className={cn(
-        "flex items-center justify-between p-3 w-full text-left",
+        "flex items-center justify-between px-3 py-2 w-full text-left",
         "bg-background border-b border-border last:border-b-0",
         className,
       )}

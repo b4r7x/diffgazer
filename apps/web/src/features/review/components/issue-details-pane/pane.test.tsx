@@ -99,6 +99,16 @@ function expectPathValue(fullValue: string, tail: string) {
   expect(tailNode.closest("[title]")).toHaveAttribute("title", fullValue);
 }
 
+/**
+ * Evidence lines are syntax-tokenized, so a row's text is spread across token
+ * spans rather than sitting in one text node.
+ */
+function evidenceLineTexts(root: ParentNode = document): string[] {
+  return [...root.querySelectorAll('[data-slot="code-block-line"] code')].map(
+    (line) => line.textContent ?? "",
+  );
+}
+
 function expectAllEvidenceVariants() {
   expect(screen.getByRole("region", { name: "Evidence" })).toHaveTextContent(
     "const value = JSON.parse(input);",
@@ -151,8 +161,9 @@ describe("IssueDetailsPane", () => {
   }
 
   function expectMalformedRangesHidden(container: HTMLElement): void {
+    const excerpts = evidenceLineTexts(container);
     for (const index of malformedEvidenceRanges.keys()) {
-      expect(screen.getByText(`retained excerpt ${index}`)).toBeInTheDocument();
+      expect(excerpts).toContain(`retained excerpt ${index}`);
     }
     expect(container.querySelectorAll('[data-slot="code-block-line-number"]')).toHaveLength(0);
   }
@@ -272,6 +283,31 @@ describe("IssueDetailsPane", () => {
     expect(
       rows.map((row) => row.querySelector('[data-slot="code-block-line-number"]')?.textContent),
     ).toEqual(["7", "8", "9"]);
+  });
+
+  it("colors evidence syntax with the shared code block token palette", () => {
+    renderPane(
+      makeIssue({
+        evidence: [
+          {
+            type: "code",
+            title: "Colored parser evidence",
+            sourceId: "source:colored-parser",
+            file: "src/parser.ts",
+            range: { start: 7, end: 7 },
+            excerpt: "const parsed = parse(input); // trusts the caller",
+          },
+        ],
+      }),
+    );
+
+    const evidence = screen.getByRole("region", { name: "Code evidence: Colored parser evidence" });
+
+    expect(evidence.querySelector(".code-keyword")).toHaveTextContent("const");
+    expect(evidence.querySelector(".code-comment")).toHaveTextContent("// trusts the caller");
+    expect(evidence.querySelector("code")).toHaveTextContent(
+      "const parsed = parse(input); // trusts the caller",
+    );
   });
 
   it("numbers every excerpt row, including one past the declared range end", () => {
@@ -430,12 +466,12 @@ describe("IssueDetailsPane", () => {
     try {
       const view = renderPane(issue);
 
-      expect(screen.getAllByText("duplicateCall();")).toHaveLength(2);
+      expect(evidenceLineTexts()).toEqual(["duplicateCall();", "duplicateCall();"]);
       expect(screen.getAllByText("Duplicate documentation excerpt.")).toHaveLength(2);
 
       view.rerender(paneElement(makeIssue({ evidence: issue.evidence })));
 
-      expect(screen.getAllByText("duplicateCall();")).toHaveLength(2);
+      expect(evidenceLineTexts()).toEqual(["duplicateCall();", "duplicateCall();"]);
       expect(screen.getAllByText("Duplicate documentation excerpt.")).toHaveLength(2);
       expect(consoleError.mock.calls.flat().map(String).join(" ")).not.toMatch(
         /same key|unique ["']key["']/i,
@@ -738,7 +774,7 @@ describe("IssueDetailsPane chrome", () => {
 });
 
 describe("IssueDetailsPane tab stops", () => {
-  it("keeps detail content out of the tab order so Tab stays a pane switcher", () => {
+  it("keeps the tab panel and evidence section out of the tab order so Tab stays a pane switcher", () => {
     renderPane(
       makeIssue({
         evidence: [
@@ -756,12 +792,34 @@ describe("IssueDetailsPane tab stops", () => {
     expect(screen.getByRole("region", { name: "Evidence" })).toHaveAttribute("tabindex", "-1");
   });
 
-  it("keeps the plain-snippet patch block out of the tab order", () => {
+  it("puts the evidence excerpt in the tab order, since it still scrolls sideways", () => {
+    renderPane(
+      makeIssue({
+        evidence: [
+          {
+            type: "code",
+            title: "Evidence",
+            sourceId: "src/example.ts",
+            excerpt: "const a = 1;",
+          },
+        ],
+      }),
+    );
+
+    expect(screen.getByRole("region", { name: "Code evidence: Evidence" })).toHaveAttribute(
+      "tabindex",
+      "0",
+    );
+  });
+
+  it("wraps the plain-snippet patch block and keeps it reachable", () => {
     renderPane(makeIssue({ suggested_patch: "const value = safeParse(input);" }), "patch");
 
-    expect(screen.getByRole("region", { name: "Suggested patch" })).toHaveAttribute(
-      "tabindex",
-      "-1",
+    const patch = screen.getByRole("region", { name: "Suggested patch" });
+    expect(patch).toHaveAttribute("tabindex", "0");
+    expect(patch.querySelector('[data-slot="code-block-content"]')).toHaveAttribute(
+      "data-wrap",
+      "on",
     );
   });
 });

@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { getErrorMessage } from "../../errors.js";
 import {
@@ -14,7 +14,7 @@ import { ReviewErrorCode } from "../../schemas/review/index.js";
 import type { ReviewContextResponse } from "../types.js";
 import { useSettings } from "./config.js";
 import { useApi } from "./context.js";
-import { refreshReviewContextCache } from "./queries/review.js";
+import { refreshReviewContextCache, reviewQueries } from "./queries/review.js";
 import { useReviewContext } from "./review.js";
 import { useReviewCompletion } from "./use-review-completion.js";
 import { useReviewStart } from "./use-review-start.js";
@@ -165,17 +165,28 @@ export function useReviewLifecycleBase(
     onStreamComplete: options.onStreamComplete,
   });
 
-  const isNoDiffError = checkNoDiffError(stream.state.errorCode);
-  const isTerminalStreamError = hasTerminalStreamError(stream.state);
+  // The create call resolves the diff before it answers, so a run it reported as
+  // no-diff or failed is already settled: the screen owes the user that answer on
+  // its first frame, not a progress view the replayed stream tears down moments
+  // later.
+  const { data: createOutcome } = useQuery(reviewQueries.createOutcome(options.reviewId));
+  const noDiffOnCreate = createOutcome === "no-diff";
+  const failedOnCreate = createOutcome === "failed";
+
+  const isNoDiffError = noDiffOnCreate || checkNoDiffError(stream.state.errorCode);
+  const isTerminalStreamError = failedOnCreate || hasTerminalStreamError(stream.state);
   const isCheckingForChanges = checkForChanges(stream.state.isStreaming, stream.state.steps);
   const isInitializing = !hasStarted && canStart && !options.configLoading;
 
-  const loadingMessage = getLoadingMessage({
-    configLoading: options.configLoading,
-    settingsLoading,
-    isCheckingForChanges,
-    isInitializing,
-  });
+  const loadingMessage =
+    noDiffOnCreate || failedOnCreate
+      ? null
+      : getLoadingMessage({
+          configLoading: options.configLoading,
+          settingsLoading,
+          isCheckingForChanges,
+          isInitializing,
+        });
 
   const contextStep = stream.state.steps.find((step) => step.id === "context");
   const contextReviewId =

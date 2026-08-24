@@ -27,6 +27,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
 import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
+import { makeReviewLifecycleBase } from "../testing/review-lifecycle-base";
 
 const { mockNavigate, mockUseReviewLifecycleBase, routeParams } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -61,41 +62,6 @@ import { ReviewContainer } from "./container";
 let mockLoadConfigurationInit: Mock<BoundApi["loadConfigurationInit"]>;
 let mockCreateReview: Mock<BoundApi["createReview"]>;
 
-function makeLifecycleBaseReturn(
-  overrides: Partial<UseReviewLifecycleBaseResult> = {},
-): UseReviewLifecycleBaseResult {
-  return {
-    stream: {
-      state: { ...createInitialReviewState(), reviewId: null, hasCompleted: false, notices: [] },
-      abort: vi.fn(),
-      cancel: vi.fn().mockResolvedValue(null),
-      resume: vi.fn().mockResolvedValue(undefined),
-      isStreamControllerActive: vi.fn().mockReturnValue(false),
-    },
-    checks: {
-      isNoDiffError: false,
-      isTerminalStreamError: false,
-      loadingMessage: null,
-    },
-    completion: {
-      isCompleting: false,
-      completedAt: null,
-      skipDelay: vi.fn(),
-    },
-    start: {
-      hasStarted: true,
-      canStart: false,
-    },
-    resumeReview: vi.fn().mockResolvedValue(undefined),
-    reset: vi.fn(),
-    gate: "unconfigured",
-    contextSnapshot: null,
-    contextRefreshError: null,
-    retryContextRefresh: vi.fn(),
-    ...overrides,
-  };
-}
-
 function createTestApi(): BoundApi {
   const init = makeReadyInitResponse();
   return {
@@ -129,7 +95,7 @@ function makeStreamFailure(options: {
   lensStats?: LensStat[];
   isStreaming?: boolean;
 }) {
-  return makeLifecycleBaseReturn({
+  return makeReviewLifecycleBase({
     gate: "terminal-error",
     stream: {
       state: {
@@ -194,7 +160,9 @@ describe("ReviewContainer configuration gates", () => {
       .mockRejectedValue(new Error("init unavailable"));
     mockUseReviewLifecycleBase.mockReset();
     mockCreateReview = vi.fn<BoundApi["createReview"]>();
-    mockUseReviewLifecycleBase.mockReturnValue(makeLifecycleBaseReturn());
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({ gate: "unconfigured", start: { canStart: false } }),
+    );
   });
 
   it("replaces the dead live screen with the gate card, no raw diagnostics", async () => {
@@ -449,7 +417,7 @@ describe("ReviewContainer configuration gates", () => {
     let capturedOptions: UseReviewLifecycleBaseOptions | undefined;
     mockUseReviewLifecycleBase.mockImplementation((options) => {
       capturedOptions = options;
-      return makeLifecycleBaseReturn();
+      return makeReviewLifecycleBase({ gate: "unconfigured", start: { canStart: false } });
     });
 
     renderReviewContainer({ allowResumeWithoutSetup: true });
@@ -523,7 +491,7 @@ describe("ReviewContainer review start", () => {
 
   it("draws the review surface while the admitted run is starting", async () => {
     mockUseReviewLifecycleBase.mockReturnValue(
-      makeLifecycleBaseReturn({
+      makeReviewLifecycleBase({
         gate: "loading",
         checks: {
           isNoDiffError: false,
@@ -547,14 +515,31 @@ describe("ReviewContainer review start", () => {
     expect(screen.queryByText("Checking for changes...")).not.toBeInTheDocument();
   });
 
+  it("opens a run the create call answered on the no-changes view, never on the progress frame", async () => {
+    // The admitted-outcome case: the run still looks freshly started — nothing
+    // has streamed — so only the gate keeps the progress frame off the screen.
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        gate: "no-diff",
+        checks: { isNoDiffError: true, isTerminalStreamError: false, loadingMessage: null },
+        start: { hasStarted: false, canStart: true },
+      }),
+    );
+
+    renderReviewContainer();
+
+    expect(await screen.findByRole("button", { name: "Review Unstaged" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Progress" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Live Activity Log" })).not.toBeInTheDocument();
+  });
+
   it("renders an admission fast-fail from the alternate-mode start inline with the providers jump", async () => {
     const user = userEvent.setup();
     mockUseReviewLifecycleBase.mockReturnValue(
-      makeLifecycleBaseReturn({
+      makeReviewLifecycleBase({
         gate: "no-diff",
         checks: { isNoDiffError: true, isTerminalStreamError: false, loadingMessage: null },
         stream: {
-          ...makeLifecycleBaseReturn().stream,
           cancel: vi.fn().mockResolvedValue({ status: "cancelled", reason: "cancelled" }),
         },
       }),
@@ -584,7 +569,7 @@ describe("ReviewContainer review start", () => {
 
   it("keeps the plain readout while configuration is still unresolved", async () => {
     mockUseReviewLifecycleBase.mockReturnValue(
-      makeLifecycleBaseReturn({
+      makeReviewLifecycleBase({
         gate: "loading",
         checks: {
           isNoDiffError: false,

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
-import { atRuleBody, ruleBody } from "../../testing/css-contract";
+import { atRuleBody, eachRule, ruleBody } from "../../testing/css-contract";
 
 describe("CodeBlock CSS contract", () => {
   // jsdom's CSSOM ignores rules nested in @layer and pseudo-element styles, so
@@ -46,11 +46,40 @@ describe("CodeBlock CSS contract", () => {
     expect(number).toContain("padding-right: 12px");
   });
 
+  it.each([
+    "keyword",
+    "string",
+    "comment",
+    "type",
+    "function",
+    "attr",
+  ])("colors .code-%s from its --code token", (token) => {
+    // apps/web tokenizes evidence into these class names, so a rename here drops
+    // the coloring with every suite on both sides still green.
+    const rule = eachRule(css).find((candidate) =>
+      candidate.selector
+        .split(",")
+        .some((part) => part.trim().endsWith(`[data-slot="code-block"] .code-${token}`)),
+    );
+
+    expect(rule).toBeDefined();
+    expect(rule?.declarations).toContain(`color: var(--code-${token})`);
+  });
+
   it("flattens the ramp in forced colors", () => {
     const forced = atRuleBody(css, "@media (forced-colors: active)");
     expect(ruleBody(forced, '[data-slot="code-block-dots"] span')).toContain(
       "background: GrayText",
     );
+  });
+
+  it('soft-wraps the body under data-wrap="on", overriding the default pre', () => {
+    // The default rule sits on a lower-specificity selector, so a wrapped body
+    // that lost this override would silently go back to horizontal scrolling.
+    const wrapped = ruleBody(css, '[data-slot="code-block-content"][data-wrap="on"] code');
+    expect(ruleBody(css, '[data-slot="code-block-line"] > code')).toContain("white-space: pre");
+    expect(wrapped).toContain("white-space: pre-wrap");
+    expect(wrapped).toContain("overflow-wrap: anywhere");
   });
 
   it("keeps the optical pull-back off the headers that centre their label", () => {

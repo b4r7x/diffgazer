@@ -173,6 +173,7 @@ sessionsRouter.post(
       const response: CreateReviewResponse = {
         reviewId: result.value.reviewId,
         session: toActiveReviewSessionResponse(result.value.session),
+        outcome: result.value.outcome,
       };
       return c.json(response);
     } finally {

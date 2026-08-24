@@ -29,7 +29,8 @@ interface UseReviewDetailsTabKeyboardResult {
 
 interface FocusedStepState {
   issueId: string | null;
-  index: number;
+  /** null until the reader asks for a step: entering the pane highlights nothing. */
+  index: number | null;
 }
 
 /**
@@ -57,31 +58,37 @@ export function useReviewDetailsTabKeyboard({
 
   const [rawFocusedStep, setRawFocusedStep] = useState<FocusedStepState>({
     issueId: selectedIssueId,
-    index: 0,
+    index: null,
   });
   const issueChanged = rawFocusedStep.issueId !== selectedIssueId;
   if (issueChanged) {
-    setRawFocusedStep({ issueId: selectedIssueId, index: 0 });
+    setRawFocusedStep({ issueId: selectedIssueId, index: null });
   }
-  const rawFocusedStepIndex = issueChanged ? 0 : rawFocusedStep.index;
+  const rawFocusedStepIndex = issueChanged ? null : rawFocusedStep.index;
   // Derive the in-bounds focused step from raw state so a shrinking plan never
   // points past its last step (no effect-based clamping).
   const focusedStepIndex =
-    fixPlan.length > 0 ? Math.min(rawFocusedStepIndex, fixPlan.length - 1) : 0;
-
-  const toggleFocusedStep = () => {
-    if (fixPlan[focusedStepIndex]) onToggleStep(focusedStepIndex);
-  };
+    rawFocusedStepIndex === null || fixPlan.length === 0
+      ? null
+      : Math.min(rawFocusedStepIndex, fixPlan.length - 1);
 
   const setFocusedStepIndex = (index: number) => {
     setRawFocusedStep({ issueId: selectedIssueId, index });
+  };
+
+  const toggleFocusedStep = () => {
+    if (focusedStepIndex === null) return;
+    onToggleStep(focusedStepIndex);
   };
 
   const findChecklist = () =>
     detailsScrollRef.current?.querySelector<HTMLElement>(FIX_PLAN_CHECKLIST_SELECTOR) ?? null;
 
   const moveFocusedStep = (direction: -1 | 1) => {
-    const index = clampIndex(focusedStepIndex, direction, fixPlan.length, false);
+    const index =
+      focusedStepIndex === null
+        ? 0
+        : clampIndex(focusedStepIndex, direction, fixPlan.length, false);
     setFocusedStepIndex(index);
     focusNavigationItem(findChecklist(), {
       type: "checkbox",

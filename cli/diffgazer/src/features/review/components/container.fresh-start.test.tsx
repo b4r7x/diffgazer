@@ -3,16 +3,19 @@
  */
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { FooterProvider } from "@diffgazer/core/footer";
-import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import type { CreateReviewResponse, ReviewMode } from "@diffgazer/core/schemas/review";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
 import { makeAllConfigurationsListResponse } from "@diffgazer/core/testing/provider-fixtures";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
-import { render as renderDom, waitFor } from "@testing-library/react";
+import { act, render as renderDom, waitFor } from "@testing-library/react";
+import { render as renderInk } from "ink-testing-library";
 import type { ReactElement, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { NavigationProvider } from "../../../app/providers/navigation";
 import type { Route } from "../../../lib/routes";
+import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ReviewContainer } from "./container";
 
@@ -49,7 +52,6 @@ function makeReadyInitResponse() {
 const apiMocks = vi.hoisted(() => ({
   clearActiveSession: vi.fn(),
   createReview: vi.fn(),
-  useCreateReview: vi.fn(),
   useConfigurationInit: vi.fn(),
 }));
 
@@ -57,7 +59,6 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@diffgazer/core/api/hooks")>();
   return {
     ...actual,
-    useCreateReview: apiMocks.useCreateReview,
     useConfigurationInit: apiMocks.useConfigurationInit,
     useReviewSessionCache: () => ({
       clearActiveSession: apiMocks.clearActiveSession,
@@ -74,7 +75,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function createFreshStartWrapper(initialRoute: Route) {
+function createFreshStartWrapper(initialRoute: Route, apiOverrides: Partial<BoundApi> = {}) {
   const api = {
     ...createApi({ baseUrl: "http://localhost" }),
     getSettings: vi.fn(async () => ({
@@ -86,6 +87,7 @@ function createFreshStartWrapper(initialRoute: Route) {
       agentExecution: "sequential" as const,
       providerConsent: null,
     })),
+    ...apiOverrides,
   } satisfies BoundApi;
   const { Wrapper: ApiWrapper } = createTestQueryWrapper({ api });
 
@@ -109,9 +111,8 @@ function FreshStartHarness({ mode }: { mode: Exclude<ReviewMode, "files"> }): Re
 describe("ReviewContainer fresh start", () => {
   beforeEach(() => {
     apiMocks.createReview.mockImplementation(async ({ mode = "staged" }: { mode?: ReviewMode }) =>
-      makeCreateReviewResponse({ reviewId: "review-fresh", session: { mode } }),
+      makeCreateReviewResponse({ session: { mode } }),
     );
-    apiMocks.useCreateReview.mockReturnValue({ mutateAsync: apiMocks.createReview });
     apiMocks.useConfigurationInit.mockReturnValue({
       data: makeReadyInitResponse(),
       isLoading: false,
@@ -122,10 +123,48 @@ describe("ReviewContainer fresh start", () => {
   });
 
   test("auto-starts a review when navigated with mode but no reviewId", async () => {
-    const wrapper = createFreshStartWrapper({ screen: "review", mode: "unstaged" });
+    const wrapper = createFreshStartWrapper(
+      { screen: "review", mode: "unstaged" },
+      { createReview: apiMocks.createReview },
+    );
 
     renderDom(<FreshStartHarness mode="unstaged" />, { wrapper });
 
     await waitFor(() => expect(apiMocks.createReview).toHaveBeenCalledWith({ mode: "unstaged" }));
+  });
+
+  test("paints the pending steps for the create round-trip, then the outcome the response settled", async () => {
+    const created = createDeferred<CreateReviewResponse>();
+    const Wrapper = createFreshStartWrapper(
+      { screen: "review", mode: "staged" },
+      {
+        createReview: vi.fn(() => created.promise),
+        // Attached but silent: the frames under test can only come from the
+        // create response, never from a replayed event.
+        resumeReviewStream: vi.fn(() => new Promise<never>(() => {})),
+      },
+    );
+
+    const { frames, lastFrame } = renderInk(
+      <Wrapper>
+        <FreshStartHarness mode="staged" />
+      </Wrapper>,
+    );
+
+    // Accepted behavior: the run is already requested, so the steps it is about
+    // to walk are drawn pending for the round-trip instead of a centered wait.
+    await waitUntil(() => (lastFrame() ?? "").includes("Collect diff"));
+
+    await act(async () => {
+      created.resolve(
+        makeCreateReviewResponse({ session: { mode: "staged" }, outcome: "no-diff" }),
+      );
+      await created.promise;
+    });
+
+    await waitUntil(() => (lastFrame() ?? "").includes("No staged changes"));
+
+    const settledFrame = frames.findIndex((frame) => frame.includes("No staged changes"));
+    expect(frames.slice(settledFrame).some((frame) => frame.includes("Collect diff"))).toBe(false);
   });
 });

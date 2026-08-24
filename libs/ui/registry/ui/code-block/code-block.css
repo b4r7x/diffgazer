@@ -88,6 +88,16 @@
     flex: 1 1 auto;
   }
 
+  /* Wrapped geometry (wrap prop on CodeBlock.Content). The line's flex row is
+     already the hanging indent, so a wrapped continuation lands under the code
+     column instead of under the gutter. anywhere, not break-word: a single
+     unbroken token — a URL, a minified line — must still fit the column rather
+     than reintroduce the horizontal scroll this replaces. */
+  [data-slot="code-block-content"][data-wrap="on"] code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
   /* Row state tints applied to the line, not <code>. Added/removed read the
      subtle tone tier so a theme re-tints diff rows and Badge/Callout together. */
   [data-slot="code-block-line"][data-state="added"] {

@@ -94,5 +94,6 @@ export function makeCreateReviewResponse(
   return {
     reviewId,
     session: makeActiveReviewSession({ ...overrides.session, reviewId }),
+    outcome: overrides.outcome ?? "running",
   };
 }

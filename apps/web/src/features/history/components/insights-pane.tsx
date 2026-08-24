@@ -109,6 +109,8 @@ export function HistoryInsightsPane({
               }}
               focused={isFocused}
               wrap={false}
+              // Track 1 of the row grid is Title's glyph; "bracket" would add a "]" and shift it.
+              indicator="bar"
               // "/", l, and R are window-level shortcuts for this zone; list
               // typeahead would claim those keystrokes before they arrive.
               typeahead={false}
@@ -122,28 +124,29 @@ export function HistoryInsightsPane({
                   density="compact"
                   className="border-b border-border last:border-b-0 py-1"
                 >
-                  <NavigationList.Title className="min-w-0 items-start">
-                    <span
-                      className={cn(
-                        "mr-2 font-bold",
-                        SEVERITY_CONFIG[issue.severity].color,
-                        "group-data-[highlighted]:text-primary-foreground",
-                      )}
-                    >
-                      [{capitalize(issue.severity)}]
-                    </span>
-                    {/* The title may take up to two lines that align under the
-                        title's own start (the tag is a separate flex item, so
-                        overflow no longer hangs under it); file:line stays on
-                        its own row. */}
-                    <span className="min-w-0 line-clamp-2">{issue.title}</span>
-                  </NavigationList.Title>
-                  {/* Indent (glyph advance 1ch + its mr-2) aligns file:line
-                      under the severity tag instead of jutting left under the
-                      glyph. */}
-                  <NavigationList.Meta className="pl-[calc(1ch+0.5rem)]">
-                    <NavigationList.Subtitle>{formatIssueLocation(issue)}</NavigationList.Subtitle>
-                  </NavigationList.Meta>
+                  {/* One grid for the whole row: the item's indicator glyph and
+                      the severity tag each take a content-sized track, and every
+                      line of text — wrapped title lines and file:line alike —
+                      shares the third track, so the row has a single left seam. */}
+                  <div className="grid min-w-0 grid-cols-[auto_auto_1fr] items-start gap-y-0.5">
+                    <NavigationList.Title className="contents">
+                      <span
+                        className={cn(
+                          "mr-2 font-bold",
+                          SEVERITY_CONFIG[issue.severity].color,
+                          "group-data-[highlighted]:text-primary-foreground",
+                        )}
+                      >
+                        [{capitalize(issue.severity)}]
+                      </span>
+                      <span className="min-w-0 line-clamp-2">{issue.title}</span>
+                    </NavigationList.Title>
+                    <NavigationList.Meta className="col-span-1 col-start-3 row-start-2">
+                      <NavigationList.Subtitle>
+                        {formatIssueLocation(issue)}
+                      </NavigationList.Subtitle>
+                    </NavigationList.Meta>
+                  </div>
                 </NavigationList.Item>
               ))}
             </NavigationList>

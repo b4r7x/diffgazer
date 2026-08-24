@@ -5,6 +5,7 @@ import { ConfigurationIdSchema } from "@diffgazer/core/schemas/config";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/events";
 import {
+  type CreateReviewOutcome,
   ReviewErrorCode,
   type ReviewMode,
   type TerminalOutcome,
@@ -16,7 +17,7 @@ import { getStore } from "../../shared/lib/config/store.js";
 import { createGitService } from "../../shared/lib/git/service.js";
 import { log } from "../../shared/lib/log.js";
 import { activateSessionForProject } from "../../shared/lib/session-registry.js";
-import { isReviewAbort } from "./abort.js";
+import { isReviewAbort, type ReviewAbort } from "./abort.js";
 import { resolveGitDiff } from "./diff.js";
 import type { ParsedDiff } from "./engine/diff/types.js";
 import {
@@ -102,9 +103,15 @@ function handleDetachedReviewSessionError(reviewId: string, error: unknown): voi
   markComplete(reviewId);
 }
 
+function resolveCreateOutcome(parsed: Result<ParsedDiff, ReviewAbort>): CreateReviewOutcome {
+  if (parsed.ok) return "running";
+  return parsed.error.code === ReviewErrorCode.NO_DIFF ? "no-diff" : "failed";
+}
+
 export interface CreateReviewSessionResult {
   reviewId: string;
   session: ActiveSession;
+  outcome: CreateReviewOutcome;
 }
 
 export function buildReviewInputHash(params: {
@@ -215,6 +222,10 @@ export async function createReviewSession(
     reviewId,
   });
   const parsed = parsedResult.ok ? parsedResult.value : null;
+  // The diff is resolved here, so the response can say a clean tree or a git
+  // failure ended the run instead of leaving the client to learn it from the
+  // replayed stream.
+  const outcome: CreateReviewOutcome = resolveCreateOutcome(parsedResult);
   const reviewInputHash = parsed
     ? buildReviewInputHash({ headCommit, reviewConfigKey, parsed })
     : undefined;
@@ -233,7 +244,7 @@ export async function createReviewSession(
         reviewInputHash,
       });
       if (existingSession) {
-        return ok({ reviewId: existingSession.reviewId, session: existingSession });
+        return ok({ reviewId: existingSession.reviewId, session: existingSession, outcome });
       }
     }
 
@@ -304,7 +315,7 @@ export async function createReviewSession(
       });
     }
 
-    return ok({ reviewId, session });
+    return ok({ reviewId, session, outcome });
   };
 
   if (!activation) return activate();

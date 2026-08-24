@@ -87,9 +87,11 @@ export function PatchTabContent({
     return <DiffView before={rendering.before} after={patch} label="Suggested patch" />;
   }
 
+  // The fallback catches whatever the model wrote when it is not a parseable
+  // patch — often a paragraph of prose.
   return (
     <CodeBlock label="Suggested patch">
-      <CodeBlock.Content tabIndex={-1}>
+      <CodeBlock.Content wrap>
         {patch.split("\n").map((line, index) => (
           <CodeBlock.Line
             key={`${index}-${line}`}

@@ -304,10 +304,19 @@ export const ActiveReviewSessionResponseSchema = z.object({
 });
 export type ActiveReviewSessionResponse = z.infer<typeof ActiveReviewSessionResponseSchema>;
 
+/**
+ * What creating the review decided about the diff it resolved synchronously.
+ * `no-diff` and `failed` let the review screen open on the gate the create call
+ * already settled instead of drawing a run that will never happen.
+ */
+export const CreateReviewOutcomeSchema = z.enum(["running", "no-diff", "failed"]);
+export type CreateReviewOutcome = z.infer<typeof CreateReviewOutcomeSchema>;
+
 export const CreateReviewResponseSchema = z
   .object({
     reviewId: UuidSchema,
     session: ActiveReviewSessionSchema,
+    outcome: CreateReviewOutcomeSchema.default("running"),
   })
   .refine((response) => response.reviewId === response.session.reviewId, {
     path: ["session", "reviewId"],

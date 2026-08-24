@@ -11,6 +11,8 @@ import { flush } from "../../../testing/flush";
 import { waitUntil } from "../../../testing/wait-until";
 import { makeReviewLifecycleBase } from "../testing/review-lifecycle-base";
 
+const ESCAPE = "\u001B";
+
 const apiMocks = vi.hoisted(() => ({
   clearActiveSession: vi.fn(),
   createReview: vi.fn(),
@@ -73,7 +75,23 @@ describe("ReviewScreen", () => {
     expect(apiMocks.clearActiveSession).not.toHaveBeenCalled();
   });
 
-  test("renders the saved review summary when saved review data is available", () => {
+  test("opens a completed saved review at its findings instead of its summary", () => {
+    const issue = makeIssue({ id: "issue-1", title: "Saved issue", symptom: "Saved symptom" });
+    apiMocks.useReview.mockReturnValue({
+      status: "success",
+      data: {
+        review: { metadata: { id: "review-123", durationMs: 10 }, result: { issues: [issue] } },
+      },
+    });
+
+    const { lastFrame } = renderReviewScreen();
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("Saved symptom");
+    expect(frame).not.toMatch(/review complete/i);
+  });
+
+  test("opens a completed saved review that found nothing at its summary", () => {
     apiMocks.useReview.mockReturnValue({
       status: "success",
       data: { review: { metadata: { id: "review-123", durationMs: 10 }, result: { issues: [] } } },
@@ -84,6 +102,27 @@ describe("ReviewScreen", () => {
     const frame = lastFrame() ?? "";
     expect(frame).toMatch(/review complete/i);
     expect(frame).toContain("Found 0 issues across 0 files with issues.");
+  });
+
+  test("returns a completed saved review to its summary with Escape from the findings", async () => {
+    const issue = makeIssue({ id: "issue-1", title: "Saved issue", symptom: "Saved symptom" });
+    apiMocks.useReview.mockReturnValue({
+      status: "success",
+      data: {
+        review: { metadata: { id: "review-123", durationMs: 10 }, result: { issues: [issue] } },
+      },
+    });
+
+    const { lastFrame, stdin } = renderReviewScreen();
+
+    expect(lastFrame() ?? "").toContain("Saved symptom");
+
+    // The findings screen is the landing view, so the summary it skipped stays
+    // one keystroke away. Ink holds a bare Escape briefly to tell it apart from
+    // the start of a control sequence, so this waits on a timer, not a frame.
+    stdin.write(ESCAPE);
+
+    await vi.waitFor(() => expect(lastFrame() ?? "").toMatch(/review complete/i));
   });
 
   test("renders the terminal receipt for a saved review that never completed", () => {
@@ -240,7 +279,7 @@ describe("ReviewScreen", () => {
     expect(frame).not.toMatch(/progress overview/i);
   });
 
-  test("renders the persisted duplicate-collapse notice in a reopened summary", () => {
+  test("renders the persisted duplicate-collapse notice in a reopened review", () => {
     const issue = makeIssue({ id: "issue-1", title: "Saved issue" });
     apiMocks.useReview.mockReturnValue({
       status: "success",
@@ -289,14 +328,15 @@ describe("ReviewScreen", () => {
     expect(frame).not.toMatch(/review complete/i);
   });
 
-  test("falls back to the saved review summary for an unknown route issue", () => {
-    const issue = makeIssue({ id: "issue-1", symptom: "Issue detail symptom" });
+  test("ignores an unknown route issue and opens the run's first finding", () => {
+    const first = makeIssue({ id: "issue-1", title: "First issue", symptom: "First symptom" });
+    const second = makeIssue({ id: "issue-2", title: "Second issue", symptom: "Second symptom" });
     apiMocks.useReview.mockReturnValue({
       status: "success",
       data: {
         review: {
           metadata: { id: "review-123", durationMs: 10 },
-          result: { issues: [issue] },
+          result: { issues: [first, second] },
         },
       },
     });
@@ -308,8 +348,8 @@ describe("ReviewScreen", () => {
     });
 
     const frame = lastFrame() ?? "";
-    expect(frame).toMatch(/review complete/i);
-    expect(frame).not.toContain("Issue detail symptom");
+    expect(frame).toContain("First symptom");
+    expect(frame).not.toContain("Second symptom");
   });
 
   test("surfaces an error view on a non-404 saved-read failure instead of resuming the stream", () => {
@@ -446,8 +486,8 @@ describe("ReviewScreen saved-review fallback", () => {
     await flush();
 
     const frame = lastFrame() ?? "";
-    expect(frame).toMatch(/review complete/i);
     expect(frame).toContain("Saved fallback issue");
+    expect(frame).not.toMatch(/review complete/i);
     expect(frame).not.toMatch(/progress overview/i);
   });
 

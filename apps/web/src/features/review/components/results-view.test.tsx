@@ -365,6 +365,7 @@ describe("ReviewResultsView keyboard regression", () => {
     );
 
     await user.keyboard("j");
+    await user.keyboard("j");
     await user.keyboard("{Enter}");
     expect(screen.getByRole("checkbox", { name: "2. Patch issue one" })).toBeChecked();
 
@@ -382,6 +383,7 @@ describe("ReviewResultsView keyboard regression", () => {
       expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
     );
     await user.keyboard("1");
+    await user.keyboard("j");
     await user.keyboard("{Enter}");
     expect(screen.getByRole("checkbox", { name: "1. Inspect issue two" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "2. Patch issue two" })).not.toBeChecked();
@@ -410,6 +412,7 @@ describe("ReviewResultsView keyboard regression", () => {
       expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
     );
     await user.keyboard("j");
+    await user.keyboard("j");
     await user.keyboard("{Enter}");
     expect(screen.getByRole("checkbox", { name: "2. Patch issue one" })).toBeChecked();
 
@@ -419,9 +422,43 @@ describe("ReviewResultsView keyboard regression", () => {
     await waitFor(() =>
       expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
     );
+    // Step focus reset with the issue switch: the first j lands on step 1 again,
+    // not on the step that was focused before leaving.
+    await user.keyboard("j");
     await user.keyboard("{Enter}");
     expect(screen.getByRole("checkbox", { name: "1. Inspect issue one" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "2. Patch issue one" })).toBeChecked();
+  });
+
+  it("highlights no fix-plan step until j asks for one", async () => {
+    const user = userEvent.setup();
+    renderView([
+      createReviewIssue("issue-1", "Issue one", {
+        fixPlan: [
+          { step: 1, action: "Inspect issue one" },
+          { step: 2, action: "Patch issue one" },
+        ],
+      }),
+    ]);
+
+    screen.getByRole("listbox").focus();
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
+
+    const firstStep = screen.getByRole("checkbox", { name: "1. Inspect issue one" });
+    const secondStep = screen.getByRole("checkbox", { name: "2. Patch issue one" });
+    expect(firstStep).not.toHaveAttribute("data-highlighted");
+    expect(secondStep).not.toHaveAttribute("data-highlighted");
+
+    // The first j lights the first step instead of skipping past it.
+    await user.keyboard("j");
+    expect(firstStep).toHaveAttribute("data-highlighted");
+
+    await user.keyboard("j");
+    expect(secondStep).toHaveAttribute("data-highlighted");
+    expect(firstStep).not.toHaveAttribute("data-highlighted");
   });
 
   it("toggles fix-plan steps keyboard-only from the details zone", async () => {
@@ -447,8 +484,12 @@ describe("ReviewResultsView keyboard regression", () => {
     const secondStep = screen.getByRole("checkbox", { name: "2. Patch issue one" });
     expect(firstStep).not.toBeChecked();
 
-    // Space toggles the focused (first) step without any pointer interaction.
+    // Space toggles nothing until j asks for a step.
     await user.keyboard(" ");
+    expect(firstStep).not.toBeChecked();
+
+    // j focuses the first step; Space toggles it without any pointer interaction.
+    await user.keyboard("j ");
     expect(firstStep).toBeChecked();
 
     // j moves the focused step down; Space toggles the second step.
@@ -476,6 +517,7 @@ describe("ReviewResultsView keyboard regression", () => {
     const details = screen.getByRole("region", { name: "Issue details" });
     await waitFor(() => expect(details).toHaveFocus());
 
+    await user.keyboard("j");
     await user.keyboard("j");
     expect(screen.getByRole("checkbox", { name: "2. Patch issue one" })).toHaveFocus();
 
@@ -698,6 +740,29 @@ describe("ReviewResultsView keyboard regression", () => {
 
     await user.keyboard("{ArrowUp}");
     expect(detailsScroll.scrollTop).toBeLessThan(afterDown);
+  });
+
+  it("scrolls a focused evidence excerpt with the arrows instead of switching tabs", async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
+    );
+
+    const excerpt = screen.getByRole("region", { name: "Code evidence: Issue one evidence" });
+    // jsdom lays nothing out, so declare the horizontal overflow ScrollArea
+    // requires before it will claim an arrow key.
+    Object.defineProperty(excerpt, "clientWidth", { value: 100, configurable: true });
+    Object.defineProperty(excerpt, "scrollWidth", { value: 1000, configurable: true });
+
+    excerpt.focus();
+    await user.keyboard("{ArrowRight}");
+
+    expect(excerpt.scrollLeft).toBeGreaterThan(0);
+    expect(screen.getByRole("tab", { name: "Details" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("hands DOM focus to the patch diff region with Enter from the details zone", async () => {

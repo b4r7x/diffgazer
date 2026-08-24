@@ -14,6 +14,12 @@ import { CodeBlockLine, type CodeBlockLineProps } from "./code-block-line";
 export interface CodeBlockContentProps extends ComponentProps<"div"> {
   /** Auto-split mode only. Renders a line-number gutter for string children. */
   showLineNumbers?: boolean;
+  /**
+   * Soft-wraps long lines instead of scrolling them horizontally. The line's own
+   * flex row is the hanging indent — continuation lines land under the code
+   * column, past the gutter. Surfaces as data-wrap="on" on the <pre>.
+   */
+  wrap?: boolean;
 }
 
 /**
@@ -34,6 +40,7 @@ function largestLineNumber(children: ReactNode): number {
 /** Scrollable <pre> body (auto-split or composed) */
 export function CodeBlockContent({
   showLineNumbers = true,
+  wrap = false,
   className,
   children,
   ref,
@@ -61,6 +68,7 @@ export function CodeBlockContent({
     >
       <pre
         data-slot="code-block-content"
+        data-wrap={wrap ? "on" : undefined}
         style={{ "--code-block-line-number-w": `${gutterWidth}ch` } as CSSProperties}
       >
         {lines

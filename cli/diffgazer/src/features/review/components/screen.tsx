@@ -38,8 +38,12 @@ function SavedReviewView({
   onClose,
 }: SavedReviewViewProps): ReactElement {
   const hasInitialIssue = saved.issues.some((issue) => issue.id === initialIssueId);
+  // A completed run that found something opens at its findings: reopening it is
+  // a request to read them. A run that found nothing, and a failed one, open at
+  // the summary, where the receipt and the remedy are told in full. Back reaches
+  // the other screen either way.
   const [phase, setPhase] = useState<Extract<ReviewScreenPhase, "summary" | "results">>(
-    hasInitialIssue ? "results" : "summary",
+    hasInitialIssue || (!terminalOutcome && saved.issues.length > 0) ? "results" : "summary",
   );
 
   if (phase === "summary") {

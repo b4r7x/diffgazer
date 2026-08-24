@@ -21,6 +21,7 @@ import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
 import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
+import { makeReviewLifecycleBase } from "../testing/review-lifecycle-base";
 
 type ReviewQueryState =
   | { status: "pending" }
@@ -91,45 +92,6 @@ function reviewQuery(state: ReviewQueryState = { status: "pending" }): ReviewQue
 
 function apiError(status: number) {
   return Object.assign(new Error(`HTTP ${status}`), { status });
-}
-
-function makeStreamState() {
-  return {
-    steps: [],
-    agents: [],
-    issues: [],
-    events: [],
-    fileProgress: { total: 0, completed: [] },
-    notices: [],
-    orchestratorStats: {},
-    isStreaming: true,
-    error: null,
-    startedAt: null,
-    reviewId: null,
-  };
-}
-
-function makeLifecycleBaseReturn(overrides: Record<string, unknown> = {}) {
-  return {
-    stream: { abort: vi.fn(), cancel: vi.fn(), state: makeStreamState() },
-    checks: { loadingMessage: null, isNoDiffError: false },
-    completion: {
-      isCompleting: false,
-      completedAt: null,
-      skipDelay: vi.fn(),
-    },
-    start: {
-      hasStarted: true,
-      canStart: true,
-    },
-    gate: "running" as const,
-    contextSnapshot: null,
-    contextRefreshError: null,
-    retryContextRefresh: vi.fn(),
-    resumeReview: vi.fn(),
-    reset: vi.fn(),
-    ...overrides,
-  };
 }
 
 function createMockApi(init = makeReadyInitResponse()): BoundApi {
@@ -203,7 +165,9 @@ function resetReviewMocks() {
   mockUseReview.mockReset();
   mockUseReview.mockReturnValue(reviewQuery());
   mockUseReviewLifecycleBase.mockReset();
-  mockUseReviewLifecycleBase.mockReturnValue(makeLifecycleBaseReturn());
+  mockUseReviewLifecycleBase.mockReturnValue(
+    makeReviewLifecycleBase({ stream: { state: { isStreaming: true } } }),
+  );
 }
 
 describe("ReviewPage saved review loading", () => {
@@ -374,8 +338,7 @@ describe("ReviewPage saved review loading", () => {
     expect(screen.getByRole("button", { name: "Back to Home" })).toBeInTheDocument();
   });
 
-  it("opens a saved review at its summary before letting the user view results", async () => {
-    const user = userEvent.setup();
+  it("opens a completed saved review at its findings instead of its summary", async () => {
     const issue = makeIssue({
       id: "issue-1",
       title: "Saved result issue",
@@ -399,25 +362,42 @@ describe("ReviewPage saved review loading", () => {
 
     renderPage();
 
-    expect(
-      await screen.findByText(`Review Complete ${formatRunId("review-saved")}`),
-    ).toBeInTheDocument();
-    expect(screen.getByText("1 issue in 1 file · 2.5s")).toBeVisible();
-    expect(screen.getByText("Saved result issue")).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: /saved result issue/i })).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /view results/i }));
-
     expect(await screen.findByText(`Review ${formatRunId("review-saved")}`)).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /saved result issue/i })).toHaveAttribute(
       "aria-selected",
       "true",
     );
     expect(screen.getByText("Saved result issue symptom")).toBeInTheDocument();
+    expect(
+      screen.queryByText(`Review Complete ${formatRunId("review-saved")}`),
+    ).not.toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("returns a saved review to its summary with Escape from the results list", async () => {
+  it("opens a completed saved review that found nothing at its summary", async () => {
+    routeState.params = { reviewId: "review-empty" };
+    routeState.search = { mode: "staged" };
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        status: "success",
+        data: {
+          review: {
+            metadata: { id: "review-empty", durationMs: 2500 },
+            result: { issues: [] },
+          },
+        },
+      }),
+    );
+
+    renderPage();
+
+    expect(
+      await screen.findByText(`Review Complete ${formatRunId("review-empty")}`),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+  });
+
+  it("returns a completed saved review to its summary with Escape from the results list", async () => {
     const user = userEvent.setup();
     const issue = makeIssue({ id: "issue-1", title: "Saved result issue" });
     routeState.params = { reviewId: "review-saved" };
@@ -436,7 +416,6 @@ describe("ReviewPage saved review loading", () => {
 
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: /view results/i }));
     expect(await screen.findByText(`Review ${formatRunId("review-saved")}`)).toBeInTheDocument();
 
     await user.keyboard("{Escape}");
@@ -446,6 +425,10 @@ describe("ReviewPage saved review loading", () => {
     ).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(mockBack).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: /view results/i }));
+
+    expect(await screen.findByText(`Review ${formatRunId("review-saved")}`)).toBeInTheDocument();
   });
 
   it("keeps Escape leaving the screen for a summary-less issue deep link", async () => {
@@ -522,8 +505,10 @@ describe("ReviewPage saved review loading", () => {
     );
   });
 
-  it("keeps an invalid saved-review issue deep link on the safe summary view", async () => {
-    const issue = makeIssue({ id: "issue-1", title: "Saved result issue" });
+  it("treats an invalid saved-review issue deep link as no deep link at all", async () => {
+    const user = userEvent.setup();
+    const firstIssue = makeIssue({ id: "issue-1", title: "First saved issue" });
+    const secondIssue = makeIssue({ id: "issue-2", title: "Second saved issue" });
     routeState.params = { reviewId: "review-saved" };
     routeState.search = { mode: "staged", issueId: "missing-issue" };
     mockUseReview.mockReturnValue(
@@ -532,7 +517,7 @@ describe("ReviewPage saved review loading", () => {
         data: {
           review: {
             metadata: { id: "review-saved" },
-            result: { issues: [issue] },
+            result: { issues: [firstIssue, secondIssue] },
           },
         },
       }),
@@ -540,13 +525,20 @@ describe("ReviewPage saved review loading", () => {
 
     renderPage();
 
+    expect(await screen.findByRole("option", { name: /first saved issue/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    await user.keyboard("{Escape}");
+
     expect(
       await screen.findByText(`Review Complete ${formatRunId("review-saved")}`),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: /saved result issue/i })).not.toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("explains persisted duplicate collapse in a reopened review summary", async () => {
+  it("explains persisted duplicate collapse in a reopened review", async () => {
     const issue = makeIssue({ id: "issue-1", title: "Saved result issue" });
     routeState.params = { reviewId: "review-saved" };
     routeState.search = { mode: "staged" };
@@ -575,13 +567,7 @@ describe("ReviewPage saved review loading", () => {
     routeState.params = { reviewId };
     routeState.search = { mode: "unstaged", live: true };
     mockUseReviewLifecycleBase.mockReturnValue(
-      makeLifecycleBaseReturn({
-        stream: {
-          abort: vi.fn(),
-          cancel: vi.fn(),
-          state: { ...makeStreamState(), reviewId },
-        },
-      }),
+      makeReviewLifecycleBase({ stream: { state: { reviewId, isStreaming: true } } }),
     );
 
     renderPage();
@@ -704,12 +690,8 @@ describe("ReviewPage stale live session falls back to saved review", () => {
     mockUseReviewLifecycleBase.mockImplementation(
       (opts: { onNotFoundInSession?: (id: string) => void }) => {
         captured.onNotFoundInSession = opts.onNotFoundInSession ?? null;
-        return makeLifecycleBaseReturn({
-          stream: {
-            abort: vi.fn(),
-            cancel: vi.fn(),
-            state: { ...makeStreamState(), reviewId: STALE_REVIEW_ID },
-          },
+        return makeReviewLifecycleBase({
+          stream: { state: { reviewId: STALE_REVIEW_ID, isStreaming: true } },
         });
       },
     );
@@ -741,10 +723,8 @@ describe("ReviewPage stale live session falls back to saved review", () => {
       captured.onNotFoundInSession?.(STALE_REVIEW_ID);
     });
 
-    expect(
-      await screen.findByText(`Review Complete ${formatRunId(STALE_REVIEW_ID)}`),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Saved fallback issue")).toBeInTheDocument();
+    expect(await screen.findByText(`Review ${formatRunId(STALE_REVIEW_ID)}`)).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /saved fallback issue/i })).toBeInTheDocument();
     expect(mockClearActiveSession).toHaveBeenCalledWith("staged", STALE_REVIEW_ID);
     expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/" });
   });
@@ -795,12 +775,8 @@ describe("ReviewPage reviewId changes", () => {
 
     mockUseReviewLifecycleBase.mockImplementation((opts: { onComplete?: () => void }) => {
       capturedOnComplete = opts.onComplete ?? null;
-      return makeLifecycleBaseReturn({
-        stream: {
-          abort: vi.fn(),
-          cancel: vi.fn(),
-          state: { ...makeStreamState(), reviewId: FIRST_REVIEW_ID, issues: [firstIssue] },
-        },
+      return makeReviewLifecycleBase({
+        stream: { state: { reviewId: FIRST_REVIEW_ID, issues: [firstIssue], isStreaming: true } },
       });
     });
 
@@ -816,12 +792,8 @@ describe("ReviewPage reviewId changes", () => {
 
     routeState.params = { reviewId: SECOND_REVIEW_ID };
     mockUseReviewLifecycleBase.mockReturnValue(
-      makeLifecycleBaseReturn({
-        stream: {
-          abort: vi.fn(),
-          cancel: vi.fn(),
-          state: { ...makeStreamState(), reviewId: SECOND_REVIEW_ID },
-        },
+      makeReviewLifecycleBase({
+        stream: { state: { reviewId: SECOND_REVIEW_ID, isStreaming: true } },
       }),
     );
 
@@ -908,16 +880,8 @@ describe("ReviewPage live review phase transitions", () => {
     });
     mockUseReviewLifecycleBase.mockImplementation((opts: { onComplete?: () => void }) => {
       capturedOnComplete = opts.onComplete ?? null;
-      return makeLifecycleBaseReturn({
-        stream: {
-          abort: vi.fn(),
-          cancel: vi.fn(),
-          state: {
-            ...makeStreamState(),
-            ...completedState,
-            reviewId: LIVE_REVIEW_ID,
-          },
-        },
+      return makeReviewLifecycleBase({
+        stream: { state: { ...completedState, reviewId: LIVE_REVIEW_ID } },
       });
     });
   });
@@ -1031,16 +995,9 @@ describe("ReviewPage protected route readiness", () => {
     let capturedOptions: Parameters<typeof mockUseReviewLifecycleBase>[0] | undefined;
     mockUseReviewLifecycleBase.mockImplementation((options) => {
       capturedOptions = options;
-      return makeLifecycleBaseReturn({
-        stream: {
-          abort: vi.fn(),
-          cancel: vi.fn(),
-          state: { ...makeStreamState(), reviewId },
-        },
-        checks: {
-          loadingMessage: "Checking for changes...",
-          isNoDiffError: false,
-        },
+      return makeReviewLifecycleBase({
+        stream: { state: { reviewId, isStreaming: true } },
+        checks: { loadingMessage: "Checking for changes..." },
         gate: "loading",
       });
     });
@@ -1063,13 +1020,7 @@ describe("ReviewPage protected route readiness", () => {
     let capturedOptions: Parameters<typeof mockUseReviewLifecycleBase>[0] | undefined;
     mockUseReviewLifecycleBase.mockImplementation((options) => {
       capturedOptions = options;
-      return makeLifecycleBaseReturn({
-        stream: {
-          abort: vi.fn(),
-          cancel: vi.fn(),
-          state: { ...makeStreamState(), reviewId },
-        },
-      });
+      return makeReviewLifecycleBase({ stream: { state: { reviewId, isStreaming: true } } });
     });
 
     renderPage();
@@ -1101,14 +1052,7 @@ describe("ReviewPage protected route readiness", () => {
       }),
     );
     mockUseReviewLifecycleBase.mockImplementation((_options) =>
-      makeLifecycleBaseReturn({
-        start: {
-          ...makeLifecycleBaseReturn().start,
-          canStart: true,
-        },
-        gate: "running",
-        checks: { loadingMessage: null, isNoDiffError: false },
-      }),
+      makeReviewLifecycleBase({ stream: { state: { isStreaming: true } } }),
     );
 
     renderPage({
@@ -1117,10 +1061,8 @@ describe("ReviewPage protected route readiness", () => {
       ]),
     });
 
-    expect(
-      await screen.findByText(`Review Complete ${formatRunId("review-saved")}`),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Saved result issue")).toBeInTheDocument();
+    expect(await screen.findByText(`Review ${formatRunId("review-saved")}`)).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /saved result issue/i })).toBeInTheDocument();
     expect(screen.queryByText(/Configuration Not Ready/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
   });

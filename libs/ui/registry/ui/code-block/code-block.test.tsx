@@ -247,6 +247,33 @@ describe("CodeBlock", () => {
     });
   });
 
+  describe("wrapping", () => {
+    it("keeps the body unwrapped by default", () => {
+      const { container } = render(
+        <CodeBlock>
+          <CodeBlock.Content>{"const value = 1;"}</CodeBlock.Content>
+        </CodeBlock>,
+      );
+
+      expect(container.querySelector('[data-slot="code-block-content"]')).not.toHaveAttribute(
+        "data-wrap",
+      );
+    });
+
+    it('marks the body data-wrap="on" when wrap is set', () => {
+      const { container } = render(
+        <CodeBlock>
+          <CodeBlock.Content wrap>{"const value = 1;"}</CodeBlock.Content>
+        </CodeBlock>,
+      );
+
+      expect(container.querySelector('[data-slot="code-block-content"]')).toHaveAttribute(
+        "data-wrap",
+        "on",
+      );
+    });
+  });
+
   describe("orphan context", () => {
     let errorSpy: ReturnType<typeof vi.spyOn>;
 

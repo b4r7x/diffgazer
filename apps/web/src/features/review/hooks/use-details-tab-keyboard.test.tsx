@@ -202,6 +202,7 @@ describe("useReviewDetailsTabKeyboard", () => {
     );
 
     const arrowDown = dispatchCancelableKey("ArrowDown");
+    dispatchCancelableKey("j");
     const space = dispatchCancelableKey(" ");
 
     expect(arrowDown.defaultPrevented).toBe(true);
@@ -248,12 +249,27 @@ describe("fix-plan checklist focus custody", () => {
     return screen.getByRole("checkbox", { name });
   }
 
+  it("highlights no fix-plan step until j asks for one", async () => {
+    const user = userEvent.setup();
+    renderHarness();
+
+    expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus();
+    for (const checkbox of screen.getAllByRole("checkbox")) {
+      expect(checkbox).not.toHaveAttribute("data-highlighted");
+    }
+
+    await user.keyboard("j");
+    expect(step(/1\. Validate input/)).toHaveAttribute("data-highlighted");
+    expect(step(/1\. Validate input/)).toHaveFocus();
+  });
+
   it("moves DOM focus through the checklist with j/k without leaving the details zone", async () => {
     const user = userEvent.setup();
     const { onZoneChange } = renderHarness();
 
     expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus();
 
+    await user.keyboard("j");
     await user.keyboard("j");
     expect(step(/2\. Add regression test/)).toHaveFocus();
     expect(step(/2\. Add regression test/)).toHaveAttribute("data-highlighted");
@@ -282,13 +298,12 @@ describe("fix-plan checklist focus custody", () => {
     expect(onScroll).toHaveBeenCalledWith(80);
 
     await user.keyboard("j");
-    expect(step(/2\. Add regression test/)).toHaveFocus();
+    expect(step(/1\. Validate input/)).toHaveFocus();
 
     // Focus inside the checklist: arrows step like j/k instead of scrolling.
     await user.keyboard("{ArrowDown}");
-    expect(step(/3\. Document behavior/)).toHaveFocus();
+    expect(step(/2\. Add regression test/)).toHaveFocus();
 
-    await user.keyboard("{ArrowUp}");
     await user.keyboard("{ArrowUp}");
     expect(step(/1\. Validate input/)).toHaveFocus();
 
@@ -302,6 +317,7 @@ describe("fix-plan checklist focus custody", () => {
     const user = userEvent.setup();
     const { onToggleStep, onZoneChange } = renderHarness();
 
+    await user.keyboard("j");
     await user.keyboard("j");
     const focusedStep = step(/2\. Add regression test/);
     expect(focusedStep).toHaveFocus();
@@ -318,6 +334,24 @@ describe("fix-plan checklist focus custody", () => {
     expect(focusedStep).toHaveFocus();
 
     expect(onZoneChange).not.toHaveBeenCalled();
+  });
+
+  it("toggles nothing until a step is highlighted, then toggles the one j asked for", async () => {
+    const user = userEvent.setup();
+    const { onToggleStep } = renderHarness();
+
+    await user.keyboard("{Enter}");
+    await user.keyboard(" ");
+    expect(onToggleStep).not.toHaveBeenCalled();
+    for (const checkbox of screen.getAllByRole("checkbox")) {
+      expect(checkbox).not.toBeChecked();
+    }
+
+    await user.keyboard("j");
+    await user.keyboard("{Enter}");
+    expect(onToggleStep).toHaveBeenCalledOnce();
+    expect(onToggleStep).toHaveBeenCalledWith(0);
+    expect(step(/1\. Validate input/)).toBeChecked();
   });
 
   it("ignores checklist markers outside the details scroll body when gating arrows", async () => {
@@ -353,6 +387,7 @@ describe("fix-plan checklist focus custody", () => {
     const user = userEvent.setup();
     const { onZoneChange } = renderHarness();
 
+    await user.keyboard("j");
     await user.keyboard("j");
     expect(step(/2\. Add regression test/)).toHaveFocus();
 

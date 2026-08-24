@@ -159,6 +159,7 @@ function parsedEvents(stream: { events: Array<{ data: string }> }): FullReviewSt
 function makeGitService(
   options: {
     diff?: string;
+    diffError?: string;
     headCommit?: string;
     headCommitError?: string;
     statusHash?: string;
@@ -166,6 +167,7 @@ function makeGitService(
 ): GitService {
   const {
     diff = REVIEW_DIFF,
+    diffError,
     headCommit = "abc123",
     headCommitError,
     statusHash = "hash123",
@@ -183,7 +185,7 @@ function makeGitService(
         hasChanges: false,
         conflicted: [],
       }),
-    getDiff: async () => ok(diff),
+    getDiff: async () => (diffError ? err({ message: diffError }) : ok(diff)),
     isGitInstalled: async () => true,
     getHeadCommit: async () =>
       headCommitError ? err({ message: headCommitError }) : ok(headCommit),
@@ -489,6 +491,7 @@ describe("createReviewSession", () => {
     expect(result.value.reviewId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
     );
+    expect(result.value.outcome).toBe("running");
     trackSessionWithRunner(result.value.reviewId);
     const session = getSession(result.value.reviewId);
     expect(session).toBeDefined();
@@ -503,6 +506,59 @@ describe("createReviewSession", () => {
         mode: "unstaged",
       }),
     ).toBe(result.value.session);
+  });
+
+  it("reports the no-diff outcome on a clean tree while still buffering the stream failure", async () => {
+    vi.mocked(createGitService).mockReturnValue(makeGitService({ diff: "" }));
+
+    const result = await createReviewSession(makeAIClient(), {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSession(result.value.reviewId);
+    expect(result.value.outcome).toBe("no-diff");
+
+    // The client that resumes this review must still read the failure from the
+    // replayed stream, so the response reports the outcome in addition to the
+    // buffered event, never instead of it.
+    await vi.waitFor(() => {
+      const session = requireValue(getSession(result.value.reviewId), "created session");
+      expect(session.events).toContainEqual(
+        expect.objectContaining({
+          type: "error",
+          error: expect.objectContaining({ code: ReviewErrorCode.NO_DIFF }),
+        }),
+      );
+    });
+  });
+
+  it("reports the failed outcome when git refuses the diff while still buffering the stream failure", async () => {
+    vi.mocked(createGitService).mockReturnValue(
+      makeGitService({ diffError: "fatal: bad revision" }),
+    );
+
+    const result = await createReviewSession(makeAIClient(), {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSession(result.value.reviewId);
+    expect(result.value.outcome).toBe("failed");
+
+    await vi.waitFor(() => {
+      const session = requireValue(getSession(result.value.reviewId), "created session");
+      expect(session.events).toContainEqual(
+        expect.objectContaining({
+          type: "error",
+          error: expect.objectContaining({ code: ReviewErrorCode.GENERATION_FAILED }),
+        }),
+      );
+    });
   });
 
   it("does not reuse an existing session when reviewConfigKey differs", async () => {

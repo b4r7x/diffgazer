@@ -183,6 +183,9 @@ export function useCreateReview() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (options: Parameters<typeof api.createReview>[0]) => api.createReview(options),
-    onSuccess: (data) => cacheActiveSessionQueryData(qc, api, data.session),
+    onSuccess: async (data) => {
+      qc.setQueryData(reviewQueries.createOutcome(data.reviewId).queryKey, data.outcome);
+      await cacheActiveSessionQueryData(qc, api, data.session);
+    },
   });
 }

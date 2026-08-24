@@ -650,7 +650,7 @@ describe("POST /api/review/reviews", () => {
     expect(createReviewSession).not.toHaveBeenCalled();
   });
 
-  it("returns the active session metadata for the created review", async () => {
+  it("returns the active session metadata and the admission outcome for the created review", async () => {
     const startedAt = new Date("2026-01-01T00:00:00.000Z");
     const session = {
       reviewId: REVIEW_A,
@@ -668,7 +668,9 @@ describe("POST /api/review/reviews", () => {
       };
     });
     vi.doMock("./service.js", () => ({
-      createReviewSession: vi.fn(async () => ok({ reviewId: REVIEW_A, session })),
+      createReviewSession: vi.fn(async () =>
+        ok({ reviewId: REVIEW_A, session, outcome: "no-diff" }),
+      ),
     }));
     await configureSetup(projectA);
     const app = await createReviewApp();
@@ -692,6 +694,7 @@ describe("POST /api/review/reviews", () => {
         headCommit: "abc123",
         statusHash: "status",
       },
+      outcome: "no-diff",
     };
 
     expect(response.status).toBe(200);

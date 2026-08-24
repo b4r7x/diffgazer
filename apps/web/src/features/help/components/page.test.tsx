@@ -97,7 +97,9 @@ describe("HelpPage", () => {
   it("lists the keyboard shortcuts grouped for the web surface", async () => {
     await renderPage();
 
-    expect(screen.getByRole("heading", { name: /keyboard shortcuts/i })).toBeVisible();
+    // The corner chip already names the sheet, so the table opens straight on
+    // its context groups instead of repeating the title as a section heading.
+    expect(screen.queryByRole("heading", { name: /keyboard shortcuts/i })).not.toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Anywhere" })).toBeVisible();
     expect(screen.getAllByText("Move the highlight")).toHaveLength(1);
   });
@@ -155,13 +157,38 @@ describe("HelpPage", () => {
     expect(region.parentElement).toBe(sheet);
   });
 
+  // The "HELP" label is a chip straddling the panel's top border, so the band
+  // it hangs over is the region's own first row: in flow it holds resting
+  // content clear of the overhang, and stuck to the scrollport it masks the
+  // rows that pass behind. jsdom has no layout to measure the overlap with, so
+  // the guard is structural — the band leads the region, and no help content
+  // rides under the chip in its place.
+  it("leads the scroll region with the band that masks the corner chip", async () => {
+    await renderPage();
+
+    const region = screen.getByRole("region", { name: "Help content" });
+    expect(region.firstElementChild).toHaveAttribute("data-slot", "help-chip-mask");
+    expect(region.firstElementChild).toBeEmptyDOMElement();
+  });
+
+  // Help documents the keyboard contract and nothing else: the product tagline
+  // that used to head the sheet belongs to the screens that sell the product.
+  it("carries no product blurb", async () => {
+    await renderPage();
+
+    expect(screen.queryByText(/local-only ai code review/i)).not.toBeInTheDocument();
+  });
+
   it("groups the shortcuts by context in the canonical order", async () => {
     await renderPage();
 
     const groupHeadings = screen
-      .getAllByRole("heading", { level: 3 })
+      .getAllByRole("heading", { level: 2 })
       .map((heading) => heading.textContent);
+    // Gestures are a peer group of the six contexts, not a parent section, so
+    // they share the one heading level and lead it the way they lead the DOM.
     expect(groupHeadings).toEqual([
+      "Touch Gestures",
       "Anywhere",
       "In lists",
       "On the home screen",
