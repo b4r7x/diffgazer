@@ -25,7 +25,7 @@ import {
   createFailedExecutionResult,
   promptAttemptEstimate,
 } from "../execution-receipt.js";
-import { HOSTED_PROFILES, RATE_LIMIT_DIAGNOSTIC_MAX_BYTES } from "./profiles.js";
+import { HOSTED_PROFILES, HTTP_DIAGNOSTIC_MAX_BYTES } from "./profiles.js";
 import type { HostedExecuteRequest } from "./types.js";
 import {
   accumulateUsage,
@@ -52,7 +52,8 @@ function isTimeoutError(error: unknown): boolean {
 /**
  * The bounded reason for a non-2xx provider response. The statuses a user can
  * fix on the providers screen name the fix; everything else is the provider's
- * own outage and stays a plain transport failure.
+ * own outage and stays a plain transport failure. 400 stays transport-failed
+ * but names the likely context-window cause.
  */
 function describeHttpFailure(
   productId: HostedApiProductId,
@@ -61,6 +62,14 @@ function describeHttpFailure(
   const name = PRODUCT_REGISTRY[productId].presentation.name;
   const rejected = { code: PROVIDER_REJECTED_DIAGNOSTIC_CODE, retryable: false };
   switch (status) {
+    case 400:
+      return {
+        code: "transport-failed",
+        retryable: false,
+        message: `${name} rejected the request as invalid (HTTP 400).`,
+        remediation:
+          "Often the diff is too large for the model's context window. Reduce the review scope, or choose a model with a larger context.",
+      };
     case 401:
       return {
         ...rejected,
@@ -298,11 +307,11 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
 
       if (!response.ok) {
         const captured =
-          response.status === 429
+          response.status >= 400 && response.status < 500
             ? await readTextResponseWithLimit(
                 response,
-                Math.min(remainingLimits.maxResponseBytes, RATE_LIMIT_DIAGNOSTIC_MAX_BYTES),
-                "Hosted rate-limit",
+                Math.min(remainingLimits.maxResponseBytes, HTTP_DIAGNOSTIC_MAX_BYTES),
+                "Hosted error",
               )
             : null;
         if (!captured) cancelResponseBody(response);

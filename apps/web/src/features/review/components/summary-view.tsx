@@ -135,8 +135,9 @@ export function ReviewSummaryView({
   useKey("Escape", onBack);
 
   // The labelled ScrollArea is the content-zone target: ↑ from the action row
-  // focuses it so overflowing summary content stays keyboard-scrollable, and ↓
-  // scrolls until the bottom, where it hands the action row back.
+  // focuses it while the summary overflows, so that content stays
+  // keyboard-scrollable, and ↓ scrolls until the bottom, where it hands the
+  // action row back.
   const scrollRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const panelFocus = useFocusWithin<HTMLDivElement>();
@@ -161,6 +162,29 @@ export function ReviewSummaryView({
     setZone: (next) => setInChrome(next === CHROME_ZONE),
     scope: SUMMARY_SCOPE,
   });
+
+  // Registered after useActionRowNavigation on purpose: the provider dispatches
+  // the latest registration first and a DECLINE falls through to the ones below
+  // it, so only a later registration can preempt the row's own ↑ exit.
+  useKey(
+    "ArrowUp",
+    (event) => {
+      const region = scrollRef.current;
+      // Sub-pixel slack, as at the bottom edge below: a region with nothing to
+      // scroll is no stop on the way up, so ↑ goes straight to the chrome.
+      if (region && region.scrollHeight - region.clientHeight > 1) return DECLINE;
+      event.preventDefault();
+      footer.reset();
+      chrome.handOff();
+      return;
+    },
+    {
+      enabled: footer.inActions,
+      scope: SUMMARY_SCOPE,
+      containerRef: panelRef,
+      focusWithinOnly: true,
+    },
+  );
 
   usePageFooter({
     shortcuts: getSummaryShortcuts({

@@ -65,7 +65,7 @@ export const HOSTED_PROFILES = {
   },
 } as const satisfies Record<HostedApiProductId, HostedProductProfile>;
 
-export const RATE_LIMIT_DIAGNOSTIC_MAX_BYTES = 64 * 1024;
+export const HTTP_DIAGNOSTIC_MAX_BYTES = 64 * 1024;
 
 export const USAGE_FIELDS = [
   "inputTokens",

@@ -1264,6 +1264,103 @@ describe("rate-limit diagnostics", () => {
   });
 });
 
+describe("http error diagnostics", () => {
+  const CONTEXT_LENGTH_BODY = {
+    error: {
+      code: 400,
+      message:
+        "This endpoint's maximum context length is 65536 tokens. However, you requested about 118420 tokens.",
+    },
+  };
+
+  it("carries the provider's own 400 explanation and the context remediation", async () => {
+    const fetch = mockFetchResponse(CONTEXT_LENGTH_BODY, { status: 400 });
+    const reportDiagnostic = vi.fn();
+
+    const result = await executeHostedReview({
+      ...executeRequest("openrouter"),
+      reportDiagnostic,
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("transport-failed");
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "transport-failed",
+        retryable: false,
+        safeMessage: "OpenRouter rejected the request as invalid (HTTP 400).",
+        remediation:
+          "Often the diff is too large for the model's context window. Reduce the review scope, or choose a model with a larger context.",
+      }),
+    );
+    expect(reportDiagnostic.mock.calls[0]?.[0].truncatedDetails).toContain(
+      "maximum context length is 65536 tokens",
+    );
+  });
+
+  it("redacts credentials echoed back in a 400 body", async () => {
+    const fetch = mockFetchResponse(
+      { error: { message: `key ${TEST_CREDENTIAL} rejected: sk-secret-abcdefghijklmnop` } },
+      { status: 400 },
+    );
+    const reportDiagnostic = vi.fn();
+
+    await executeHostedReview({
+      ...executeRequest("openrouter"),
+      reportDiagnostic,
+      context: hostedContext(fetch),
+    });
+
+    const serialized = JSON.stringify(reportDiagnostic.mock.calls[0]);
+    expect(serialized).not.toContain(TEST_CREDENTIAL);
+    expect(serialized).not.toContain("sk-secret-abcdefghijklmnop");
+  });
+
+  it("caps the 400 diagnostic read instead of buffering the whole body", async () => {
+    let pulledChunks = 0;
+    const chunk = new TextEncoder().encode("x".repeat(8 * 1024));
+    const fetch = vi.fn(
+      async () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            pull(controller) {
+              pulledChunks += 1;
+              controller.enqueue(chunk);
+            },
+          }),
+          { status: 400, headers: { "content-type": "application/json" } },
+        ),
+    ) as MockFetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("openrouter"),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("transport-failed");
+    expect(pulledChunks).toBeLessThanOrEqual(16);
+  });
+
+  it("does not capture the body of a 500 response", async () => {
+    const fetch = mockFetchResponse({ error: "upstream stack trace" }, { status: 500 });
+    const reportDiagnostic = vi.fn();
+
+    await executeHostedReview({
+      ...executeRequest("openrouter"),
+      reportDiagnostic,
+      context: hostedContext(fetch),
+    });
+
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "transport-failed",
+        safeMessage: "OpenRouter returned HTTP 500.",
+      }),
+    );
+    expect(reportDiagnostic.mock.calls[0]?.[0].truncatedDetails).toBeUndefined();
+  });
+});
+
 describe("gemini thinking budget", () => {
   function generationConfig(fetch: FetchFn): Record<string, unknown> {
     return requestBodyAt(fetch, 0).generationConfig as Record<string, unknown>;

@@ -53,6 +53,12 @@ function renderSummary(props?: SummaryProps) {
   );
 }
 
+// jsdom has no layout; pin the metrics that make the region overflow.
+function pinOverflow(region: HTMLElement) {
+  Object.defineProperty(region, "clientHeight", { value: 100, configurable: true });
+  Object.defineProperty(region, "scrollHeight", { value: 1000, configurable: true });
+}
+
 describe("ReviewSummaryView", () => {
   it("shortens the run id in the heading", () => {
     renderSummary({ reviewId: "7685a1b2-0000-4000-8000-000000000000" });
@@ -228,6 +234,7 @@ describe("ReviewSummaryView", () => {
     );
     expectSingleReticle(container);
 
+    pinOverflow(screen.getByRole("region", { name: "Review summary" }));
     await user.keyboard("{ArrowUp}");
     const region = screen.getByRole("region", { name: "Review summary" });
     expect(region).toHaveFocus();
@@ -251,22 +258,29 @@ describe("ReviewSummaryView", () => {
     expectSingleReticle(container);
   });
 
-  it("enters the summary region with ArrowUp and returns to the actions with ArrowDown", async () => {
+  it("enters the summary region with ArrowUp only while it overflows, and returns to the actions with ArrowDown", async () => {
     const user = userEvent.setup();
     renderSummary();
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
-    );
-
-    await user.keyboard("{ArrowUp}");
-    expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
-
-    // Nothing to scroll here (jsdom has no layout), so ↓ is a pure zone move; the
-    // overflowing case is pinned below.
-    await user.keyboard("{ArrowDown}");
     const viewResults = screen.getByRole("button", { name: /view results/i });
+    await waitFor(() => expect(viewResults).toHaveFocus());
+    const region = screen.getByRole("region", { name: "Review summary" });
+
+    // Nothing overflows, so the region scrolls nowhere and ↑ does not stop in it.
+    await user.keyboard("{ArrowUp}");
+    expect(region).not.toHaveFocus();
+
+    // Reached by Tab instead, it still hands the row back with ↓ - a pure zone
+    // move while there is nothing to scroll.
+    await user.tab({ shift: true });
+    expect(region).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
     expect(viewResults).toHaveFocus();
     expect(viewResults).toHaveAttribute("data-highlighted");
+
+    // Overflowing, ↑ stops in the region so the content stays keyboard-scrollable.
+    pinOverflow(region);
+    await user.keyboard("{ArrowUp}");
+    expect(region).toHaveFocus();
   });
 
   it("returns to the actions when ArrowDown reaches the bottom of an overflowing summary", async () => {
@@ -276,9 +290,7 @@ describe("ReviewSummaryView", () => {
       expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
     );
     const region = screen.getByRole("region", { name: "Review summary" });
-    // jsdom has no layout; pin the metrics that make the region overflow.
-    Object.defineProperty(region, "clientHeight", { value: 100, configurable: true });
-    Object.defineProperty(region, "scrollHeight", { value: 1000, configurable: true });
+    pinOverflow(region);
 
     await user.keyboard("{ArrowUp}");
     await user.keyboard("{ArrowDown}");
@@ -306,6 +318,7 @@ describe("ReviewSummaryView", () => {
     expect(within(legend).getByText("View Results")).toBeInTheDocument();
     expect(within(legend).queryByText("Scroll")).not.toBeInTheDocument();
 
+    pinOverflow(screen.getByRole("region", { name: "Review summary" }));
     await user.keyboard("{ArrowUp}");
     expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
 
@@ -321,9 +334,7 @@ describe("ReviewSummaryView", () => {
       expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
     );
     const region = screen.getByRole("region", { name: "Review summary" });
-    // jsdom has no layout; pin the metrics that make the region overflow.
-    Object.defineProperty(region, "clientHeight", { value: 100, configurable: true });
-    Object.defineProperty(region, "scrollHeight", { value: 1000, configurable: true });
+    pinOverflow(region);
 
     await user.keyboard("{ArrowUp}");
     expect(region).toHaveFocus();
@@ -509,12 +520,12 @@ describe("ReviewSummaryView chrome hand-off", () => {
     return screen.getByRole("button", { name: "Back" });
   }
 
+  // The summary does not overflow here, so ↑ leaves the action row for the
+  // chrome in one press; the overflowing ladder is pinned on its own below.
   async function park(user: ReturnType<typeof userEvent.setup>) {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
     );
-    await user.keyboard("{ArrowUp}");
-    expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
     await user.keyboard("{ArrowUp}");
     const back = chromeBack();
     await waitFor(() => expect(back).toHaveFocus());
@@ -530,15 +541,44 @@ describe("ReviewSummaryView chrome hand-off", () => {
     expect(screen.getAllByRole("button", { name: /back/i })).toEqual([chromeBack()]);
   });
 
-  it("hands focus to the header Back from the top of the region and returns it with ArrowDown", async () => {
+  it("hands focus to the header Back straight from the action row when the summary does not overflow", async () => {
     const user = userEvent.setup();
     const { container } = renderSummaryWithChrome();
+    const region = screen.getByRole("region", { name: "Review summary" });
 
     await park(user);
 
-    await user.keyboard("{ArrowDown}");
+    // A region with nothing to scroll is dead weight on the way up, so ↑ never
+    // stopped there and the mark left the page with focus.
+    expect(region).not.toHaveFocus();
+    // Nothing in the page is marked while focus sits in the chrome.
+    const viewResults = screen.getByRole("button", { name: /view results/i });
+    expect(viewResults).not.toHaveAttribute("data-highlighted");
 
+    // The hand-off remembered the button it left, so ↓ returns to it directly.
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(viewResults).toHaveFocus());
+    expect(viewResults).toHaveAttribute("data-highlighted");
+    expectSingleReticle(container);
+  });
+
+  it("stops in the summary region on the way to the header Back while it overflows", async () => {
+    const user = userEvent.setup();
+    const { container } = renderSummaryWithChrome();
     const region = screen.getByRole("region", { name: "Review summary" });
+    pinOverflow(region);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus(),
+    );
+
+    await user.keyboard("{ArrowUp}");
+    expect(region).toHaveFocus();
+
+    // Only the top of the scroll range hands off; the region owns ↑ until then.
+    await user.keyboard("{ArrowUp}");
+    await waitFor(() => expect(chromeBack()).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
     await waitFor(() => expect(region).toHaveFocus());
     expectSingleReticle(container);
   });
@@ -614,6 +654,7 @@ describe("ReviewSummaryView chrome hand-off", () => {
 
     // Into the region, then out of the page the way Tab goes: the row's keys are
     // scoped to the panel, so out here every one of them is inert.
+    pinOverflow(screen.getByRole("region", { name: "Review summary" }));
     await user.keyboard("{ArrowUp}");
     expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
     await user.tab({ shift: true });
@@ -634,6 +675,7 @@ describe("ReviewSummaryView chrome hand-off", () => {
     );
 
     // Into the region, then out of the page the way Tab goes.
+    pinOverflow(screen.getByRole("region", { name: "Review summary" }));
     await user.keyboard("{ArrowUp}");
     expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
     await user.tab({ shift: true });
