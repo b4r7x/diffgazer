@@ -40,14 +40,14 @@ export function useReviewSeverityFilterKeyboard({
     focusChip(index)?.focus();
   };
 
-  const resetAndReturnToLastFilter = () => {
+  const resetAndReturnToFirstFilter = () => {
     resetSeverityFilter();
-    focusFilterIndex(lastFilterIndex);
+    focusFilterIndex(0);
   };
 
   const handleEnterOrSpace = () => {
     if (atReset) {
-      resetAndReturnToLastFilter();
+      resetAndReturnToFirstFilter();
       return;
     }
     toggleSeverityFilter();
@@ -64,8 +64,11 @@ export function useReviewSeverityFilterKeyboard({
 
   useKey("j", () => enterList(), { scope, enabled });
 
-  useKey("Enter", handleEnterOrSpace, { scope, enabled });
-  useKey(" ", handleEnterOrSpace, { scope, enabled });
+  // preventDefault: activating Reset moves DOM focus to a severity chip, and
+  // the browser's native button activation (Space fires click on keyup) would
+  // otherwise land on that freshly focused chip and toggle it into the filter.
+  useKey("Enter", handleEnterOrSpace, { scope, enabled, preventDefault: true });
+  useKey(" ", handleEnterOrSpace, { scope, enabled, preventDefault: true });
 
-  useKey("r", resetAndReturnToLastFilter, { scope, enabled: enabled && isFilterActive });
+  useKey("r", resetAndReturnToFirstFilter, { scope, enabled: enabled && isFilterActive });
 }

@@ -60,9 +60,9 @@ export function ReviewPage() {
   );
   const [streamNotFound, setStreamNotFound] = useState(false);
   // Which of a saved run's two screens is showing. "auto" defers to the run and
-  // the route (resolved in one place below). Both moves between them are
-  // explicit, so returning from an auto-opened results screen reaches the
-  // summary instead of re-resolving the landing rule.
+  // the route (resolved in one place below). Only an explicit move out of the
+  // summary lands here as "results", so the back grammar can tell a
+  // summary-entered results screen from an auto-opened one.
   const [savedScreen, setSavedScreen] = useState<"auto" | "summary" | "results">("auto");
   const notFoundReportedRef = useRef<string | null>(null);
   const reportErrorReportedRef = useRef<string | null>(null);
@@ -174,11 +174,12 @@ export function ReviewPage() {
           droppedDuplicates={savedOutcome.data.droppedDuplicates}
           lensStats={savedOutcome.data.lensStats}
           outcome={failedOutcome}
-          // Escape leaves the route from a deep-linked completed run, the
-          // contract a shared issue link is written against. Every other
-          // results landing keeps the summary one keystroke away.
+          // A completed run lands here directly — from History or a shared
+          // issue link — so Escape leaves the route the way the user came in.
+          // Results entered through a summary (failed runs, zero-issue runs)
+          // keep that summary one keystroke away.
           onBackToSummary={
-            savedIssueId && !failedOutcome ? undefined : () => setSavedScreen("summary")
+            savedScreen === "auto" && !failedOutcome ? undefined : () => setSavedScreen("summary")
           }
         />
       );

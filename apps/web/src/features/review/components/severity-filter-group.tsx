@@ -43,7 +43,6 @@ export function SeverityFilterGroup({
 }: SeverityFilterGroupProps) {
   const isFilterActive = activeFilter.size > 0;
   const resetIndex = SEVERITY_ORDER.length;
-  const lastFilterIndex = SEVERITY_ORDER.length - 1;
   const isResetFocused = !!isFocused && focusedIndex === resetIndex;
 
   const isReviewSeverity = (value: string): value is ReviewSeverity => value in SEVERITY_LABELS;
@@ -52,16 +51,16 @@ export function SeverityFilterGroup({
     onFilterChange(new Set(value.filter(isReviewSeverity)));
   };
 
-  // Resetting unmounts the Reset button, so return the zone's focus to the last
-  // severity chip (mirrors the keyboard path's resetAndReturnToLastFilter);
-  // otherwise DOM focus drops to body while the focused index points at the
-  // now-unmounted Reset button.
+  // Resetting unmounts the Reset button, so return the zone's focus to the
+  // row's home — the first severity chip (mirrors the keyboard path's
+  // resetAndReturnToFirstFilter); otherwise DOM focus drops to body while the
+  // focused index points at the now-unmounted Reset button.
   const handleReset = (container: Element | null) => {
-    const lastSeverity = SEVERITY_ORDER[lastFilterIndex];
-    onFocusedIndexChange?.(lastFilterIndex);
+    const firstSeverity = SEVERITY_ORDER[0];
+    onFocusedIndexChange?.(0);
     onReset?.();
-    if (lastSeverity) {
-      container?.querySelector<HTMLButtonElement>(`button[data-value="${lastSeverity}"]`)?.focus();
+    if (firstSeverity) {
+      container?.querySelector<HTMLButtonElement>(`button[data-value="${firstSeverity}"]`)?.focus();
     }
   };
 

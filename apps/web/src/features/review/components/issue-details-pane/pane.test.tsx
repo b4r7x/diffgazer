@@ -822,6 +822,38 @@ describe("IssueDetailsPane tab stops", () => {
       "on",
     );
   });
+
+  it("syntax-colors the plain-snippet patch from the issue file's language", () => {
+    renderPane(
+      makeIssue({
+        file: "src/example.tsx",
+        suggested_patch: "const value = safeParse(input);",
+      }),
+      "patch",
+    );
+
+    const patch = screen.getByRole("region", { name: "Suggested patch" });
+    expect(within(patch).getByText("const")).toHaveClass("code-keyword");
+    expect(patch.querySelector('[data-slot="code-block-content"]')).toHaveAttribute(
+      "data-wrap",
+      "on",
+    );
+    expect(patch).toHaveAttribute("tabindex", "0");
+  });
+
+  it("keeps a plain-snippet patch uncolored when no grammar claims the issue file", () => {
+    renderPane(
+      makeIssue({
+        file: "docs/notes.txt",
+        suggested_patch: "const value = safeParse(input);",
+      }),
+      "patch",
+    );
+
+    const patch = screen.getByRole("region", { name: "Suggested patch" });
+    expect(within(patch).queryByText("const")).not.toBeInTheDocument();
+    expect(patch).toHaveTextContent("const value = safeParse(input);");
+  });
 });
 
 describe("mobile back to issues", () => {

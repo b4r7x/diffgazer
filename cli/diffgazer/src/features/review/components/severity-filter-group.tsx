@@ -55,7 +55,7 @@ export function SeverityFilterGroup({
       if (key.return || input === " ") {
         if (focusedIndex === resetIndex) {
           onFilterChange(new Set());
-          setFocusedIndex(SEVERITY_ORDER.length - 1);
+          setFocusedIndex(0);
           return;
         }
         const severity = SEVERITY_ORDER[focusedIndex];
@@ -64,7 +64,7 @@ export function SeverityFilterGroup({
       }
       if (input === "r" && isFilterActive) {
         onFilterChange(new Set());
-        setFocusedIndex(SEVERITY_ORDER.length - 1);
+        setFocusedIndex(0);
       }
     },
     { isActive },

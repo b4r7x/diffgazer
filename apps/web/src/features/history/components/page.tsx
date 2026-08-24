@@ -376,16 +376,14 @@ function HistoryPageContent() {
           <Panel.Label variant="border" aria-hidden="true">
             Runs
           </Panel.Label>
-          {/* Ordering is fixed, so this reads as a datum rather than borrowing the
-              bracketed-control vocabulary of the real actions on the page. */}
-          <div className="flex justify-end px-3 pt-2 pb-1">
-            <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">
-              Newest first
-            </span>
-          </div>
+          {/* Ordering is fixed, so this reads as a datum: a floating chip on the
+              top rule opposite the pane label, not an in-flow control band. */}
+          <Panel.Label variant="border" className="left-auto right-4">
+            Newest first
+          </Panel.Label>
           {/* Full-bleed like SECTIONS: the highlighted row fill and every
               border-b rule span border-to-border, TUI-style. */}
-          <ScrollArea className="pl-[2px] pt-1 pb-2 md:min-h-0 md:flex-1">
+          <ScrollArea className="pl-[2px] pb-2 md:min-h-0 md:flex-1">
             {mappedRuns.length > 0 ? (
               <NavigationList
                 ref={runsListRef}

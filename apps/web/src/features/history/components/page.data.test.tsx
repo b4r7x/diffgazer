@@ -87,6 +87,16 @@ describe("HistoryPage loading and error status", () => {
     expect(container.querySelector('[aria-live="polite"]')).toBe(liveRegion);
   });
 
+  it("floats the ordering label on the runs pane border instead of an in-flow band", async () => {
+    renderHistoryPage(<HistoryPage />);
+
+    await screen.findByRole("listbox", { name: /review runs/i });
+
+    const label = screen.getByText("Newest first");
+    expect(label.closest('[data-slot="panel-label"]')).not.toBeNull();
+    expect(label.closest('[data-pane="runs"]')).not.toBeNull();
+  });
+
   it("brackets exactly one pane on the loaded screen", async () => {
     const { container } = renderHistoryPage(<HistoryPage />);
 

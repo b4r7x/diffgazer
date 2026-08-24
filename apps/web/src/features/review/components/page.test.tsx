@@ -397,8 +397,9 @@ describe("ReviewPage saved review loading", () => {
     expect(screen.queryByRole("option")).not.toBeInTheDocument();
   });
 
-  it("returns a completed saved review to its summary with Escape from the results list", async () => {
+  it("returns straight to History with Escape from an auto-landed results list", async () => {
     const user = userEvent.setup();
+    routeState.canGoBack = true;
     const issue = makeIssue({ id: "issue-1", title: "Saved result issue" });
     routeState.params = { reviewId: "review-saved" };
     routeState.search = { mode: "staged" };
@@ -418,17 +419,52 @@ describe("ReviewPage saved review loading", () => {
 
     expect(await screen.findByText(`Review ${formatRunId("review-saved")}`)).toBeInTheDocument();
 
+    // Opening the run was one step from History, so Escape is one step back -
+    // no summary stop in between.
     await user.keyboard("{Escape}");
 
+    expect(mockBack).toHaveBeenCalledTimes(1);
     expect(
-      await screen.findByText(`Review Complete ${formatRunId("review-saved")}`),
+      screen.queryByText(`Review Complete ${formatRunId("review-saved")}`),
+    ).not.toBeInTheDocument();
+  });
+
+  it("returns a summary-entered results list to its summary with Escape", async () => {
+    const user = userEvent.setup();
+    routeState.params = { reviewId: "review-empty" };
+    routeState.search = { mode: "staged" };
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        status: "success",
+        data: {
+          review: {
+            metadata: { id: "review-empty", durationMs: 2500 },
+            result: { issues: [] },
+          },
+        },
+      }),
+    );
+
+    renderPage();
+
+    expect(
+      await screen.findByText(`Review Complete ${formatRunId("review-empty")}`),
     ).toBeInTheDocument();
-    expect(mockNavigate).not.toHaveBeenCalled();
-    expect(mockBack).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: /view results/i }));
 
-    expect(await screen.findByText(`Review ${formatRunId("review-saved")}`)).toBeInTheDocument();
+    expect(await screen.findByText(`Review ${formatRunId("review-empty")}`)).toBeInTheDocument();
+
+    // A clean run opens in the details zone; the first Escape steps to the
+    // list, the second returns to the summary.
+    await user.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
+
+    expect(
+      await screen.findByText(`Review Complete ${formatRunId("review-empty")}`),
+    ).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockBack).not.toHaveBeenCalled();
   });
 
   it("keeps Escape leaving the screen for a summary-less issue deep link", async () => {
@@ -530,12 +566,10 @@ describe("ReviewPage saved review loading", () => {
       "true",
     );
 
+    // No deep link means the auto landing: Escape leaves for History directly.
     await user.keyboard("{Escape}");
 
-    expect(
-      await screen.findByText(`Review Complete ${formatRunId("review-saved")}`),
-    ).toBeInTheDocument();
-    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
   });
 
   it("explains persisted duplicate collapse in a reopened review", async () => {

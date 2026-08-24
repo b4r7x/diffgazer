@@ -171,6 +171,14 @@ describe("CLI SeverityFilterGroup keyboard model", () => {
     await flush();
 
     expect(latest.size).toBe(0);
+
+    // Reset returns focus to the row's home: the next Enter must toggle the
+    // first severity, not the last one.
+    stdin.write("\r");
+    await flush();
+
+    expect(latest.size).toBe(1);
+    expect(latest.has(SEVERITY_ORDER[0])).toBe(true);
   });
 
   test("r shortcut clears all selected severities", async () => {

@@ -1,6 +1,7 @@
 import type { EvidenceRef } from "@diffgazer/core/schemas/review";
 import { CodeBlock, type CodeBlockLineState } from "@diffgazer/ui/components/code-block";
 import { DiffView, type ParsedDiff, parseDiff } from "@diffgazer/ui/components/diff-view";
+import { highlightExcerpt } from "../../lib/highlight-excerpt";
 
 /**
  * The focusable rows region DiffView renders (unified or split). It advertises
@@ -89,15 +90,17 @@ export function PatchTabContent({
 
   // The fallback catches whatever the model wrote when it is not a parseable
   // patch — often a paragraph of prose.
+  const rawLines = patch.split(/\r?\n/);
+  const lines = highlightExcerpt(patch, targetFile);
   return (
     <CodeBlock label="Suggested patch">
       <CodeBlock.Content wrap>
-        {patch.split("\n").map((line, index) => (
+        {lines.map((line, index) => (
           <CodeBlock.Line
-            key={`${index}-${line}`}
+            key={`${index}-${rawLines[index]}`}
             number={index + 1}
             content={line}
-            state={getPatchLineState(line)}
+            state={getPatchLineState(rawLines[index] ?? "")}
           />
         ))}
       </CodeBlock.Content>

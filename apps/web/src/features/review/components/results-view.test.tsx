@@ -966,9 +966,9 @@ describe("ReviewResultsView keyboard regression", () => {
     expect(medium).toHaveAttribute("aria-pressed", "false");
     expect(screen.getAllByRole("option")).toHaveLength(3);
 
-    const lastSeverityChip = screen.getByRole("button", { name: /nit severity/i });
+    const firstSeverityChip = screen.getByRole("button", { name: /blocker severity/i });
     const filterGroup = screen.getByRole("group", { name: "Severity filter" });
-    await waitFor(() => expect(lastSeverityChip).toHaveFocus());
+    await waitFor(() => expect(firstSeverityChip).toHaveFocus());
     expect(filterGroup).toContainElement(document.activeElement as HTMLElement | null);
   });
 
@@ -996,6 +996,43 @@ describe("ReviewResultsView keyboard regression", () => {
     }
 
     await waitFor(() => expect(reset).toHaveFocus());
+  });
+
+  it("clears every severity chip and restores the full list when Reset is activated with Space", async () => {
+    const user = userEvent.setup();
+    renderView([
+      createReviewIssue("issue-1", "High issue", { severity: "high" }),
+      createReviewIssue("issue-2", "Low issue", { severity: "low" }),
+    ]);
+
+    await user.keyboard("{ArrowUp}");
+    const filterGroup = screen.getByRole("group", { name: "Severity filter" });
+    await waitFor(() =>
+      expect(filterGroup).toContainElement(document.activeElement as HTMLElement | null),
+    );
+
+    await user.keyboard("{ArrowRight}");
+    await user.keyboard("{Enter}");
+    expect(screen.getAllByRole("option")).toHaveLength(1);
+    const reset = await screen.findByRole("button", { name: /reset severity filter/i });
+
+    for (let i = 0; i < SEVERITY_ORDER.length - 1; i += 1) {
+      await user.keyboard("{ArrowRight}");
+    }
+    await waitFor(() => expect(reset).toHaveFocus());
+
+    await user.keyboard(" ");
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: /reset severity filter/i }),
+      ).not.toBeInTheDocument(),
+    );
+    for (const chip of within(filterGroup).getAllByRole("button")) {
+      expect(chip).toHaveAttribute("aria-pressed", "false");
+    }
+    expect(screen.getAllByRole("option")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: /blocker severity/i })).toHaveFocus();
   });
 
   it("activates reset via 'r' shortcut when a severity filter is active", async () => {

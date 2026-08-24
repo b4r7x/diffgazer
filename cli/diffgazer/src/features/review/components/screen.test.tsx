@@ -104,7 +104,7 @@ describe("ReviewScreen", () => {
     expect(frame).toContain("Found 0 issues across 0 files with issues.");
   });
 
-  test("returns a completed saved review to its summary with Escape from the findings", async () => {
+  test("returns straight to History with Escape from an auto-landed findings screen", async () => {
     const issue = makeIssue({ id: "issue-1", title: "Saved issue", symptom: "Saved symptom" });
     apiMocks.useReview.mockReturnValue({
       status: "success",
@@ -117,11 +117,31 @@ describe("ReviewScreen", () => {
 
     expect(lastFrame() ?? "").toContain("Saved symptom");
 
-    // The findings screen is the landing view, so the summary it skipped stays
-    // one keystroke away. Ink holds a bare Escape briefly to tell it apart from
-    // the start of a control sequence, so this waits on a timer, not a frame.
+    // Opening the run was one step from History, so Escape is one step back -
+    // it leaves the review route without a summary stop. Leaving the route in
+    // this harness re-renders the live container. Ink holds a bare Escape
+    // briefly to tell it apart from the start of a control sequence, so this
+    // waits on a timer, not a frame.
     stdin.write(ESCAPE);
 
+    await vi.waitFor(() => expect(lastFrame() ?? "").toMatch(/progress overview/i));
+    expect(lastFrame() ?? "").not.toMatch(/review complete/i);
+  });
+
+  test("returns a summary-entered findings screen to its summary with Escape", async () => {
+    apiMocks.useReview.mockReturnValue({
+      status: "success",
+      data: { review: { metadata: { id: "review-123", durationMs: 10 }, result: { issues: [] } } },
+    });
+
+    const { lastFrame, stdin } = renderReviewScreen();
+
+    expect(lastFrame() ?? "").toMatch(/review complete/i);
+
+    stdin.write("\r");
+    await vi.waitFor(() => expect(lastFrame() ?? "").not.toMatch(/review complete/i));
+
+    stdin.write(ESCAPE);
     await vi.waitFor(() => expect(lastFrame() ?? "").toMatch(/review complete/i));
   });
 

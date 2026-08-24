@@ -82,23 +82,40 @@ function renderHarness() {
 }
 
 describe("useReviewSeverityFilterKeyboard", () => {
-  it("returns DOM focus to the last severity chip after keyboard reset", async () => {
+  it("returns DOM focus to the first severity chip after keyboard reset", async () => {
     const user = userEvent.setup();
     renderHarness();
 
     screen.getByRole("button", { name: /high severity/i }).focus();
     await user.keyboard("r");
 
-    const lastSeverityChip = screen.getByRole("button", { name: /nit severity/i });
-    await waitFor(() => expect(lastSeverityChip).toHaveFocus());
+    const firstSeverityChip = screen.getByRole("button", { name: /blocker severity/i });
+    await waitFor(() => expect(firstSeverityChip).toHaveFocus());
     expect(
       screen.queryByRole("button", { name: /reset severity filter/i }),
     ).not.toBeInTheDocument();
 
-    await user.keyboard("{ArrowLeft}");
+    await user.keyboard("{ArrowRight}");
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /low severity/i })).toHaveFocus(),
+      expect(screen.getByRole("button", { name: /high severity/i })).toHaveFocus(),
     );
+  });
+
+  it("leaves every severity chip unselected after activating Reset with Space", async () => {
+    const user = userEvent.setup();
+    renderHarness();
+
+    screen.getByRole("button", { name: /reset severity filter/i }).focus();
+    await user.keyboard(" ");
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: /reset severity filter/i }),
+      ).not.toBeInTheDocument(),
+    );
+    for (const chip of screen.getAllByRole("button")) {
+      expect(chip).toHaveAttribute("aria-pressed", "false");
+    }
   });
 
   it("moves left from Reset to the last severity so Enter toggles the chip", async () => {
