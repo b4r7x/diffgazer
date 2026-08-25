@@ -13,45 +13,25 @@ import { acceptNotice } from "./product-registry.js";
 
 type AcceptedAcknowledgement = Extract<ReadinessAcknowledgement, { status: "accepted" }>;
 
-function resolveHostedTupleFields(row: ProviderListRow): {
-  endpoint: string;
-  region?: string;
-  workspace?: string;
-} {
-  const product = row.product;
+function resolveHostedEndpoint(row: ProviderListRow): string {
   const configured = row.configuration?.transportFamily === "hosted-api" ? row.configuration : null;
+  if (configured) return configured.endpoint;
 
-  if (configured) {
-    return {
-      endpoint: configured.endpoint,
-      ...(configured.region !== undefined ? { region: configured.region } : {}),
-      ...(configured.workspace !== undefined ? { workspace: configured.workspace } : {}),
-    };
-  }
-
-  const defaultProfile = product.endpoints[0];
+  const defaultProfile = row.product.endpoints[0];
   if (!defaultProfile) {
-    throw new Error(`No endpoint profile for ${product.productId}`);
+    throw new Error(`No endpoint profile for ${row.product.productId}`);
   }
-
-  return {
-    endpoint: defaultProfile.endpoint,
-    ...(defaultProfile.region !== undefined ? { region: defaultProfile.region } : {}),
-  };
+  return defaultProfile.endpoint;
 }
 
 function buildHostedInput(
   row: ProviderListRow,
   credential?: WriteOnlySecretInput,
 ): ClientConfigurationInput {
-  const product = row.product;
-  const tupleFields = resolveHostedTupleFields(row);
   return {
     transportFamily: "hosted-api",
-    productId: product.productId as HostedApiProductId,
-    endpoint: tupleFields.endpoint,
-    ...(tupleFields.region !== undefined ? { region: tupleFields.region } : {}),
-    ...(tupleFields.workspace !== undefined ? { workspace: tupleFields.workspace } : {}),
+    productId: row.product.productId as HostedApiProductId,
+    endpoint: resolveHostedEndpoint(row),
     ...(credential ? { credential } : {}),
   };
 }

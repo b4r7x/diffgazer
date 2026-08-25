@@ -63,17 +63,17 @@ const supportedConfiguration = {
   availableActions: ["inspect", "select", "test", "update", "delete"],
 } satisfies Extract<ClientConfigurationSummary, { status: "supported" }>;
 
-const qwenConfiguration = {
+const deepseekConfiguration = {
   ...supportedConfiguration,
-  configurationId: "qwen-international",
-  productId: "qwen" as const,
-  endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-  selectedModelId: "qwen3-coder-flash",
+  configurationId: "deepseek-payg",
+  productId: "deepseek" as const,
+  endpoint: "https://api.deepseek.com/v1",
+  selectedModelId: "deepseek-v4-flash",
   notices: [
     {
-      ...PRODUCT_REGISTRY.qwen.notice,
-      billing: [...PRODUCT_REGISTRY.qwen.notice.billing],
-      privacy: [...PRODUCT_REGISTRY.qwen.notice.privacy],
+      ...PRODUCT_REGISTRY.deepseek.notice,
+      billing: [...PRODUCT_REGISTRY.deepseek.notice.billing],
+      privacy: [...PRODUCT_REGISTRY.deepseek.notice.privacy],
     },
   ],
 } satisfies Extract<ClientConfigurationSummary, { status: "supported" }>;
@@ -237,14 +237,14 @@ describe("configuration queries", () => {
     });
     const getConfigurationModels = vi.fn<BoundApi["getConfigurationModels"]>().mockResolvedValue({
       status: "passed",
-      configurationId: qwenConfiguration.configurationId,
-      productId: qwenConfiguration.productId,
-      transportFamily: qwenConfiguration.transportFamily,
+      configurationId: deepseekConfiguration.configurationId,
+      productId: deepseekConfiguration.productId,
+      transportFamily: deepseekConfiguration.transportFamily,
       models: [
-        model("qwen3-coder-flash"),
-        model("qwen-max-latest"),
-        model("../qwen3-coder-flash"),
-        model("qwen3-coder-plus"),
+        model("deepseek-v4-flash"),
+        model("deepseek-latest"),
+        model("../deepseek-v4-flash"),
+        model("deepseek-v5-flash"),
       ],
       checkedAt: "2026-07-31T12:00:00.000Z",
       source: "snapshot",
@@ -253,10 +253,10 @@ describe("configuration queries", () => {
     const harness = createTestQueryWrapper({ api: { getConfigurationModels } });
 
     const response = await harness.queryClient.fetchQuery(
-      configurationModelsQuery(harness.api, qwenConfiguration),
+      configurationModelsQuery(harness.api, deepseekConfiguration),
     );
 
-    expect(response.models.map(({ id }) => id)).toEqual(["qwen3-coder-flash"]);
+    expect(response.models.map(({ id }) => id)).toEqual(["deepseek-v4-flash"]);
   });
 });
 

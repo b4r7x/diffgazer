@@ -48,7 +48,6 @@ const TRANSPORT_LABELS = {
 const BILLING_MODE_LABELS = {
   "free-tier": "Evaluation/free quota",
   "pay-as-you-go": "Pay as you go (PAYG)",
-  evaluation: "Evaluation",
   "route-specific": "Route-specific billing",
   "local-resource": "Local execution costs",
   "subscription-credit": "Subscription credit/rate limits",

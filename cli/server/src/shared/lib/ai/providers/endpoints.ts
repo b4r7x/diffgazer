@@ -22,8 +22,6 @@ type EndpointFailureCode =
   | "unexpected-port"
   | "unexpected-path"
   | "tuple-mismatch"
-  | "cross-region"
-  | "cross-workspace"
   | "lookalike-endpoint"
   | "invalid-loopback-endpoint"
   | "non-loopback-resolution"
@@ -38,8 +36,6 @@ export type EndpointFailure = Readonly<{
 export type ResolvedHostedEndpoint = Readonly<{
   endpoint: string;
   productId: HostedApiProductId;
-  region: string | null;
-  workspace: string | null;
 }>;
 
 export type ResolvedLoopbackEndpoint = Readonly<{
@@ -142,8 +138,6 @@ function isLookalikeHostedEndpoint(productId: HostedApiProductId, endpoint: stri
 export type ResolveHostedEndpointInput = Readonly<{
   productId: HostedApiProductId;
   endpoint: string;
-  region?: string;
-  workspace?: string;
 }>;
 
 export function resolveHostedApiEndpoint(
@@ -162,37 +156,11 @@ export function resolveHostedApiEndpoint(
     );
   }
 
-  const tuple = getHostedApiEndpointTuple(input.productId, endpoint, input.region);
-  if (!tuple) {
-    const regionMatch = PRODUCT_REGISTRY[input.productId].configuration.endpoints.find(
-      (candidate) => candidate.endpoint === endpoint,
-    );
-    if (regionMatch && "region" in regionMatch) {
-      return err(
-        endpointFailure("cross-region", "Endpoint does not match the selected product region"),
-      );
-    }
+  if (!getHostedApiEndpointTuple(input.productId, endpoint)) {
     return err(endpointFailure("tuple-mismatch", "Endpoint does not match the selected product"));
   }
 
-  const workspaceRequired = "workspaceBound" in tuple && tuple.workspaceBound === true;
-  if (workspaceRequired && input.workspace === undefined) {
-    return err(
-      endpointFailure("cross-workspace", "Selected endpoint requires a workspace reference"),
-    );
-  }
-  if (!workspaceRequired && input.workspace !== undefined) {
-    return err(
-      endpointFailure("cross-workspace", "Selected endpoint does not accept a workspace reference"),
-    );
-  }
-
-  return ok({
-    endpoint,
-    productId: input.productId,
-    region: "region" in tuple ? (tuple.region ?? null) : null,
-    workspace: input.workspace ?? null,
-  });
+  return ok({ endpoint, productId: input.productId });
 }
 
 export function boundedFetchInit(init: RequestInit = {}): RequestInit {

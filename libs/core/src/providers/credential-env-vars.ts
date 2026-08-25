@@ -20,10 +20,8 @@ export const CREDENTIAL_ENV_VARS: Readonly<Partial<Record<RunnableProductId, str
   groq: "GROQ_API_KEY",
   cerebras: "CEREBRAS_API_KEY",
   deepseek: "DEEPSEEK_API_KEY",
-  qwen: "QWEN_API_KEY",
-  moonshot: "MOONSHOT_API_KEY",
-  mistral: "MISTRAL_API_KEY",
   "ollama-cloud": "OLLAMA_API_KEY",
+  "opencode-zen": "OPENCODE_API_KEY",
   "local-openai": "OPENAI_API_KEY",
 };
 

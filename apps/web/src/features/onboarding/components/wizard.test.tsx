@@ -68,8 +68,6 @@ function configurationSummary(
     transportFamily: "hosted-api" as const,
     productId: input.productId,
     endpoint: input.endpoint,
-    region: input.region,
-    workspace: input.workspace,
     selectedModelId,
     notices: [
       {
@@ -304,10 +302,10 @@ describe("OnboardingWizard", () => {
     expect(screen.getByText(/Step 1 of 5/i)).toBeInTheDocument();
   });
 
-  it("shows exactly 14 selectable products", async () => {
+  it("shows exactly 12 selectable products", async () => {
     renderWizard();
     await expectStep(/select product/i);
-    expect(screen.getAllByRole("radio")).toHaveLength(14);
+    expect(screen.getAllByRole("radio")).toHaveLength(12);
   });
 
   it("uses shared product names from the registry projection", async () => {

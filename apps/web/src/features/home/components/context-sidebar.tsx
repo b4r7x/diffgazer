@@ -17,6 +17,8 @@ interface ContextSidebarProps {
   pending?: boolean;
   /** Provided only when there is a run to open; the row stays inert without it. */
   onOpenLastRun?: () => void;
+  /** Opens the file picker. Absent when there is no trusted repo to pick files from. */
+  onChooseFiles?: () => void;
 }
 
 const CONTEXT_TITLE_ID = "home-context-title";
@@ -29,6 +31,7 @@ export function ContextSidebar({
   projectPath,
   pending = false,
   onOpenLastRun,
+  onChooseFiles,
 }: ContextSidebarProps) {
   const rows = buildHomeContextRows({ context, isTrusted, projectPath });
 
@@ -93,6 +96,28 @@ export function ContextSidebar({
             >
               [p]
             </span>
+          </div>
+        </InfoField>
+        {/* The other half of what shapes the next run: the provider row says
+            which model reads the diff, this one says how much of the diff it
+            reads. Inert without a repo to pick files from. */}
+        <InfoField
+          label="Review Scope"
+          onClick={pending ? undefined : onChooseFiles}
+          ariaLabel="Choose files to review"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate">
+              {onChooseFiles ? "All changes — choose files" : "All changes"}
+            </span>
+            {onChooseFiles ? (
+              <span
+                aria-hidden="true"
+                className="hidden shrink-0 text-xs text-muted-foreground sm:inline"
+              >
+                [f]
+              </span>
+            ) : null}
           </div>
         </InfoField>
         <InfoField

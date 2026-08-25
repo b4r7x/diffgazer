@@ -26,6 +26,7 @@ export {
   UsageAvailabilitySchema,
 } from "./execution.js";
 export {
+  EVIDENCE_GAP_MARKER,
   type EvidenceRef,
   type FixPlanStep,
   hasSuggestedPatch,
@@ -46,6 +47,8 @@ export {
   ReviewResultSchema,
   type ReviewSeverity,
   ReviewSeveritySchema,
+  type ReviewSizeWarning,
+  ReviewSizeWarningSchema,
   type ReviewStreamEvent,
   ReviewStreamEventSchema,
   type SeverityFilter,
@@ -76,6 +79,7 @@ export {
   type ReviewCursor,
   ReviewCursorSchema,
   type ReviewGitContext,
+  MAX_REVIEW_FILES,
   ReviewGitContextSchema,
   type ReviewListWarning,
   ReviewListWarningSchema,

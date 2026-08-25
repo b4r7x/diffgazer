@@ -22,7 +22,6 @@ type HostedEvidenceKey = Extract<EvidenceKey, { transportFamily: "hosted-api" }>
 
 const SCHEMA_SHA256 = "1".repeat(64);
 const CREDENTIAL_REFERENCE_IDENTITY = "3".repeat(64);
-const WORKSPACE_ACCOUNT_REFERENCE = "4".repeat(64);
 const TEST_CREDENTIAL = "sk-test-hosted-credential-value";
 
 const STRUCTURED_OUTPUT_SCHEMA = {
@@ -59,7 +58,6 @@ function suggestedModelId(productId: HostedApiProductId): string {
     return policy.suggestedModelId;
   }
   if (productId === "openrouter") return "anthropic/claude-3.7-sonnet";
-  if (productId === "moonshot") return "kimi-k3-2026-01";
   return "model-1";
 }
 
@@ -69,11 +67,6 @@ function evidenceKeyFor(
 ): EvidenceKey {
   const product = PRODUCT_REGISTRY[productId];
   const endpoint = product.configuration.endpoints[0];
-  const region = endpoint && "region" in endpoint ? (endpoint.region ?? null) : null;
-  const workspaceAccountReference =
-    endpoint && "workspaceBound" in endpoint && endpoint.workspaceBound
-      ? WORKSPACE_ACCOUNT_REFERENCE
-      : null;
 
   return {
     authentication: null,
@@ -82,8 +75,8 @@ function evidenceKeyFor(
     productId,
     transportFamily: "hosted-api",
     normalizedEndpoint: endpoint?.endpoint ?? "https://example.invalid/v1",
-    region,
-    workspaceAccountReference,
+    region: null,
+    workspaceAccountReference: null,
     modelId: suggestedModelId(productId),
     runtime: { identity: "diffgazer-server", version: "1.2.3" },
     structuredOutputSchemaSha256: SCHEMA_SHA256,
@@ -142,13 +135,12 @@ function executeRequest(productId: HostedApiProductId, patch: Partial<HostedEvid
   };
 }
 
-function hostedContext(fetch: FetchFn, patch: Record<string, unknown> = {}) {
+function hostedContext(fetch: FetchFn) {
   return {
     credential: TEST_CREDENTIAL,
     reviewSchema: DEFAULT_HOSTED_REVIEW_SCHEMA,
     structuredOutputSchema: STRUCTURED_OUTPUT_SCHEMA,
     fetch,
-    ...patch,
   };
 }
 
@@ -239,42 +231,6 @@ describe("add-now PAYG tuple model and notice policies", () => {
     expect(result.receipt.usageAvailability).toBe("reported");
   });
 
-  it("binds Qwen to international workspace tuple and required usage", async () => {
-    const fetch = mockFetchResponse(
-      openAiSuccessBody(
-        { issues: [] },
-        { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 },
-      ),
-    );
-
-    const result = await executeHostedReview({
-      ...executeRequest("qwen"),
-      context: hostedContext(fetch, { workspaceAccountId: "ws-test-123" }),
-    });
-
-    expect(result.receipt.outcome).toBe("completed");
-    expect(result.receipt.region).toBe("international");
-    expect(result.receipt.workspaceAccountReference).toBe(WORKSPACE_ACCOUNT_REFERENCE);
-    expect(result.receipt.usageAvailability).toBe("reported");
-
-    const [, init] = (fetch as MockFetchFn).mock.calls[0] ?? [];
-    expect((init as RequestInit).headers).toMatchObject({
-      "x-dashscope-workspace": "ws-test-123",
-    });
-  });
-
-  it("rejects Qwen without workspace before sending a secret", async () => {
-    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
-    const result = await executeHostedReview({
-      ...executeRequest("qwen"),
-      context: hostedContext(fetch),
-    });
-
-    expect(result.receipt.outcome).toBe("transport-failed");
-    expect(result.result.issues).toEqual([]);
-    expect(fetch).not.toHaveBeenCalled();
-  });
-
   it("drives Ollama Cloud through ollama.com with a bearer credential and JSON mode", async () => {
     const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
 
@@ -297,62 +253,47 @@ describe("add-now PAYG tuple model and notice policies", () => {
     expect(requestBodyAt(fetch, 0).response_format).toEqual({ type: "json_object" });
   });
 
-  it("isolates Moonshot by region endpoint tuple", async () => {
-    const fetch = mockFetchResponse(
-      openAiSuccessBody(
-        { issues: [] },
-        { prompt_tokens: 6, completion_tokens: 2, total_tokens: 8 },
-      ),
-    );
+  // One key and one endpoint serve both Zen credits and an OpenCode Go
+  // subscription, so the wire must be the same either way: a bearer credential
+  // to /zen/v1 asking for JSON mode, with the review validated locally.
+  it("drives OpenCode Zen through its gateway with a bearer credential and JSON mode", async () => {
+    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [makeIssue()] }));
 
     const result = await executeHostedReview({
-      ...executeRequest("moonshot", {
-        normalizedEndpoint: "https://api.moonshot.ai/v1",
-        region: "international",
-        modelId: "kimi-k3-2026-01",
-      }),
+      ...executeRequest("opencode-zen"),
       context: hostedContext(fetch),
     });
 
     expect(result.receipt.outcome).toBe("completed");
-    expect(result.receipt.region).toBe("international");
-    expect(result.receipt.usageAvailability).toBe("reported");
-  });
+    expect(result.receipt.normalizedEndpoint).toBe("https://opencode.ai/zen/v1");
+    expect(result.result.issues).toHaveLength(1);
 
-  it("rejects a cross-region hosted endpoint tuple", () => {
-    const result = resolveHostedApiEndpoint({
-      productId: "moonshot",
-      endpoint: "https://api.moonshot.cn/v1",
-      region: "international",
+    const [url, init] = (fetch as MockFetchFn).mock.calls[0] ?? [];
+    expect(url).toBe("https://opencode.ai/zen/v1/chat/completions");
+    expect((init as RequestInit).headers).toMatchObject({
+      authorization: `Bearer ${TEST_CREDENTIAL}`,
     });
-
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error.code).toBe("cross-region");
+    expect(requestBodyAt(fetch, 0).response_format).toEqual({ type: "json_object" });
   });
 
-  it("honors Mistral notice version and regional endpoint choice", async () => {
+  it("carries the notice version the product registry pins", async () => {
     const fetch = mockFetchResponse({
       choices: [{ message: { content: JSON.stringify({ issues: [] }) }, finish_reason: "stop" }],
     });
     const result = await executeHostedReview({
-      ...executeRequest("mistral", {
-        normalizedEndpoint: "https://api.eu.mistral.ai/v1",
-        region: "eu",
-      }),
+      ...executeRequest("zai"),
       context: hostedContext(fetch),
     });
 
     expect(result.receipt.outcome).toBe("completed");
-    expect(result.receipt.region).toBe("eu");
-    expect(result.receipt.noticeVersion).toBe(PRODUCT_REGISTRY.mistral.notice.noticeVersion);
+    expect(result.receipt.noticeVersion).toBe(PRODUCT_REGISTRY.zai.notice.noticeVersion);
     expect(result.receipt.usageAvailability).toBe("unavailable");
   });
 
   it("fails closed when notice version does not match the product registry", async () => {
     const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
     const result = await executeHostedReview({
-      ...executeRequest("mistral", { noticeVersion: 999 }),
+      ...executeRequest("zai", { noticeVersion: 999 }),
       context: hostedContext(fetch),
     });
 
@@ -731,22 +672,6 @@ describe("hosted adapter factory", () => {
     expect(result.receipt.outcome).toBe("completed");
     const init = vi.mocked(fetch).mock.calls[0]?.[1];
     expect((init?.headers as Record<string, string>)["x-goog-api-key"]).toBe(TEST_CREDENTIAL);
-  });
-
-  it("sends the workspace account the authorized execution channel supplies", async () => {
-    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
-    vi.spyOn(globalThis, "fetch").mockImplementation(fetch);
-    const adapter = createHostedAdapter("qwen");
-
-    const result = await adapter.execute({
-      ...executeRequest("qwen"),
-      resolveCredential: async () => TEST_CREDENTIAL,
-      workspaceAccountId: "ws-account-1",
-    });
-
-    expect(result.receipt.outcome).toBe("completed");
-    const init = vi.mocked(fetch).mock.calls[0]?.[1];
-    expect((init?.headers as Record<string, string>)["x-dashscope-workspace"]).toBe("ws-account-1");
   });
 
   it("delegates to executeHostedReview when dependencies are provided", async () => {

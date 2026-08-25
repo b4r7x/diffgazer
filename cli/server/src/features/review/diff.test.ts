@@ -8,7 +8,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { z } from "zod";
 import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
 import { createGitService } from "../../shared/lib/git/service.js";
-import { filterDiffByFiles, resolveGitDiff } from "./diff.js";
+import { LARGE_DIFF_ADVISORY_BYTES } from "./capacity.js";
+import { filterDiffByFiles, MAX_DIFF_SIZE_BYTES, resolveGitDiff } from "./diff.js";
 import { resolveReviewDefaults } from "./pipeline.js";
 import { CreateReviewBodySchema } from "./schemas.js";
 import { buildReviewInputHash, createReviewSession } from "./service.js";
@@ -326,6 +327,32 @@ describe("resolveGitDiff", () => {
       ]),
     );
   });
+
+  it("refuses a diff past the pathological byte ceiling and names what usually causes it", async () => {
+    const header = [
+      "diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml",
+      "index 1111111..2222222 100644",
+      "--- a/pnpm-lock.yaml",
+      "+++ b/pnpm-lock.yaml",
+      "@@ -0,0 +1,2 @@",
+      "",
+    ].join("\n");
+    const oversized = `${header}+${"lockfile-entry ".repeat((MAX_DIFF_SIZE_BYTES / 15) | 0)}\n`;
+
+    const result = await resolveGitDiff({
+      gitService: makeGitService(async () => ok(oversized)),
+      mode: "unstaged",
+      emit: async () => undefined,
+      reviewId: "review-oversized",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe(ReviewErrorCode.DIFF_TOO_LARGE);
+    expect(result.error.step).toBe("diff");
+    expect(result.error.message).toContain("10MB ceiling");
+    expect(result.error.message).toContain("lockfile");
+  }, 30_000);
 });
 
 describe("filterDiffByFiles", () => {
@@ -454,6 +481,32 @@ describe("createReviewSession canonical file-scoped identity", () => {
     expect(result.value.session.events).toContainEqual(
       expect.objectContaining({ type: "review_started", filesTotal: 1 }),
     );
+  });
+
+  it("starts a large review with an advisory on the response and on the stream", async () => {
+    writeFileSync(
+      join(repository, "src/index.ts"),
+      `before\n${"const padding = 'x'.repeat(64);\n".repeat(20_000)}`,
+    );
+
+    const result = await createReviewSession(makeAIClient(), {
+      mode: "unstaged",
+      projectPath: repository,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackedSessionIds.add(result.value.reviewId);
+    sessionsWithRunners.add(result.value.reviewId);
+
+    // Advisory, not a gate: the run is admitted and the review still starts,
+    // carrying the caveat on the buffered stream event every surface reads.
+    expect(result.value.outcome).toBe("running");
+    const warningEvent = result.value.session.events.find(
+      (event) => event.type === "review_size_warning",
+    );
+    expect(warningEvent?.warning.diffBytes).toBeGreaterThan(LARGE_DIFF_ADVISORY_BYTES);
+    expect(warningEvent?.warning.estimatedInputTokens).toBeGreaterThan(0);
   });
 
   it("reuses the active session and forwards the canonical git path across equivalent duplicate/separator request bodies", async () => {

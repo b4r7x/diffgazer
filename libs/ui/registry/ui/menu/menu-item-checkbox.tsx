@@ -14,7 +14,7 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useMenuContext } from "./menu-context";
-import { getItemState, menuItemBase, menuItemIndicator, menuItemLabel } from "./menu-item-variants";
+import { getItemState, menuItemBase, menuItemIndicator } from "./menu-item-variants";
 import { useMenuItemInteractions } from "./use-menu-item-interactions";
 
 const CHECKBOX_CHECKED = "[x]";
@@ -61,12 +61,18 @@ export function MenuItemCheckbox({
   onClick,
   onFocus,
   onMouseDown,
+  onPointerMove,
+  onPointerLeave,
   ...rootProps
 }: MenuItemCheckboxProps) {
   const {
     highlighted,
+    hoveredId,
     activate,
     highlight,
+    hover,
+    unhover,
+    trackPointer,
     idPrefix,
     registerItem,
     unregisterItem,
@@ -100,17 +106,29 @@ export function MenuItemCheckbox({
     return () => unregisterActivator(id);
   }, [id, disabled, registerActivator, unregisterActivator, setIsChecked]);
 
-  const { handleClick, handleFocus, handleMouseDown } = useMenuItemInteractions({
-    id,
-    disabled,
-    activate,
-    highlight,
-    onClick,
-    onFocus,
-    onMouseDown,
-  });
+  const { handleClick, handleFocus, handleMouseDown, handlePointerMove, handlePointerLeave } =
+    useMenuItemInteractions({
+      id,
+      disabled,
+      activate,
+      highlight,
+      hover,
+      unhover,
+      trackPointer,
+      onClick,
+      onFocus,
+      onMouseDown,
+      onPointerMove,
+      onPointerLeave,
+    });
 
-  const state = getItemState({ disabled, isFocused, isSelected: false });
+  const state = getItemState({
+    disabled,
+    isFocused,
+    isSelected: false,
+    isHovered: hoveredId === id,
+  });
+  const isHovered = state === "hovered";
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space toggle is handled centrally by the menu container via useNavigation, not per item.
@@ -124,21 +142,27 @@ export function MenuItemCheckbox({
       data-diffgazer-navigation-item="true"
       data-value={id}
       data-highlighted={isFocused ? "" : undefined}
+      data-hovered={isHovered ? "" : undefined}
       data-state={isChecked ? "checked" : "unchecked"}
       aria-checked={isChecked}
       aria-disabled={disabled || undefined}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onFocus={handleFocus}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
       className={cn(
         menuItemBase({ menuVariant: "default", state, colorVariant: "default" }),
         className,
       )}
     >
-      <span aria-hidden="true" className={menuItemIndicator({ idle: !isFocused && !disabled })}>
+      <span
+        aria-hidden="true"
+        className={menuItemIndicator({ idle: !isFocused && !isHovered && !disabled })}
+      >
         {isChecked ? CHECKBOX_CHECKED : CHECKBOX_UNCHECKED}
       </span>
-      <span className={menuItemLabel({ idle: !isFocused && !disabled })}>{children}</span>
+      <span className="tracking-wide">{children}</span>
     </div>
   );
 }

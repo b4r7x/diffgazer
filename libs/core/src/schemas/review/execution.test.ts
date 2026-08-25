@@ -25,7 +25,6 @@ import {
 
 const SCHEMA_SHA256 = "1".repeat(64);
 const CREDENTIAL_REFERENCE_IDENTITY = "3".repeat(64);
-const WORKSPACE_ACCOUNT_REFERENCE = "4".repeat(64);
 const INSTALLATION_ID = "codex-installation-1";
 
 const limits = {
@@ -81,21 +80,11 @@ const localHttpLlamaCppEvidence: EvidenceKey = {
   runtime: { identity: "llama-cpp", version: "0.3.0" },
 };
 
-const regionalEvidence: EvidenceKey = {
+const allowlistEvidence: EvidenceKey = {
   ...evidenceKey,
-  productId: "moonshot",
-  normalizedEndpoint: "https://api.moonshot.cn/v1",
-  region: "mainland",
-  modelId: "kimi-k3-2026-01",
-};
-
-const workspaceEvidence: EvidenceKey = {
-  ...evidenceKey,
-  productId: "qwen",
-  normalizedEndpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-  region: "international",
-  workspaceAccountReference: WORKSPACE_ACCOUNT_REFERENCE,
-  modelId: "qwen3-coder-flash",
+  productId: "deepseek",
+  normalizedEndpoint: "https://api.deepseek.com/v1",
+  modelId: "deepseek-v4-flash",
 };
 
 type ReceiptFixture = {
@@ -235,20 +224,6 @@ describe("canonical execution hashes", () => {
       label: "normalized endpoint",
       base: localHttpEvidence,
       changed: localHttpLlamaCppEvidence,
-    },
-    {
-      label: "region",
-      base: regionalEvidence,
-      changed: {
-        ...regionalEvidence,
-        normalizedEndpoint: "https://api.moonshot.ai/v1",
-        region: "international",
-      },
-    },
-    {
-      label: "workspace/account reference",
-      base: workspaceEvidence,
-      changed: { ...workspaceEvidence, workspaceAccountReference: "6".repeat(64) },
     },
     {
       label: "exact model",
@@ -516,8 +491,8 @@ describe("execution contracts", () => {
       makeReceipt({ workspaceAccountReference: "review-team" }),
       makeReceipt({ runtime: { identity: "/usr/local/bin/tool", version: "1.2.3" } }),
       makeReceipt({
-        productId: "qwen",
-        modelId: "qwen3-coder-flash",
+        productId: "deepseek",
+        modelId: "deepseek-v4-flash",
         normalizedEndpoint: "https://openrouter.ai/api/v1",
       }),
       makeReceipt({
@@ -669,13 +644,8 @@ describe("execution contracts", () => {
   it("rejects forged product tuples and missing family-specific evidence", () => {
     const invalidEvidence = [
       { ...evidenceKey, normalizedEndpoint: "https://api.groq.com/openai/v1" },
-      { ...evidenceKey, productId: "qwen", normalizedEndpoint: "https://openrouter.ai/api/v1" },
-      {
-        ...evidenceKey,
-        productId: "qwen",
-        region: "international",
-        workspaceAccountReference: null,
-      },
+      { ...evidenceKey, productId: "deepseek", normalizedEndpoint: "https://openrouter.ai/api/v1" },
+      { ...evidenceKey, region: "international" },
       { ...evidenceKey, credentialReferenceIdentity: null },
       {
         ...localHttpEvidence,
@@ -720,34 +690,16 @@ describe("execution contracts", () => {
 
     expect(
       EvidenceKeySchema.safeParse({
-        ...workspaceEvidence,
-        modelId: "kimi-k3-2026-01",
-      }).success,
-    ).toBe(false);
-    expect(
-      EvidenceKeySchema.safeParse({
-        ...regionalEvidence,
-        modelId: "kimi-latest",
+        ...allowlistEvidence,
+        modelId: "deepseek-v5-flash",
       }).success,
     ).toBe(false);
   });
 
-  it("fails closed for higher-cost model policies", () => {
-    const qwenPlus = { ...workspaceEvidence, modelId: "qwen3-coder-plus" };
-    expect(EvidenceKeySchema.safeParse(qwenPlus).success).toBe(false);
-    expect(EvidenceKeySchema.safeParse({ ...qwenPlus, modelId: "qwen3-coder-flash" }).success).toBe(
-      true,
-    );
-
-    // DeepSeek's higher-cost marker has no output-limit/conformance requirement;
-    // the generic allowlist must not accidentally reject that separate policy.
+  it("admits every id the product allowlist names", () => {
+    expect(EvidenceKeySchema.safeParse(allowlistEvidence).success).toBe(true);
     expect(
-      EvidenceKeySchema.safeParse({
-        ...evidenceKey,
-        productId: "deepseek" as const,
-        normalizedEndpoint: "https://api.deepseek.com/v1",
-        modelId: "deepseek-v4-pro",
-      }).success,
+      EvidenceKeySchema.safeParse({ ...allowlistEvidence, modelId: "deepseek-v4-pro" }).success,
     ).toBe(true);
   });
 
@@ -983,11 +935,9 @@ describe("execution contracts", () => {
     expect(
       ExecutionReceiptSchema.safeParse(
         makeReceipt({
-          productId: "qwen",
-          normalizedEndpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-          region: "international",
-          workspaceAccountReference: WORKSPACE_ACCOUNT_REFERENCE,
-          modelId: "qwen3-coder-flash",
+          productId: "deepseek",
+          normalizedEndpoint: "https://api.deepseek.com/v1",
+          modelId: "deepseek-v4-flash",
           usage: undefined,
           usageAvailability: "unavailable",
         }),
@@ -996,11 +946,9 @@ describe("execution contracts", () => {
     expect(
       ExecutionReceiptSchema.safeParse(
         makeReceipt({
-          productId: "qwen",
-          normalizedEndpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-          region: "international",
-          workspaceAccountReference: WORKSPACE_ACCOUNT_REFERENCE,
-          modelId: "qwen3-coder-flash",
+          productId: "deepseek",
+          normalizedEndpoint: "https://api.deepseek.com/v1",
+          modelId: "deepseek-v4-flash",
           usage: undefined,
           usageAvailability: "required-missing",
           outcome: "transport-failed",

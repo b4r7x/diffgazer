@@ -1,17 +1,25 @@
 import { cva } from "class-variance-authority";
 
-export type ItemState = "normal" | "focused" | "selected" | "disabled" | "disabledFocused";
+export type ItemState =
+  | "normal"
+  | "focused"
+  | "selected"
+  | "hovered"
+  | "disabled"
+  | "disabledFocused";
 
 export function getItemState(options: {
   disabled: boolean;
   isFocused: boolean;
   isSelected: boolean;
+  isHovered: boolean;
 }): ItemState {
-  const { disabled, isFocused, isSelected } = options;
+  const { disabled, isFocused, isSelected, isHovered } = options;
   if (disabled && isFocused) return "disabledFocused";
   if (disabled) return "disabled";
   if (isFocused) return "focused";
   if (isSelected) return "selected";
+  if (isHovered) return "hovered";
   return "normal";
 }
 
@@ -24,10 +32,15 @@ export const menuItemBase = cva("cursor-pointer w-full transition-colors", {
       // MenuDivider still draws real group boundaries.
       detail: "px-4 py-4 flex justify-between items-center text-sm",
     },
+    // No CSS :hover anywhere in here: hover is JS state (data-hovered, set by
+    // real pointer travel in useMenuItemInteractions and cleared by navigation
+    // keys), so a stationary cursor can never keep a stale affordance on a row
+    // the keyboard has left. The keyboard cursor (focused) always outranks it.
     state: {
-      normal: "hover:bg-secondary group",
+      normal: "",
       focused: "font-bold",
-      selected: "font-bold group",
+      selected: "font-bold",
+      hovered: "bg-secondary text-foreground",
       disabled: "opacity-50 cursor-not-allowed",
       disabledFocused: "opacity-60 cursor-not-allowed bg-secondary text-foreground",
     },
@@ -37,7 +50,6 @@ export const menuItemBase = cva("cursor-pointer w-full transition-colors", {
     },
   },
   compoundVariants: [
-    { state: "disabled", menuVariant: "default", class: "hover:bg-transparent" },
     {
       colorVariant: "danger",
       state: "focused",
@@ -51,6 +63,8 @@ export const menuItemBase = cva("cursor-pointer w-full transition-colors", {
     },
     { colorVariant: "default", state: "selected", class: "bg-primary text-primary-foreground" },
     { colorVariant: "danger", state: "normal", menuVariant: "default", class: "text-error" },
+    // Hover is subordinate: danger rows keep their palette under it.
+    { colorVariant: "danger", state: "hovered", menuVariant: "default", class: "text-error" },
   ],
   defaultVariants: { menuVariant: "default", state: "normal", colorVariant: "default" },
 });
@@ -60,23 +74,13 @@ export const menuItemIndicator = cva(
   {
     variants: {
       idle: {
-        true: "transition-opacity opacity-60 group-hover:opacity-100",
+        true: "opacity-60",
         false: "",
       },
     },
     defaultVariants: { idle: false },
   },
 );
-
-export const menuItemLabel = cva("tracking-wide", {
-  variants: {
-    idle: {
-      true: "group-hover:text-foreground",
-      false: "",
-    },
-  },
-  defaultVariants: { idle: false },
-});
 
 export const menuItemValue = cva("font-mono text-xs", {
   variants: {

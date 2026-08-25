@@ -181,8 +181,8 @@ describe("Web Ink canonical terminology matches", () => {
   const providersAndModels = readConcept("providers-and-models");
   const providersReference = readDoc("reference", "providers.mdx");
 
-  it("describes exactly fourteen selectable products with registry names", () => {
-    expect(providersAndModels).toContain("fourteen selectable products");
+  it("describes exactly twelve selectable products with registry names", () => {
+    expect(providersAndModels).toContain("twelve selectable products");
     for (const productId of SELECTABLE_PRODUCT_IDS) {
       const name = PRODUCT_REGISTRY[productId].presentation.name;
       expect(providersAndModels).toContain(name);
@@ -213,15 +213,7 @@ const KEYLESS_MODEL_LIST_URLS = [
   "https://ollama.com/v1/models",
 ] as const;
 
-const KEY_BEARING_LIST_PRODUCTS = [
-  "zai",
-  "groq",
-  "cerebras",
-  "mistral",
-  "deepseek",
-  "qwen",
-  "moonshot",
-] as const;
+const KEY_BEARING_LIST_PRODUCTS = ["zai", "groq", "cerebras", "deepseek", "opencode-zen"] as const;
 
 describe("provider catalog privacy copy", () => {
   it("discloses pre-review model-list traffic in the overview and links to full privacy details", () => {

@@ -59,20 +59,6 @@ test("resolveLiveProbeDisposition types every prerequisite as not-requested or u
   });
   assert.deepEqual(
     resolveLiveProbeDisposition(
-      {
-        providerId: "qwen",
-        credentialEnv: "QWEN_API_KEY",
-        modelId: "qwen3-coder-flash",
-        requiresEntitlement: true,
-        entitlementEnv: "QWEN_WORKSPACE_ID",
-      },
-      { DIFFGAZER_LIVE_PROBES: "1", QWEN_API_KEY: "present" },
-      true,
-    ),
-    { kind: "unavailable", reason: "entitlement-missing" },
-  );
-  assert.deepEqual(
-    resolveLiveProbeDisposition(
       tuple,
       { DIFFGAZER_LIVE_PROBES: "1", GROQ_API_KEY: "present" },
       true,
@@ -91,10 +77,10 @@ test("buildHostedProbeTuples derives hosted credentials from the canonical map a
       transportFamily: "hosted-api",
       modelPolicy: { suggestedModelId: "gemini-2.5-flash" },
     },
-    qwen: {
-      id: "qwen",
+    zai: {
+      id: "zai",
       transportFamily: "hosted-api",
-      modelPolicy: { suggestedModelId: "qwen3-coder-flash" },
+      modelPolicy: { suggestedModelId: "glm-5" },
     },
     ollama: {
       id: "ollama",
@@ -106,7 +92,7 @@ test("buildHostedProbeTuples derives hosted credentials from the canonical map a
   assert.deepEqual(
     buildHostedProbeTuples(productRegistry, {
       gemini: "GOOGLE_API_KEY",
-      qwen: "QWEN_API_KEY",
+      zai: "ZAI_API_KEY",
     }),
     [
       {
@@ -115,11 +101,9 @@ test("buildHostedProbeTuples derives hosted credentials from the canonical map a
         modelId: "gemini-2.5-flash",
       },
       {
-        providerId: "qwen",
-        credentialEnv: "QWEN_API_KEY",
-        modelId: "qwen3-coder-flash",
-        requiresEntitlement: true,
-        entitlementEnv: "QWEN_WORKSPACE_ID",
+        providerId: "zai",
+        credentialEnv: "ZAI_API_KEY",
+        modelId: "glm-5",
       },
     ],
   );

@@ -1,5 +1,6 @@
 import { SEVERITY_LABELS, SEVERITY_ORDER } from "../../schemas/presentation/index.js";
 import {
+  EVIDENCE_GAP_MARKER,
   type EvidenceRef,
   type FixPlanStep,
   isValidEvidenceRange,
@@ -28,6 +29,13 @@ export type EvidencePresentation =
       label: (typeof EVIDENCE_PRESENTATION_LABELS)["code"];
       file: string;
       startLine?: number;
+      /**
+       * One gutter number per excerpt row, `null` where a row stands in for
+       * skipped lines rather than printing one. Undefined when the excerpt
+       * carries no trustworthy location at all, which is a surface's signal to
+       * render no gutter instead of guessing one.
+       */
+      lineNumbers?: readonly (number | null)[];
     })
   | (EvidencePresentationBase & {
       kind: "reference";
@@ -44,6 +52,35 @@ export type EvidencePresentation =
       type: "external";
       label: (typeof EVIDENCE_PRESENTATION_LABELS)["external"];
     });
+
+function isPrintableLineNumber(line: number | null): line is number {
+  return line !== null && Number.isInteger(line) && line > 0;
+}
+
+/**
+ * Resolves the gutter of one code excerpt. Per-row numbers are authoritative
+ * when the writer published them. Runs saved before they existed carry only a
+ * range: numbering from its start fits a contiguous excerpt, but the old server
+ * also wrote windowed excerpts whose only trace of the skipped lines is the gap
+ * marker row — numbering through one would mislabel everything past it.
+ */
+function toExcerptLineNumbers(evidence: EvidenceRef): readonly (number | null)[] | undefined {
+  if (evidence.excerpt.length === 0) return undefined;
+
+  const rows = evidence.excerpt.split("\n");
+  const published = evidence.excerptLineNumbers;
+  if (published !== undefined) {
+    // A row-count mismatch means the numbering no longer describes this excerpt,
+    // and shifted numbers are worse than none.
+    if (published.length !== rows.length) return undefined;
+    return published.map((line) => (isPrintableLineNumber(line) ? line : null));
+  }
+
+  const range = isValidEvidenceRange(evidence.range) ? evidence.range : undefined;
+  if (range === undefined) return undefined;
+  if (rows.includes(EVIDENCE_GAP_MARKER)) return undefined;
+  return rows.map((_, offset) => range.start + offset);
+}
 
 export function toEvidencePresentation(
   evidence: EvidenceRef,
@@ -69,6 +106,7 @@ export function toEvidencePresentation(
         label: EVIDENCE_PRESENTATION_LABELS.code,
         file: evidence.file ?? fallbackCodeFile,
         startLine: range?.start,
+        lineNumbers: toExcerptLineNumbers(evidence),
       };
     }
     case "doc":

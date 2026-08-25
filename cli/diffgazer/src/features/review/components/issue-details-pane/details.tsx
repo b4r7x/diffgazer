@@ -61,7 +61,7 @@ export function DetailsTab({
                 <Box key={`${item.type}:${item.ordinal}`} flexDirection="column">
                   <CodeSnippet
                     filePath={item.file}
-                    startLine={item.startLine}
+                    lineNumbers={item.lineNumbers}
                     code={item.excerpt}
                   />
                 </Box>

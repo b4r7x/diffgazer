@@ -19,6 +19,7 @@ import {
 // leaked live-probe opt-in or fake credential cannot cascade into later suites.
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 describe("REQ-084 hosted production-path conformance", () => {
@@ -44,10 +45,10 @@ describe("REQ-085 JSON-object provider conformance", () => {
   });
 });
 
-describe("REQ-086 Mistral conformance depth", () => {
+describe("REQ-086 hosted conformance depth", () => {
   it.each(
     HOSTED_REQ_086_CASES,
-  )("$id covers global/EU long/nullable/refusal/malformed behavior", async (testCase) => {
+  )("$id covers long/nullable/refusal/malformed behavior", async (testCase) => {
     const observation = await runHostedMockConformanceCase(testCase);
     expect(observation.status).toBe("passed");
     expect(observation.outcome).toBe(testCase.expectedOutcome);
@@ -70,7 +71,7 @@ describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
     );
   });
 
-  it("reports skipped live probes without credential, opt-in, or entitlement", () => {
+  it("reports skipped live probes without credential or opt-in", () => {
     const descriptor = HOSTED_LIVE_PROBE_DESCRIPTORS.find((entry) => entry.productId === "groq");
     expect(descriptor).toBeDefined();
     if (!descriptor) return;
@@ -87,15 +88,8 @@ describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
     vi.stubEnv(HOSTED_LIVE_PROBE_OPT_IN_ENV, "1");
     expect(resolveHostedLiveSkipReason(descriptor)).toBe("credential-missing");
 
-    const qwenDescriptor = HOSTED_LIVE_PROBE_DESCRIPTORS.find(
-      (entry) => entry.productId === "qwen",
-    );
-    expect(qwenDescriptor).toBeDefined();
-    if (!qwenDescriptor) return;
-    vi.stubEnv(qwenDescriptor.credentialEnv, "test-key");
-    expect(resolveHostedLiveSkipReason({ ...qwenDescriptor, workspaceAccountId: null })).toBe(
-      "entitlement-missing",
-    );
+    vi.stubEnv(descriptor.credentialEnv, "test-key");
+    expect(resolveHostedLiveSkipReason(descriptor)).toBeNull();
   });
 
   it("never counts skipped live probes as passed", async () => {
@@ -116,6 +110,67 @@ describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
     expect(canProduceReadyEvidence(observation)).toBe(false);
   });
 
+  it("pins no model for a product that suggests none", () => {
+    const discovered = HOSTED_LIVE_PROBE_DESCRIPTORS.find(
+      (entry) => entry.productId === "opencode-zen",
+    );
+    expect(discovered?.modelId).toBeNull();
+  });
+
+  it("skips rather than probing a model it could not resolve", async () => {
+    const descriptor = HOSTED_LIVE_PROBE_DESCRIPTORS.find(
+      (entry) => entry.productId === "opencode-zen",
+    );
+    expect(descriptor).toBeDefined();
+    if (!descriptor) return;
+
+    vi.stubEnv(HOSTED_LIVE_PROBE_OPT_IN_ENV, "1");
+    vi.stubEnv(descriptor.credentialEnv, "test-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("unavailable", { status: 500 })),
+    );
+
+    const observation = await runHostedLiveProbe(descriptor);
+    expect(observation.status).toBe("skipped");
+    expect(observation.skipReason).toBe("model-unresolved");
+    expect(canProduceReadyEvidence(observation)).toBe(false);
+  });
+
+  it("probes the model its own /models list names", async () => {
+    const descriptor = HOSTED_LIVE_PROBE_DESCRIPTORS.find(
+      (entry) => entry.productId === "opencode-zen",
+    );
+    expect(descriptor).toBeDefined();
+    if (!descriptor) return;
+
+    vi.stubEnv(HOSTED_LIVE_PROBE_OPT_IN_ENV, "1");
+    vi.stubEnv(descriptor.credentialEnv, "test-key");
+
+    const requested: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: unknown) => {
+        const url = String(input);
+        requested.push(url);
+        if (url.endsWith("/models")) {
+          return Response.json({ data: [{ id: "zen/stealth-1" }] });
+        }
+        return Response.json({
+          choices: [
+            { message: { content: JSON.stringify({ issues: [] }) }, finish_reason: "stop" },
+          ],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        });
+      }),
+    );
+
+    const observation = await runHostedLiveProbe(descriptor);
+    expect(requested[0]).toMatch(/\/models$/);
+    expect(observation.status).toBe("passed");
+    expect(observation.outcome).toBe("completed");
+  });
+
   it("does not treat mock HTTP/JSON validity alone as ready evidence", async () => {
     const httpOnly = HOSTED_REQ_084_CASES.find(
       (testCase) => testCase.id === "REQ-084:valid-http-json-without-review-schema",
@@ -132,19 +187,18 @@ describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
 
 describe.runIf(isHostedLiveProbeOptIn())("REQ-084 hosted live conformance (opt-in)", () => {
   for (const descriptor of HOSTED_LIVE_PROBE_DESCRIPTORS) {
-    const credential = process.env[descriptor.credentialEnv];
-    const entitled =
-      !descriptor.requiresEntitlement ||
-      Boolean(descriptor.workspaceAccountId ?? process.env.QWEN_WORKSPACE_ID);
-
-    it.skipIf(!credential || !entitled)(
+    it.skipIf(!process.env[descriptor.credentialEnv])(
       `live ${descriptor.productId} uses credentialed production path`,
       async () => {
-        const observation = await runHostedLiveProbe({
-          ...descriptor,
-          workspaceAccountId:
-            descriptor.workspaceAccountId ?? process.env.QWEN_WORKSPACE_ID ?? null,
-        });
+        const observation = await runHostedLiveProbe(descriptor);
+        // A product that suggests no model must discover one from its own
+        // `/models` list; an unreadable list is a missing prerequisite, so it
+        // skips rather than reporting a verdict it never observed (REQ-089).
+        if (observation.skipReason === "model-unresolved") {
+          expect(descriptor.modelId).toBeNull();
+          expect(canProduceReadyEvidence(observation)).toBe(false);
+          return;
+        }
         expect(observation.status).not.toBe("skipped");
         if (observation.status === "passed") {
           expect(canProduceReadyEvidence(observation)).toBe(true);

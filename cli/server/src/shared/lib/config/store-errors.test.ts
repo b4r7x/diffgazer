@@ -22,7 +22,6 @@ const { mockLog } = vi.hoisted(() => ({ mockLog: vi.fn() }));
 vi.mock("../log.js", () => ({ log: mockLog }));
 
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
-const QWEN_ENDPOINT = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
 const CREATED_AT = "2026-01-01T00:00:00.000Z";
 
 const DEFAULT_BUDGET = {
@@ -254,51 +253,60 @@ describe("config store errors", () => {
     expect(readFileSync(secretsPath(), "utf8")).toBe(secretsBefore);
   });
 
-  it("rejects a secret-like workspace on update and preserves the prior record and binding exactly", async () => {
-    writeJson(
-      configPath(),
-      v2Config([
-        supportedRecord({
-          configurationId: "cfg-qwen",
-          productId: "qwen",
-          input: {
-            transportFamily: "hosted-api",
-            productId: "qwen",
-            endpoint: QWEN_ENDPOINT,
-            region: "international",
-            workspace: "workspace-alpha",
-          },
-        }),
-      ]),
-    );
-    writeJson(secretsPath(), v2Secrets([fileBinding("cfg-qwen", 1)]));
-    const store = await loadStore();
-    const configBefore = readFileSync(configPath(), "utf8");
-    const secretsBefore = readFileSync(secretsPath(), "utf8");
-
-    const result = await store.runConfigurationAction({
-      action: "update",
+  // A record written by a version that still shipped qwen parses as unknown now
+  // that the product id is gone, which is the whole migration story for removed
+  // providers: the row goes inert and addressable, its bytes survive rewrites.
+  it("degrades a persisted removed-provider record to a preserved unrecognized row", async () => {
+    const removedProviderRecord = JSON.stringify({
+      schemaVersion: 2,
+      status: "supported",
       configurationId: "cfg-qwen",
-      expectedRevision: 1,
+      revision: 1,
+      transportFamily: "hosted-api",
+      productId: "qwen",
       input: {
         transportFamily: "hosted-api",
         productId: "qwen",
-        endpoint: QWEN_ENDPOINT,
+        endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
         region: "international",
-        workspace: "sk-proj-workspace-secret",
+        workspace: "workspace-alpha",
       },
+      selectedModelId: "qwen3-coder-flash",
       acknowledgement: {
-        status: "accepted",
         noticeId: "qwen-international-payg",
         noticeVersion: 1,
-        acceptedAt: "2026-01-02T00:00:00.000Z",
+        acceptedAt: CREATED_AT,
       },
+      evidenceReference: null,
+      budget: DEFAULT_BUDGET,
+      createdAt: CREATED_AT,
+      updatedAt: CREATED_AT,
     });
+    mkdirSync(dirname(configPath()), { recursive: true });
+    writeFileSync(
+      configPath(),
+      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":"cfg-existing","configurations":[${JSON.stringify(supportedRecord())},${removedProviderRecord}]}\n`,
+    );
+    writeJson(secretsPath(), v2Secrets([fileBinding("cfg-existing", 1)]));
+    const store = await loadStore();
 
-    expect(result).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-    expect(JSON.stringify(result)).not.toContain("sk-proj-workspace-secret");
-    expect(readFileSync(configPath(), "utf8")).toBe(configBefore);
-    expect(readFileSync(secretsPath(), "utf8")).toBe(secretsBefore);
+    await expect(store.ready()).resolves.toEqual({ ok: true, value: undefined });
+    await expect(
+      store.runConfigurationAction({ action: "inspect", configurationId: "cfg-qwen" }),
+    ).resolves.toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
+
+    const snapshot = await store.readConfigurationSnapshot();
+    expect(snapshot.ok).toBe(true);
+    if (!snapshot.ok) return;
+    expect(snapshot.value.unrecognizedConfigurations).toEqual([{ configurationId: "cfg-qwen" }]);
+    expect(
+      snapshot.value.configurations.map((entry) => entry.configuration.configurationId),
+    ).toEqual(["cfg-existing"]);
+
+    await expect(store.updateSettings({ theme: "dark" })).resolves.toMatchObject({ ok: true });
+    const rewritten = readFileSync(configPath(), "utf8");
+    expect(rewritten).toContain('"theme":"dark"');
+    expect(rewritten).toContain(removedProviderRecord);
   });
 
   it("rolls back a failed delete with a scrubbed persist error and byte-identical files", async () => {
@@ -437,20 +445,6 @@ describe("config store errors", () => {
       failures,
       await store.runConfigurationAction({ action: "inspect", configurationId: "cfg-future" }),
     );
-    recordFailure(
-      failures,
-      await store.runConfigurationAction({
-        action: "create",
-        input: {
-          transportFamily: "hosted-api",
-          productId: "qwen",
-          endpoint: QWEN_ENDPOINT,
-          region: "international",
-          workspace: "sk-proj-workspace-secret",
-          credential: { kind: "literal", value: "sk-proj-workspace-test" },
-        },
-      }),
-    );
     fsHooks.removeFileSyncHook = (filePath) => {
       if (filePath === secretsPath()) throw new Error(`Injected removal failure at ${filePath}`);
       return false;
@@ -483,7 +477,7 @@ describe("config store errors", () => {
       ),
     );
 
-    expect(failures.length).toBe(10);
+    expect(failures.length).toBe(9);
     const serialized = JSON.stringify(failures);
     expect(serialized).not.toContain("sk-proj-");
     expect(serialized).not.toContain("GOOGLE_API_KEY");

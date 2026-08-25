@@ -55,7 +55,6 @@ function buildConfigurationDraft(productId: RunnableProductId): OnboardingConfig
       transportFamily: "hosted-api",
       productId: HostedApiProductIdSchema.parse(productId),
       endpoint: HostedApiEndpointSchema.parse(endpoint.endpoint),
-      ...("region" in endpoint ? { region: endpoint.region } : {}),
     };
   }
 

@@ -9,13 +9,17 @@ import {
   TRUST_PERMISSION_SHORTCUTS,
 } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import { DECLINE, useKey, useScope } from "@diffgazer/keys";
+import { DECLINE, useFocusZone, useKey } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { toast } from "@diffgazer/ui/components/toast";
 import type { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { TrustPanel } from "@/components/shared/trust-panel";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
+import {
+  FilePickerDialog,
+  type ReviewFileScope,
+} from "@/features/home/components/file-picker-dialog";
 import { HomeMenu } from "@/features/home/components/menu";
 import { useIsMountedRef } from "@/hooks/use-is-mounted";
 import {
@@ -29,6 +33,8 @@ import { reportShutdownResult, type ShutdownResult } from "@/lib/shutdown";
 type Navigate = ReturnType<typeof useNavigate>;
 type CreateReview = (input: {
   mode: Exclude<ReviewMode, "files">;
+  /** Pathspecs the review is narrowed to. Absent means the whole mode diff. */
+  files?: string[];
 }) => Promise<{ reviewId: string }>;
 type ResumableSession = { reviewId: string; mode: ReviewMode };
 /**
@@ -46,6 +52,13 @@ const TRUST_PANEL_JUMP_SHORTCUTS: Shortcut[] = [
   { key: "s", label: "Settings" },
   { key: "?", label: "Help" },
 ];
+
+// The two panes Tab hops between, menu first: it leads the DOM order, owns the
+// mount focus, and is where an unknown zone falls back. The same order is the
+// Tab cycle — the panes are the whole cycle, so zone order and cycle order are
+// the one order.
+const HOME_ZONES = ["menu", "context"] as const;
+const HOME_SCOPE = "home";
 
 const MENU_ROUTES: Record<NavigableMenuAction, { to: string }> = {
   history: { to: "/history" },
@@ -105,6 +118,7 @@ export function HomePagePresentation({
   // stands in for "in flight". A second activation can land before React
   // re-renders the menu as disabled, so re-entrancy is refused off a ref.
   const [startingAction, setStartingAction] = useState<MenuAction | null>(null);
+  const [isFilePickerOpen, setIsFilePickerOpen] = useState(false);
   const isStartingRef = useRef(false);
   const isStartingReview = startingAction !== null;
   // A failed active-session request proves nothing about whether a run is live,
@@ -186,12 +200,16 @@ export function HomePagePresentation({
     });
   };
 
-  const startReview = async (mode: Exclude<ReviewMode, "files">, action: MenuAction) => {
+  const startReview = async (
+    mode: Exclude<ReviewMode, "files">,
+    action: MenuAction,
+    files?: string[],
+  ) => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
     setStartingAction(action);
     try {
-      const { reviewId } = await createReview({ mode });
+      const { reviewId } = await createReview({ mode, ...(files ? { files } : {}) });
       if (isMountedRef.current) navigateToReview(reviewId, mode);
     } catch (error) {
       if (!isMountedRef.current) return;
@@ -299,7 +317,28 @@ export function HomePagePresentation({
       : MAIN_MENU_SHORTCUTS,
     rightShortcuts: showsTrustPanel ? TRUST_PANEL_JUMP_SHORTCUTS : [],
   });
-  useScope("home");
+  // Tab hops between the panes like every other main view, and only while focus
+  // is inside one of them: containers scope declines Tab elsewhere, so the skip
+  // link and the header chrome keep native Tab order. The cycle stands down
+  // while a start is in flight — the sidebar is inert then — and while the trust
+  // prompt renders neither pane: a claimed Tab must never land in a zone with
+  // nothing focusable. The zone hook itself stays enabled either way, because it
+  // is what pushes this screen's keyboard scope. Focus repair is deliberately
+  // off at mount (no autoFocus): the menu focuses itself, and the start's own
+  // hand-off to the menu is left to move focus on its own.
+  useFocusZone({
+    initial: "menu",
+    zones: HOME_ZONES,
+    scope: HOME_SCOPE,
+    tabCycle: isStartingReview || showsTrustPanel ? undefined : HOME_ZONES,
+    tabCycleScope: "containers",
+    focus: {
+      targets: {
+        menu: menuRef,
+        context: sidebarRef,
+      },
+    },
+  });
 
   // Every menu item advertises its jump key, matching the TUI home menu. The
   // navigation letters (h/s/?/q) are already bound app-wide, so only the review
@@ -322,6 +361,21 @@ export function HomePagePresentation({
     });
   };
 
+  // Picking files starts a review, so the picker answers to the trust gate the
+  // review rows answer to, and stands down while a start is already in flight.
+  const openFilePicker = () => {
+    if (isStartingReview || !isTrusted) return;
+    setIsFilePickerOpen(true);
+  };
+
+  // The narrowed start is the menu's start with a pathspec filter: same consent
+  // gate, same in-flight guard, same navigation. The row it marks as working is
+  // the row whose diff was narrowed.
+  const startFilteredReview = ({ mode, files }: { mode: ReviewFileScope; files?: string[] }) => {
+    const action: MenuAction = mode === "staged" ? "review-staged" : "review-unstaged";
+    requireProviderConsent(() => void startReview(mode, action, files));
+  };
+
   // The sidebar's settings rows carry the same jump treatment as [o]: t and p
   // reach them without Tab-walking the panel, behind the guards a click on the
   // row goes through. t follows the trust row — inert once the repo is trusted.
@@ -336,6 +390,7 @@ export function HomePagePresentation({
       R: () => activateShortcut("review-staged"),
       l: () => activateShortcut("resume-review"),
       o: openLastRun,
+      f: openFilePicker,
       p: () => openSettingsRow("/settings/providers"),
       t: () => {
         if (isTrusted) return DECLINE;
@@ -351,42 +406,55 @@ export function HomePagePresentation({
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
-      {/* Spare height splits 1:2 around the panes: they sit in the optical band
-          below the hero wordmark — neither glued to it nor sunk to dead center —
-          and the spacers collapse once the column overflows, so a short window
-          scrolls from the top. */}
-      <div aria-hidden className="grow" />
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
-        {/* At desktop each pane keeps its own height instead of stretching to one
-            bottom line, so the shorter context pane carries no dead band; below lg
-            the cross axis is horizontal and the default stretch keeps both panes
-            full width. */}
-        <div className="flex w-full flex-col gap-8 lg:flex-row lg:items-start">
-          <HomeMenu
-            menuRef={menuRef}
-            highlighted={highlighted}
-            onHighlightChange={onHighlightChange}
-            onSelect={handleActivate}
-            items={MENU_ITEMS}
-            isTrusted={isTrusted}
-            hasResumableSession={hasResumableSession}
-            pendingAction={startingAction}
-          />
-          {/* Menu first in source order so the actionable pane leads the stacked
-              layout; the context column returns to the left at desktop. */}
-          <ContextSidebar
-            ref={sidebarRef}
-            context={context}
-            navigate={navigate}
-            isTrusted={isTrusted}
-            projectPath={repoRoot ?? undefined}
-            pending={isStartingReview}
-            onOpenLastRun={context.lastRunId === undefined ? undefined : openLastRun}
-          />
+    <>
+      {/* Mounted with the open state: the picker reads the working tree, and a
+          closed dialog has no business holding a query for it. */}
+      {isFilePickerOpen && (
+        <FilePickerDialog
+          open
+          onOpenChange={setIsFilePickerOpen}
+          onStart={startFilteredReview}
+          isStarting={isStartingReview}
+        />
+      )}
+      <div className="flex flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
+        {/* Spare height splits 1:2 around the panes: they sit in the optical band
+            below the hero wordmark — neither glued to it nor sunk to dead center —
+            and the spacers collapse once the column overflows, so a short window
+            scrolls from the top. */}
+        <div aria-hidden className="grow" />
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+          {/* At desktop each pane keeps its own height instead of stretching to one
+              bottom line, so the shorter context pane carries no dead band; below lg
+              the cross axis is horizontal and the default stretch keeps both panes
+              full width. */}
+          <div className="flex w-full flex-col gap-8 lg:flex-row lg:items-start">
+            <HomeMenu
+              menuRef={menuRef}
+              highlighted={highlighted}
+              onHighlightChange={onHighlightChange}
+              onSelect={handleActivate}
+              items={MENU_ITEMS}
+              isTrusted={isTrusted}
+              hasResumableSession={hasResumableSession}
+              pendingAction={startingAction}
+            />
+            {/* Menu first in source order so the actionable pane leads the stacked
+                layout; the context column returns to the left at desktop. */}
+            <ContextSidebar
+              ref={sidebarRef}
+              context={context}
+              navigate={navigate}
+              isTrusted={isTrusted}
+              projectPath={repoRoot ?? undefined}
+              pending={isStartingReview}
+              onOpenLastRun={context.lastRunId === undefined ? undefined : openLastRun}
+              onChooseFiles={isTrusted ? openFilePicker : undefined}
+            />
+          </div>
         </div>
+        <div aria-hidden className="grow-[2]" />
       </div>
-      <div aria-hidden className="grow-[2]" />
-    </div>
+    </>
   );
 }

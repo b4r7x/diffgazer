@@ -28,7 +28,7 @@ import {
   resolveSelectedConfiguration,
 } from "@diffgazer/core/schemas/config";
 import type { AgentState, StepState } from "@diffgazer/core/schemas/events";
-import type { ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
+import type { ReviewIssue, ReviewMode, ReviewSizeWarning } from "@diffgazer/core/schemas/review";
 import { useEffect, useState } from "react";
 
 type LifecyclePhase = ReviewScreenPhase | "completing" | "loading";
@@ -38,6 +38,22 @@ type ReviewInitState =
   | { status: "ready"; readiness: Readiness };
 
 type ReviewStartResult = "started" | "setup-required" | "failed";
+
+export interface ReviewStartOptions {
+  /**
+   * Repo-relative paths the run is narrowed to. The review keeps its staged or
+   * unstaged scope and reads only these files — `mode: "files"` is deliberately
+   * not used, because the server diffs that mode against the working tree and
+   * would silently turn a staged review into an unstaged one.
+   */
+  files?: string[];
+  /**
+   * Create a review even when the resumed run could be replayed instead. The
+   * picker always starts something new, including when every reviewable file is
+   * selected and there is no `files[]` to narrow with.
+   */
+  fresh?: boolean;
+}
 
 export function getDisplayPhase(input: {
   hasStartFailed: boolean;
@@ -77,7 +93,8 @@ export interface ReviewLifecycleState {
   contextSnapshot: UseReviewLifecycleBaseResult["contextSnapshot"];
   contextRefreshError: UseReviewLifecycleBaseResult["contextRefreshError"];
   retryContextRefresh: UseReviewLifecycleBaseResult["retryContextRefresh"];
-  mode: ReviewMode;
+  /** Never `"files"`: the TUI narrows a run with `files[]`, keeping its staged/unstaged scope. */
+  mode: Exclude<ReviewMode, "files">;
   reviewId: string | null;
   startedAt: Date | null;
   completedAt: Date | null;
@@ -88,6 +105,11 @@ export interface ReviewLifecycleState {
   completion: OrchestratorStats;
   fileProgress: FileProgress;
   notices: string[];
+  /**
+   * The run was admitted, but its diff is large enough that one pass reads it
+   * poorly. Advisory only — the review is already running.
+   */
+  sizeWarning: ReviewSizeWarning | null;
   error: string | null;
   errorCode: string | null;
   /** The session request was refused; `error` carries the same text for the summary. */
@@ -108,7 +130,7 @@ export interface ReviewLifecycleState {
 }
 
 interface UseReviewLifecycleOptions {
-  mode?: ReviewMode;
+  mode?: Exclude<ReviewMode, "files">;
   reviewId?: string;
   allowResumeWithoutSetup?: boolean;
   onStreamNotFound?: (reviewId: string) => void;
@@ -116,7 +138,10 @@ interface UseReviewLifecycleOptions {
 
 export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   state: ReviewLifecycleState;
-  start: (mode: Exclude<ReviewMode, "files">) => Promise<ReviewStartResult>;
+  start: (
+    mode: Exclude<ReviewMode, "files">,
+    options?: ReviewStartOptions,
+  ) => Promise<ReviewStartResult>;
   cancel: () => Promise<string | null>;
   goToSummary: () => void;
   goToResults: () => void;
@@ -128,7 +153,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   const initData = initQuery.data;
   const createReview = useCreateReview();
   const { clearActiveSession: clearCachedActiveSession } = useReviewSessionCache();
-  const [mode, setMode] = useState<ReviewMode>(options.mode ?? "staged");
+  const [mode, setMode] = useState<Exclude<ReviewMode, "files">>(options.mode ?? "staged");
   const [startedReviewId, setStartedReviewId] = useState<string | undefined>();
   const [phase, setPhase] = useState<ReviewScreenPhase>("streaming");
   const [startError, setStartError] = useState<ReviewStartErrorDescription | null>(null);
@@ -214,14 +239,26 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     phase,
   });
 
-  async function start(selectedMode: Exclude<ReviewMode, "files">): Promise<ReviewStartResult> {
+  async function start(
+    selectedMode: Exclude<ReviewMode, "files">,
+    startOptions: ReviewStartOptions = {},
+  ): Promise<ReviewStartResult> {
+    const files = startOptions.files;
     if (lifecycle.gate === "unconfigured" && !options.allowResumeWithoutSetup) {
       return "setup-required";
     }
     if (selectedMode !== mode && !canAttemptReview(readiness.status)) {
       return "setup-required";
     }
-    if (options.reviewId && options.allowResumeWithoutSetup && selectedMode === mode) {
+    // A run started from the picker is a different review than the one being
+    // resumed — narrowed or not — so it never takes the replay branch below.
+    if (
+      !files &&
+      !startOptions.fresh &&
+      options.reviewId &&
+      options.allowResumeWithoutSetup &&
+      selectedMode === mode
+    ) {
       setMode(selectedMode);
       setStartError(null);
       setStartedReviewId(undefined);
@@ -238,7 +275,10 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     lifecycle.reset();
     setPhase("streaming");
     try {
-      const result = await createReview.mutateAsync({ mode: selectedMode });
+      const result = await createReview.mutateAsync({
+        mode: selectedMode,
+        ...(files ? { files } : {}),
+      });
       setStartedReviewId(result.reviewId);
       return "started";
     } catch (err) {
@@ -309,6 +349,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     completion,
     fileProgress: lifecycle.stream.state.fileProgress,
     notices: lifecycle.stream.state.notices,
+    sizeWarning: lifecycle.stream.state.sizeWarning,
     error: startError ? `${startError.title}: ${startError.message}` : lifecycle.stream.state.error,
     errorCode: startError ? null : lifecycle.stream.state.errorCode,
     startError,

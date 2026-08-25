@@ -210,10 +210,11 @@ export const codeBlockDoc: ComponentDoc = {
     },
     CodeBlockLine: {
       number: {
-        type: "number",
+        type: "number | null",
         required: false,
         defaultValue: null,
-        description: "Line number rendered in the gutter. Omit to hide the gutter for this line.",
+        description:
+          "Line number rendered in the gutter. `null` renders an empty gutter cell, for a row inside a numbered block that prints no line of its own (a gap or truncation marker), so the code beside it keeps its indent. Omit to render no gutter cell at all.",
       },
       content: {
         type: "string | { text: string; color?: string; className?: string }[]",

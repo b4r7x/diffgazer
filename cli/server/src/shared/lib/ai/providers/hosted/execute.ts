@@ -197,11 +197,6 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
   const endpointResult = resolveHostedApiEndpoint({
     productId: hostedProductId,
     endpoint: evidenceKey.normalizedEndpoint ?? "",
-    region: evidenceKey.region ?? undefined,
-    workspace:
-      evidenceKey.workspaceAccountReference === null
-        ? undefined
-        : (context.workspaceAccountId ?? undefined),
   });
   if (!endpointResult.ok) {
     return createFailedExecutionResult(request, "transport-failed", {
@@ -291,7 +286,6 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         prompt: request.prompt,
         systemPrompt: request.systemPrompt,
         structuredOutputSchema: context.structuredOutputSchema,
-        workspaceAccountId: context.workspaceAccountId,
         signal: deadline.signal,
       });
 

@@ -14,8 +14,10 @@ export {
 } from "./config.js";
 export { ApiProvider, useApi } from "./context.js";
 export { type DiagnosticsData, refreshAllDiagnostics, useDiagnosticsData } from "./diagnostics.js";
+export { useGitStatus } from "./git.js";
 export { guardQueryState, matchQueryState } from "./match-query-state.js";
 export { configQueries } from "./queries/config.js";
+export { gitQueries } from "./queries/git.js";
 export { reviewQueries } from "./queries/review.js";
 export {
   useActiveReviewSession,

@@ -20,8 +20,6 @@ function configurationFingerprintInput(configuration: ClientConfigurationSummary
     return {
       ...base,
       endpoint: configuration.endpoint,
-      region: configuration.region ?? null,
-      workspace: configuration.workspace ?? null,
     };
   }
 

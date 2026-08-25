@@ -207,7 +207,7 @@ function pipelineEvidenceKey(productId: HostedApiProductId = "gemini"): Evidence
     productId,
     transportFamily: product.transportFamily,
     normalizedEndpoint: endpoint?.endpoint ?? "https://example.invalid/v1",
-    region: endpoint && "region" in endpoint ? (endpoint.region ?? null) : null,
+    region: null,
     workspaceAccountReference: null,
     modelId: "gemini-test-model",
     runtime: { identity: "diffgazer-server", version: "1.0.0" },

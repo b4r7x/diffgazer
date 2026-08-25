@@ -143,36 +143,22 @@ function validateHostedTuple(identity: ExecutionIdentity): ExecutionIdentityIssu
   }
 
   const matchingProfile = product.configuration.endpoints.find(
-    (profile) =>
-      profile.endpoint === endpoint &&
-      (("region" in profile ? profile.region : undefined) ?? null) === identity.region,
+    (profile) => profile.endpoint === endpoint,
   );
   if (!matchingProfile) {
-    const endpointMatches = product.configuration.endpoints.some(
-      (profile) => profile.endpoint === endpoint,
-    );
     issues.push({
-      message: endpointMatches
-        ? "Region does not match the selected product endpoint"
-        : "Endpoint does not match the selected product transport tuple",
-      path: [endpointMatches ? "region" : "normalizedEndpoint"],
+      message: "Endpoint does not match the selected product transport tuple",
+      path: ["normalizedEndpoint"],
     });
     return issues;
   }
 
-  if (
-    "workspaceBound" in matchingProfile &&
-    matchingProfile.workspaceBound === true &&
-    identity.workspaceAccountReference === null
-  ) {
-    issues.push({
-      message: "Selected product endpoint requires a workspace or account reference",
-      path: ["workspaceAccountReference"],
-    });
+  if (identity.region !== null) {
+    issues.push({ message: "Hosted execution cannot record a region", path: ["region"] });
   }
-  if (!("workspaceBound" in matchingProfile) && identity.workspaceAccountReference !== null) {
+  if (identity.workspaceAccountReference !== null) {
     issues.push({
-      message: "Selected product endpoint does not accept a workspace or account reference",
+      message: "Hosted execution cannot record a workspace or account reference",
       path: ["workspaceAccountReference"],
     });
   }
@@ -349,8 +335,8 @@ const HostedEvidenceKeySchema = z.strictObject({
   productId: HostedApiProductIdSchema,
   transportFamily: z.literal("hosted-api"),
   normalizedEndpoint: HostedApiEndpointSchema,
-  region: ExecutionSafeIdentitySchema.nullable(),
-  workspaceAccountReference: Sha256HexSchema.nullable(),
+  region: z.null(),
+  workspaceAccountReference: z.null(),
   modelId: ExactModelIdSchema,
   // Evidence is executable only when the runtime/server/CLI identity that was
   // probed is part of the immutable tuple.  Receipts keep this field optional

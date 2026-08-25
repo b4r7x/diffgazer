@@ -235,6 +235,21 @@ describe("HomePage composition", () => {
     });
   });
 
+  it("cycles Tab between the menu and the context pane", async () => {
+    const user = userEvent.setup();
+    renderHomePage();
+
+    const menu = await screen.findByRole("menu");
+    const providerRow = screen.getByRole("button", { name: "Configure provider settings" });
+    await waitFor(() => expect(menu).toHaveFocus());
+
+    await user.tab();
+    await waitFor(() => expect(providerRow).toHaveFocus());
+
+    await user.tab();
+    await waitFor(() => expect(menu).toHaveFocus());
+  });
+
   it("keeps trusted home actions when configuration init succeeds", async () => {
     renderHomePage();
 

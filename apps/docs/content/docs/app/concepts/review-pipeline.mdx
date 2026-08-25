@@ -25,7 +25,7 @@ This is where the agents do their work. The active lenses run over the diff, eac
 
 The surviving issues are assembled into the final report, which is then persisted to disk along with the branch, commit, profile, lenses, and how long the run took. Once this step completes, the review is saved and available in your history.
 
-> Note: A single review caps the total diff at 512KB. Past that, the run stops and asks you to review fewer files or use file filtering. The limit is on the combined byte size of all changed files in the diff, not on any single file.
+> Note: Review size is checked against the model, not against a fixed cap. Once the diff is collected, Diffgazer estimates what it will cost as a prompt and compares that to the context window the catalog publishes for your selected model. A diff past that window stops the run and names both numbers, so you can review fewer files or pick a model with a larger window; the diff is never silently truncated. A diff over 512KB that still fits starts the review with an advisory, because one pass over that much change finds less than several narrower ones. One fixed ceiling remains at 10MB, for the lockfiles and vendored trees no model choice would rescue. Every limit is on the combined byte size of all changed files, not on any single file.
 
 ## Lenses and agents
 

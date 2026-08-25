@@ -30,7 +30,6 @@ import { createConformanceActions } from "./conformance-actions.js";
 import {
   createCredentialLifecycle,
   credentialReferenceIdentityFor,
-  workspaceAccountReferenceFor,
 } from "./credential-lifecycle.js";
 import { createCrudActions } from "./crud-actions.js";
 import type { DocumentStore } from "./document-store.js";
@@ -100,7 +99,6 @@ export function createConfigurationActions(
       runtime: RUNTIME_IDENTITY,
       structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
       credentialReferenceIdentity: binding ? credentialReferenceIdentityFor(binding) : null,
-      workspaceAccountReference: workspaceAccountReferenceFor(configuration),
     }).readiness;
   };
 

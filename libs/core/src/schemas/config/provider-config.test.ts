@@ -11,10 +11,8 @@ import { READINESS_PRESENTATION } from "./readiness.js";
 
 const hostedInput = {
   transportFamily: "hosted-api" as const,
-  productId: "qwen" as const,
-  endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-  region: "international",
-  workspace: "workspace-reference",
+  productId: "deepseek" as const,
+  endpoint: "https://api.deepseek.com/v1",
   credential: { kind: "literal" as const, value: "write-only-credential" },
 };
 
@@ -34,9 +32,9 @@ const localCliInput = {
 };
 
 const notice = {
-  ...PRODUCT_REGISTRY.qwen.notice,
-  billing: [...PRODUCT_REGISTRY.qwen.notice.billing],
-  privacy: [...PRODUCT_REGISTRY.qwen.notice.privacy],
+  ...PRODUCT_REGISTRY.deepseek.notice,
+  billing: [...PRODUCT_REGISTRY.deepseek.notice.billing],
+  privacy: [...PRODUCT_REGISTRY.deepseek.notice.privacy],
 };
 
 const acknowledgement = {
@@ -73,11 +71,9 @@ const hostedSummary = {
   revision: 3,
   status: "supported" as const,
   transportFamily: "hosted-api" as const,
-  productId: "qwen" as const,
+  productId: "deepseek" as const,
   endpoint: hostedInput.endpoint,
-  region: "international",
-  workspace: "workspace-reference",
-  selectedModelId: "qwen3-coder-flash",
+  selectedModelId: "deepseek-v4-flash",
   notices: [notice],
   availableActions: ["inspect", "select", "test", "update", "delete"] as const,
 };
@@ -90,7 +86,7 @@ describe("client configuration actions", () => {
       {
         action: "select",
         configurationId: "configuration-1",
-        modelId: "qwen3-coder-flash",
+        modelId: "deepseek-v4-flash",
       },
       { action: "test", configurationId: "configuration-1" },
       {
@@ -124,7 +120,7 @@ describe("client configuration actions", () => {
     expect(
       ClientConfigurationActionSchema.safeParse({
         action: "select",
-        modelId: "qwen3-coder-flash",
+        modelId: "deepseek-v4-flash",
       }).success,
     ).toBe(false);
   });
@@ -209,7 +205,7 @@ describe("client configuration actions", () => {
 
     for (const input of [
       { ...hostedInput, installationId: "codex-installation-1" },
-      { ...localHttpInput, workspace: "workspace-reference" },
+      { ...localHttpInput, installationId: "codex-installation-1" },
       { ...localCliInput, endpoint: "http://127.0.0.1:1234/v1" },
       { ...localCliInput, credential: { kind: "literal", value: "secret" } },
       {
@@ -291,12 +287,6 @@ describe("client configuration responses", () => {
 
     for (const controlCharacter of controlCharacters) {
       expect(
-        ClientConfigurationSummarySchema.safeParse({
-          ...hostedSummary,
-          workspace: `workspace${controlCharacter}reference`,
-        }).success,
-      ).toBe(false);
-      expect(
         ClientConfigurationNoticeSchema.safeParse({
           ...notice,
           id: `notice${controlCharacter}id`,
@@ -351,12 +341,6 @@ describe("client configuration responses", () => {
     expect(ClientConfigurationNoticeSchema.safeParse({ ...notice, billing: [path] }).success).toBe(
       false,
     );
-    expect(
-      ClientConfigurationSummarySchema.safeParse({
-        ...hostedSummary,
-        workspace: `safe${separator}/private/var/foo`,
-      }).success,
-    ).toBe(false);
   });
 
   it.each([
@@ -375,9 +359,6 @@ describe("client configuration responses", () => {
     expect(ClientConfigurationNoticeSchema.safeParse({ ...notice, privacy: [path] }).success).toBe(
       false,
     );
-    expect(
-      ClientConfigurationSummarySchema.safeParse({ ...hostedSummary, workspace: path }).success,
-    ).toBe(false);
   });
 
   it.each([
@@ -390,21 +371,6 @@ describe("client configuration responses", () => {
     expect(ClientConfigurationNoticeSchema.safeParse({ ...notice, billing: [line] }).success).toBe(
       true,
     );
-    expect(
-      ClientConfigurationSummarySchema.safeParse({ ...hostedSummary, workspace: line }).success,
-    ).toBe(true);
-  });
-
-  it("preserves opaque region and workspace/account references", () => {
-    for (const workspace of [
-      "workspace-reference",
-      "account-reference",
-      "workspace-account-2026",
-    ]) {
-      expect(
-        ClientConfigurationSummarySchema.safeParse({ ...hostedSummary, workspace }).success,
-      ).toBe(true);
-    }
   });
 
   it("parses a closed safe response for each action", () => {
@@ -507,7 +473,7 @@ describe("client configuration responses", () => {
     expect(
       ClientConfigurationSummarySchema.safeParse({
         ...hostedSummary,
-        selectedModelId: "qwen3-coder-plus",
+        selectedModelId: "deepseek-v5-flash",
       }).success,
     ).toBe(false);
 
@@ -516,8 +482,6 @@ describe("client configuration responses", () => {
         ...hostedSummary,
         productId: "openrouter",
         endpoint: "https://openrouter.ai/api/v1",
-        region: undefined,
-        workspace: undefined,
         selectedModelId: "openai/auto",
         notices: [openRouterNotice],
       }).success,
@@ -533,12 +497,6 @@ describe("client configuration responses", () => {
     };
 
     expect(ClientConfigurationActionResponseSchema.safeParse(readyResponse).success).toBe(true);
-    expect(
-      ClientConfigurationActionResponseSchema.safeParse({
-        ...readyResponse,
-        configuration: { ...hostedSummary, workspace: undefined },
-      }).success,
-    ).toBe(false);
     expect(
       ClientConfigurationActionResponseSchema.safeParse({
         ...readyResponse,
@@ -561,13 +519,13 @@ describe("client configuration responses", () => {
 
   it.each([
     ["literal secret", { apiKey: "secret-value" }],
-    ["environment name", { environmentName: "DIFFGAZER_QWEN_API_KEY" }],
+    ["environment name", { environmentName: "DIFFGAZER_DEEPSEEK_API_KEY" }],
     ["local bearer", { bearerToken: "secret-value" }],
     ["account identifier", { account: "account-secret-id" }],
     ["workspace identifier", { workspace: "workspace-secret-id" }],
     ["authentication path", { authPath: "/home/user/.vendor/auth.json" }],
     ["executable path", { executablePath: "/usr/local/bin/codex" }],
-    ["argument vector", { argv: ["--model", "qwen3-coder-flash"] }],
+    ["argument vector", { argv: ["--model", "deepseek-v4-flash"] }],
     ["raw evidence", { rawEvidence: { response: "provider output" } }],
   ])("rejects a response containing a %s", (_name, forbiddenField) => {
     expect(
@@ -595,29 +553,19 @@ describe("client configuration responses", () => {
     expect(
       ClientConfigurationSummarySchema.safeParse({
         ...hostedSummary,
-        endpoint: "https://api.deepseek.com/v1",
-        region: undefined,
+        endpoint: "https://api.z.ai/api/paas/v4",
       }).success,
     ).toBe(false);
     expect(
       ClientConfigurationSummarySchema.safeParse({
         ...hostedSummary,
-        endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1?token=secret",
-      }).success,
-    ).toBe(false);
-    expect(
-      ClientConfigurationSummarySchema.safeParse({
-        ...hostedSummary,
-        workspace: undefined,
+        endpoint: "https://api.deepseek.com/v1?token=secret",
       }).success,
     ).toBe(false);
     expect(
       ClientConfigurationSummarySchema.safeParse({
         ...hostedSummary,
         productId: "gemini",
-        endpoint: "https://generativelanguage.googleapis.com/v1beta",
-        region: undefined,
-        workspace: "workspace-reference",
       }).success,
     ).toBe(false);
   });
@@ -636,7 +584,7 @@ describe("client configuration responses", () => {
       ClientConfigurationActionResponseSchema.safeParse({
         action: "inspect",
         status: "succeeded",
-        configuration: { ...hostedSummary, selectedModelId: "qwen3-coder-latest" },
+        configuration: { ...hostedSummary, selectedModelId: "deepseek-v4-latest" },
       }).success,
     ).toBe(false);
   });

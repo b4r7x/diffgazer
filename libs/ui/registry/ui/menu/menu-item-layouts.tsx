@@ -1,24 +1,37 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Chevron } from "../icons/chevron";
 
+/** Keyboard-cursor glyph. Exclusively the keyboard's: hover never paints it. */
 const INDICATOR_ACTIVE = "▌";
-const INDICATOR_IDLE = ">";
 
 const iconSlotBase =
   "pr-4 shrink-0 inline-flex w-5 items-center justify-center self-center leading-none relative -top-[2px]";
 
+/**
+ * Fixed-width slot: "▌" for the keyboard cursor, a chevron on the hovered row,
+ * empty when idle. The slot always renders at w-5, so revealing the chevron
+ * never shifts the label column.
+ */
 function MenuItemIndicator({
   isFocused,
   isSelected,
+  isHovered,
   className,
 }: {
   isFocused: boolean;
   isSelected: boolean;
+  isHovered: boolean;
   className?: string;
 }) {
+  const showCursor = isFocused || isSelected;
   return (
     <span aria-hidden="true" className={cn(iconSlotBase, className)}>
-      {isFocused || isSelected ? INDICATOR_ACTIVE : INDICATOR_IDLE}
+      {showCursor && INDICATOR_ACTIVE}
+      {/* top-[2px] cancels the slot's text-baseline offset, which an SVG doesn't share. */}
+      {!showCursor && isHovered && (
+        <Chevron direction="right" size="sm" className="relative top-[2px]" />
+      )}
     </span>
   );
 }
@@ -27,12 +40,14 @@ function MenuItemIconSlot({
   icon,
   isFocused,
   isSelected,
+  isHovered,
   iconIdleClassName,
   indicatorIdleClassName,
 }: {
   icon?: ReactNode;
   isFocused: boolean;
   isSelected: boolean;
+  isHovered: boolean;
   iconIdleClassName?: string;
   indicatorIdleClassName?: string;
 }) {
@@ -48,6 +63,7 @@ function MenuItemIconSlot({
     <MenuItemIndicator
       isFocused={isFocused}
       isSelected={isSelected}
+      isHovered={isHovered}
       className={indicatorIdleClassName}
     />
   );
@@ -56,6 +72,7 @@ function MenuItemIconSlot({
 interface DefaultItemLayoutProps {
   isFocused: boolean;
   isSelected: boolean;
+  isHovered: boolean;
   isDanger: boolean;
   /** Decorative hotkey label rendered as [n]. */
   hotkey?: number | string;
@@ -68,6 +85,7 @@ interface DefaultItemLayoutProps {
 export function DefaultItemLayout({
   isFocused,
   isSelected,
+  isHovered,
   isDanger,
   hotkey,
   icon,
@@ -82,23 +100,13 @@ export function DefaultItemLayout({
         icon={icon}
         isFocused={isFocused}
         isSelected={isSelected}
+        isHovered={isHovered}
         iconIdleClassName={isEmphasized ? undefined : idleColor}
-        indicatorIdleClassName={
-          isEmphasized
-            ? undefined
-            : cn("transition-opacity opacity-0 group-hover:opacity-100", idleColor)
-        }
+        indicatorIdleClassName={isEmphasized ? undefined : idleColor}
       />
       {/* Labels start in one column right after the icon; accelerators are
           pushed to the row end so rows with and without one still align. */}
-      <span
-        className={cn(
-          "min-w-0 flex-1 tracking-wide",
-          !isEmphasized && !isDanger && "group-hover:text-foreground",
-        )}
-      >
-        {children}
-      </span>
+      <span className="min-w-0 flex-1 tracking-wide">{children}</span>
       {hotkey !== undefined && (
         // Keep the unbound label out of the accessible name and typeahead text, and
         // off coarse pointers entirely — a keyboard accelerator says nothing to touch.
@@ -106,7 +114,7 @@ export function DefaultItemLayout({
           aria-hidden="true"
           className={cn(
             "ml-4 shrink-0 tabular-nums pointer-coarse:hidden",
-            !isEmphasized && ["group-hover:text-foreground", idleColor],
+            !isEmphasized && idleColor,
           )}
         >
           [{hotkey}]
@@ -119,6 +127,7 @@ export function DefaultItemLayout({
 interface DetailItemLayoutProps {
   isFocused: boolean;
   isSelected: boolean;
+  isHovered: boolean;
   /** Right-aligned detail cell content. */
   value?: ReactNode;
   valueClassName: string;
@@ -137,6 +146,7 @@ interface DetailItemLayoutProps {
 export function DetailItemLayout({
   isFocused,
   isSelected,
+  isHovered,
   value,
   valueClassName,
   valueGlyph,
@@ -152,15 +162,10 @@ export function DetailItemLayout({
           icon={icon}
           isFocused={isFocused}
           isSelected={isSelected}
-          indicatorIdleClassName={
-            !isEmphasized
-              ? "text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-              : undefined
-          }
+          isHovered={isHovered}
+          indicatorIdleClassName={isEmphasized ? undefined : "text-foreground"}
         />
-        <span className={isEmphasized ? undefined : "font-medium group-hover:text-foreground"}>
-          {children}
-        </span>
+        <span className={isEmphasized ? undefined : "font-medium"}>{children}</span>
       </div>
       {value !== undefined && value !== null && (
         <div className={valueClassName}>

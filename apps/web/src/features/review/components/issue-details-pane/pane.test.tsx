@@ -310,7 +310,7 @@ describe("IssueDetailsPane", () => {
     );
   });
 
-  it("numbers every excerpt row, including one past the declared range end", () => {
+  it("numbers a run saved before per-row numbers from its range start", () => {
     renderPane(
       makeIssue({
         evidence: [
@@ -331,11 +331,46 @@ describe("IssueDetailsPane", () => {
     });
     const rows = [...evidence.querySelectorAll('[data-slot="code-block-line"]')];
 
-    // A row with no number renders no gutter cell, so a partly numbered block
-    // would indent its remaining rows one gutter to the left.
+    // An excerpt with no published numbering is contiguous by construction, so
+    // it counts on through the row past the declared end rather than stopping
+    // and stepping the indent of what is left.
     expect(
       rows.map((row) => row.querySelector('[data-slot="code-block-line-number"]')?.textContent),
     ).toEqual(["40", "41", "42", "43"]);
+  });
+
+  it("leaves the gutter blank on a row that stands in for skipped lines", () => {
+    renderPane(
+      makeIssue({
+        evidence: [
+          {
+            type: "code",
+            title: "Windowed parser evidence",
+            sourceId: "source:windowed-parser",
+            file: "src/parser.ts",
+            range: { start: 40, end: 61 },
+            excerpt: "const parsed = parse(input);\n... [evidence gap] ...\nreturn parsed;",
+            excerptLineNumbers: [40, null, 61],
+          },
+        ],
+      }),
+    );
+
+    const evidence = screen.getByRole("region", {
+      name: "Code evidence: Windowed parser evidence",
+    });
+    const rows = [...evidence.querySelectorAll('[data-slot="code-block-line"]')];
+
+    // The marker row keeps its gutter cell, so the code under it stays on the
+    // same indent, and it borrows no line number from the code it replaces.
+    expect(
+      rows.map((row) => row.querySelector('[data-slot="code-block-line-number"]')?.textContent),
+    ).toEqual(["40", "", "61"]);
+    expect(rows.map((row) => row.querySelector("code")?.textContent)).toEqual([
+      "const parsed = parse(input);",
+      "... [evidence gap] ...",
+      "return parsed;",
+    ]);
   });
 
   it("omits malformed evidence locations from a lenient saved issue while retaining excerpts", () => {

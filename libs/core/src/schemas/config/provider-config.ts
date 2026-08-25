@@ -18,7 +18,6 @@ import {
   LocalHttpTransportInputSchema,
   LocalOpenAIPresetIdSchema,
   LoopbackHttpEndpointSchema,
-  matchesHostedApiTransportTuple,
   matchesLocalHttpTransportTuple,
   type RunnableProductId,
 } from "./transports.js";
@@ -273,24 +272,6 @@ const SupportedConfigurationActionsSchema = z.array(
   z.enum(["inspect", "select", "test", "update", "delete"]),
 );
 
-const ConfigurationReferenceSchema = z
-  .string()
-  .min(1)
-  .max(256)
-  .refine(
-    (value) => !containsStructuralControlCharacter(value),
-    "Reference must not contain control characters",
-  )
-  .refine((value) => value === value.trim(), "Reference must not have surrounding whitespace");
-
-const SafeConfigurationReferenceSchema = ConfigurationReferenceSchema.refine(
-  (value) =>
-    !/(?:api[_ -]?key|auth(?:entication)?|bearer|credential|cookie|password|secret|token)\b/i.test(
-      value,
-    ) && !containsFilesystemPath(value),
-  "Configuration reference must not contain secret or private-path material",
-);
-
 function matchesNotice(notice: ClientConfigurationNotice, expected: ProductNotice): boolean {
   return (
     notice.id === expected.id &&
@@ -366,34 +347,16 @@ const HostedApiConfigurationSummarySchema = z
     transportFamily: z.literal("hosted-api"),
     productId: HostedApiProductIdSchema,
     endpoint: HostedApiEndpointSchema,
-    region: ConfigurationReferenceSchema.optional(),
-    workspace: SafeConfigurationReferenceSchema.optional(),
     availableActions: SupportedConfigurationActionsSchema,
   })
   .superRefine((summary, context) => {
     validateSupportedSummaryBoundary(summary, context);
-    const tuple = getHostedApiEndpointTuple(summary.productId, summary.endpoint, summary.region);
-    if (!tuple || !matchesHostedApiTransportTuple(summary)) {
+    if (!getHostedApiEndpointTuple(summary.productId, summary.endpoint)) {
       context.addIssue({
         code: "custom",
-        message: tuple
-          ? "Workspace reference must match the selected endpoint"
-          : "Endpoint and region must match the selected product",
+        message: "Endpoint must match the selected product",
         path: ["endpoint"],
       });
-      if (tuple && "workspaceBound" in tuple && tuple.workspaceBound) {
-        context.addIssue({
-          code: "custom",
-          message: "Selected endpoint requires a workspace reference",
-          path: ["workspace"],
-        });
-      } else if (tuple && summary.workspace !== undefined) {
-        context.addIssue({
-          code: "custom",
-          message: "Selected endpoint does not accept a workspace reference",
-          path: ["workspace"],
-        });
-      }
     }
   });
 

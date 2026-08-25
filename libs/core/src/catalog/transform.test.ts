@@ -36,9 +36,6 @@ describe("transformCatalogObservation", () => {
       "groq",
       "cerebras",
       "deepseek",
-      "qwen",
-      "moonshot",
-      "mistral",
       "ollama-cloud",
     ]);
 
@@ -382,7 +379,7 @@ describe("transformCatalogObservation", () => {
   it("keeps excluded identities out of the shared fixture", () => {
     const providerIds = Object.keys(RAW_CATALOG);
 
-    expect(providerIds).toEqual(["google", "zai", "groq", "cerebras", "openrouter", "mistral"]);
+    expect(providerIds).toEqual(["google", "zai", "groq", "cerebras", "openrouter", "deepseek"]);
     expect(providerIds).not.toContain("github-models");
     for (const candidateId of Object.keys(CANDIDATE_VERDICTS)) {
       expect(providerIds, candidateId).not.toContain(candidateId);

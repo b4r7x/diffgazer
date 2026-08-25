@@ -2,9 +2,7 @@
 
 import {
   createContext,
-  type FocusEvent,
   type KeyboardEvent,
-  type MouseEvent,
   type ReactNode,
   type Ref,
   type RefObject,
@@ -36,6 +34,7 @@ import { MenuItemCheckbox } from "./menu-item-checkbox";
 import { DefaultItemLayout } from "./menu-item-layouts";
 import { MenuItemRadio } from "./menu-item-radio";
 import { getItemState, menuItemBase } from "./menu-item-variants";
+import { useMenuItemInteractions } from "./use-menu-item-interactions";
 
 /** How a submenu presents itself. */
 export type MenuSubMode = "flyout" | "stack" | "auto";
@@ -155,7 +154,11 @@ export function MenuSubTrigger({
 }: MenuSubTriggerProps) {
   const {
     highlighted,
+    hoveredId,
     highlight,
+    hover,
+    unhover,
+    trackPointer,
     idPrefix,
     registerItem,
     unregisterItem,
@@ -169,7 +172,13 @@ export function MenuSubTrigger({
 
   const isFocused = highlighted === id;
   const itemId = getEncodedListboxItemId(idPrefix, id);
-  const state = getItemState({ disabled, isFocused, isSelected: false });
+  const state = getItemState({
+    disabled,
+    isFocused,
+    isSelected: false,
+    isHovered: hoveredId === id,
+  });
+  const isHovered = state === "hovered";
 
   useLayoutEffect(() => {
     registerItem(registrationId, id, disabled, triggerRef.current);
@@ -207,19 +216,17 @@ export function MenuSubTrigger({
     if (open && highlighted !== null && highlighted !== id) onOpenChange(false);
   }, [resolvedMode, open, highlighted, id, onOpenChange]);
 
-  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (event.defaultPrevented || disabled) return;
-    onOpenChange(!open);
-  };
-
-  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
-    if (event.defaultPrevented || disabled) return;
-    highlight(id);
-  };
-
-  const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
-    if (disabled) event.preventDefault();
-  };
+  const { handleClick, handleFocus, handleMouseDown, handlePointerMove, handlePointerLeave } =
+    useMenuItemInteractions({
+      id,
+      disabled,
+      // Activation for a trigger is toggling its submenu, not selecting a value.
+      activate: () => onOpenChange(!open),
+      highlight,
+      hover,
+      unhover,
+      trackPointer,
+    });
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: arrow/Enter open-submenu handling is centralized on the menu container, not on this item.
@@ -236,15 +243,26 @@ export function MenuSubTrigger({
       data-diffgazer-navigation-item="true"
       data-value={id}
       data-highlighted={isFocused ? "" : undefined}
+      data-hovered={isHovered ? "" : undefined}
       aria-haspopup="menu"
       aria-expanded={open}
       aria-disabled={disabled || undefined}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onFocus={handleFocus}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
       className={cn(menuItemBase({ menuVariant: "default", state }), className)}
     >
-      <DefaultItemLayout isFocused={isFocused} isSelected={false} isDanger={false}>
+      {/* isHovered={false}: like the back row, a trigger's own glyph (the
+          trailing chevron) already carries the affordance, so hover gives it
+          the subordinate background only — never a second chevron. */}
+      <DefaultItemLayout
+        isFocused={isFocused}
+        isSelected={false}
+        isHovered={false}
+        isDanger={false}
+      >
         {children}
       </DefaultItemLayout>
       <Chevron size="sm" className="ml-auto" />

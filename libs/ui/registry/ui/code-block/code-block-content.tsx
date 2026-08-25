@@ -32,7 +32,7 @@ function largestLineNumber(children: ReactNode): number {
   Children.forEach(children, (child) => {
     if (!isValidElement<CodeBlockLineProps>(child)) return;
     const { number } = child.props;
-    if (number !== undefined && number > largest) largest = number;
+    if (number != null && number > largest) largest = number;
   });
   return largest;
 }

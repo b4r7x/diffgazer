@@ -7,7 +7,6 @@ import type {
 } from "@diffgazer/core/schemas/config";
 import { log } from "../../log.js";
 import type { DecodedSecretBinding } from "../persistence/secrets.js";
-import type { SupportedProviderConfigurationRecord } from "../provider-config.js";
 import {
   bindWriteOnlySecret,
   createEnvironmentSecretBinding,
@@ -51,15 +50,6 @@ export function credentialReferenceIdentityFor(binding: SecretBinding | null): s
         reference: binding.reference,
       });
   }
-}
-
-export function workspaceAccountReferenceFor(
-  record: SupportedProviderConfigurationRecord,
-): string | null {
-  if (record.input.transportFamily !== "hosted-api" || record.input.workspace === undefined) {
-    return null;
-  }
-  return sha256CanonicalJsonSync(record.input.workspace);
 }
 
 /**

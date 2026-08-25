@@ -19,7 +19,6 @@ import type { Adapter, AdapterExecuteRequest } from "../ai/types.js";
 
 const CLIENT_TEST_SCHEMA_SHA256 = "1".repeat(64);
 export const CLIENT_TEST_CREDENTIAL_REFERENCE_IDENTITY = "3".repeat(64);
-export const CLIENT_TEST_WORKSPACE_ACCOUNT_REFERENCE = "4".repeat(64);
 const CLIENT_TEST_INSTALLATION_ID = "codex-installation-1";
 export const CLIENT_TEST_SECRET_LITERAL = "sk-live-provider-secret-value";
 
@@ -38,7 +37,6 @@ export function suggestedClientTestModelId(productId: RunnableProductId): string
     return policy.suggestedModelId;
   }
   if (productId === "openrouter") return "openai/gpt-4.1-mini";
-  if (productId === "moonshot") return "kimi-k3-2026-01";
   if (productId === "ollama") return "llama3.2";
   if (productId === "codex-cli") return "gpt-5-codex";
   if (productId === "copilot-cli") return "gpt-5";
@@ -104,8 +102,7 @@ export function clientTestEvidenceKey(
         noticeVersion,
         limits,
       };
-    default: {
-      const region = endpoint && "region" in endpoint ? (endpoint.region ?? null) : null;
+    default:
       return {
         authentication: null,
         credentialReferenceIdentity: CLIENT_TEST_CREDENTIAL_REFERENCE_IDENTITY,
@@ -113,18 +110,14 @@ export function clientTestEvidenceKey(
         productId,
         transportFamily: "hosted-api",
         normalizedEndpoint: endpoint?.endpoint ?? "https://example.invalid/v1",
-        region,
-        workspaceAccountReference:
-          endpoint && "workspaceBound" in endpoint && endpoint.workspaceBound
-            ? CLIENT_TEST_WORKSPACE_ACCOUNT_REFERENCE
-            : null,
+        region: null,
+        workspaceAccountReference: null,
         modelId,
         runtime: { identity: "diffgazer-server", version: "1.2.3" },
         structuredOutputSchemaSha256: CLIENT_TEST_SCHEMA_SHA256,
         noticeVersion,
         limits,
       };
-    }
   }
 }
 
@@ -267,7 +260,6 @@ export function clientTestAuthorize(
       budgetReservation: budgetReservation.value,
       lease: lease.value,
       resolveCredential: async () => options.credential ?? CLIENT_TEST_SECRET_LITERAL,
-      workspaceAccountId: null,
       release: () => {
         if (released) return;
         released = true;

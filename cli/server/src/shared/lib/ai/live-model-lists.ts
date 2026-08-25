@@ -162,8 +162,6 @@ const fetchAndStoreModelList = async (
 interface ConfigurationAccess {
   readonly endpoint: string;
   readonly credential: string;
-  /** The DashScope workspace the record is bound to; the list must read the same one a review does. */
-  readonly workspace: string | null;
 }
 
 /** The configuration's own endpoint and credential — the only pair a key-bearing list request may use. */
@@ -186,11 +184,7 @@ const resolveConfigurationAccess = async (
     revision: record.revision,
   });
   if (credential === null) return null;
-  return {
-    endpoint: record.input.endpoint,
-    credential,
-    workspace: record.input.productId === "qwen" ? (record.input.workspace ?? null) : null,
-  };
+  return { endpoint: record.input.endpoint, credential };
 };
 
 /**
@@ -226,6 +220,5 @@ export const resolveLiveModelList = async (tuple: {
   if (!access) return null;
   return fetchAndStoreModelList(key, `${access.endpoint}/models`, {
     authorization: `Bearer ${access.credential}`,
-    ...(access.workspace === null ? {} : { "x-dashscope-workspace": access.workspace }),
   });
 };

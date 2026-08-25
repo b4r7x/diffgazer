@@ -209,6 +209,39 @@ describe("CodeBlock", () => {
       expect(gutterWidth(container)).toBe("2ch");
     });
 
+    it("keeps the gutter cell for a row with no line of its own", () => {
+      const { container } = render(
+        <CodeBlock>
+          <CodeBlock.Content>
+            <CodeBlock.Line number={40} content="const a = 1;" />
+            <CodeBlock.Line number={null} content="... [evidence gap] ..." />
+            <CodeBlock.Line number={61} content="const b = 2;" />
+          </CodeBlock.Content>
+        </CodeBlock>,
+      );
+
+      const gutterCells = [...container.querySelectorAll('[data-slot="code-block-line"]')].map(
+        (line) => line.querySelector('[data-slot="code-block-line-number"]')?.textContent,
+      );
+
+      // Every row keeps a cell, so the marker row does not pull the code beside
+      // it one gutter to the left.
+      expect(gutterCells).toEqual(["40", "", "61"]);
+      expect(gutterWidth(container)).toBe("2ch");
+    });
+
+    it("renders no gutter cell for a line with no number at all", () => {
+      const { container } = render(
+        <CodeBlock>
+          <CodeBlock.Content>
+            <CodeBlock.Line content="const a = 1;" />
+          </CodeBlock.Content>
+        </CodeBlock>,
+      );
+
+      expect(container.querySelectorAll('[data-slot="code-block-line-number"]')).toHaveLength(0);
+    });
+
     it("sizes auto-split content from its line count", () => {
       const source = Array.from({ length: 100 }, (_, index) => `line ${index + 1}`).join("\n");
       const { container } = render(

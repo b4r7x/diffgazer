@@ -136,7 +136,7 @@ export const CANDIDATE_VERDICTS = {
     visibleInSetup: false,
     transportFamily: "local-cli",
     reason:
-      "Permissive defaults, event volatility, and subscription authorization remain unresolved.",
+      "The local agent keeps permissive defaults and volatile events; its authorization is separate from the shipped OpenCode Zen API route.",
     reconsiderWhen:
       "A pinned authorized profile passes deny, isolation, schema, and cancellation proof.",
   },

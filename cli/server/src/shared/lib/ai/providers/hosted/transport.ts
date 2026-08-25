@@ -34,7 +34,6 @@ const AUTHORIZED_HOSTED_DEPENDENCIES: HostedAdapterDependencies = {
       credential,
       reviewSchema: DEFAULT_HOSTED_REVIEW_SCHEMA,
       structuredOutputSchema: hostedStructuredOutputSchema(request.evidenceKey.productId),
-      workspaceAccountId: request.workspaceAccountId ?? null,
     };
   },
 };

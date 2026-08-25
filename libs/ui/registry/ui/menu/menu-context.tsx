@@ -20,6 +20,22 @@ export interface MenuContextValue {
   selectedId: string | null;
   /** Controlled highlighted (focused) item id. Pair with onHighlightChange. */
   highlighted: string | null;
+  /**
+   * Item the pointer is resting on. Cosmetic only: it never enters
+   * aria-activedescendant and navigation keys clear it. Internal state, not a prop.
+   */
+  hoveredId: string | null;
+  /** Marks an item as pointer-hovered. */
+  hover: (id: string) => void;
+  /** Clears the hover, but only if the item still owns it. */
+  unhover: (id: string) => void;
+  /**
+   * Records the pointer's position (menu-wide, owned by the root) and returns
+   * whether it actually travelled since the last event. Items call it on every
+   * pointermove so stationary re-fires never re-arm the hover, even on a row
+   * the pointer has not visited before.
+   */
+  trackPointer: (x: number, y: number) => boolean;
   /** Activates an item in menu. */
   activate: (id: string) => void;
   /** Notifies the owning root menu when a nested menu item is activated. */

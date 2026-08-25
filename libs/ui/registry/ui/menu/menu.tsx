@@ -112,6 +112,7 @@ export function Menu<TId extends string = string>({
   const customActivators = useRef<Map<string, CustomActivator>>(new Map());
   const [registrationsStarted, setRegistrationsStarted] = useState(false);
   const [activeSub, setActiveSub] = useState<MenuSubEntry | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [stackContainer, setStackContainer] = useState<HTMLDivElement | null>(null);
   const highlightRef = useRef<((id: TId) => void) | null>(null);
   const activeSubRef = useRef<MenuSubEntry | null>(null);
@@ -141,7 +142,35 @@ export function Menu<TId extends string = string>({
     [registerItem],
   );
 
-  const pushSub = useCallback((entry: MenuSubEntry) => setActiveSub(entry), []);
+  const hover = useCallback((id: string) => setHoveredId(id), []);
+
+  // Last pointer coordinates seen anywhere in this menu, owned by the root so a
+  // row the pointer never visited still judges "moved" against the pointer's
+  // real last position. Navigation keys clear the hover, and it must stay
+  // cleared until the pointer actually travels — browsers (Safari especially)
+  // re-fire pointermove with unchanged coordinates on re-renders and scrolls,
+  // which would hand the hover straight back to a stationary cursor.
+  const lastPointerRef = useRef<{ x: number; y: number } | null>(null);
+  const trackPointer = useCallback((x: number, y: number) => {
+    const last = lastPointerRef.current;
+    const moved = last === null || last.x !== x || last.y !== y;
+    lastPointerRef.current = { x, y };
+    return moved;
+  }, []);
+
+  // Only the owner releases: pointerleave on the row the pointer came FROM fires
+  // after pointermove already handed the hover to the next row, and must not
+  // clear the new owner.
+  const unhover = useCallback((id: string) => {
+    setHoveredId((prev) => (prev === id ? null : prev));
+  }, []);
+
+  // The hovered row unmounts on a drill-down transition, so its pointerleave
+  // never fires; drop the hover with the rows it belonged to.
+  const pushSub = useCallback((entry: MenuSubEntry) => {
+    setHoveredId(null);
+    setActiveSub(entry);
+  }, []);
 
   const popSub = useCallback((id?: string) => {
     const current = activeSubRef.current;
@@ -149,6 +178,7 @@ export function Menu<TId extends string = string>({
     // A submenu unmounting after a sibling already pushed must not pop the
     // sibling's entry, so a caller can name the entry it owns.
     if (id !== undefined && id !== current.id) return;
+    setHoveredId(null);
     setActiveSub(null);
     highlightRef.current?.(current.id as TId);
   }, []);
@@ -172,6 +202,14 @@ export function Menu<TId extends string = string>({
       wrap,
       idPrefix,
       onKeyDown: (e: KeyboardEvent) => {
+        // Keyboard takes over: the hover is cosmetic and must not linger under a
+        // stationary cursor once navigation moves the real cursor elsewhere.
+        if (e.key.startsWith("Arrow") || e.key === "Home" || e.key === "End") setHoveredId(null);
+        // Typeahead is navigation too: a printable-key jump moves the cursor,
+        // so the stationary pointer's row releases the hover the same way.
+        if (typeahead && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          setHoveredId(null);
+        }
         // Drilled into a submenu: ArrowLeft and Escape pop one level instead of
         // closing the menu, mirroring the flyout's own key model.
         if (activeSub !== null && (e.key === "ArrowLeft" || e.key === "Escape")) {
@@ -261,6 +299,10 @@ export function Menu<TId extends string = string>({
     () => ({
       selectedId,
       highlighted,
+      hoveredId,
+      hover,
+      unhover,
+      trackPointer,
       activate: wrappedActivate,
       notifySelect,
       highlight: handleItemHighlight as (id: string) => void,
@@ -280,6 +322,10 @@ export function Menu<TId extends string = string>({
     [
       selectedId,
       highlighted,
+      hoveredId,
+      hover,
+      unhover,
+      trackPointer,
       wrappedActivate,
       notifySelect,
       handleItemHighlight,

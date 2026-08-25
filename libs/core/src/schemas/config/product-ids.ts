@@ -18,10 +18,8 @@ export const HOSTED_API_PRODUCT_IDS = [
   "groq",
   "cerebras",
   "deepseek",
-  "qwen",
-  "moonshot",
-  "mistral",
   "ollama-cloud",
+  "opencode-zen",
 ] as const;
 export const HostedApiProductIdSchema = z.enum(HOSTED_API_PRODUCT_IDS);
 export type HostedApiProductId = z.infer<typeof HostedApiProductIdSchema>;

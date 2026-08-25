@@ -26,7 +26,7 @@ Health responses are lightweight and do not require repository trust.
 | `inspect` | Read the current safe summary and readiness evidence. |
 | `select` | Pin an exact admitted model and make that configuration the selected one. |
 | `test` | Run the readiness and conformance probe for the configured tuple, which is also how models are discovered. |
-| `update` | Update endpoint, region, workspace, credential reference, or notice acknowledgement. |
+| `update` | Update endpoint, credential reference, or notice acknowledgement. |
 | `delete` | Delete the configuration after active review leases drain. |
 
 Every response carries an operation `status` of `succeeded` or `failed`, plus the optional safe projection. A revision conflict is not a response body status: it is an HTTP 409 error envelope with the `CONFIGURATION_CONFLICT` code. Example shape without secrets:
@@ -78,7 +78,7 @@ The only other config routes are reads:
 | `GET` | `/api/config/providers` | List client-safe product metadata and saved configuration summaries. |
 | `GET` | `/api/config/providers/:configurationId/models` | Return the admitted model catalog for one saved configuration. Local HTTP and local CLI products currently receive a skipped envelope with no models. |
 
-A passed models response carries `source` and `cached` describing where the list came from: `live`, `cache`, or `snapshot` mean the models.dev catalog (a fresh fetch, the hourly disk cache, or the bundled snapshot); `provider-live` or `provider-cache` mean the product's own model list supplied the ids — OpenRouter's and Ollama Cloud's public lists, or `{endpoint}/models` asked with the configuration's own credential for Z.AI, Groq, Cerebras, Mistral, DeepSeek, Qwen International, and Moonshot Open Platform — with models.dev supplying names and prices for the ids it also knows; an id it does not know yet keeps `tier: "unknown"` and a description reading "Pricing unknown — not in models.dev yet". `cached` is `true` exactly for `cache` and `provider-cache`. See [Privacy](/app/concepts/privacy) for what each request carries.
+A passed models response carries `source` and `cached` describing where the list came from: `live`, `cache`, or `snapshot` mean the models.dev catalog (a fresh fetch, the hourly disk cache, or the bundled snapshot); `provider-live` or `provider-cache` mean the product's own model list supplied the ids — OpenRouter's and Ollama Cloud's public lists, or `{endpoint}/models` asked with the configuration's own credential for Z.AI, Groq, Cerebras, and DeepSeek — with models.dev supplying names and prices for the ids it also knows; an id it does not know yet keeps `tier: "unknown"` and a description reading "Pricing unknown — not in models.dev yet". `cached` is `true` exactly for `cache` and `provider-cache`. See [Privacy](/app/concepts/privacy) for what each request carries.
 
 There is no per-provider activate or delete route. `GET …/models` is the picker read path; `test` also discovers models as part of readiness probing. `select` both pins the exact model and makes that configuration the globally selected one.
 
@@ -108,7 +108,7 @@ Git routes require repository trust.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `POST` | `/api/review/reviews` | Create and start a review. A configuration whose only open item is structured-output conformance is admitted and verified by the review itself; once a tuple has failed structured output the route answers `403` / `SETUP_REQUIRED` immediately, without contacting the provider. A start that collides with a review already holding the configuration's concurrency answers `409` / `REVIEW_IN_PROGRESS`. |
+| `POST` | `/api/review/reviews` | Create and start a review. A configuration whose only open item is structured-output conformance is admitted and verified by the review itself; once a tuple has failed structured output the route answers `403` / `SETUP_REQUIRED` immediately, without contacting the provider. A start that collides with a review already holding the configuration's concurrency answers `409` / `REVIEW_IN_PROGRESS`. A diff past the selected model's context window is refused at create time with the estimate and the window in the message; a diff that fits but is large starts the review and reports a `review_size_warning` event on the stream. |
 | `GET` | `/api/review/reviews/:id/stream` | Resume or replay a review event stream. |
 | `GET` | `/api/review/sessions/active` | Read the active review session for a diff mode. |
 | `DELETE` | `/api/review/sessions/:id` | Cancel an active review session. |

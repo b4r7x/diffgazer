@@ -258,6 +258,25 @@ describe("MenuItemCheckbox", () => {
     expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-another"));
   });
 
+  it("hovers under the pointer without moving the keyboard cursor, and never when disabled", async () => {
+    const user = userEvent.setup();
+    renderCheckboxMenu({ defaultHighlighted: "hidden" });
+    const menu = screen.getByRole("menu");
+    const hidden = screen.getByRole("menuitemcheckbox", { name: "Show Hidden" });
+    const wrap = screen.getByRole("menuitemcheckbox", { name: "Word Wrap" });
+    const disabled = screen.getByRole("menuitemcheckbox", { name: "Disabled Option" });
+
+    await user.hover(wrap);
+    expect(wrap).toHaveAttribute("data-hovered");
+    expect(wrap).not.toHaveAttribute("data-highlighted");
+    expect(menu).toHaveAttribute("aria-activedescendant", hidden.id);
+    expect(hidden).toHaveAttribute("data-highlighted");
+
+    await user.hover(disabled);
+    expect(disabled).not.toHaveAttribute("data-hovered");
+    expect(menu).toHaveAttribute("aria-activedescendant", hidden.id);
+  });
+
   it("calls onChange callback", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -364,6 +383,25 @@ describe("MenuItemRadio", () => {
 
     await user.keyboard("{ArrowDown}");
     expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-date"));
+  });
+
+  it("hovers under the pointer without moving the keyboard cursor, and never when disabled", async () => {
+    const user = userEvent.setup();
+    renderRadioMenu({ defaultHighlighted: "name" });
+    const menu = screen.getByRole("menu");
+    const name = screen.getByRole("menuitemradio", { name: "Name" });
+    const date = screen.getByRole("menuitemradio", { name: "Date" });
+    const disabled = screen.getByRole("menuitemradio", { name: "Size" });
+
+    await user.hover(date);
+    expect(date).toHaveAttribute("data-hovered");
+    expect(date).not.toHaveAttribute("data-highlighted");
+    expect(menu).toHaveAttribute("aria-activedescendant", name.id);
+    expect(name).toHaveAttribute("data-highlighted");
+
+    await user.hover(disabled);
+    expect(disabled).not.toHaveAttribute("data-hovered");
+    expect(menu).toHaveAttribute("aria-activedescendant", name.id);
   });
 
   it("disabled radio does not select", async () => {

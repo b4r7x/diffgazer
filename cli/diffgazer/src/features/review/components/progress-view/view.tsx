@@ -14,6 +14,7 @@ import {
   type ProgressStepWithSubstepsData,
   type Shortcut,
 } from "@diffgazer/core/schemas/presentation";
+import type { ReviewSizeWarning } from "@diffgazer/core/schemas/review";
 import { Box, useInput } from "ink";
 import { type ReactElement, useContext, useEffect, useState } from "react";
 import { useContentZone } from "../../../../components/layout/global";
@@ -42,10 +43,14 @@ export interface ReviewProgressViewProps {
   /** Admitted transport family; guidance fails neutral when it is absent. */
   transportFamily?: TransportFamily | null;
   notices: string[];
+  /** Advisory from the start gate: the run fits the model, but barely reads well at this size. */
+  sizeWarning?: ReviewSizeWarning | null;
   onCancel?: () => void;
   onBack?: () => void;
   onViewResults?: () => void;
   onGoToSettings?: () => void;
+  /** Stops this run and opens the file picker, so the change can be reviewed in pieces. */
+  onFilterFiles?: () => void;
   issuesFound: number;
   startedAt: Date | null;
   completedAt: Date | null;
@@ -56,6 +61,10 @@ export interface ReviewProgressViewProps {
 }
 
 const STREAMING_SHORTCUTS: Shortcut[] = [{ key: "c", label: "Cancel" }];
+const FILTER_FILES_KEY = "f";
+const FILTER_FILES_SHORTCUT: Shortcut = { key: FILTER_FILES_KEY, label: "Filter Files" };
+const SIZE_WARNING_TITLE = "Large Review";
+const SIZE_WARNING_ACTION_LINE = `Press ${FILTER_FILES_KEY} to stop this run and pick the files to review instead.`;
 const COMPLETING_SHORTCUTS: Shortcut[] = [{ key: "Enter", label: "View Results" }];
 const SAVE_CONTEXT_SHORTCUT: Shortcut = { key: "w", label: "Save context" };
 const RETRY_CONTEXT_SHORTCUT: Shortcut = { key: "r", label: "Retry context" };
@@ -82,6 +91,7 @@ function getProgressShortcuts({
   hasContextSnapshot,
   hasContextRefreshError,
   hasError,
+  hasFilterFiles,
   providerRecoveryLabel,
 }: {
   isStreaming: boolean;
@@ -90,6 +100,7 @@ function getProgressShortcuts({
   hasContextSnapshot: boolean;
   hasContextRefreshError: boolean;
   hasError: boolean;
+  hasFilterFiles: boolean;
   providerRecoveryLabel: string | null;
 }): Shortcut[] {
   // A provider failure has no other affordance, so it publishes the one key that
@@ -97,7 +108,12 @@ function getProgressShortcuts({
   if (providerRecoveryLabel) return [getProviderRecoveryShortcut(providerRecoveryLabel)];
   if (hasError) return [];
   if (hasContextRefreshError) return [RETRY_CONTEXT_SHORTCUT];
-  if (isStreaming) return hasCancel ? STREAMING_SHORTCUTS : [];
+  if (isStreaming) {
+    return [
+      ...(hasCancel ? STREAMING_SHORTCUTS : []),
+      ...(hasFilterFiles ? [FILTER_FILES_SHORTCUT] : []),
+    ];
+  }
   return [
     ...(hasViewResults ? COMPLETING_SHORTCUTS : []),
     ...(hasContextSnapshot ? [SAVE_CONTEXT_SHORTCUT] : []),
@@ -115,10 +131,12 @@ export function ReviewProgressView({
   errorCode,
   transportFamily,
   notices,
+  sizeWarning,
   onCancel,
   onBack,
   onViewResults,
   onGoToSettings,
+  onFilterFiles,
   issuesFound,
   startedAt,
   completedAt,
@@ -160,11 +178,22 @@ export function ReviewProgressView({
   const providerRecoveryLine = providerRecoveryLabel
     ? getProviderRecoveryLine(providerRecoveryLabel)
     : null;
+  // The advisory stands down the moment the run has a failure to report: two
+  // callouts about the same review would compete for the same rows.
+  const activeSizeWarning = errorGuidance ? null : (sizeWarning ?? null);
+  // Only while the run is still reading: once it has finished there are results
+  // to read, and narrowing it would throw them away for nothing.
+  const canFilterFiles = Boolean(activeSizeWarning && onFilterFiles && isStreaming);
+  const sanitizedSizeWarning = activeSizeWarning
+    ? sanitizeTerminalText(activeSizeWarning.message)
+    : null;
 
   useInput(
     (input, key) => {
       if (key.escape) {
         onBack?.();
+      } else if (input === FILTER_FILES_KEY && canFilterFiles) {
+        onFilterFiles?.();
       } else if (input === "c" && isStreaming) {
         onCancel?.();
       } else if (input === "r" && contextRefreshError) {
@@ -181,6 +210,7 @@ export function ReviewProgressView({
           onViewResults ||
           providerRecoveryLine ||
           contextRefreshError ||
+          canFilterFiles ||
           (isStreaming && onCancel),
       ),
     },
@@ -193,6 +223,7 @@ export function ReviewProgressView({
     hasContextSnapshot: Boolean(contextSnapshot),
     hasContextRefreshError: Boolean(contextRefreshError && onRetryContextRefresh),
     hasError: Boolean(error),
+    hasFilterFiles: canFilterFiles,
     providerRecoveryLabel,
   });
 
@@ -219,7 +250,15 @@ export function ReviewProgressView({
       calloutTextRows(errorGuidance.guidance, calloutColumns) +
       (providerRecoveryLine ? calloutTextRows(providerRecoveryLine, calloutColumns) : 0)
     : 0;
-  const paneHeight = Math.max(contentRows - errorRows, 1);
+  // The advisory is server text too, and the two callouts are mutually
+  // exclusive, so the panes give up rows for whichever one is on screen.
+  const sizeWarningRows = sanitizedSizeWarning
+    ? CALLOUT_CHROME_ROWS +
+      calloutTextRows(SIZE_WARNING_TITLE, calloutColumns) +
+      calloutTextRows(sanitizedSizeWarning, calloutColumns) +
+      (canFilterFiles ? calloutTextRows(SIZE_WARNING_ACTION_LINE, calloutColumns) : 0)
+    : 0;
+  const paneHeight = Math.max(contentRows - errorRows - sizeWarningRows, 1);
   const hasCompletedSnapshot = Boolean(contextSnapshot && !isStreaming);
   const stackedPaneGap = sideBySide ? 0 : 1;
   let progressPaneHeight = paneHeight;
@@ -258,6 +297,15 @@ export function ReviewProgressView({
           lensStats={lensStats}
         />
       </Box>
+      {sanitizedSizeWarning ? (
+        <Box marginTop={1} flexDirection="column">
+          <Callout variant="warning">
+            <Callout.Title>{SIZE_WARNING_TITLE}</Callout.Title>
+            <Callout.Content>{sanitizedSizeWarning}</Callout.Content>
+            {canFilterFiles ? <Callout.Content>{SIZE_WARNING_ACTION_LINE}</Callout.Content> : null}
+          </Callout>
+        </Box>
+      ) : null}
       {errorGuidance ? (
         <Box marginTop={1} flexDirection="column">
           <Callout variant="error">

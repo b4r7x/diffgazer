@@ -25,14 +25,14 @@ function runnablePlan(productId: RunnableProductId) {
 }
 
 describe("setup plan", () => {
-  it("asks hosted products for their exact endpoint tuple and credential", () => {
-    const plan = runnablePlan("qwen");
+  it("asks hosted products for their endpoint tuple and credential", () => {
+    const plan = runnablePlan("deepseek");
 
     expect(plan.transportFamily).toBe("hosted-api");
-    expect(plan.requiredFields).toEqual(["credential", "region", "workspace"]);
+    expect(plan.requiredFields).toEqual(["credential"]);
     expect(plan.steps).toMatchObject([
       { id: "product" },
-      { id: "endpoint-binding", requiredFields: ["region", "workspace"] },
+      { id: "endpoint-binding", requiredFields: [] },
       {
         id: "authentication",
         credentialKind: "hosted-api-key-reference",
@@ -43,7 +43,7 @@ describe("setup plan", () => {
     ]);
   });
 
-  it("keeps the hosted step order for a product without regional or workspace fields", () => {
+  it("keeps the hosted step order for every hosted product", () => {
     const plan = runnablePlan("gemini");
 
     expect(plan.transportFamily).toBe("hosted-api");

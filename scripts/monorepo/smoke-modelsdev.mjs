@@ -128,10 +128,11 @@ async function run() {
         productId: tuple.providerId,
         credentialEnv: tuple.credentialEnv,
         modelId: tuple.modelId,
-        requiresEntitlement: tuple.requiresEntitlement,
-        workspaceAccountId: process.env.QWEN_WORKSPACE_ID ?? null,
       };
       const observation = await runHostedLiveProbe(descriptor);
+      if (observation.status === "skipped") {
+        return { unavailable: observation.skipReason };
+      }
       return { passed: observation.status === "passed" };
     },
   });

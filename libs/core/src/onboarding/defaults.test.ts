@@ -20,21 +20,6 @@ describe("family-specific onboarding defaults", () => {
     });
   });
 
-  it("defaults each hosted regional tuple only from its selected endpoint profile", () => {
-    expect(getInitialWizardData("qwen").configurationInput).toEqual({
-      transportFamily: "hosted-api",
-      productId: "qwen",
-      endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-      region: "international",
-    });
-    expect(getInitialWizardData("moonshot").configurationInput).toEqual({
-      transportFamily: "hosted-api",
-      productId: "moonshot",
-      endpoint: "https://api.moonshot.cn/v1",
-      region: "mainland",
-    });
-  });
-
   it("uses local HTTP defaults without hosted or CLI credential fields", () => {
     expect(getInitialWizardData("local-openai").configurationInput).toEqual({
       transportFamily: "local-http",
@@ -59,22 +44,21 @@ describe("family-specific onboarding defaults", () => {
   });
 
   it("resets every tuple-bound gate when the product changes", () => {
-    const qwen = getInitialWizardData("qwen");
-    if (qwen.configurationInput.transportFamily !== "hosted-api") {
+    const deepseek = getInitialWizardData("deepseek");
+    if (deepseek.configurationInput.transportFamily !== "hosted-api") {
       throw new Error("Expected hosted API configuration");
     }
     const configured = {
-      ...qwen,
+      ...deepseek,
       configurationInput: {
-        ...qwen.configurationInput,
-        workspace: "workspace-reference",
+        ...deepseek.configurationInput,
         credential: { kind: "environment" },
       },
-      selectedModelId: "qwen3-coder-flash",
+      selectedModelId: "deepseek-v4-flash",
       acknowledgement: {
         status: "accepted",
-        noticeId: PRODUCT_REGISTRY.qwen.notice.id,
-        noticeVersion: PRODUCT_REGISTRY.qwen.notice.noticeVersion,
+        noticeId: PRODUCT_REGISTRY.deepseek.notice.id,
+        noticeVersion: PRODUCT_REGISTRY.deepseek.notice.noticeVersion,
         acceptedAt: "2026-07-31T12:00:00.000Z",
       },
       defaultLenses: ["security"],

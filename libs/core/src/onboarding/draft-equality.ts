@@ -23,8 +23,6 @@ export function areConfigurationInputsEqual(
       return (
         right.transportFamily === "hosted-api" &&
         left.endpoint === right.endpoint &&
-        left.region === right.region &&
-        left.workspace === right.workspace &&
         areSecretsEqual(left.credential, right.credential)
       );
     case "local-http":

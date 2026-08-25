@@ -8,7 +8,6 @@ import { setupClientTestHome, teardownClientTestHome } from "../../testing/ai-cl
 import {
   CLIENT_TEST_CREDENTIAL_REFERENCE_IDENTITY,
   CLIENT_TEST_SECRET_LITERAL,
-  CLIENT_TEST_WORKSPACE_ACCOUNT_REFERENCE,
   clientTestAdmittedPlan,
   clientTestAuthorize,
   clientTestBuildReceipt,
@@ -138,28 +137,6 @@ describe("executeReviewGeneration contract", () => {
       CLIENT_TEST_CREDENTIAL_REFERENCE_IDENTITY,
     );
     expect(result.diagnostic.safeMessage).not.toContain(CLIENT_TEST_SECRET_LITERAL);
-  });
-
-  it("redacts workspace account references from diagnostics", async () => {
-    const plan = admittedPlan("qwen");
-    const adapter = clientTestCreateMockAdapter("qwen", async () =>
-      clientTestExecutionResult(plan, "transport-failed"),
-    );
-    const { authorization } = clientTestAuthorize(plan, adapter);
-
-    const result = await executeReviewGeneration({
-      authorization,
-      prompt: `workspace=${CLIENT_TEST_WORKSPACE_ACCOUNT_REFERENCE}`,
-    });
-
-    expect(JSON.stringify(result.diagnostic)).not.toContain(
-      CLIENT_TEST_WORKSPACE_ACCOUNT_REFERENCE,
-    );
-    if (result.diagnostic.truncatedDetails !== undefined) {
-      expect(result.diagnostic.truncatedDetails).not.toContain(
-        CLIENT_TEST_WORKSPACE_ACCOUNT_REFERENCE,
-      );
-    }
   });
 
   it("never persists raw home paths in diagnostics", async () => {

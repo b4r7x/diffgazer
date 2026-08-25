@@ -63,8 +63,6 @@ export interface ProviderReadinessInput {
   readonly now?: Date | string;
   /** Digest of the currently bound credential reference, when applicable. */
   readonly credentialReferenceIdentity?: string | null;
-  /** Digest of the currently bound workspace/account reference, when applicable. */
-  readonly workspaceAccountReference?: string | null;
 }
 
 interface SafeReadinessDetails {
@@ -179,7 +177,6 @@ function expectedEvidenceKeyFor(
       runtime: input.runtime,
       structuredOutputSchemaSha256: input.structuredOutputSchemaSha256,
       credentialReferenceIdentity: input.credentialReferenceIdentity ?? null,
-      workspaceAccountReference: input.workspaceAccountReference ?? null,
     });
   } catch {
     return null;

@@ -484,6 +484,26 @@ describe("MenuSub", () => {
     await waitFor(() => expect(edit).toHaveAttribute("aria-expanded", "false"));
   });
 
+  it("hovers the trigger under the pointer without moving the keyboard cursor", async () => {
+    const user = userEvent.setup();
+    renderSubmenu();
+    const menu = screen.getByRole("menu");
+    const file = getMenuItem("File");
+    const edit = getMenuItem("Edit");
+
+    expect(menu).toHaveAttribute("aria-activedescendant", file.id);
+
+    await user.hover(edit);
+
+    expect(edit).toHaveAttribute("data-hovered");
+    expect(edit).not.toHaveAttribute("data-highlighted");
+    // Hover never adds a second chevron: the trigger's own trailing chevron
+    // already carries the affordance, so only the background changes.
+    expect(edit.querySelectorAll("svg")).toHaveLength(1);
+    expect(menu).toHaveAttribute("aria-activedescendant", file.id);
+    expect(file).toHaveAttribute("data-highlighted");
+  });
+
   it("keeps only one submenu open per level (moving to a sibling closes the first)", async () => {
     const user = userEvent.setup();
     render(

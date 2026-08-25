@@ -19,8 +19,8 @@ export const PROVIDER_PROBE_REASONS = [
   "none",
   "network-disabled",
   "credential-missing",
-  "entitlement-missing",
   "live-opt-in-missing",
+  "model-unresolved",
   "runner-unavailable",
   "probe-failed",
 ];
@@ -32,9 +32,10 @@ export const PROVIDER_PROBE_REASONS = [
  * - `not-requested` — the run never asked for live probes (no network, or the
  *   opt-in env is unset). Emitting `skipped` is the truthful REQ-089 record and
  *   is not a strict failure; the offline release smoke is expected to report it.
- * - `unavailable` — live probing WAS requested but a prerequisite is absent
- *   (credential, entitlement, or a probe runner that was never built). Strict
- *   mode fails on these: the operator asked for evidence and got none.
+ * - `unavailable` — live probing WAS requested but a prerequisite is absent (a
+ *   credential, a model the provider would name, or a probe runner that was
+ *   never built). Strict mode fails on these: the operator asked for evidence
+ *   and got none.
  */
 const NOT_REQUESTED_REASONS = new Set(["network-disabled", "live-opt-in-missing"]);
 
@@ -61,11 +62,6 @@ export function buildHostedProbeTuples(productRegistry, credentialEnvVars) {
         providerId: product.id,
         credentialEnv: requireCredentialEnvironmentVariable(product.id, credentialEnvVars),
         modelId,
-        // Only qwen gates its probe behind a workspace entitlement, so only qwen
-        // carries the env name; a tuple without these fields needs no entitlement.
-        ...(product.id === "qwen"
-          ? { requiresEntitlement: true, entitlementEnv: "QWEN_WORKSPACE_ID" }
-          : {}),
       };
     });
 }
@@ -93,9 +89,6 @@ export function resolveLiveProbeDisposition(tuple, env, networkEnabled) {
   }
   if (!env[tuple.credentialEnv]) {
     return { kind: "unavailable", reason: "credential-missing" };
-  }
-  if (tuple.requiresEntitlement && !env[tuple.entitlementEnv]) {
-    return { kind: "unavailable", reason: "entitlement-missing" };
   }
   return { kind: "ready", reason: "none" };
 }

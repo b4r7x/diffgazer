@@ -4,6 +4,7 @@ import {
   ReviewIssueSchema,
   type ReviewResult,
   ReviewResultSchema,
+  ReviewSizeWarningSchema,
 } from "./issues.js";
 
 function createIssueInput(overrides: Record<string, unknown> = {}) {
@@ -141,5 +142,25 @@ describe("LensReviewResultSchema", () => {
       // @ts-expect-error summary was removed from the public result contract.
       summary: "Persisted prose",
     });
+  });
+});
+
+describe("ReviewSizeWarningSchema", () => {
+  const warning = {
+    message: "Large review: 0.75MB across 40 files.",
+    diffBytes: 786_432,
+    estimatedInputTokens: 250_000,
+    contextTokens: 1_000_000,
+    modelId: "some-model",
+  };
+
+  it("reports the estimate for a model the catalog states no window for", () => {
+    expect(
+      ReviewSizeWarningSchema.parse({ ...warning, contextTokens: null, modelId: null }),
+    ).toMatchObject({ contextTokens: null, modelId: null, estimatedInputTokens: 250_000 });
+  });
+
+  it("rejects a context window of zero, which no model has", () => {
+    expect(ReviewSizeWarningSchema.safeParse({ ...warning, contextTokens: 0 }).success).toBe(false);
   });
 });

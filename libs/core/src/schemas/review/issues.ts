@@ -16,6 +16,12 @@ export const REVIEW_CATEGORY = [
 export const ReviewCategorySchema = z.enum(REVIEW_CATEGORY);
 
 const EVIDENCE_TYPE = ["code", "doc", "trace", "external"] as const;
+/**
+ * Row the server prints between discontiguous excerpt segments. Runs saved
+ * before per-row line numbers existed carry this marker inside `excerpt` with
+ * nothing else identifying the gap, so readers detect it by exact match.
+ */
+export const EVIDENCE_GAP_MARKER = "... [evidence gap] ...";
 const EvidenceTypeSchema = z.enum(EVIDENCE_TYPE);
 const NonBlankProviderTextSchema = z.string().trim().min(1);
 const TrimmedProviderTextSchema = z.string().trim();
@@ -29,7 +35,7 @@ const ExcerptTextSchema = z
   .string()
   .overwrite((excerpt) => excerpt.replace(/^(?:[ \t]*\r?\n)+/, "").trimEnd());
 
-const EvidenceRefSchema = z.object({
+const ProviderEvidenceRefSchema = z.object({
   type: EvidenceTypeSchema,
   title: TrimmedProviderTextSchema,
   sourceId: TrimmedProviderTextSchema,
@@ -46,6 +52,18 @@ const EvidenceRefSchema = z.object({
     .optional(),
   excerpt: ExcerptTextSchema,
   sha: TrimmedProviderTextSchema.optional(),
+});
+
+const EvidenceRefSchema = ProviderEvidenceRefSchema.extend({
+  /**
+   * One source line number per excerpt row, `null` where a row stands in for
+   * skipped lines instead of printing one. A windowed excerpt is not contiguous,
+   * so numbering it from `range.start` would label real code with lines it does
+   * not occupy. Absent on runs saved before per-row numbers existed and read
+   * leniently for the same reason ranges are: a corrupt gutter number must not
+   * cost the whole finding.
+   */
+  excerptLineNumbers: z.array(z.number().nullable()).optional(),
 });
 export type EvidenceRef = z.infer<typeof EvidenceRefSchema>;
 
@@ -127,6 +145,10 @@ const ProviderReviewIssueSchema = ReviewIssueSchema.extend({
   recommendation: TrimmedProviderTextSchema,
   symptom: TrimmedProviderTextSchema,
   whyItMatters: TrimmedProviderTextSchema,
+  // This schema is also the provider response schema. Per-row gutter numbers are
+  // synthesized from the diff after the call, so asking a model for them would
+  // only spend tokens on numbers the server discards.
+  evidence: z.array(ProviderEvidenceRefSchema),
 });
 
 /** Provider-response cap for one lens analysis. */
@@ -163,6 +185,12 @@ export const ReviewErrorCode = {
   PROVIDER_REJECTED: "PROVIDER_REJECTED",
   /** The review spent its configured budget before every lens had run. */
   BUDGET_EXHAUSTED: "BUDGET_EXHAUSTED",
+  /**
+   * The diff is past what one review can read: the selected model's context
+   * window, or the hard byte ceiling. Distinct from `GENERATION_FAILED` because
+   * a narrower file set is the remedy, and a screen may offer it.
+   */
+  DIFF_TOO_LARGE: "DIFF_TOO_LARGE",
 } as const;
 
 const REVIEW_SPECIFIC_CODES = [
@@ -181,6 +209,7 @@ const REVIEW_SPECIFIC_CODES = [
   ReviewErrorCode.MODEL_INCOMPATIBLE,
   ReviewErrorCode.PROVIDER_REJECTED,
   ReviewErrorCode.BUDGET_EXHAUSTED,
+  ReviewErrorCode.DIFF_TOO_LARGE,
 ] as const;
 
 const REVIEW_ERROR_CODES = createDomainErrorCodes(REVIEW_SPECIFIC_CODES);
@@ -196,10 +225,31 @@ export const ReviewErrorSchema = createDomainErrorSchema(REVIEW_SPECIFIC_CODES);
 /** @see cli/server/src/features/review/engine/types.ts ReviewError (lightweight server-internal variant) */
 export type ReviewError = z.infer<typeof ReviewErrorSchema>;
 
+/**
+ * The advisory a review start carries when the diff fits the selected model's
+ * context window but is large enough that a single review call reads it poorly.
+ * It is not a gate — the review runs — so the numbers travel with the message
+ * and every surface can state the same ones instead of paraphrasing the size.
+ *
+ * `contextTokens` and `modelId` are null when no admitted model is known or the
+ * bundled catalog states no window for it; the estimate is still reported.
+ */
+export const ReviewSizeWarningSchema = z.object({
+  message: z.string().min(1).max(600),
+  diffBytes: z.int().nonnegative(),
+  estimatedInputTokens: z.int().nonnegative(),
+  contextTokens: z.int().positive().nullable(),
+  modelId: z.string().min(1).max(128).nullable(),
+});
+export type ReviewSizeWarning = z.infer<typeof ReviewSizeWarningSchema>;
+
 export const ReviewStreamEventSchema = z.discriminatedUnion("type", [
   // `chunk` carries the server's event-cap warning to the client; it is the only
   // free-text member with a no-op effect on UI step/agent state.
   z.object({ type: z.literal("chunk"), content: z.string() }),
+  // Emitted once, right after `review_started`, for a run that was admitted with
+  // a warning. It changes no step or agent state.
+  z.object({ type: z.literal("review_size_warning"), warning: ReviewSizeWarningSchema }),
   // No duration on the wire: the client measures the elapsed time the user
   // actually saw, and the server's own measurement is persisted on
   // `ReviewMetadata.durationMs` for the history screen to read back.

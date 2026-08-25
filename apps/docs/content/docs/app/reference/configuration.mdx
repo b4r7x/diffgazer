@@ -29,7 +29,7 @@ Each saved provider setup is a **configuration** with:
 
 - `configurationId` — stable identifier for the record.
 - `revision` — monotonic version used for optimistic updates.
-- `executionFingerprint` — immutable identity for the admitted product tuple, credential reference, endpoint, region, workspace, and exact model.
+- `executionFingerprint` — immutable identity for the admitted product tuple, credential reference, endpoint, and exact model.
 
 Client-safe summaries expose readiness, notices, remediation, and available actions. They never expose literal secrets, environment values, auth paths, account identifiers, or raw diagnostics.
 
@@ -43,7 +43,7 @@ The local API exposes six generic actions on `POST /api/config/actions`:
 | `inspect` | Read the current safe summary and readiness state. |
 | `select` | Choose an exact admitted model. |
 | `test` | Run the optional readiness and conformance probe for the configured tuple (**Verify** in the UI). |
-| `update` | Change endpoint, region, workspace, credential reference, or notice acknowledgement. |
+| `update` | Change endpoint, credential reference, or notice acknowledgement. |
 | `delete` | Remove the configuration after active review leases drain. |
 
 Every action returns a client-safe summary. A configuration becomes **ready** only after its product-specific admission checks pass, including structured-output conformance, required usage when applicable, and an accepted product notice. Reviews do not wait for **ready**: a configuration whose only open item is structured-output conformance can start a review, and the review itself verifies it. An unaccepted notice is different: readiness reports `acknowledgement-required` and the review is refused until the notice is accepted, whether or not conformance was ever checked.
@@ -54,11 +54,11 @@ Setup always ends in an observable **ready**, **unsupported**, or **skipped** st
 
 ### Hosted API products
 
-For Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Qwen International, Moonshot Open Platform, Mistral, and Ollama Cloud:
+For Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, and Ollama Cloud:
 
 1. `create` a configuration for the product.
 2. `update` it with either a stored literal credential or an environment reference. The reference carries no name: the server binds the canonical variable for that product, for example `GOOGLE_API_KEY` for Google Gemini.
-3. Bind the allowed endpoint and, when required, region and workspace.
+3. Bind the allowed endpoint.
 4. `select` an exact discovered model ID.
 5. Optionally `test` (**Verify** in the UI) to check structured-output conformance up front. Skipping it leaves readiness at `conformance-pending`, which still selects and starts reviews; the first review verifies conformance and records the result, and the UI shows the last verification beside the configuration.
 

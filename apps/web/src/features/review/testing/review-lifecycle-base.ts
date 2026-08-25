@@ -28,6 +28,7 @@ export function makeReviewLifecycleBase(
         reviewId: null,
         hasCompleted: false,
         notices: [],
+        sizeWarning: null,
         ...state,
       },
       abort: vi.fn(),

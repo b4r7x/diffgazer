@@ -572,20 +572,17 @@ describe("ProvidersPage", () => {
   });
 
   // The APG-correct other half: a letter that does match a row belongs to the
-  // list while it has focus, even when the shell binds the same letter.
-  it("keeps a matched typeahead letter on the list instead of quitting the app", async () => {
+  // list while it has focus and never reaches the shell's own bindings.
+  it("keeps a matched typeahead letter on the list instead of reaching the shell", async () => {
     const user = userEvent.setup();
     renderProvidersPage({ globalShortcuts: true });
 
     const listbox = await screen.findByRole("listbox", { name: "Providers" });
     await waitFor(() => expect(listbox).toHaveFocus());
 
-    await user.keyboard("q");
+    await user.keyboard("z");
 
-    expect(screen.getByRole("option", { name: "Qwen International" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    expect(screen.getByRole("option", { name: "Z.AI" })).toHaveAttribute("aria-selected", "true");
     expect(shutdown).not.toHaveBeenCalled();
 
     // Control: the same key quits once the list no longer owns the keys, so the
@@ -605,13 +602,13 @@ describe("ProvidersPage", () => {
 
     const listbox = await screen.findByRole("listbox", { name: "Providers" });
     await waitFor(() => expect(listbox).toHaveFocus());
-    const mistral = screen.getByRole("option", { name: "Mistral" });
-    await user.click(mistral);
-    expect(mistral).toHaveAttribute("aria-selected", "true");
+    const cerebras = screen.getByRole("option", { name: "Cerebras" });
+    await user.click(cerebras);
+    expect(cerebras).toHaveAttribute("aria-selected", "true");
 
     await user.keyboard("d");
 
-    expect(mistral).toHaveAttribute("aria-selected", "true");
+    expect(cerebras).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("option", { name: "DeepSeek" })).toHaveAttribute(
       "aria-selected",
       "false",

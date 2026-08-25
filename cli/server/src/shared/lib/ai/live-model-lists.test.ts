@@ -16,18 +16,11 @@ const KEY_BEARING_INPUTS = {
   groq: { endpoint: "https://api.groq.com/openai/v1" },
   cerebras: { endpoint: "https://api.cerebras.ai/v1" },
   deepseek: { endpoint: "https://api.deepseek.com/v1" },
-  qwen: {
-    endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-    region: "international",
-    workspace: "workspace-alpha",
-  },
-  moonshot: { endpoint: "https://api.moonshot.ai/v1", region: "international" },
-  mistral: { endpoint: "https://api.mistral.ai/v1", region: "global" },
 } as const;
 
 async function seedConfiguration(
   productId: HostedApiProductId,
-  input: { endpoint: string; region?: string; workspace?: string },
+  input: { endpoint: string },
   credential: string | null,
 ): Promise<string> {
   const store = await loadStore();
@@ -66,11 +59,7 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
     expect(fetchCalls(spy)).toEqual([
       {
         url: `${input.endpoint}/models`,
-        headers: {
-          authorization: `Bearer ${productId}-secret`,
-          // The workspace-bound product reads the same workspace a review sends to.
-          ...("workspace" in input ? { "x-dashscope-workspace": input.workspace } : {}),
-        },
+        headers: { authorization: `Bearer ${productId}-secret` },
         redirect: "error",
       },
     ]);

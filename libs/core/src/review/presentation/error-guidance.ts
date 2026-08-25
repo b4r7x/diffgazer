@@ -277,6 +277,15 @@ export function classifyReviewStreamError(
       ctaLabel: "Open Trust Settings",
     };
   }
+  if (errorCode === ReviewErrorCode.DIFF_TOO_LARGE) {
+    return {
+      kind: "other",
+      title: "Diff Too Large",
+      guidance:
+        "This diff does not fit the selected model. Narrow the review to specific files, or pick a model with a larger context window.",
+      ctaLabel: "Back to Home",
+    };
+  }
   if (errorCode === ReviewErrorCode.BUDGET_EXHAUSTED) {
     return {
       kind: "other",

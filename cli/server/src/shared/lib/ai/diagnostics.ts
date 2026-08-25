@@ -57,7 +57,6 @@ export type BoundedDiagnostic = Readonly<{
 
 export type DiagnosticSensitiveContext = Readonly<{
   literalSecrets?: readonly string[];
-  workspaceAccountReferences?: readonly string[];
   accountIdentifiers?: readonly string[];
 }>;
 
@@ -95,11 +94,7 @@ export function redactDiagnosticText(
   value: string,
   sensitive?: DiagnosticSensitiveContext,
 ): string {
-  const literals = [
-    ...(sensitive?.literalSecrets ?? []),
-    ...(sensitive?.workspaceAccountReferences ?? []),
-    ...(sensitive?.accountIdentifiers ?? []),
-  ];
+  const literals = [...(sensitive?.literalSecrets ?? []), ...(sensitive?.accountIdentifiers ?? [])];
   return redactSecrets(value, literals, CLI_DIAGNOSTIC_RULES);
 }
 

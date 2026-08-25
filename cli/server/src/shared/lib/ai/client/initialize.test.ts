@@ -89,7 +89,6 @@ function evidenceKeyFor(record = hostedRecord()): EvidenceKey {
     structuredOutputSchemaSha256: SCHEMA_SHA256,
     runtime: RUNTIME,
     credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-    workspaceAccountReference: null,
   });
 }
 
@@ -111,7 +110,6 @@ function readySnapshot(): AdmissionSnapshot {
       expiresAt: "2026-08-01T00:00:00.000Z",
     }),
     credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-    workspaceAccountReference: null,
   };
 }
 

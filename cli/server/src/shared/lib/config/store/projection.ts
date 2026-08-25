@@ -55,8 +55,6 @@ export function summaryForSupportedRecord(
       transportFamily: "hosted-api",
       productId: record.productId,
       endpoint: input.endpoint,
-      ...(input.region !== undefined ? { region: input.region } : {}),
-      ...(input.workspace !== undefined ? { workspace: input.workspace } : {}),
       ...base,
     };
   } else if (input.transportFamily === "local-http") {

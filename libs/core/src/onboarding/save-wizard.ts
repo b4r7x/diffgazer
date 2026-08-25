@@ -176,11 +176,7 @@ function matchesDraftTuple(
   }
 
   if (summary.transportFamily === "hosted-api" && input.transportFamily === "hosted-api") {
-    return (
-      summary.endpoint === input.endpoint &&
-      summary.region === input.region &&
-      summary.workspace === input.workspace
-    );
+    return summary.endpoint === input.endpoint;
   }
   if (summary.transportFamily === "local-http" && input.transportFamily === "local-http") {
     return (

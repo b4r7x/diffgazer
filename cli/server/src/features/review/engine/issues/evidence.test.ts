@@ -2,7 +2,24 @@ import { makeIssue } from "@diffgazer/core/testing/factories";
 import { describe, expect, it } from "vitest";
 import { makeFileDiff, makeParsedDiff } from "../../testing/factories.js";
 import type { DiffHunk } from "../diff/types.js";
-import { createIssueEvidenceResolver, MAX_SYNTHESIZED_EVIDENCE_JSON_BYTES } from "./evidence.js";
+import {
+  createIssueEvidenceResolver,
+  MAX_SYNTHESIZED_EVIDENCE_JSON_BYTES,
+  MAX_SYNTHESIZED_EVIDENCE_LINES,
+} from "./evidence.js";
+
+function makeHunk(newStart: number, lines: string[]): DiffHunk {
+  return {
+    oldStart: newStart,
+    oldCount: lines.length,
+    newStart,
+    newCount: lines.length,
+    content: [
+      `@@ -${newStart},${lines.length} +${newStart},${lines.length} @@`,
+      ...lines.map((line) => ` ${line}`),
+    ].join("\n"),
+  };
+}
 
 describe("createIssueEvidenceResolver", () => {
   it("replaces provider-authored code evidence with canonical diff evidence", () => {
@@ -46,6 +63,7 @@ describe("createIssueEvidenceResolver", () => {
         file: "test.ts",
         range: { start: 3, end: 4 },
         excerpt: "line3\nline4",
+        excerptLineNumbers: [3, 4],
       },
     ]);
   });
@@ -160,8 +178,7 @@ describe("createIssueEvidenceResolver", () => {
     const excerpt = evidence?.excerpt ?? "";
     const excerptLines = excerpt.split("\n");
     expect(result).toMatchObject({ line_start: 10, line_end: 33 });
-    expect(excerptLines).toHaveLength(5);
-    expect(excerptLines[0]).toMatch(/^a+$/);
+    expect(excerptLines[0]).toMatch(/^a+/);
     expect(excerptLines.some((line) => line.startsWith("b"))).toBe(true);
     expect(excerptLines.filter((line) => line === "... [evidence gap] ...")).toHaveLength(1);
     expect(Buffer.byteLength(JSON.stringify(excerpt), "utf8")).toBeLessThanOrEqual(
@@ -169,5 +186,90 @@ describe("createIssueEvidenceResolver", () => {
     );
     expect(evidence?.range).toEqual({ start: 10, end: 33 });
     expect(evidence?.sourceId).toBe("test.ts:10-33");
+    // The gap row carries no number, and numbering resumes at the second hunk's
+    // own start instead of counting on through the lines the diff never showed.
+    expect(evidence?.excerptLineNumbers).toEqual([
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      null,
+      30,
+      31,
+      32,
+      33,
+    ]);
+    expect(evidence?.excerptLineNumbers).toHaveLength(excerptLines.length);
+  });
+
+  it("reports the lines the excerpt shows when the citation starts before the hunk", () => {
+    const diff = makeParsedDiff([
+      makeFileDiff({
+        filePath: "test.ts",
+        hunks: [makeHunk(10, ["line10", "line11", "line12", "line13"])],
+      }),
+    ]);
+    const issue = makeIssue({ file: "test.ts", line_start: 7, line_end: 12, evidence: [] });
+
+    const evidence = createIssueEvidenceResolver(diff)(issue).evidence[0];
+
+    expect(evidence).toMatchObject({
+      title: "Code at test.ts:10",
+      sourceId: "test.ts:10-12",
+      range: { start: 10, end: 12 },
+      excerpt: "line10\nline11\nline12",
+      excerptLineNumbers: [10, 11, 12],
+    });
+  });
+
+  it("samples the head and the tail of a citation that outruns the line cap", () => {
+    const sourceLines = Array.from({ length: 80 }, (_, index) => `line${index + 1}`);
+    const diff = makeParsedDiff([
+      makeFileDiff({ filePath: "test.ts", hunks: [makeHunk(1, sourceLines)] }),
+    ]);
+    const issue = makeIssue({ file: "test.ts", line_start: 1, line_end: 80, evidence: [] });
+
+    const evidence = createIssueEvidenceResolver(diff)(issue).evidence[0];
+    const excerptLines = evidence?.excerpt.split("\n") ?? [];
+    const numbers = evidence?.excerptLineNumbers ?? [];
+
+    expect(excerptLines).toHaveLength(MAX_SYNTHESIZED_EVIDENCE_LINES);
+    expect(numbers).toHaveLength(excerptLines.length);
+    // The subject of a long citation is as likely to sit at its end as its start.
+    expect(excerptLines[0]).toBe("line1");
+    expect(excerptLines.at(-1)).toBe("line80");
+    expect(excerptLines.filter((line) => line === "... [evidence gap] ...")).toHaveLength(1);
+    expect(numbers[numbers.indexOf(null)]).toBeNull();
+    expect(numbers.at(-1)).toBe(80);
+    expect(evidence?.range).toEqual({ start: 1, end: 80 });
+    for (const [offset, line] of excerptLines.entries()) {
+      const number = numbers[offset];
+      if (number === null || number === undefined) continue;
+      expect(line).toBe(`line${number}`);
+    }
+  });
+
+  it("keeps numbering aligned when the citation opens on a blank line", () => {
+    const diff = makeParsedDiff([
+      makeFileDiff({
+        filePath: "test.ts",
+        hunks: [makeHunk(5, ["", "  ", "line7", "line8", ""])],
+      }),
+    ]);
+    const issue = makeIssue({ file: "test.ts", line_start: 5, line_end: 9, evidence: [] });
+
+    const evidence = createIssueEvidenceResolver(diff)(issue).evidence[0];
+
+    // The excerpt schema strips blank leading lines and trailing whitespace, so
+    // rows the stored excerpt will not carry must not be numbered here either.
+    expect(evidence).toMatchObject({
+      range: { start: 7, end: 8 },
+      excerpt: "line7\nline8",
+      excerptLineNumbers: [7, 8],
+    });
   });
 });

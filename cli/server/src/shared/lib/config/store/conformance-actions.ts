@@ -29,10 +29,7 @@ import type {
 } from "../provider-config.js";
 import type { SecretBinding } from "../secret-bindings.js";
 import { type ConfigurationActionError, configurationActionFailure } from "../types.js";
-import {
-  credentialReferenceIdentityFor,
-  workspaceAccountReferenceFor,
-} from "./credential-lifecycle.js";
+import { credentialReferenceIdentityFor } from "./credential-lifecycle.js";
 import { type DocumentStore, evidenceReferenceFor } from "./document-store.js";
 
 type ConformanceActionDependencies = Readonly<{
@@ -67,7 +64,6 @@ export function createConformanceActions(deps: ConformanceActionDependencies) {
       record: record.record,
       binding,
       credentialReferenceIdentity: credentialReferenceIdentityFor(binding),
-      workspaceAccountReference: workspaceAccountReferenceFor(record.record),
     });
   };
 
@@ -156,7 +152,6 @@ export function createConformanceActions(deps: ConformanceActionDependencies) {
         credentialReferenceIdentity: credentialReferenceIdentityFor(
           deps.findBindingForIdentity(record.record.configurationId, record.record.revision),
         ),
-        workspaceAccountReference: workspaceAccountReferenceFor(record.record),
       });
     } catch {
       return err(

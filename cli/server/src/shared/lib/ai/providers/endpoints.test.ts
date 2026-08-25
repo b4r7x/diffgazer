@@ -9,10 +9,10 @@ import {
   resolveLoopbackHttpEndpoint,
 } from "./endpoints.js";
 
-const QWEN_ENDPOINT = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
 const GROQ_ENDPOINT = "https://api.groq.com/openai/v1";
-const MOONSHOT_MAINLAND = "https://api.moonshot.cn/v1";
-const MOONSHOT_INTERNATIONAL = "https://api.moonshot.ai/v1";
+const DEEPSEEK_ENDPOINT = "https://api.deepseek.com/v1";
+const ZAI_ENDPOINT = "https://api.z.ai/api/paas/v4";
+const OPENCODE_ZEN_ENDPOINT = "https://opencode.ai/zen/v1";
 
 function lookupResult(
   ...addresses: ReadonlyArray<{ address: string; family: 4 | 6 }>
@@ -100,9 +100,8 @@ describe("resolveHostedApiEndpoint", () => {
 
   it("rejects tuple-mismatch for valid HTTPS endpoints on the wrong product before secret resolution", () => {
     const result = resolveHostedApiEndpoint({
-      productId: "moonshot",
+      productId: "deepseek",
       endpoint: GROQ_ENDPOINT,
-      region: "mainland",
     });
 
     expect(result.ok).toBe(false);
@@ -110,64 +109,40 @@ describe("resolveHostedApiEndpoint", () => {
     expect(result.error.code).toBe("tuple-mismatch");
   });
 
-  it("rejects cross-region hosted endpoint tuples before secret resolution", () => {
+  it("accepts exact hosted product endpoint tuples", () => {
+    const deepseek = resolveHostedApiEndpoint({
+      productId: "deepseek",
+      endpoint: DEEPSEEK_ENDPOINT,
+    });
+    expect(deepseek.ok).toBe(true);
+    if (!deepseek.ok) return;
+    expect(deepseek.value.endpoint).toBe(DEEPSEEK_ENDPOINT);
+    expect(deepseek.value.productId).toBe("deepseek");
+
+    const zai = resolveHostedApiEndpoint({ productId: "zai", endpoint: ZAI_ENDPOINT });
+    expect(zai.ok).toBe(true);
+
+    const zen = resolveHostedApiEndpoint({
+      productId: "opencode-zen",
+      endpoint: OPENCODE_ZEN_ENDPOINT,
+    });
+    expect(zen.ok).toBe(true);
+    if (!zen.ok) return;
+    expect(zen.value.endpoint).toBe(OPENCODE_ZEN_ENDPOINT);
+  });
+
+  // OpenCode Zen is the one hosted tuple whose host also serves the vendor's
+  // website, so the path is load-bearing: the API lives under /zen/v1 and the
+  // site root is not an endpoint.
+  it("rejects a hosted host whose site root is not the product's API path", () => {
     const result = resolveHostedApiEndpoint({
-      productId: "moonshot",
-      endpoint: MOONSHOT_MAINLAND,
-      region: "international",
+      productId: "opencode-zen",
+      endpoint: "https://opencode.ai/v1",
     });
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("cross-region");
-  });
-
-  it("rejects cross-workspace hosted endpoint tuples before secret resolution", () => {
-    const missingWorkspace = resolveHostedApiEndpoint({
-      productId: "qwen",
-      endpoint: QWEN_ENDPOINT,
-      region: "international",
-    });
-    expect(missingWorkspace.ok).toBe(false);
-    if (missingWorkspace.ok) return;
-    expect(missingWorkspace.error.code).toBe("cross-workspace");
-
-    const unexpectedWorkspace = resolveHostedApiEndpoint({
-      productId: "groq",
-      endpoint: GROQ_ENDPOINT,
-      workspace: "workspace-reference",
-    });
-    expect(unexpectedWorkspace.ok).toBe(false);
-    if (unexpectedWorkspace.ok) return;
-    expect(unexpectedWorkspace.error.code).toBe("cross-workspace");
-  });
-
-  it("accepts exact hosted product and region endpoint tuples", () => {
-    const moonshotMainland = resolveHostedApiEndpoint({
-      productId: "moonshot",
-      endpoint: MOONSHOT_MAINLAND,
-      region: "mainland",
-    });
-    expect(moonshotMainland.ok).toBe(true);
-    if (!moonshotMainland.ok) return;
-    expect(moonshotMainland.value.region).toBe("mainland");
-
-    const moonshotInternational = resolveHostedApiEndpoint({
-      productId: "moonshot",
-      endpoint: MOONSHOT_INTERNATIONAL,
-      region: "international",
-    });
-    expect(moonshotInternational.ok).toBe(true);
-
-    const qwen = resolveHostedApiEndpoint({
-      productId: "qwen",
-      endpoint: QWEN_ENDPOINT,
-      region: "international",
-      workspace: "workspace-reference",
-    });
-    expect(qwen.ok).toBe(true);
-    if (!qwen.ok) return;
-    expect(qwen.value.workspace).toBe("workspace-reference");
+    expect(result.error.code).toBe("tuple-mismatch");
   });
 });
 

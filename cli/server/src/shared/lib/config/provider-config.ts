@@ -23,10 +23,8 @@ const RunnableProductIdSchema = z.enum([
   "groq",
   "cerebras",
   "deepseek",
-  "qwen",
-  "moonshot",
-  "mistral",
   "ollama-cloud",
+  "opencode-zen",
   "ollama",
   "local-openai",
   "codex-cli",
@@ -44,8 +42,6 @@ export const NonSecretTransportInputSchema = z.discriminatedUnion("transportFami
       transportFamily: HostedApiConfigurationInputSchema.shape.transportFamily,
       productId: HostedApiConfigurationInputSchema.shape.productId,
       endpoint: HostedApiConfigurationInputSchema.shape.endpoint,
-      region: HostedApiConfigurationInputSchema.shape.region,
-      workspace: HostedApiConfigurationInputSchema.shape.workspace,
     })
     .superRefine((input, context) => {
       const result = HostedApiConfigurationInputSchema.safeParse(input);

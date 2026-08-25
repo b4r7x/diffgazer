@@ -143,7 +143,7 @@ const rowIds = (rows: ProviderListRow[]) => rows.map(getProviderRowId);
 
 describe("filterProviders", () => {
   it("returns all selectable products", () => {
-    expect(ALL_ROWS.filter(({ product }) => product.selectable)).toHaveLength(14);
+    expect(ALL_ROWS.filter(({ product }) => product.selectable)).toHaveLength(12);
   });
 
   it("returns every provider when filter is 'all'", () => {

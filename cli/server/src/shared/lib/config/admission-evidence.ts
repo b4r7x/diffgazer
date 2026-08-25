@@ -24,10 +24,10 @@ const CheckedAtSchema = z.iso.datetime().nullable();
 const ExpiresAtSchema = z.iso.datetime().nullable().optional();
 
 /**
- * The server-only evidence record.  The key carries only credential and
- * workspace reference digests, never their literal values.  Keeping the
- * complete key here lets the server recompute readiness without trusting a
- * client-provided digest or status.
+ * The server-only evidence record.  The key carries only the credential
+ * reference digest, never its literal value.  Keeping the complete key here
+ * lets the server recompute readiness without trusting a client-provided
+ * digest or status.
  */
 export const AdmissionEvidenceSchema = z
   .strictObject({
@@ -80,14 +80,11 @@ export function buildExpectedEvidenceKey(input: {
   readonly structuredOutputSchemaSha256: string;
   readonly runtime: RuntimeIdentity;
   readonly credentialReferenceIdentity: string | null;
-  readonly workspaceAccountReference: string | null;
 }): EvidenceKey {
   const { record } = input;
   const product = PRODUCT_REGISTRY[record.productId];
   const expectedEndpoint =
     record.input.transportFamily === "local-cli" ? null : record.input.endpoint;
-  const expectedRegion =
-    record.input.transportFamily === "hosted-api" ? (record.input.region ?? null) : null;
 
   const authentication =
     record.input.transportFamily === "local-http" ? record.input.authentication : null;
@@ -101,8 +98,8 @@ export function buildExpectedEvidenceKey(input: {
     productId: record.productId,
     transportFamily: record.transportFamily,
     normalizedEndpoint: expectedEndpoint,
-    region: expectedRegion,
-    workspaceAccountReference: input.workspaceAccountReference,
+    region: null,
+    workspaceAccountReference: null,
     modelId: record.selectedModelId,
     runtime: input.runtime,
     structuredOutputSchemaSha256: input.structuredOutputSchemaSha256,

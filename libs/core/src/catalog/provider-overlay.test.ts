@@ -4,7 +4,7 @@ import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "../providers/product-r
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";
 
 describe("catalog provider observations", () => {
-  it("leaves exact 14-product eligibility with the product registry", () => {
+  it("leaves exact 12-product eligibility with the product registry", () => {
     expect(SELECTABLE_PRODUCT_IDS).toEqual([
       "gemini",
       "zai",
@@ -12,10 +12,8 @@ describe("catalog provider observations", () => {
       "groq",
       "cerebras",
       "deepseek",
-      "qwen",
-      "moonshot",
-      "mistral",
       "ollama-cloud",
+      "opencode-zen",
       "ollama",
       "local-openai",
       "codex-cli",
@@ -32,12 +30,17 @@ describe("catalog provider observations", () => {
       "openrouter",
       "groq",
       "cerebras",
-      "mistral",
       "deepseek",
-      "qwen",
-      "moonshot",
       "ollama-cloud",
     ]);
+  });
+
+  // OpenCode Zen has no models.dev source, so it is selectable with no catalog
+  // observation at all. Minting an overlay entry for it would name a source the
+  // snapshot cannot resolve and fail the offline regeneration.
+  it("lets a selectable product carry no catalog observation", () => {
+    expect(SELECTABLE_PRODUCT_IDS).toContain("opencode-zen");
+    expect(PROVIDER_OVERLAY).not.toHaveProperty("opencode-zen");
   });
 
   it("keeps the overlay observational and unable to enable products or models", () => {

@@ -63,7 +63,6 @@ export function isPinnedDownstreamRouteModelId(modelId: string): boolean {
 export const BILLING_MODES = [
   "free-tier",
   "pay-as-you-go",
-  "evaluation",
   "route-specific",
   "local-resource",
   "subscription-credit",
@@ -73,8 +72,6 @@ export type BillingMode = (typeof BILLING_MODES)[number];
 export type AdmissionCheck =
   | "credential"
   | "endpoint"
-  | "region"
-  | "workspace"
   | "model-discovery"
   | "downstream-route"
   | "structured-output"
@@ -90,8 +87,6 @@ export type AdmissionCheck =
 
 export const CONFIGURATION_FIELDS = [
   "credential",
-  "region",
-  "workspace",
   "endpoint",
   "local-authentication",
   "installation",
@@ -109,22 +104,6 @@ export type ModelPolicy =
       readonly modelIds: readonly string[];
       readonly suggestedModelId?: string;
       readonly higherCostModelIds?: readonly string[];
-      /**
-       * Higher-cost choices may be presented only after the named live evidence
-       * has been collected for the exact configured tuple.  This is a policy
-       * marker for server admission; it deliberately carries no provider limit
-       * value and is not client evidence.
-       */
-      readonly higherCostModelEvidence?: {
-        readonly outputLimit: "required";
-        readonly reviewConformance: "required";
-      };
-      readonly aliases: "forbidden";
-    }
-  | {
-      readonly kind: "discovered-family";
-      readonly familyPrefixes: readonly string[];
-      readonly rejectedAliases: readonly string[];
       readonly aliases: "forbidden";
     }
   | {
@@ -140,11 +119,6 @@ export type ModelPolicy =
  * client-safe summaries, discovery mapping, and the execution tuple — must call
  * this so the interpretations cannot drift apart.
  *
- * It deliberately fails closed for the policy shape whose extra evidence has no
- * client-safe representation: a `higherCostModelIds` model needs the named live
- * output-limit and review-conformance observations, which are server-only and
- * may not be inferred from discovery, conformance, or notice acknowledgement.
- *
  * Model-id shape validation is deliberately left to the caller, because the
  * applicable shape schema differs per boundary.
  */
@@ -153,17 +127,7 @@ export function matchesModelPolicy(modelId: string, policy: ModelPolicy): boolea
     case "discovered-exact":
       return true;
     case "discovered-allowlist":
-      if (!policy.modelIds.includes(modelId)) return false;
-      return !(
-        policy.higherCostModelEvidence !== undefined && policy.higherCostModelIds?.includes(modelId)
-      );
-    case "discovered-family":
-      return (
-        !policy.rejectedAliases.includes(modelId) &&
-        policy.familyPrefixes.some(
-          (prefix) => modelId === prefix || modelId.startsWith(`${prefix}-`),
-        )
-      );
+      return policy.modelIds.includes(modelId);
     case "pinned-downstream-route":
       return isPinnedDownstreamRouteModelId(modelId);
   }

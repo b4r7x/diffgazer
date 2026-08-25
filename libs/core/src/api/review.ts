@@ -88,6 +88,7 @@ export interface ResumeReviewOptions {
   onAgentEvent?: CoreStreamReviewOptions["onAgentEvent"];
   onStepEvent?: CoreStreamReviewOptions["onStepEvent"];
   onChunk?: CoreStreamReviewOptions["onChunk"];
+  onSizeWarning?: CoreStreamReviewOptions["onSizeWarning"];
 }
 
 export interface ResumeReviewResult {

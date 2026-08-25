@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
@@ -96,6 +96,32 @@ describe("Menu drill-down stack", () => {
     expect(menu).toHaveAttribute(
       "aria-activedescendant",
       screen.getByRole("menuitem", { name: /Back to/ }).id,
+    );
+  });
+
+  it("hovers the back row under the pointer without moving the keyboard cursor", async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    await drillIn(user);
+    const menu = screen.getByRole("menu");
+    const backRow = screen.getByRole("menuitem", { name: /Back to/ });
+
+    // The click that drilled in already recorded the pointer's position, so the
+    // back row appearing under the resting cursor must NOT arm the hover...
+    await user.hover(backRow);
+    expect(backRow).not.toHaveAttribute("data-hovered");
+
+    // ...only real travel does.
+    // fireEvent retained: user-event cannot dispatch pointermove with controlled
+    // coordinates, which is exactly what the stationary-pointer gate keys on.
+    fireEvent.pointerMove(backRow, { clientX: 12, clientY: 11 });
+
+    expect(backRow).toHaveAttribute("data-hovered");
+    expect(backRow).not.toHaveAttribute("data-highlighted");
+    // Hover stays cosmetic: the cursor keeps pointing where drill-in left it.
+    expect(menu).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("menuitem", { name: "Undo" }).id,
     );
   });
 

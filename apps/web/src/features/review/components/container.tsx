@@ -150,6 +150,7 @@ function ReviewStreamContainer({
     startTime: state.startedAt ?? undefined,
     contextSnapshot,
     notices: state.notices,
+    sizeWarning: state.sizeWarning,
   };
 
   if (loadState.status === "error") {

@@ -9,8 +9,12 @@ import {
   savedRunExists,
 } from "@diffgazer/core/review";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
-import { BACK_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
-import type { ReviewMode, UsageAvailability } from "@diffgazer/core/schemas/review";
+import { BACK_SHORTCUTS, type Shortcut } from "@diffgazer/core/schemas/presentation";
+import {
+  ReviewErrorCode,
+  type ReviewMode,
+  type UsageAvailability,
+} from "@diffgazer/core/schemas/review";
 import { Box, useInput } from "ink";
 import { type ReactElement, useEffect, useRef, useState } from "react";
 import { ProviderConsentOverlay } from "../../../components/shared/provider-consent-overlay";
@@ -30,6 +34,7 @@ import {
   ConfigurationErrorView,
   ReviewTerminalReceiptView,
 } from "./api-key-missing-view";
+import { ReviewFileFilterView } from "./file-filter-view";
 import { ACTION_SHORTCUTS } from "./gate-view";
 import { NoChangesView } from "./no-changes-view";
 import { ReviewProgressView } from "./progress-view/view";
@@ -45,6 +50,22 @@ interface ReviewStreamContainerProps {
   /** Opens the saved record of a run that failed after some lenses had reported. */
   onViewRunDetails?: (reviewId: string) => void;
 }
+
+/** The one key both the running advisory and the dead run publish for the picker. */
+const FILTER_FILES_KEY = "f";
+const FILTER_FILES_LABEL = "Review Specific Files";
+
+/**
+ * The failures a narrower file set is a real second move for: the run reached
+ * its diff and could not get through it in one pass — past the model's context
+ * window, past the hard size ceiling, or out of budget before every lens ran.
+ * Every other failure has its own remedy, and offering the picker there would
+ * dress a provider or trust fault up as a size problem.
+ */
+const NARROWABLE_ERROR_CODES: ReadonlySet<string> = new Set<string>([
+  ReviewErrorCode.DIFF_TOO_LARGE,
+  ReviewErrorCode.BUDGET_EXHAUSTED,
+]);
 
 interface ReviewTerminalReceiptContainerProps {
   terminalOutcome: FailedTerminalOutcome;
@@ -72,6 +93,7 @@ function ReviewTerminalErrorView({
   guidance,
   onBack,
   recovery,
+  onFilterFiles,
 }: {
   title: string;
   error: string;
@@ -79,12 +101,30 @@ function ReviewTerminalErrorView({
   onBack: () => void;
   /** Set when the failure is fixed on the providers screen; adds the `p` recovery shortcut, named by the CTA. */
   recovery?: { label: string; open: () => void };
+  /**
+   * Set for a run that actually reached the diff. A dead review offers Back and
+   * nothing else; this is the second move — start again over fewer files —
+   * which is the stated remedy when the diff did not fit the model's window,
+   * and never claims to repair the failure it sits under.
+   */
+  onFilterFiles?: () => void;
 }): ReactElement {
+  const filterShortcut: Shortcut = { key: FILTER_FILES_KEY, label: FILTER_FILES_LABEL };
   usePageFooter({
-    shortcuts: recovery ? [...ACTION_SHORTCUTS, getProviderRecoveryShortcut(recovery.label)] : [],
+    shortcuts:
+      recovery || onFilterFiles
+        ? [
+            ...ACTION_SHORTCUTS,
+            ...(recovery ? [getProviderRecoveryShortcut(recovery.label)] : []),
+            ...(onFilterFiles ? [filterShortcut] : []),
+          ]
+        : [],
     rightShortcuts: BACK_SHORTCUTS,
   });
-  const actionCount = (recovery ? 1 : 0) + 1;
+  // The row is built left to right — recovery, then the picker, then Back.
+  const recoveryCount = recovery ? 1 : 0;
+  const filterCount = onFilterFiles ? 1 : 0;
+  const actionCount = recoveryCount + filterCount + 1;
   // Each button owns its own Enter; the row owns Left/Right and the single mark.
   const actions = useActionRow({ actionCount });
   useInput(
@@ -93,6 +133,8 @@ function ReviewTerminalErrorView({
         onBack();
       } else if (input === PROVIDER_RECOVERY_KEY && recovery) {
         recovery.open();
+      } else if (input === FILTER_FILES_KEY && onFilterFiles) {
+        onFilterFiles();
       }
     },
     { isActive: true },
@@ -107,11 +149,23 @@ function ReviewTerminalErrorView({
         {recovery ? (
           <Callout.Content>{getProviderRecoveryLine(recovery.label)}</Callout.Content>
         ) : null}
+        {onFilterFiles ? (
+          <Callout.Content>{`Press ${FILTER_FILES_KEY} — ${FILTER_FILES_LABEL}.`}</Callout.Content>
+        ) : null}
       </Callout>
       <Box gap={2}>
         {recovery ? (
           <Button variant="secondary" isActive={actions.isActionActive(0)} onPress={recovery.open}>
             {recovery.label}
+          </Button>
+        ) : null}
+        {onFilterFiles ? (
+          <Button
+            variant="secondary"
+            isActive={actions.isActionActive(recoveryCount)}
+            onPress={onFilterFiles}
+          >
+            {FILTER_FILES_LABEL}
           </Button>
         ) : null}
         <Button
@@ -158,6 +212,11 @@ function ReviewStreamContainer({
   );
   const [isSwitchingMode, setIsSwitchingMode] = useState(false);
   const switchingModeRef = useRef(false);
+  // The picker is a step of this flow, not a route: it is only ever reached from
+  // a run that was warned or refused, and leaving it returns to that run's
+  // screen rather than to whatever pushed the review route.
+  const [fileFilterReason, setFileFilterReason] = useState<string | null>(null);
+  const isFilteringFiles = fileFilterReason !== null;
   // Switching starts a new review, so it waits for the provider consent like
   // the start on home does; declining leaves the no-diff screen as it was.
   const consent = useProviderConsentGate(state.providerConsent);
@@ -175,6 +234,23 @@ function ReviewStreamContainer({
   function handleRunningBack() {
     reset();
     navigate({ screen: "home" });
+  }
+
+  // The advisory arrives while the run is still reading, so narrowing it means
+  // stopping it first. A cancel that reports back is a run still going: the
+  // screen stays as it was rather than opening a picker whose start would be
+  // refused, mirroring what the cancel shortcut itself does.
+  function cancelAndFilterFiles(reason: string) {
+    void cancel().then((cancelError) => {
+      if (cancelError) return;
+      setFileFilterReason(reason);
+    });
+  }
+
+  async function startFilteredReview(files?: [string, ...string[]]) {
+    setFileFilterReason(null);
+    const result = await start(state.mode, { fresh: true, ...(files ? { files } : {}) });
+    if (result === "setup-required") navigate({ screen: "settings/providers" });
   }
 
   const hasStarted = useRef(false);
@@ -214,6 +290,19 @@ function ReviewStreamContainer({
   }
 
   if (consent.isOpen) return <ProviderConsentOverlay gate={consent} />;
+
+  if (isFilteringFiles) {
+    return (
+      <ReviewFileFilterView
+        mode={state.mode}
+        reason={fileFilterReason}
+        onStart={(files) => {
+          void startFilteredReview(files);
+        }}
+        onBack={() => setFileFilterReason(null)}
+      />
+    );
+  }
 
   if (state.initState.status === "error") {
     return (
@@ -298,6 +387,9 @@ function ReviewStreamContainer({
     const recovery = isProviderRecoveryError(guidance.kind)
       ? { label: guidance.ctaLabel, open: goToProviderSettings }
       : undefined;
+    // The failure text is what sent the user here — the model, the numbers, and
+    // the ceiling it broke — so the picker repeats it instead of paraphrasing.
+    const canNarrow = state.errorCode !== null && NARROWABLE_ERROR_CODES.has(state.errorCode);
     return (
       <ReviewTerminalErrorView
         title={guidance.title}
@@ -305,9 +397,12 @@ function ReviewStreamContainer({
         guidance={guidance.guidance}
         onBack={handleGateBack}
         recovery={recovery}
+        onFilterFiles={canNarrow ? () => setFileFilterReason(error) : undefined}
       />
     );
   }
+
+  const sizeWarning = state.sizeWarning;
 
   switch (state.phase) {
     // The session request is part of the run, not a screen of its own: the
@@ -329,6 +424,8 @@ function ReviewStreamContainer({
           errorCode={state.errorCode}
           transportFamily={state.transportFamily}
           notices={state.notices}
+          sizeWarning={sizeWarning}
+          onFilterFiles={sizeWarning ? () => cancelAndFilterFiles(sizeWarning.message) : undefined}
           onCancel={() => {
             void cancel().then((error) => {
               if (error) {

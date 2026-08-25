@@ -156,7 +156,6 @@ const evidenceKeyForPersisted = (configurationId: string): EvidenceKey => {
       binding?.kind === "file-0600" && binding.filePath
         ? sha256CanonicalJsonSync({ kind: "file-0600", filePath: binding.filePath })
         : null,
-    workspaceAccountReference: null,
   });
 };
 

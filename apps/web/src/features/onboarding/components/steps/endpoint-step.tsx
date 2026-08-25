@@ -2,11 +2,9 @@ import type { OnboardingConfigurationDraft } from "@diffgazer/core/onboarding";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { RunnableProductId } from "@diffgazer/core/schemas/config";
 import { LocalOpenAIPresetIdSchema } from "@diffgazer/core/schemas/config";
-import { findNavigationItemByValue, toVerticalBoundaryDirection } from "@diffgazer/keys";
-import { Field } from "@diffgazer/ui/components/field";
-import { InputGroup } from "@diffgazer/ui/components/input";
+import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 interface EndpointStepProps {
   productId: RunnableProductId;
@@ -25,58 +23,30 @@ export function EndpointStep({
   enabled = true,
   onBoundaryReached,
 }: EndpointStepProps) {
-  const radioGroupRef = useRef<HTMLDivElement>(null);
-  const workspaceInputRef = useRef<HTMLInputElement>(null);
-  const [focused, setFocused] = useState<"radio" | "input">("radio");
   const [highlightedEndpoint, setHighlightedEndpoint] = useState<string | null>(null);
   const product = PRODUCT_REGISTRY[productId];
 
   if (configurationInput.transportFamily === "hosted-api") {
-    const workspaceRequired = product.configuration.endpoints.some(
-      (endpoint) => "workspaceBound" in endpoint && endpoint.workspaceBound,
-    );
-
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground font-mono">
           Choose the endpoint tuple for {product.presentation.name}.
         </p>
         <RadioGroup
-          ref={radioGroupRef}
           aria-label="Endpoint profile"
           value={configurationInput.endpoint}
           onChange={(endpoint) => {
-            setFocused("radio");
             setHighlightedEndpoint(endpoint);
-            const profile = product.configuration.endpoints.find(
-              (candidate) => candidate.endpoint === endpoint,
-            );
-            if (!profile) return;
-            onChange({
-              ...configurationInput,
-              endpoint,
-              ...("region" in profile ? { region: profile.region } : {}),
-              workspace:
-                "workspaceBound" in profile && profile.workspaceBound
-                  ? (configurationInput.workspace ?? "")
-                  : undefined,
-            });
+            onChange({ ...configurationInput, endpoint });
           }}
-          highlighted={enabled && focused === "radio" ? highlightedEndpoint : null}
-          onHighlightChange={(endpoint) => {
-            setFocused("radio");
-            setHighlightedEndpoint(endpoint);
-          }}
+          highlighted={enabled ? highlightedEndpoint : null}
+          onHighlightChange={setHighlightedEndpoint}
           onEnter={() => onCommit?.()}
           autoFocus={enabled}
           keyboardNavigation={enabled}
           onNavigationBoundaryReached={(direction, event) => {
             const verticalDirection = toVerticalBoundaryDirection(direction, event.key);
             if (verticalDirection === null) return;
-            if (verticalDirection === "down" && workspaceRequired) {
-              workspaceInputRef.current?.focus();
-              return;
-            }
             onBoundaryReached?.(verticalDirection);
           }}
           wrap={false}
@@ -88,52 +58,10 @@ export function EndpointStep({
               value={endpoint.endpoint}
               label={endpoint.label}
               description={endpoint.endpoint}
-              onFocus={() => {
-                setFocused("radio");
-                setHighlightedEndpoint(endpoint.endpoint);
-              }}
+              onFocus={() => setHighlightedEndpoint(endpoint.endpoint)}
             />
           ))}
         </RadioGroup>
-        {workspaceRequired ? (
-          <Field>
-            <Field.Label>Workspace reference</Field.Label>
-            <Field.Control>
-              <InputGroup
-                ref={workspaceInputRef}
-                value={configurationInput.workspace ?? ""}
-                onChange={(event) =>
-                  onChange({ ...configurationInput, workspace: event.target.value })
-                }
-                onFocus={() => setFocused("input")}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    onCommit?.();
-                    return;
-                  }
-                  // Arrows only: the j/k aliases are printable characters that
-                  // must type into the workspace field instead of leaving it.
-                  if (event.key === "ArrowUp") {
-                    event.preventDefault();
-                    setFocused("radio");
-                    setHighlightedEndpoint(configurationInput.endpoint);
-                    findNavigationItemByValue(radioGroupRef.current, {
-                      type: "radio",
-                      value: configurationInput.endpoint,
-                    })?.focus();
-                    return;
-                  }
-                  if (event.key === "ArrowDown") {
-                    event.preventDefault();
-                    onBoundaryReached?.("down");
-                  }
-                }}
-                aria-label="Workspace reference"
-              />
-            </Field.Control>
-          </Field>
-        ) : null}
       </div>
     );
   }

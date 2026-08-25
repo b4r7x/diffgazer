@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { PRODUCT_ENDPOINT_TUPLES } from "../../providers/product-endpoints.js";
-import { containsStructuralControlCharacter } from "../../sanitize-terminal.js";
 import {
   type HostedApiProductId,
   HostedApiProductIdSchema,
@@ -98,26 +97,8 @@ type HostedApiEndpointTuple = (typeof PRODUCT_ENDPOINT_TUPLES)[HostedApiProductI
 export function getHostedApiEndpointTuple(
   productId: HostedApiProductId,
   endpoint: string,
-  region: string | undefined,
 ): HostedApiEndpointTuple | undefined {
-  return PRODUCT_ENDPOINT_TUPLES[productId].find(
-    (candidate) =>
-      candidate.endpoint === endpoint &&
-      ("region" in candidate ? candidate.region : undefined) === region,
-  );
-}
-
-export function matchesHostedApiTransportTuple(input: {
-  readonly productId: HostedApiProductId;
-  readonly endpoint: string;
-  readonly region?: string;
-  readonly workspace?: string;
-}): boolean {
-  const profile = getHostedApiEndpointTuple(input.productId, input.endpoint, input.region);
-  if (!profile) return false;
-
-  const workspaceRequired = "workspaceBound" in profile && profile.workspaceBound === true;
-  return workspaceRequired ? input.workspace !== undefined : input.workspace === undefined;
+  return PRODUCT_ENDPOINT_TUPLES[productId].find((candidate) => candidate.endpoint === endpoint);
 }
 
 function getLocalOpenAIPresetEndpoint(presetId: LocalOpenAIPresetId): LoopbackHttpEndpoint {
@@ -141,20 +122,6 @@ export const LOCAL_OPENAI_PRESET_ENDPOINTS = {
   "llama-cpp": getLocalOpenAIPresetEndpoint("llama-cpp"),
 } as const satisfies Record<LocalOpenAIPresetId, LoopbackHttpEndpoint>;
 
-// Region and workspace values are opaque identifiers at this boundary. They are
-// not interpolated into a URL or shell command here, but accepting control
-// characters would still let them cross logs, JSON lines, and other textual
-// boundaries with misleading structure.
-const ConfigurationReferenceSchema = z
-  .string()
-  .min(1)
-  .max(256)
-  .refine(
-    (value) => !containsStructuralControlCharacter(value),
-    "Reference must not contain control characters",
-  )
-  .refine((value) => value === value.trim(), "Reference must not have surrounding whitespace");
-
 export const LOCAL_HTTP_AUTHENTICATION_MODES = ["none", "optional-local-bearer"] as const;
 export const LocalHttpAuthenticationModeSchema = z.enum(LOCAL_HTTP_AUTHENTICATION_MODES);
 export type LocalHttpAuthenticationMode = z.infer<typeof LocalHttpAuthenticationModeSchema>;
@@ -164,32 +131,14 @@ export const HostedApiTransportInputSchema = z
     transportFamily: z.literal("hosted-api"),
     productId: HostedApiProductIdSchema,
     endpoint: HostedApiEndpointSchema,
-    region: ConfigurationReferenceSchema.optional(),
-    workspace: ConfigurationReferenceSchema.optional(),
   })
   .superRefine((input, context) => {
-    const tuple = getHostedApiEndpointTuple(input.productId, input.endpoint, input.region);
-    if (!tuple || !matchesHostedApiTransportTuple(input)) {
+    if (!getHostedApiEndpointTuple(input.productId, input.endpoint)) {
       context.addIssue({
         code: "custom",
-        message: tuple
-          ? "Workspace reference must match the selected endpoint"
-          : "Endpoint and region must match the selected product",
+        message: "Endpoint must match the selected product",
         path: ["endpoint"],
       });
-      if (tuple && "workspaceBound" in tuple && tuple.workspaceBound) {
-        context.addIssue({
-          code: "custom",
-          message: "Selected endpoint requires a workspace reference",
-          path: ["workspace"],
-        });
-      } else if (tuple && input.workspace !== undefined) {
-        context.addIssue({
-          code: "custom",
-          message: "Selected endpoint does not accept a workspace reference",
-          path: ["workspace"],
-        });
-      }
     }
   });
 export type HostedApiTransportInput = z.infer<typeof HostedApiTransportInputSchema>;

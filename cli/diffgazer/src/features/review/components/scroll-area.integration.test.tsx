@@ -42,7 +42,7 @@ describe("ScrollArea review compositions", () => {
         <ScrollArea height={3} isActive>
           <CodeSnippet
             filePath="src/example.ts"
-            startLine={10}
+            lineNumbers={[10, 11, 12]}
             code={"const first = true;\nconst middle = true;\nconst tailMarker = true;"}
           />
         </ScrollArea>

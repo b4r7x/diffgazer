@@ -7,7 +7,7 @@ import type {
   ReviewStateErrorCode,
 } from "@diffgazer/core/review";
 import type { AgentState, StepState } from "@diffgazer/core/schemas/events";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import type { ReviewIssue, ReviewSizeWarning } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { vi } from "vitest";
 
@@ -44,6 +44,7 @@ export interface ReviewLifecycleBaseOverrides {
   reset?: () => void;
   reviewId?: string | null;
   resume?: ReviewLifecycleBase["stream"]["resume"];
+  sizeWarning?: ReviewSizeWarning | null;
   startedAt?: Date | null;
   steps?: StepState[];
 }
@@ -87,6 +88,7 @@ export function makeReviewLifecycleBase(
           completed: ["src/index.ts"],
         },
         notices: [],
+        sizeWarning: overrides.sizeWarning ?? null,
         orchestratorStats: statsFromEvents(overrides.events ?? []),
         hasCompleted: false,
         isStreaming: overrides.isStreaming ?? false,

@@ -166,7 +166,6 @@ function subjectFor(
       status: "active",
     },
     credentialReferenceIdentity: "a".repeat(64),
-    workspaceAccountReference: null,
     ...overrides,
   };
 }
@@ -219,7 +218,6 @@ describe("createHostedConformanceProbe", () => {
           structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
           runtime: RUNTIME_IDENTITY,
           credentialReferenceIdentity: subject.credentialReferenceIdentity,
-          workspaceAccountReference: subject.workspaceAccountReference,
         }),
       ),
     );
@@ -302,7 +300,6 @@ describe("createHostedConformanceProbe", () => {
           structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
           runtime: RUNTIME_IDENTITY,
           credentialReferenceIdentity: subject.credentialReferenceIdentity,
-          workspaceAccountReference: subject.workspaceAccountReference,
         }),
       ),
     );

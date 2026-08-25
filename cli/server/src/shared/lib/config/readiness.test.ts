@@ -105,7 +105,6 @@ function hostedEvidenceKey(record = hostedRecord()): EvidenceKey {
     runtime: RUNTIME,
     structuredOutputSchemaSha256: SCHEMA_SHA256,
     credentialReferenceIdentity: CREDENTIAL_REFERENCE,
-    workspaceAccountReference: null,
   });
 }
 
@@ -248,7 +247,6 @@ describe("server V2 readiness calculation", () => {
       runtime,
       structuredOutputSchemaSha256: SCHEMA_SHA256,
       credentialReferenceIdentity: null,
-      workspaceAccountReference: null,
     });
 
     expect(

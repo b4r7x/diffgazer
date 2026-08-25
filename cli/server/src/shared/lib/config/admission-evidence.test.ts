@@ -59,25 +59,6 @@ describe("admission evidence", () => {
         runtime: { identity: "lm-studio", version: "0.3.0" },
       },
     ],
-    [
-      "region",
-      {
-        productId: "moonshot",
-        normalizedEndpoint: "https://api.moonshot.cn/v1",
-        region: "mainland",
-        modelId: "kimi-k3-2026-01",
-      },
-    ],
-    [
-      "workspace",
-      {
-        productId: "qwen",
-        normalizedEndpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        region: "international",
-        workspaceAccountReference: "4".repeat(64),
-        modelId: "qwen3-coder-flash",
-      },
-    ],
     ["model", { modelId: "openai/gpt-4.1" }],
     ["runtime", { runtime: { identity: "diffgazer-server", version: "1.2.4" } }],
     ["schema", { structuredOutputSchemaSha256: "2".repeat(64) }],

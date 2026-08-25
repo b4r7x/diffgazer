@@ -1,7 +1,7 @@
 import { Box } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext } from "react";
-import { useListNavigation } from "../../hooks/use-list-navigation";
+import { type ListNavigationItem, useListNavigation } from "../../hooks/use-list-navigation";
 import { useListNavigationInput } from "../../hooks/use-list-navigation-input";
 import { collectChildItems } from "../../lib/collect-child-items";
 import { SelectableItemRow } from "./selectable-item-row";
@@ -9,8 +9,17 @@ import { SelectableItemRow } from "./selectable-item-row";
 export interface CheckboxGroupProps<T extends string = string> {
   value: T[];
   onChange?: (value: T[]) => void;
+  /** Controls the highlight, for a group whose owner scrolls the list itself. */
+  highlightedValue?: string | null;
   onHighlightChange?: (value: string) => void;
   onNavigationBoundaryReached?: (direction: 1 | -1) => void;
+  /**
+   * The full item set, for a group that renders only the window of rows that
+   * fits: without it the collected children are the whole list, and navigation
+   * would stop at the edges of what happens to be on screen. Same escape hatch
+   * `NavigationList` takes, with the same meaning.
+   */
+  navigationItems?: ListNavigationItem[];
   wrap?: boolean;
   disabled?: boolean;
   isActive?: boolean;
@@ -69,21 +78,27 @@ function CheckboxItem({ value, label, description, disabled = false }: CheckboxI
 function CheckboxGroupRoot<T extends string = string>({
   value,
   onChange,
+  highlightedValue = null,
   onHighlightChange,
   onNavigationBoundaryReached,
+  navigationItems,
   wrap = true,
   disabled = false,
   isActive = true,
   children,
 }: CheckboxGroupProps<T>) {
-  const items = collectChildItems(children, extractCheckboxItem);
-  const navigableItems = items.map((item) => ({
+  const renderedItems = collectChildItems(children, extractCheckboxItem).map((item) => ({
     id: item.value,
+    disabled: item.disabled,
+  }));
+  const navigableItems = (navigationItems ?? renderedItems).map((item) => ({
+    id: item.id,
     disabled: disabled || item.disabled,
   }));
 
   const navigation = useListNavigation({
     items: navigableItems,
+    highlightedId: highlightedValue,
     onHighlightChange,
     onNavigationBoundaryReached,
     wrap,

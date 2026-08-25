@@ -21,13 +21,13 @@ Most failures fall into a handful of buckets: configuration is not ready, the re
 
 **Fix.** Update the configuration with a valid credential reference. Use **Configure Provider**, choose **update**, and replace the credential reference. Diffgazer never shows the rejected literal value in client-safe copy.
 
-## Wrong product, region, or workspace
+## Wrong product or endpoint
 
-**Symptom.** Qwen or Moonshot setup cannot proceed even though a key appears to work elsewhere.
+**Symptom.** Setup cannot proceed even though a key appears to work elsewhere.
 
-**Cause.** The configured endpoint is not allowed for this product, or the selected region or workspace does not match the credential's admitted tuple.
+**Cause.** The configured endpoint is not allowed for this product, so it does not match the credential's admitted tuple.
 
-**Fix.** Choose an allowed endpoint for this product and transport. For Qwen International and Moonshot Open Platform, verify the region and workspace binding match the credential you configured. Diffgazer does not substitute consumer or coding-plan products.
+**Fix.** Choose an allowed endpoint for this product and transport, and verify it matches the credential you configured. Diffgazer does not substitute consumer or coding-plan products.
 
 ## Model missing
 
@@ -167,11 +167,29 @@ For local HTTP and local CLI products, the picker shows the skipped catalog reas
 
 **Fix.** Run Diffgazer inside a git repository.
 
-## Diff too large
+## Diff does not fit the model
 
-**Symptom.** A review aborts because the combined diff exceeds the 512KB cap.
+**Symptom.** A review stops before it starts, saying the diff does not fit the selected model. The message states the diff size, the estimated prompt tokens, and the model's context window.
 
-**Fix.** Review fewer files or split the change set.
+**Cause.** Diffgazer estimates what the diff will cost as a prompt and compares it against the context window the model catalog publishes for the model you selected. A diff past that window cannot be reviewed, so the run is refused rather than truncated — a review of a diff you did not choose is worse than no review.
+
+**Fix.** Review a subset of the files, or select a model with a larger context window.
+
+## Large review advisory
+
+**Symptom.** A review starts, but warns that the diff is large.
+
+**Cause.** The diff fits the model's context window but is over 512KB. One model pass over that much change finds less than several narrower passes would.
+
+**Fix.** The review runs either way. For a sharper result, filter to the files you care about and review them separately.
+
+## Diff too large to process
+
+**Symptom.** A review aborts saying the diff is past the 10MB ceiling.
+
+**Cause.** A diff that size is almost always accidental: a committed lockfile, a vendored directory, or a generated bundle. No model choice helps.
+
+**Fix.** Exclude the generated paths, or review specific files.
 
 ## Port already in use
 

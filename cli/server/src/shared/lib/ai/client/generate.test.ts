@@ -8,7 +8,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { setupClientTestHome, teardownClientTestHome } from "../../testing/ai-client-env.js";
 import {
-  CLIENT_TEST_WORKSPACE_ACCOUNT_REFERENCE,
   clientTestAdmittedPlan,
   clientTestAuthorize,
   clientTestBuildReceipt,
@@ -35,7 +34,7 @@ const GENERATE_TEST_LIMITS: ExecutionLimits = Object.freeze({
   maxCostUsd: 0.01,
 });
 
-const OUTER_ADMISSION_PRODUCTS = ["gemini", "ollama", "codex-cli", "qwen"] as const;
+const OUTER_ADMISSION_PRODUCTS = ["gemini", "ollama", "codex-cli", "zai"] as const;
 
 const OUTER_ADMISSION_OVER_LIMIT_CASES = [
   {
@@ -54,7 +53,7 @@ const OUTER_ADMISSION_OVER_LIMIT_MATRIX = OUTER_ADMISSION_PRODUCTS.flatMap((prod
   OUTER_ADMISSION_OVER_LIMIT_CASES.map((inputCase) => ({ productId, ...inputCase })),
 );
 
-const QWEN_WORKSPACE_ADMISSION_CASES = [
+const ADMISSION_BOUNDARY_CASES = [
   { label: "under", offset: 1, expectedOutcome: "completed", expectedDispatches: 1 },
   { label: "equal", offset: 0, expectedOutcome: "completed", expectedDispatches: 1 },
   { label: "over", offset: -1, expectedOutcome: "budget-exhausted", expectedDispatches: 0 },
@@ -257,20 +256,20 @@ describe("review generation hard limits", () => {
   });
 
   it.each(
-    QWEN_WORKSPACE_ADMISSION_CASES,
-  )("keeps the Qwen workspace receipt valid when input is $label the admitted boundary", async ({
+    ADMISSION_BOUNDARY_CASES,
+  )("keeps the receipt valid when input is $label the admitted boundary", async ({
     offset,
     expectedOutcome,
     expectedDispatches,
   }) => {
     const input = { prompt: "a".repeat(20) };
     const inputEstimate = estimateReviewInputTokens(input);
-    const plan = admittedPlan("qwen", {
+    const plan = admittedPlan("zai", {
       ...GENERATE_TEST_LIMITS,
       maxInputTokens: inputEstimate + offset,
     });
     let dispatchCount = 0;
-    const adapter = clientTestCreateMockAdapter("qwen", async () => {
+    const adapter = clientTestCreateMockAdapter("zai", async () => {
       dispatchCount += 1;
       return clientTestExecutionResult(plan, "completed", {
         usageAvailability: "reported",
@@ -286,9 +285,6 @@ describe("review generation hard limits", () => {
 
     expect(dispatchCount).toBe(expectedDispatches);
     expect(result.execution.receipt.outcome).toBe(expectedOutcome);
-    expect(result.execution.receipt.workspaceAccountReference).toBe(
-      CLIENT_TEST_WORKSPACE_ACCOUNT_REFERENCE,
-    );
     expect(ExecutionResultSchema.safeParse(result.execution).success).toBe(true);
     if (expectedOutcome === "budget-exhausted") {
       expect(result.execution.receipt.attemptCount).toBe(0);
@@ -802,8 +798,8 @@ describe("review generation terminal failures", () => {
   });
 
   it("returns zero findings for provider refusal transport failures", async () => {
-    const plan = admittedPlan("mistral");
-    const adapter = clientTestCreateMockAdapter("mistral", async () =>
+    const plan = admittedPlan("deepseek");
+    const adapter = clientTestCreateMockAdapter("deepseek", async () =>
       clientTestExecutionResult(plan, "transport-failed"),
     );
     const { authorization } = authorize(plan, adapter);
@@ -818,12 +814,12 @@ describe("review generation terminal failures", () => {
   });
 
   it("reports the adapter's own reason for a refused request instead of the generic transport message", async () => {
-    const plan = admittedPlan("mistral");
-    const adapter = clientTestCreateMockAdapter("mistral", async (request) => {
+    const plan = admittedPlan("deepseek");
+    const adapter = clientTestCreateMockAdapter("deepseek", async (request) => {
       request.reportDiagnostic?.(
         serializeFailureDiagnostic({
           code: "provider-rejected",
-          message: "Mistral rejected the credential (HTTP 401).",
+          message: "DeepSeek rejected the credential (HTTP 401).",
           remediation: "Update the configuration with a valid API key.",
         }),
       );
@@ -839,7 +835,7 @@ describe("review generation terminal failures", () => {
     expect(result.execution.receipt.outcome).toBe("transport-failed");
     expect(result.diagnostic).toMatchObject({
       code: "provider-rejected",
-      safeMessage: "Mistral rejected the credential (HTTP 401).",
+      safeMessage: "DeepSeek rejected the credential (HTTP 401).",
     });
   });
 

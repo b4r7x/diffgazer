@@ -23,8 +23,8 @@ const REQ_101_SYMPTOMS = [
     readiness: "credential-invalid" as const,
   },
   {
-    id: "wrong-product-region-workspace",
-    heading: "Wrong product, region, or workspace",
+    id: "wrong-product-or-endpoint",
+    heading: "Wrong product or endpoint",
   },
   {
     id: "model-missing",

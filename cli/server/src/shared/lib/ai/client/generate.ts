@@ -66,15 +66,7 @@ function sensitiveContextFromPlan(plan: AdmittedExecutionPlan): DiagnosticSensit
   if (plan.evidenceKey.credentialReferenceIdentity) {
     literals.push(plan.evidenceKey.credentialReferenceIdentity);
   }
-  if (plan.evidenceKey.workspaceAccountReference) {
-    literals.push(plan.evidenceKey.workspaceAccountReference);
-  }
-  return {
-    literalSecrets: literals,
-    workspaceAccountReferences: plan.evidenceKey.workspaceAccountReference
-      ? [plan.evidenceKey.workspaceAccountReference]
-      : [],
-  };
+  return { literalSecrets: literals };
 }
 
 /**
@@ -138,10 +130,6 @@ function buildPlanReceipt(
     transportFamily: evidenceKey.transportFamily,
     modelId: evidenceKey.modelId,
     normalizedEndpoint: evidenceKey.normalizedEndpoint,
-    ...(evidenceKey.region === null ? {} : { region: evidenceKey.region }),
-    ...(evidenceKey.workspaceAccountReference === null
-      ? {}
-      : { workspaceAccountReference: evidenceKey.workspaceAccountReference }),
     runtime: evidenceKey.runtime,
     structuredOutputSchemaSha256: evidenceKey.structuredOutputSchemaSha256,
     noticeVersion: evidenceKey.noticeVersion,
@@ -286,7 +274,6 @@ export async function executeReviewGeneration(
   const clientResult = createFromAdmittedPlan(plan, {
     adapter: authorization.adapter,
     resolveCredential: authorization.resolveCredential,
-    workspaceAccountId: authorization.workspaceAccountId,
     reportDiagnostic: (diagnostic) => {
       adapterDiagnostic = diagnostic;
     },

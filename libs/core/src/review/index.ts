@@ -8,6 +8,12 @@ export {
   type ReviewSummary,
 } from "./build-summary.js";
 export {
+  CONFLICTED_FILE_NOTE,
+  describeFileStatus,
+  type ReviewableFile,
+  reviewableFilesForMode,
+} from "./changed-files.js";
+export {
   buildContextSnapshotView,
   buildReviewContextResponse,
   type ContextSnapshotView,

@@ -21,7 +21,7 @@ export interface SourceViewerContent {
     path: string;
     raw: string;
     highlighted: Array<{
-      number?: number;
+      number?: number | null;
       content?: string | Array<{ text: string; color?: string; className?: string }>;
       state?: "highlight" | "added" | "removed";
     }>;

@@ -111,7 +111,6 @@ const passingProbe: ConfigurationConformanceProbe = async ({ subject }) => ({
       structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
       runtime: RUNTIME_IDENTITY,
       credentialReferenceIdentity: subject.credentialReferenceIdentity,
-      workspaceAccountReference: subject.workspaceAccountReference,
     }),
     checkedAt: new Date().toISOString(),
     status: "passed",
@@ -432,7 +431,6 @@ describe("configuration test action", () => {
           structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
           runtime: RUNTIME_IDENTITY,
           credentialReferenceIdentity: subject.credentialReferenceIdentity,
-          workspaceAccountReference: subject.workspaceAccountReference,
         }),
         checkedAt: new Date().toISOString(),
         status: "failed",
@@ -465,7 +463,6 @@ describe("configuration test action", () => {
         structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
         runtime: RUNTIME_IDENTITY,
         credentialReferenceIdentity: subject.credentialReferenceIdentity,
-        workspaceAccountReference: subject.workspaceAccountReference,
       });
       return { status: "skipped", reason: "capture the admitted tuple only" };
     });
@@ -527,7 +524,6 @@ describe("configuration test action", () => {
             structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
             runtime: RUNTIME_IDENTITY,
             credentialReferenceIdentity: subject.credentialReferenceIdentity,
-            workspaceAccountReference: subject.workspaceAccountReference,
           }),
           modelId: "gemini-2.5-pro",
         },
@@ -632,7 +628,6 @@ describe("configuration test action", () => {
           structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
           runtime: RUNTIME_IDENTITY,
           credentialReferenceIdentity: subject.credentialReferenceIdentity,
-          workspaceAccountReference: subject.workspaceAccountReference,
         }),
         checkedAt: `2026-01-01T00:00:0${observation++}.000Z`,
         status: "passed",
@@ -704,7 +699,6 @@ describe("configuration test action", () => {
           structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
           runtime: RUNTIME_IDENTITY,
           credentialReferenceIdentity: subject.credentialReferenceIdentity,
-          workspaceAccountReference: subject.workspaceAccountReference,
         }),
         checkedAt: `2026-01-01T00:00:0${observation++}.000Z`,
         status: "passed",

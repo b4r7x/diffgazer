@@ -3,13 +3,13 @@ title: Providers and models
 description: Bring your own model; how Diffgazer talks to providers.
 ---
 
-Diffgazer does not run a model of its own. It is provider-agnostic: you configure one of **fourteen selectable products**, satisfy that product's admission checks, pick an exact admitted model, and Diffgazer talks to it directly from your machine. Switching products or models is a configuration change, not a reinstall. Your credentials and source never pass through a Diffgazer-hosted service. See [Privacy](/app/concepts/privacy) for where credentials and review content actually go.
+Diffgazer does not run a model of its own. It is provider-agnostic: you configure one of **twelve selectable products**, satisfy that product's admission checks, pick an exact admitted model, and Diffgazer talks to it directly from your machine. Switching products or models is a configuration change, not a reinstall. Your credentials and source never pass through a Diffgazer-hosted service. See [Privacy](/app/concepts/privacy) for where credentials and review content actually go.
 
 ## Supported products
 
-The provider picker lists fourteen selectable products drawn from the [canonical support matrix](/app/reference/providers#canonical-support-matrix): Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Qwen International, Moonshot Open Platform, Mistral, Ollama Cloud, Ollama, Local OpenAI-compatible, OpenAI Codex CLI, and GitHub Copilot CLI.
+The provider picker lists twelve selectable products drawn from the [canonical support matrix](/app/reference/providers#canonical-support-matrix): Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Ollama Cloud, OpenCode Zen, Ollama, Local OpenAI-compatible, OpenAI Codex CLI, and GitHub Copilot CLI.
 
-Each product is a distinct transport contract. Hosted API products require a credential reference and an allowed endpoint or region tuple. Local HTTP products bind to a validated loopback endpoint. Local CLI products use vendor-managed local auth already on your machine. None of them share credentials across products, and Diffgazer does not fall back to another product when one fails.
+Each product is a distinct transport contract. Hosted API products require a credential reference and an allowed endpoint. Local HTTP products bind to a validated loopback endpoint. Local CLI products use vendor-managed local auth already on your machine. None of them share credentials across products, and Diffgazer does not fall back to another product when one fails.
 
 Experimental, deferred, and rejected candidates in the matrix are documentation-only in this tranche. **A compatible endpoint, free credit, or local binary cannot override the frozen verdict** at runtime.
 
@@ -19,19 +19,20 @@ You do not type model names by hand in the setup wizard. Diffgazer rejects alias
 
 ### Catalog-backed hosted products
 
-For Google Gemini, Z.AI, Groq, Cerebras, Mistral, DeepSeek, Qwen International, Moonshot Open Platform, Ollama Cloud, and OpenRouter, the wizard starts from the shared models.dev catalog. Diffgazer first uses a non-empty cache that is less than an hour old when available. Otherwise, unless `DIFFGAZER_OFFLINE` is set, it asks models.dev for the current catalog, sending the ETag of the cached copy so an unchanged catalog costs one small conditional request instead of a full download. When a live request is skipped, fails, or does not contain the selected provider, Diffgazer falls back to a non-empty cached list for that provider even if it is stale, then to the bundled offline snapshot. The picker shows when the list was last checked and offers **Retry**.
+For Google Gemini, Z.AI, Groq, Cerebras, DeepSeek, Ollama Cloud, and OpenRouter, the wizard starts from the shared models.dev catalog. Diffgazer first uses a non-empty cache that is less than an hour old when available. Otherwise, unless `DIFFGAZER_OFFLINE` is set, it asks models.dev for the current catalog, sending the ETag of the cached copy so an unchanged catalog costs one small conditional request instead of a full download. When a live request is skipped, fails, or does not contain the selected provider, Diffgazer falls back to a non-empty cached list for that provider even if it is stale, then to the bundled offline snapshot. The picker shows when the list was last checked and offers **Retry**.
 
 Where the product publishes its own model list, that list is the current set of ids and models.dev supplies the name, price, and context size for the ids it also knows:
 
 - **OpenRouter** and **Ollama Cloud** publish keyless lists, so Diffgazer reads them without a credential.
-- For a saved **Z.AI, Groq, Cerebras, Mistral, DeepSeek, Qwen International, or Moonshot Open Platform** configuration that has a credential, Diffgazer asks that configuration's own endpoint (`{endpoint}/models`) with that configuration's own key. The key goes only to the endpoint of the configuration it belongs to.
+- For a saved **Z.AI, Groq, Cerebras, DeepSeek, or OpenCode Zen** configuration that has a credential, Diffgazer asks that configuration's own endpoint (`{endpoint}/models`) with that configuration's own key. The key goes only to the endpoint of the configuration it belongs to.
+- **OpenCode Zen** has no models.dev entry at all, so that live list is its only source of model identity: every Zen row is a live-only row, and it rotates as Zen adds and retires stealth routes.
 - **Google Gemini** uses a different list API and stays catalog-only.
 
 A model the provider lists but models.dev has never seen appears under its id, with no price badge, and says so on its secondary line ("Pricing unknown — not in models.dev yet", or "<size> context · pricing unknown" when the list states a context size); Z.AI rows may borrow only their display name from models.dev's Z.AI coding-plan entries for the same id, never a price. Such rows appear only under the **All** tab until models.dev learns them. A model models.dev knows but the provider no longer lists is dropped. Live lists are cached for five minutes; when one cannot be fetched, or names only ids the product policy rejects, the picker falls back to the models.dev catalog. See [Privacy](/app/concepts/privacy) for exactly what each request carries.
 
 The picker hides only models that cannot emit text and, for products that require strict JSON-schema output, models the catalog — or OpenRouter's own capability list — marks as unable to return structured output. A model no source says anything about is listed; your first review verifies it.
 
-Google Gemini, Z.AI, Groq, Cerebras, Mistral, and Ollama Cloud use a **discovered-exact** policy: the model you select must appear in the admitted discovery result for your configuration. **discovered-allowlist** products such as DeepSeek and Qwen International list only their pinned IDs, and **discovered-family** products such as Moonshot Open Platform list only exact IDs matching their admitted family prefixes.
+Google Gemini, Z.AI, Groq, Cerebras, Ollama Cloud, and OpenCode Zen use a **discovered-exact** policy: the model you select must appear in the admitted discovery result for your configuration. **discovered-allowlist** products such as DeepSeek list only their pinned IDs.
 
 ### OpenRouter
 
@@ -45,11 +46,11 @@ These products use a **discovered-exact** policy: the ID you pin must be exact, 
 
 ### Save-time gates
 
-Regardless of transport, arbitrary model IDs are rejected at save time when they violate the product's model policy — allowlist membership, family prefixes, or pinned route shape. Higher-cost allowlist models such as Qwen Coder Plus require live evidence before they can be selected.
+Regardless of transport, arbitrary model IDs are rejected at save time when they violate the product's model policy — allowlist membership or pinned route shape. Higher-cost allowlist models such as `deepseek-v4-pro` require live evidence before they can be selected.
 
 ## Choosing a model
 
-The right model depends on the trade-off you want between speed, cost, and review depth. Several hosted products ship with a suggested starting model, but every choice is explicit and exact. Higher-cost models such as Qwen Coder Plus require live evidence before they can be selected.
+The right model depends on the trade-off you want between speed, cost, and review depth. Several hosted products ship with a suggested starting model, but every choice is explicit and exact. Higher-cost models such as `deepseek-v4-pro` require live evidence before they can be selected.
 
 For a side-by-side view of every product, transport family, endpoint, structured-output posture, and enablement gate, see the [providers reference](/app/reference/providers). For setup and readiness steps, see [Configuration](/app/reference/configuration) and [Your first review](/app/getting-started/first-review).
 

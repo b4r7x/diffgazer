@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef, useState } from "react";
 import { renderToString } from "react-dom/server";
@@ -305,16 +305,151 @@ describe("Menu", () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it("does not move keyboard highlight on mouse hover", async () => {
+  it("hovers the row the pointer travels over without moving the keyboard cursor", async () => {
+    const user = userEvent.setup();
+    const onHighlightChange = vi.fn();
+    renderMenu({ defaultHighlighted: "one", onHighlightChange });
+    const menu = screen.getByRole("menu");
+    const oneItem = getMenuItem("One");
+    const twoItem = getMenuItem("Two");
+
+    await user.hover(twoItem);
+
+    // Two independent states: hover is cosmetic and never enters the
+    // accessibility tree; the keyboard cursor stays exactly where it was.
+    expect(twoItem).toHaveAttribute("data-hovered");
+    expect(twoItem.querySelector("svg")).not.toBeNull();
+    expect(oneItem).not.toHaveAttribute("data-hovered");
+    expect(oneItem.querySelector("svg")).toBeNull();
+    expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id);
+    expect(oneItem).toHaveAttribute("data-highlighted");
+    expect(twoItem).not.toHaveAttribute("data-highlighted");
+    expect(onHighlightChange).not.toHaveBeenCalled();
+  });
+
+  it("releases the hover when the pointer leaves the row", async () => {
+    const user = userEvent.setup();
+    renderMenu({ defaultHighlighted: "one" });
+    const twoItem = getMenuItem("Two");
+
+    await user.hover(twoItem);
+    expect(twoItem).toHaveAttribute("data-hovered");
+
+    await user.unhover(twoItem);
+    expect(twoItem).not.toHaveAttribute("data-hovered");
+  });
+
+  it("never hovers a disabled row", async () => {
+    const user = userEvent.setup();
+    renderMenu({ defaultHighlighted: "one" });
+    const menu = screen.getByRole("menu");
+    const oneItem = getMenuItem("One");
+    const disabledItem = getMenuItem("Three");
+
+    await user.hover(disabledItem);
+
+    expect(disabledItem).not.toHaveAttribute("data-hovered");
+    expect(disabledItem.querySelector("svg")).toBeNull();
+    expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id);
+  });
+
+  it("shows the keyboard treatment on a row that is both hovered and highlighted", async () => {
+    const user = userEvent.setup();
+    renderMenu({ defaultHighlighted: "one" });
+    const oneItem = getMenuItem("One");
+
+    await user.hover(oneItem);
+
+    // The keyboard cursor outranks the hover: strong bar and ▌, no chevron.
+    expect(oneItem).toHaveAttribute("data-highlighted");
+    expect(oneItem).not.toHaveAttribute("data-hovered");
+    expect(oneItem).toHaveTextContent("▌");
+    expect(oneItem.querySelector("svg")).toBeNull();
+  });
+
+  it("clears the hover on navigation keys until the pointer actually travels", async () => {
     const user = userEvent.setup();
     renderMenu({ defaultHighlighted: "one" });
     const menu = screen.getByRole("menu");
     const oneItem = getMenuItem("One");
     const twoItem = getMenuItem("Two");
 
+    // fireEvent retained: user-event cannot dispatch pointermove with controlled
+    // coordinates, which is exactly what the stationary-pointer gate keys on.
+    fireEvent.pointerMove(twoItem, { clientX: 10, clientY: 10 });
+    expect(twoItem).toHaveAttribute("data-hovered");
+
+    // ArrowUp wraps the keyboard cursor away from both rows (onto disabled
+    // "Three", which stays in the navigation order).
+    menu.focus();
+    await user.keyboard("{ArrowUp}");
+
+    // Navigation takes over: the stationary cursor's row releases the hover.
+    expect(twoItem).not.toHaveAttribute("data-hovered");
+    expect(menu).toHaveAttribute("aria-activedescendant", getMenuItem("Three").id);
+    expect(oneItem).not.toHaveAttribute("data-highlighted");
+
+    // A re-fired pointermove at the same coordinates (Safari synthetics,
+    // re-renders under a resting cursor) must not re-arm the hover...
+    // fireEvent retained: same controlled-coordinate requirement as above.
+    fireEvent.pointerMove(twoItem, { clientX: 10, clientY: 10 });
+    expect(twoItem).not.toHaveAttribute("data-hovered");
+
+    // ...but real travel does.
+    // fireEvent retained: same controlled-coordinate requirement as above.
+    fireEvent.pointerMove(twoItem, { clientX: 14, clientY: 11 });
+    expect(twoItem).toHaveAttribute("data-hovered");
+  });
+
+  it("clears the hover when a typeahead keystroke moves the cursor", async () => {
+    const user = userEvent.setup();
+    renderMenu({ defaultHighlighted: "one" });
+    const menu = screen.getByRole("menu");
+    const oneItem = getMenuItem("One");
+    const twoItem = getMenuItem("Two");
+
+    // fireEvent retained: user-event cannot dispatch pointermove with controlled
+    // coordinates, which is exactly what the stationary-pointer gate keys on.
+    fireEvent.pointerMove(twoItem, { clientX: 10, clientY: 10 });
+    expect(twoItem).toHaveAttribute("data-hovered");
+
+    // Typeahead is navigation too: the printable key releases the hover the
+    // same way an arrow does, and it stays released under a resting cursor.
+    menu.focus();
+    await user.keyboard("o");
+
+    expect(twoItem).not.toHaveAttribute("data-hovered");
     expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id);
-    await user.hover(twoItem);
-    expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id);
+
+    // fireEvent retained: same controlled-coordinate requirement as above.
+    fireEvent.pointerMove(twoItem, { clientX: 10, clientY: 10 });
+    expect(twoItem).not.toHaveAttribute("data-hovered");
+  });
+
+  it("judges pointer travel menu-wide, not per row", async () => {
+    const user = userEvent.setup();
+    renderMenu({ defaultHighlighted: "one" });
+    const menu = screen.getByRole("menu");
+    const oneItem = getMenuItem("One");
+    const twoItem = getMenuItem("Two");
+
+    // fireEvent retained: user-event cannot dispatch pointermove with controlled
+    // coordinates, which is exactly what the stationary-pointer gate keys on.
+    fireEvent.pointerMove(twoItem, { clientX: 10, clientY: 10 });
+    menu.focus();
+    await user.keyboard("{ArrowUp}");
+    expect(twoItem).not.toHaveAttribute("data-hovered");
+
+    // A stationary re-fire landing on a row the pointer never visited (layout
+    // shift under a resting cursor) must not arm that row either...
+    // fireEvent retained: same controlled-coordinate requirement as above.
+    fireEvent.pointerMove(oneItem, { clientX: 10, clientY: 10 });
+    expect(oneItem).not.toHaveAttribute("data-hovered");
+
+    // ...while real travel onto it does.
+    // fireEvent retained: same controlled-coordinate requirement as above.
+    fireEvent.pointerMove(oneItem, { clientX: 12, clientY: 11 });
+    expect(oneItem).toHaveAttribute("data-hovered");
   });
 
   it("marks selected items with data-selected", () => {

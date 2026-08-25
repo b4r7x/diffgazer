@@ -102,7 +102,6 @@ function evidenceKeyFor(record = hostedRecord()): EvidenceKey {
     structuredOutputSchemaSha256: SCHEMA_SHA256,
     runtime: RUNTIME,
     credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-    workspaceAccountReference: null,
   });
 }
 
@@ -132,7 +131,6 @@ function readySnapshot(
     binding,
     evidence: passedEvidence(evidenceKey),
     credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-    workspaceAccountReference: null,
     ...patch,
   };
 }
@@ -186,7 +184,6 @@ describe("buildExpectedEvidenceKey", () => {
       structuredOutputSchemaSha256: SCHEMA_SHA256,
       runtime: RUNTIME,
       credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-      workspaceAccountReference: null,
     });
 
     // Reservations plan for an answer of PLANNING_OUTPUT_TOKENS, not the whole
@@ -341,7 +338,6 @@ describe("authorizeReviewExecution", () => {
       ),
       evidence: passedEvidence(evidenceKeyFor(previousRecord)),
       credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-      workspaceAccountReference: null,
     });
 
     const result = await authorizeReviewExecution(record.configurationId, dependencies);
@@ -368,7 +364,6 @@ describe("authorizeReviewExecution", () => {
       structuredOutputSchemaSha256: SCHEMA_SHA256,
       runtime,
       credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-      workspaceAccountReference: null,
     });
     const dependencies = createDependencies(
       {
@@ -376,7 +371,6 @@ describe("authorizeReviewExecution", () => {
         binding,
         evidence: passedEvidence(evidenceKey),
         credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-        workspaceAccountReference: null,
       },
       { runtimeIdentity: runtime },
     );
@@ -464,7 +458,6 @@ describe("authorizeReviewExecution", () => {
       binding: null,
       evidence: null,
       credentialReferenceIdentity: null,
-      workspaceAccountReference: null,
     });
 
     const result = await authorizeReviewExecution("cfg-unknown", dependencies);
@@ -517,7 +510,6 @@ describe("authorizeReviewExecution", () => {
       binding: null,
       evidence: passedEvidence(evidenceKey),
       credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-      workspaceAccountReference: null,
     });
 
     const result = await authorizeReviewExecution(record.configurationId, dependencies);
@@ -713,7 +705,6 @@ describe("admission spend and model gates", () => {
       binding,
       evidence: null,
       credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-      workspaceAccountReference: null,
     });
 
     const result = await authorizeReviewExecution(record.configurationId, dependencies);

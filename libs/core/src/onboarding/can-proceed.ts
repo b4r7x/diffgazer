@@ -30,16 +30,9 @@ function hasEndpointBinding(data: OnboardingDraft): boolean {
     const { credential: _credential, ...endpointInput } = configurationInput;
     if (!HostedApiTransportInputSchema.safeParse(endpointInput).success) return false;
 
-    const endpoint = PRODUCT_REGISTRY[configurationInput.productId].configuration.endpoints.find(
+    return PRODUCT_REGISTRY[configurationInput.productId].configuration.endpoints.some(
       (candidate) => candidate.endpoint === configurationInput.endpoint,
     );
-    if (!endpoint) return false;
-    if (("region" in endpoint ? endpoint.region : undefined) !== configurationInput.region) {
-      return false;
-    }
-    return "workspaceBound" in endpoint && endpoint.workspaceBound
-      ? configurationInput.workspace !== undefined
-      : configurationInput.workspace === undefined;
   }
 
   return false;

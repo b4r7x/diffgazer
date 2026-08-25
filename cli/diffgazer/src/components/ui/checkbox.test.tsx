@@ -113,3 +113,74 @@ describe("CheckboxGroup navigation", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+describe("CheckboxGroup windowed navigation", () => {
+  // The picker renders only the rows that fit its frame, so the group is told
+  // the whole list separately; without that it would stop at the window edge.
+  function WindowHarness({
+    onHighlightChange,
+    onChange,
+  }: {
+    onHighlightChange: (value: string) => void;
+    onChange?: (value: string[]) => void;
+  }) {
+    const items = ["a", "b", "c", "d"];
+    const [highlighted, setHighlighted] = useState<string>("b");
+    const window = items.slice(1, 3);
+
+    return (
+      <CheckboxGroup
+        isActive
+        value={[]}
+        onChange={onChange}
+        highlightedValue={highlighted}
+        onHighlightChange={(next) => {
+          setHighlighted(next);
+          onHighlightChange(next);
+        }}
+        navigationItems={items.map((id) => ({ id, disabled: id === "d" }))}
+      >
+        {window.map((id) => (
+          <CheckboxGroup.Item key={id} value={id} label={id.toUpperCase()} />
+        ))}
+      </CheckboxGroup>
+    );
+  }
+
+  test("moves past the rendered window and still skips disabled items", async () => {
+    const onHighlightChange = vi.fn();
+    const { stdin } = render(
+      <CliThemeProvider initialTheme="dark">
+        <WindowHarness onHighlightChange={onHighlightChange} />
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    stdin.write(ARROW_UP);
+    await flush();
+    // "a" is off screen, and navigation reaches it anyway.
+    expect(onHighlightChange).toHaveBeenLastCalledWith("a");
+
+    stdin.write(ARROW_UP);
+    await flush();
+    // Wrapping lands on "c", not the disabled "d" behind it.
+    expect(onHighlightChange).toHaveBeenLastCalledWith("c");
+  });
+
+  test("space toggles the highlighted item even when its row is off screen", async () => {
+    const onChange = vi.fn();
+    const { stdin } = render(
+      <CliThemeProvider initialTheme="dark">
+        <WindowHarness onHighlightChange={vi.fn()} onChange={onChange} />
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    stdin.write(ARROW_UP);
+    await flush();
+    stdin.write(SPACE);
+    await flush();
+
+    expect(onChange).toHaveBeenLastCalledWith(["a"]);
+  });
+});

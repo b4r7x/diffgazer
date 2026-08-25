@@ -84,10 +84,6 @@ function buildReceipt(
     transportFamily: key.transportFamily,
     modelId: key.modelId,
     normalizedEndpoint: key.normalizedEndpoint,
-    ...(key.region === null ? {} : { region: key.region }),
-    ...(key.workspaceAccountReference === null
-      ? {}
-      : { workspaceAccountReference: key.workspaceAccountReference }),
     runtime: key.runtime,
     structuredOutputSchemaSha256: key.structuredOutputSchemaSha256,
     noticeVersion: key.noticeVersion,

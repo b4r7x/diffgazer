@@ -18,6 +18,7 @@ import { createGitService } from "../../shared/lib/git/service.js";
 import { log } from "../../shared/lib/log.js";
 import { activateSessionForProject } from "../../shared/lib/session-registry.js";
 import { isReviewAbort, type ReviewAbort } from "./abort.js";
+import { evaluateReviewCapacity } from "./capacity.js";
 import { resolveGitDiff } from "./diff.js";
 import type { ParsedDiff } from "./engine/diff/types.js";
 import {
@@ -221,11 +222,24 @@ export async function createReviewSession(
     },
     reviewId,
   });
-  const parsed = parsedResult.ok ? parsedResult.value : null;
+  // The model that will read the diff is known here, so the size gate runs here
+  // too: a diff past its context window fails now, with the numbers, instead of
+  // dying mid-review as an exhausted budget.
+  const capacityResult = parsedResult.ok
+    ? evaluateReviewCapacity({ parsed: parsedResult.value, plan: admittedPlan })
+    : null;
+  const startResult: Result<ParsedDiff, ReviewAbort> =
+    capacityResult && !capacityResult.ok ? err(capacityResult.error) : parsedResult;
+  const sizeWarning = capacityResult?.ok ? capacityResult.value : null;
+  if (sizeWarning) {
+    bufferedEvents.push({ type: "review_size_warning", warning: sizeWarning });
+  }
+
+  const parsed = startResult.ok ? startResult.value : null;
   // The diff is resolved here, so the response can say a clean tree or a git
   // failure ended the run instead of leaving the client to learn it from the
   // replayed stream.
-  const outcome: CreateReviewOutcome = resolveCreateOutcome(parsedResult);
+  const outcome: CreateReviewOutcome = resolveCreateOutcome(startResult);
   const reviewInputHash = parsed
     ? buildReviewInputHash({ headCommit, reviewConfigKey, parsed })
     : undefined;
@@ -244,7 +258,11 @@ export async function createReviewSession(
         reviewInputHash,
       });
       if (existingSession) {
-        return ok({ reviewId: existingSession.reviewId, session: existingSession, outcome });
+        return ok({
+          reviewId: existingSession.reviewId,
+          session: existingSession,
+          outcome,
+        });
       }
     }
 
@@ -287,10 +305,10 @@ export async function createReviewSession(
       ? createReviewExecutionContext(aiClient.authorization)
       : null;
 
-    if (!parsedResult.ok) {
+    if (!startResult.ok) {
       void (async () => {
         try {
-          await handleReviewFailure(parsedResult.error, emit, reviewId, session.controller.signal);
+          await handleReviewFailure(startResult.error, emit, reviewId, session.controller.signal);
         } finally {
           executionContext?.releaseOnce();
         }
@@ -304,7 +322,7 @@ export async function createReviewSession(
         reviewId,
         signal: session.controller.signal,
         headCommit,
-        parsed: parsedResult.value,
+        parsed: startResult.value,
         branch,
         elapsedStart,
         emit,

@@ -1,29 +1,29 @@
 ---
 title: Interaction States
-description: The three-state interaction model for TUI-style components — hover, highlight, and selected.
+description: The three-state interaction model for TUI-style components — highlight, selected, and hover.
 ---
 
 ## Three-state model
 
-`@diffgazer/ui` components use three distinct, independent interaction states inspired by terminal UIs:
+`@diffgazer/ui` components use three distinct interaction states inspired by terminal UIs (the VS Code list model):
 
-| State | Trigger | Visual Weight | CSS Implementation |
+| State | Trigger | Visual Weight | Implementation |
 |---|---|---|---|
-| **Hover** | Mouse `:hover` | Lightest | `hover:bg-secondary` (CSS pseudo-class) |
-| **Highlight** | Keyboard arrows (`@diffgazer/keys`) | Strongest | `bg-primary text-primary-foreground font-bold` |
+| **Highlight** | Keyboard arrows only (`@diffgazer/keys`) | Strongest | `bg-primary text-primary-foreground font-bold` + `▌` glyph via `data-highlighted` |
 | **Selected** | Persistent choice (Enter/click) | Strongest when enabled | `bg-primary text-primary-foreground font-bold` |
+| **Hover** | Real pointer travel | Subordinate | `bg-secondary` + brightened label + chevron glyph via `data-hovered` |
 
-These states are independent because in TUI applications, the keyboard cursor is fundamentally different from mouse hover. The cursor shows where keyboard actions will apply -- it is the user's active position. Hover is transient mouse feedback that disappears when the pointer moves away. Selected is the user's persistent choice that survives both hover and highlight changes.
+The keyboard owns the cursor: only arrow keys (and typeahead) move the highlight and `aria-activedescendant`, and only that cursor fires `onHighlightChange`. The pointer owns a separate, purely cosmetic hover. Clicking still commits — it moves the cursor and activates the item — but travelling never does, so reading the menu with the mouse can never yank the keyboard cursor around.
 
-Keeping them separate means a user can hover over one item while the keyboard cursor sits on another, and a third item can be the current selection. No state clobbers another.
+Hover is deliberately **not** CSS `:hover`. It is JS state set by `pointermove` events gated on real coordinate deltas — an event whose `clientX`/`clientY` equal the previous ones is ignored, which kills stationary-cursor artifacts (browser `:hover` sticks to a resting pointer, and Safari re-fires synthetic `pointermove`s on re-render). The hover clears on `pointerleave` and on any navigation keydown, and re-arms only when the pointer actually travels again. A hovered row shows a right-pointing chevron in the indicator slot; the `▌` glyph belongs exclusively to the keyboard cursor, and when a row is both hovered and highlighted the keyboard treatment wins. Idle rows render an empty indicator slot. The chevron reveal is a conditional mount inside a fixed-width `w-5` slot: the slot always occupies the same width, so revealing the chevron never shifts the label column, and the glyph appears instantly rather than fading in — the TUI-appropriate treatment. The delta gate also means a scroll under a stationary pointer would not move the hover to the new row beneath it (no `pointerleave` fires, and the resting-cursor re-fire is exactly what the gate blocks); no current menu surface scrolls, but a scrollable variant must clear the hover in its container's `onScroll`, the same one-line pattern as the navigation-keydown clear. Rows that already carry a directional glyph — the submenu trigger's trailing chevron, the back row's `‹` — take the hover background only, never a second chevron.
 
 ## State precedence
 
 ```
-disabled focused > disabled > highlight (focused) > selected > normal
+disabled focused > disabled > highlight (focused) > selected > hovered > normal
 ```
 
-This comes from `getItemState()` in `menu-item-variants.ts`. A disabled item that owns the menu highlight renders `disabledFocused`, so APG-style disabled menu items can still be the keyboard cursor without looking enabled. Otherwise, disabled wins over selection. A highlighted enabled item always shows highlight visuals even if it is also the selected item. This ensures the keyboard cursor is always visible.
+This comes from `getItemState()` in `menu-item-variants.ts`. A disabled item that owns the menu highlight renders `disabledFocused`, so APG-style disabled menu items can still be the keyboard cursor without looking enabled. Otherwise, disabled wins over selection — and over hover: disabled rows never take hover styling. A highlighted enabled item always shows highlight visuals even if it is also the selected or hovered item. This ensures the keyboard cursor is always visible.
 
 The same `disabledFocused` state applies to submenu triggers. Disabled submenu triggers and checkbox items keep `data-highlighted` when they own the virtual focus, while their disabled styling and activation guards remain in effect.
 
@@ -33,13 +33,14 @@ The `menuItemBase` CVA maps each state to Tailwind classes:
 
 | CVA `state` | Classes | Purpose |
 |---|---|---|
-| `"normal"` | `hover:bg-secondary group` | Hover via CSS pseudo-class only |
-| `"focused"` | `font-bold` + compound variant `bg-primary text-primary-foreground` | Semantic active bar for keyboard cursor |
-| `"selected"` | `font-bold group` + compound variant `bg-primary text-primary-foreground` | Persistent selected item when selection is enabled |
+| `"normal"` | *(none)* | Idle row; empty indicator slot |
+| `"focused"` | `font-bold` + compound variant `bg-primary text-primary-foreground` | The keyboard cursor |
+| `"selected"` | `font-bold` + compound variant `bg-primary text-primary-foreground` | Persistent selected item when selection is enabled |
+| `"hovered"` | `bg-secondary text-foreground` | Subordinate pointer affordance, driven by `data-hovered` state, never CSS `:hover` |
 | `"disabled"` | `opacity-50 cursor-not-allowed` | Greyed out, no pointer interaction |
 | `"disabledFocused"` | `opacity-60 cursor-not-allowed bg-secondary text-foreground` | Disabled item that still owns keyboard cursor in menu patterns without looking enabled |
 
-Danger items use `bg-error text-error-foreground` for both focused and selected states.
+Danger items use `bg-error text-error-foreground` for both focused and selected states, and keep their `text-error` palette under hover.
 
 ## Sync on click
 
@@ -120,9 +121,9 @@ This gives TUI-like behavior: entering a menu always starts from the top, but re
 The interaction state model maps directly to ARIA semantics:
 
 - **Container**: `role="menu"`, `tabIndex={0}`, `aria-activedescendant` pointing to the highlighted item
-- **Items**: `role="menuitem"`, `data-value={id}`, `data-highlighted` for keyboard/virtual focus and `data-selected` for selection, `aria-disabled` for disabled items
+- **Items**: `role="menuitem"`, `data-value={id}`, `data-highlighted` for keyboard/virtual focus, `data-selected` for selection, `data-hovered` for the cosmetic pointer hover, `aria-disabled` for disabled items
 - **Selectable menu items**: `role="menuitemradio"` with `aria-checked` for the selected item
 - **Screen readers**: announce the active descendant as the user arrows through items -- the highlight state drives `aria-activedescendant`
 - **Follows WAI-ARIA Menu Pattern (APG)**
 
-The three-state model makes screen reader behavior clear: `aria-activedescendant` always reflects the highlighted item (keyboard cursor), while `aria-checked` reflects selection only when the menu is explicitly selectable.
+The model maps cleanly onto the APG listbox pattern: `aria-activedescendant` always reflects the keyboard cursor and nothing else. Hover is cosmetic and never enters the accessibility tree, so what a screen reader announces is exactly what the keyboard user sees, while `aria-checked` reflects selection only when the menu is explicitly selectable.

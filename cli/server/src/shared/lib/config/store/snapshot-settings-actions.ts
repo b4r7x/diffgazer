@@ -23,7 +23,6 @@ import {
   credentialReferenceIdentityFor,
   type DiscardBindingSecretOptions,
   retiredBindingTombstones,
-  workspaceAccountReferenceFor,
 } from "./credential-lifecycle.js";
 import type { DocumentStore } from "./document-store.js";
 import { createSettingsMigration } from "./settings.js";
@@ -153,7 +152,6 @@ export function createSnapshotSettingsActions(deps: SnapshotSettingsDependencies
             runtime: RUNTIME_IDENTITY,
             structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
             credentialReferenceIdentity: binding ? credentialReferenceIdentityFor(binding) : null,
-            workspaceAccountReference: workspaceAccountReferenceFor(configuration),
           };
           return { kind: "supported", configuration, readinessInput };
         }),

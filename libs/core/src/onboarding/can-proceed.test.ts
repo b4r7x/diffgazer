@@ -49,8 +49,8 @@ describe("setup-plan progression", () => {
   });
 
   it("never infers acknowledgement from save, test, or HTTP success", () => {
-    const notice = PRODUCT_REGISTRY.mistral.notice;
-    const initial = getInitialWizardData("mistral");
+    const notice = PRODUCT_REGISTRY.zai.notice;
+    const initial = getInitialWizardData("zai");
     if (initial.configurationInput.transportFamily !== "hosted-api") {
       throw new Error("Expected hosted API configuration");
     }
@@ -60,7 +60,7 @@ describe("setup-plan progression", () => {
         ...initial.configurationInput,
         credential: { kind: "environment" as const },
       },
-      selectedModelId: "mistral-small-2603",
+      selectedModelId: "glm-5-turbo",
       saveStatus: "saved",
       testStatus: "passed",
       httpStatus: 200,
@@ -85,8 +85,8 @@ describe("setup-plan progression", () => {
   });
 
   it("rejects acknowledgement for a different notice version", () => {
-    const notice = PRODUCT_REGISTRY.mistral.notice;
-    const initial = getInitialWizardData("mistral");
+    const notice = PRODUCT_REGISTRY.zai.notice;
+    const initial = getInitialWizardData("zai");
     if (initial.configurationInput.transportFamily !== "hosted-api") {
       throw new Error("Expected hosted API configuration");
     }
@@ -96,7 +96,7 @@ describe("setup-plan progression", () => {
         ...initial.configurationInput,
         credential: { kind: "environment" },
       },
-      selectedModelId: "mistral-small-2603",
+      selectedModelId: "glm-5-turbo",
       acknowledgement: {
         status: "accepted",
         noticeId: notice.id,
@@ -106,6 +106,28 @@ describe("setup-plan progression", () => {
     } satisfies OnboardingDraft;
 
     expect(canProceed("acknowledgement", data)).toBe(false);
+  });
+
+  // OpenCode Zen suggests no model, so the model step has nothing to fall back
+  // on: only an exact ID that live discovery returned may pass, and a rotating
+  // alias may not stand in for one.
+  it("requires a live-discovered exact model for a product that suggests none", () => {
+    const initial = getInitialWizardData("opencode-zen");
+    if (initial.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    const configured = {
+      ...initial,
+      configurationInput: {
+        ...initial.configurationInput,
+        credential: { kind: "environment" as const },
+      },
+    } satisfies OnboardingDraft;
+
+    expect(initial.selectedModelId).toBeNull();
+    expect(canProceed("model", configured)).toBe(false);
+    expect(canProceed("model", { ...configured, selectedModelId: "grok-code" })).toBe(true);
+    expect(canProceed("model", { ...configured, selectedModelId: "latest" })).toBe(false);
   });
 
   it("rejects latest aliases even when the product policy accepts discovered exact IDs", () => {
@@ -230,7 +252,7 @@ describe("setup-plan progression", () => {
   });
 
   it("does not let a selected model bypass a changed endpoint or missing authentication", () => {
-    const initial = getInitialWizardData("qwen");
+    const initial = getInitialWizardData("deepseek");
     if (initial.configurationInput.transportFamily !== "hosted-api") {
       throw new Error("Expected hosted API configuration");
     }
@@ -238,10 +260,9 @@ describe("setup-plan progression", () => {
       ...initial,
       configurationInput: {
         ...initial.configurationInput,
-        workspace: "workspace-reference",
         credential: { kind: "environment" as const },
       },
-      selectedModelId: "qwen3-coder-flash",
+      selectedModelId: "deepseek-v4-flash",
     } satisfies OnboardingDraft;
 
     expect(canProceed("model", configured)).toBe(true);
@@ -250,7 +271,7 @@ describe("setup-plan progression", () => {
         ...configured,
         configurationInput: {
           ...configured.configurationInput,
-          endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+          endpoint: "https://api.deepseek.com/beta",
         },
       }),
     ).toBe(false);
@@ -262,58 +283,18 @@ describe("setup-plan progression", () => {
     ).toBe(false);
   });
 
-  it("keeps Qwen Plus unavailable until output-limit and review evidence exists", () => {
-    const initial = getInitialWizardData("qwen");
-    if (initial.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
-    const configured = {
-      ...initial,
-      configurationInput: {
-        ...initial.configurationInput,
-        workspace: "workspace-reference",
-        credential: { kind: "environment" as const },
-      },
-      selectedModelId: "qwen3-coder-plus",
-    } satisfies OnboardingDraft;
-
-    // The draft carries no server-verified output-limit or review-conformance
-    // evidence, so the model policy alone keeps this id out.
-    expect(canProceed("model", configured)).toBe(false);
-    expect(
-      canProceed("acknowledgement", {
-        ...configured,
-        acknowledgement: {
-          status: "accepted",
-          noticeId: PRODUCT_REGISTRY.qwen.notice.id,
-          noticeVersion: PRODUCT_REGISTRY.qwen.notice.noticeVersion,
-          acceptedAt: "2026-07-31T12:00:00.000Z",
-        },
-      }),
-    ).toBe(false);
-
-    expect(canProceed("model", { ...configured, selectedModelId: "qwen3-coder-flash" })).toBe(true);
-  });
-
   it("requires only the selected family's configuration fields", () => {
-    const qwen = getInitialWizardData("qwen");
-    if (qwen.configurationInput.transportFamily !== "hosted-api") {
+    const hosted = getInitialWizardData("deepseek");
+    if (hosted.configurationInput.transportFamily !== "hosted-api") {
       throw new Error("Expected hosted API configuration");
     }
-    expect(canProceed("endpoint-binding", qwen)).toBe(false);
-    expect(
-      canProceed("endpoint-binding", {
-        ...qwen,
-        configurationInput: { ...qwen.configurationInput, workspace: "workspace-reference" },
-      }),
-    ).toBe(true);
-    expect(canProceed("authentication", qwen)).toBe(false);
+    expect(canProceed("endpoint-binding", hosted)).toBe(true);
+    expect(canProceed("authentication", hosted)).toBe(false);
     expect(
       canProceed("authentication", {
-        ...qwen,
+        ...hosted,
         configurationInput: {
-          ...qwen.configurationInput,
-          workspace: "workspace-reference",
+          ...hosted.configurationInput,
           credential: { kind: "environment" },
         },
       }),

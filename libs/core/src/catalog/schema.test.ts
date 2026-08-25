@@ -19,7 +19,7 @@ describe("parseModelsDevCatalog", () => {
       "groq",
       "cerebras",
       "openrouter",
-      "mistral",
+      "deepseek",
     ]);
     for (const provider of Object.values(catalog)) {
       expect(provider).not.toHaveProperty("enabled");

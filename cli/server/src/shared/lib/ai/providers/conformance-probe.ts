@@ -73,7 +73,6 @@ function passedObservation(
   record: SupportedProviderConfigurationRecord,
   subject: {
     credentialReferenceIdentity: string | null;
-    workspaceAccountReference: string | null;
   },
   runtime: RuntimeIdentity,
 ) {
@@ -84,7 +83,6 @@ function passedObservation(
     runtime,
     credentialReferenceIdentity:
       record.input.transportFamily === "local-cli" ? null : subject.credentialReferenceIdentity,
-    workspaceAccountReference: subject.workspaceAccountReference,
   });
   return {
     status: "passed" as const,
@@ -123,7 +121,6 @@ export function createHostedConformanceProbe(): ConfigurationConformanceProbe {
       structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
       runtime: RUNTIME_IDENTITY,
       credentialReferenceIdentity: subject.credentialReferenceIdentity,
-      workspaceAccountReference: subject.workspaceAccountReference,
     });
 
     const execution = await HOSTED_ADAPTERS[record.input.productId].execute({
@@ -137,7 +134,6 @@ export function createHostedConformanceProbe(): ConfigurationConformanceProbe {
           configurationId: record.configurationId,
           revision: record.revision,
         }),
-      workspaceAccountId: record.input.workspace ?? null,
     });
 
     if (execution.receipt.outcome !== "completed") {

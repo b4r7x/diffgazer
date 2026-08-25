@@ -210,23 +210,16 @@ describe("bundled catalog observations", () => {
     expect(modelIds).not.toContain("openrouter/free");
   });
 
-  // The free models are the point: Z.AI's `-flash` tier and every model
-  // upstream publishes no `structured_output` for now reach the picker.
-  it("fills the pickers with the free-tier models they used to withhold", async () => {
+  // Owner evidence: the picker's Free tab reads `tier === "free"`, so the model
+  // policy must admit Z.AI's `-flash` models for that tab to have anything in it.
+  it("lists Z.AI's free -flash tiers alongside the paid models", async () => {
     const zai = await getProviderModels("zai");
-    const mistral = await getProviderModels("mistral");
 
     expect(zai.models.map(({ id, tier }) => ({ id, tier }))).toEqual(
       expect.arrayContaining([
         { id: "glm-4.5-flash", tier: "free" },
         { id: "glm-4.7-flash", tier: "free" },
         { id: "glm-5-turbo", tier: "paid" },
-      ]),
-    );
-    expect(mistral.models.map(({ id, tier }) => ({ id, tier }))).toEqual(
-      expect.arrayContaining([
-        { id: "mistral-medium-2604", tier: "paid" },
-        { id: "labs-devstral-small-2512", tier: "free" },
       ]),
     );
   });

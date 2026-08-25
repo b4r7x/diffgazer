@@ -14,6 +14,7 @@ import {
   buildLensReviewResultJsonSchema,
   CreateReviewResponseSchema,
   type EvidenceKey,
+  MAX_REVIEW_FILES,
   ReviewErrorCode,
 } from "@diffgazer/core/schemas/review";
 import { requireValue } from "@diffgazer/core/testing/assertions";
@@ -33,7 +34,7 @@ import {
   CREATE_REVIEW_BODY_LIMIT_KB,
   DEFAULT_BODY_LIMIT_KB,
 } from "../../shared/middlewares/body-limit.js";
-import { MAX_REVIEW_FILES, MAX_REVIEW_PATH_LENGTH } from "./schemas.js";
+import { MAX_REVIEW_PATH_LENGTH } from "./schemas.js";
 
 const REVIEW_A = "550e8400-e29b-41d4-a716-446655440000";
 const REVIEW_B = "660e8400-e29b-41d4-a716-446655440001";
@@ -310,7 +311,6 @@ async function buildMockAuthorization() {
     structuredOutputSchemaSha256: routerStructuredOutputSchemaSha256(),
     runtime: { identity: "diffgazer-server", version: "1.0.0" },
     credentialReferenceIdentity,
-    workspaceAccountReference: null,
   });
   const plan = {
     configurationId: record.configurationId,

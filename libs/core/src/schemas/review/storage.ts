@@ -17,6 +17,12 @@ import { LensIdSchema, ProfileIdSchema } from "./lens.js";
 export const ReviewModeSchema = z.enum(["staged", "unstaged", "files"]);
 export type ReviewMode = z.infer<typeof ReviewModeSchema>;
 
+/**
+ * Server-enforced cap on `files[]` in a review start request. Shared so the
+ * pickers can stop a selection before the server's 400 does.
+ */
+export const MAX_REVIEW_FILES = 200;
+
 const CountFieldSchema = z.number().int().nonnegative();
 
 const DiffStatsSchema = z.object({

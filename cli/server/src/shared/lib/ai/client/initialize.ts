@@ -7,10 +7,7 @@ import { findSecretBinding } from "../../config/persistence/secrets.js";
 import type { SecretBinding } from "../../config/secret-bindings.js";
 import { resolveSecretBinding } from "../../config/secret-bindings.js";
 import { secretIO } from "../../config/secret-io.js";
-import {
-  credentialReferenceIdentityFor,
-  workspaceAccountReferenceFor,
-} from "../../config/store/credential-lifecycle.js";
+import { credentialReferenceIdentityFor } from "../../config/store/credential-lifecycle.js";
 import { getStore } from "../../config/store.js";
 import { V1_MIGRATION_FAILED_MESSAGE } from "../../config/types.js";
 import { getConfigurationLeaseAuthority } from "../../session-registry.js";
@@ -57,7 +54,6 @@ async function loadAdmissionSnapshot(
       binding: null,
       evidence: null,
       credentialReferenceIdentity: null,
-      workspaceAccountReference: null,
     });
   }
 
@@ -71,7 +67,6 @@ async function loadAdmissionSnapshot(
     binding,
     evidence: current.value.evidenceByConfiguration.get(configurationId) ?? null,
     credentialReferenceIdentity: binding ? credentialReferenceIdentityFor(binding) : null,
-    workspaceAccountReference: workspaceAccountReferenceFor(record.record),
   });
 }
 

@@ -29,7 +29,6 @@ import {
 
 const SCHEMA_SHA256 = "1".repeat(64);
 const CREDENTIAL_REFERENCE_IDENTITY = "3".repeat(64);
-const WORKSPACE_ACCOUNT_REFERENCE = "4".repeat(64);
 const INSTALLATION_ID = "codex-installation-1";
 
 const limits = {
@@ -64,7 +63,6 @@ function suggestedModelId(productId: RunnableProductId): string {
     return policy.suggestedModelId;
   }
   if (productId === "openrouter") return "openai/gpt-4.1-mini";
-  if (productId === "moonshot") return "kimi-k3-2026-01";
   if (productId === "ollama") return "llama3.2";
   if (productId === "codex-cli") return "gpt-5-codex";
   if (productId === "copilot-cli") return "gpt-5";
@@ -120,8 +118,7 @@ function evidenceKeyFor(productId: RunnableProductId): EvidenceKey {
         noticeVersion,
         limits,
       };
-    default: {
-      const region = endpoint && "region" in endpoint ? (endpoint.region ?? null) : null;
+    default:
       return {
         authentication: null,
         credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
@@ -129,18 +126,14 @@ function evidenceKeyFor(productId: RunnableProductId): EvidenceKey {
         productId,
         transportFamily: "hosted-api",
         normalizedEndpoint: endpoint?.endpoint ?? "https://example.invalid/v1",
-        region,
-        workspaceAccountReference:
-          endpoint && "workspaceBound" in endpoint && endpoint.workspaceBound
-            ? WORKSPACE_ACCOUNT_REFERENCE
-            : null,
+        region: null,
+        workspaceAccountReference: null,
         modelId,
         runtime: { identity: "diffgazer-server", version: "1.2.3" },
         structuredOutputSchemaSha256: SCHEMA_SHA256,
         noticeVersion,
         limits,
       };
-    }
   }
 }
 
@@ -156,7 +149,7 @@ function executeRequestFor(productId: RunnableProductId): AdapterExecuteRequest 
 describe("adapter registry", () => {
   it("enumerates exactly one wired adapter per runnable product id", () => {
     expect(Object.keys(ADAPTER_REGISTRY).sort()).toEqual([...RUNNABLE_PRODUCT_IDS].sort());
-    expect(Object.keys(ADAPTER_REGISTRY)).toHaveLength(14);
+    expect(Object.keys(ADAPTER_REGISTRY)).toHaveLength(12);
 
     for (const productId of HOSTED_API_PRODUCT_IDS) {
       expect(ADAPTER_REGISTRY[productId]).toBe(HOSTED_ADAPTERS[productId]);

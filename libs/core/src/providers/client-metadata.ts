@@ -33,8 +33,6 @@ const ClientEndpointProfileSchema = z.strictObject({
   id: z.string().min(1),
   label: z.string().min(1),
   endpoint: z.string().min(1),
-  region: z.string().min(1).optional(),
-  workspaceRequired: z.literal(true).optional(),
 });
 
 const ClientModelPolicySchema = z.discriminatedUnion("kind", [
@@ -48,18 +46,6 @@ const ClientModelPolicySchema = z.discriminatedUnion("kind", [
     modelIds: z.array(z.string().min(1)),
     suggestedModelId: z.string().min(1).optional(),
     higherCostModelIds: z.array(z.string().min(1)).optional(),
-    higherCostModelEvidence: z
-      .strictObject({
-        outputLimit: z.literal("required"),
-        reviewConformance: z.literal("required"),
-      })
-      .optional(),
-    aliases: z.literal("forbidden"),
-  }),
-  z.strictObject({
-    kind: z.literal("discovered-family"),
-    familyPrefixes: z.array(z.string().min(1)),
-    rejectedAliases: z.array(z.string().min(1)),
     aliases: z.literal("forbidden"),
   }),
   z.strictObject({
@@ -266,16 +252,6 @@ function toClientModelPolicy(modelPolicy: ModelPolicy): ClientProductMetadata["m
         higherCostModelIds: modelPolicy.higherCostModelIds
           ? [...modelPolicy.higherCostModelIds]
           : undefined,
-        higherCostModelEvidence: modelPolicy.higherCostModelEvidence
-          ? { ...modelPolicy.higherCostModelEvidence }
-          : undefined,
-        aliases: modelPolicy.aliases,
-      };
-    case "discovered-family":
-      return {
-        kind: modelPolicy.kind,
-        familyPrefixes: [...modelPolicy.familyPrefixes],
-        rejectedAliases: [...modelPolicy.rejectedAliases],
         aliases: modelPolicy.aliases,
       };
     case "pinned-downstream-route":
@@ -304,8 +280,6 @@ function buildClientProduct(productId: RunnableProductId): ClientProductMetadata
       id: endpoint.id,
       label: endpoint.label,
       endpoint: endpoint.endpoint,
-      region: "region" in endpoint ? endpoint.region : undefined,
-      workspaceRequired: "workspaceBound" in endpoint ? endpoint.workspaceBound : undefined,
     })),
     customLoopbackEndpoint:
       "customLoopbackEndpoint" in product.configuration
@@ -337,8 +311,6 @@ function toClientConfiguration(
       transportFamily: configuration.transportFamily,
       productId: configuration.productId,
       endpoint: configuration.endpoint,
-      region: configuration.region,
-      workspace: configuration.workspace,
       selectedModelId: configuration.selectedModelId,
       notices: configuration.notices.map(toClientNotice),
       availableActions: [...configuration.availableActions],

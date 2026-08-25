@@ -311,6 +311,21 @@ describe("review error-guidance presentation", () => {
     });
   });
 
+  it("names the narrowing remedy for an oversized diff", () => {
+    expect(
+      classifyReviewStreamError(
+        "Diff is ~175k tokens; gemini-flash reads at most 128k.",
+        "DIFF_TOO_LARGE",
+      ),
+    ).toEqual({
+      kind: "other",
+      title: "Diff Too Large",
+      guidance:
+        "This diff does not fit the selected model. Narrow the review to specific files, or pick a model with a larger context window.",
+      ctaLabel: "Back to Home",
+    });
+  });
+
   it("routes only credential, model, and provider failures to the providers screen", () => {
     expect(isProviderRecoveryError("api-key")).toBe(true);
     expect(isProviderRecoveryError("model-incompatible")).toBe(true);

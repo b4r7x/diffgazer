@@ -78,9 +78,7 @@ function buildRunnablePlan(
   product: RunnableProductDescriptor<RunnableProductId>,
   readiness?: Readiness,
 ): RunnableSetupPlan {
-  const endpointFields = product.configuration.fields.filter(
-    (field) => field === "endpoint" || field === "region" || field === "workspace",
-  );
+  const endpointFields = product.configuration.fields.filter((field) => field === "endpoint");
   const authenticationFields = product.configuration.fields.filter(
     (field) =>
       field === "credential" || field === "local-authentication" || field === "installation",

@@ -75,8 +75,6 @@ const toNonSecretInput = (input: ClientConfigurationInput): NonSecretTransportIn
       transportFamily: input.transportFamily,
       productId: input.productId,
       endpoint: input.endpoint,
-      ...(input.region !== undefined ? { region: input.region } : {}),
-      ...(input.workspace !== undefined ? { workspace: input.workspace } : {}),
     });
   }
   if (input.transportFamily === "local-http") {

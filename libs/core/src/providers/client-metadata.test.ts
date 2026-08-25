@@ -8,9 +8,7 @@ import { RUNNABLE_PRODUCT_IDS, type RunnableProductId } from "../schemas/config/
 import {
   ClientMetadataPayloadSchema,
   type ClientMetadataSource,
-  ClientProductMetadataSchema,
   projectClientMetadata,
-  projectClientProduct,
 } from "./client-metadata.js";
 import { PRODUCT_REGISTRY, type ProductNotice } from "./product-registry.js";
 
@@ -75,7 +73,6 @@ function copyNotice(notice: ProductNotice) {
 function selectedModelFor(productId: RunnableProductId): string {
   const policy = PRODUCT_REGISTRY[productId].modelPolicy;
   if (policy.kind === "discovered-allowlist") return policy.modelIds[0];
-  if (policy.kind === "discovered-family") return policy.familyPrefixes[0];
   if (policy.kind === "pinned-downstream-route") return "openai/gpt-4.1-mini";
   return "suggestedModelId" in policy
     ? (policy.suggestedModelId ?? "discovered-model")
@@ -100,8 +97,6 @@ function readyConfigurationFor(productId: RunnableProductId): ClientConfiguratio
       ...base,
       transportFamily: product.transportFamily,
       endpoint: endpoint.endpoint,
-      ...(!("region" in endpoint) ? {} : { region: endpoint.region }),
-      ...("workspaceBound" in endpoint ? { workspace: "workspace-reference" } : {}),
     });
   }
 
@@ -153,12 +148,10 @@ const CONFIGURATIONS = [
     revision: 1,
     status: "supported",
     transportFamily: "hosted-api",
-    productId: "qwen",
-    endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-    region: "international",
-    workspace: "workspace-reference",
-    selectedModelId: "qwen3-coder-flash",
-    notices: [copyNotice(PRODUCT_REGISTRY.qwen.notice)],
+    productId: "deepseek",
+    endpoint: "https://api.deepseek.com/v1",
+    selectedModelId: "deepseek-v4-flash",
+    notices: [copyNotice(PRODUCT_REGISTRY.deepseek.notice)],
     availableActions: ["inspect", "select", "test", "update", "delete"],
   },
   {
@@ -229,12 +222,10 @@ describe("client metadata projection", () => {
         "endpoint",
         "notices",
         "productId",
-        "region",
         "revision",
         "selectedModelId",
         "status",
         "transportFamily",
-        "workspace",
       ],
       [
         "authentication",
@@ -316,7 +307,7 @@ describe("client metadata projection", () => {
       ...sourceForConfiguration(CONFIGURATIONS[0]),
       [field]: value,
       configuration: { ...CONFIGURATIONS[0], [field]: value },
-      readiness: { ...readiness("unsupported", "qwen"), [field]: value },
+      readiness: { ...readiness("unsupported", "deepseek"), [field]: value },
       notices: CONFIGURATIONS[0].notices.map((notice) => ({ ...notice, [field]: value })),
     };
     expect(
@@ -328,10 +319,10 @@ describe("client metadata projection", () => {
     const configured = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[0]));
     const otherProduct = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[1])).product;
     const unconfigured = projectClientMetadata({
-      productId: "qwen",
+      productId: "deepseek",
       configuration: null,
-      readiness: readiness("unconfigured", "qwen"),
-      notices: [PRODUCT_REGISTRY.qwen.notice],
+      readiness: readiness("unconfigured", "deepseek"),
+      notices: [PRODUCT_REGISTRY.deepseek.notice],
       actions: ["create"],
     });
 
@@ -347,7 +338,7 @@ describe("client metadata projection", () => {
         notices: CONFIGURATIONS[1].notices,
         actions: [...CONFIGURATIONS[1].availableActions],
       },
-      { ...configured, readiness: readiness("unconfigured", "qwen") },
+      { ...configured, readiness: readiness("unconfigured", "deepseek") },
       { ...configured, actions: ["inspect", "delete"] },
       {
         ...configured,
@@ -370,17 +361,8 @@ describe("client metadata projection", () => {
     expect(
       ClientConfigurationSummarySchema.safeParse({
         ...CONFIGURATIONS[0],
-        workspace: undefined,
-      }).success,
-    ).toBe(false);
-
-    expect(
-      ClientConfigurationSummarySchema.safeParse({
-        ...CONFIGURATIONS[0],
         productId: "gemini",
         endpoint: "https://generativelanguage.googleapis.com/v1beta",
-        region: undefined,
-        workspace: "workspace-reference",
       }).success,
     ).toBe(false);
 
@@ -420,54 +402,10 @@ describe("client metadata projection", () => {
       expect(
         ClientMetadataPayloadSchema.safeParse({
           ...payload,
-          configuration: {
-            ...configuration,
-            workspace: `workspace${controlCharacter}reference`,
-          },
-        }).success,
-      ).toBe(false);
-
-      expect(
-        ClientMetadataPayloadSchema.safeParse({
-          ...payload,
           notices: [{ ...notice, privacy: [`safe${controlCharacter}notice`] }],
         }).success,
       ).toBe(false);
     }
-  });
-
-  it("preserves Qwen higher-cost gating as a safe client policy marker", () => {
-    const qwen = projectClientProduct("qwen");
-
-    if (qwen.modelPolicy.kind !== "discovered-allowlist") {
-      throw new Error("Expected Qwen to expose an allowlist client policy");
-    }
-
-    const registryPolicy = PRODUCT_REGISTRY.qwen.modelPolicy;
-    if (registryPolicy.kind !== "discovered-allowlist") {
-      throw new Error("Expected Qwen to declare an allowlist registry policy");
-    }
-
-    expect(qwen.modelPolicy.higherCostModelEvidence).toEqual({
-      outputLimit: "required",
-      reviewConformance: "required",
-    });
-    expect(qwen.modelPolicy.higherCostModelEvidence).toEqual(
-      registryPolicy.higherCostModelEvidence,
-    );
-
-    expect(
-      ClientProductMetadataSchema.safeParse({
-        ...qwen,
-        modelPolicy: {
-          ...qwen.modelPolicy,
-          higherCostModelEvidence: {
-            outputLimit: 8192,
-            reviewConformance: "passed",
-          },
-        },
-      }).success,
-    ).toBe(false);
   });
 
   it("requires ready metadata to bind exact model, evidence, and notice for every runnable product", () => {
@@ -545,12 +483,12 @@ describe("client metadata projection", () => {
     }
   });
 
-  it("fails closed for higher-cost and unpinned route models at the client boundary", () => {
-    const qwen = projectClientMetadata(readySourceFor("qwen"));
+  it("fails closed for off-allowlist and unpinned route models at the client boundary", () => {
+    const deepseek = projectClientMetadata(readySourceFor("deepseek"));
     expect(
       ClientMetadataPayloadSchema.safeParse({
-        ...qwen,
-        configuration: { ...qwen.configuration, selectedModelId: "qwen3-coder-plus" },
+        ...deepseek,
+        configuration: { ...deepseek.configuration, selectedModelId: "deepseek-v5-flash" },
       }).success,
     ).toBe(false);
 
@@ -597,9 +535,9 @@ describe("client metadata projection", () => {
     "skipped",
   ] as const)("rejects a wrong-product acknowledgement in %s readiness", (status) => {
     const payload = projectClientMetadata({
-      productId: "qwen",
+      productId: "deepseek",
       configuration: CONFIGURATIONS[0],
-      readiness: readiness(status, "qwen"),
+      readiness: readiness(status, "deepseek"),
       notices: CONFIGURATIONS[0].notices,
       actions: [...CONFIGURATIONS[0].availableActions],
     });
@@ -623,9 +561,9 @@ describe("client metadata projection", () => {
   });
 
   it("preserves an accepted current notice on a non-ready state and rejects stale acceptance", () => {
-    const product = PRODUCT_REGISTRY.qwen;
+    const product = PRODUCT_REGISTRY.deepseek;
     const acceptedReadiness = ReadinessSchema.parse({
-      ...readiness("skipped", "qwen"),
+      ...readiness("skipped", "deepseek"),
       acknowledgement: {
         status: "accepted",
         noticeId: product.notice.id,
@@ -634,7 +572,7 @@ describe("client metadata projection", () => {
       },
     });
     const payload = projectClientMetadata({
-      productId: "qwen",
+      productId: "deepseek",
       configuration: CONFIGURATIONS[0],
       readiness: acceptedReadiness,
       notices: CONFIGURATIONS[0].notices,
@@ -672,7 +610,7 @@ describe("client metadata projection", () => {
     };
     const unsupported = {
       ...payload,
-      readiness: readiness("unsupported", "qwen"),
+      readiness: readiness("unsupported", "deepseek"),
     };
 
     expect(unsupported.readiness.acknowledgement).toEqual({ status: "not-applicable" });
@@ -694,7 +632,7 @@ describe("client metadata projection", () => {
 
     for (const secretBearingValue of [
       "literal-secret-sentinel",
-      "DIFFGAZER_QWEN_API_KEY",
+      "DIFFGAZER_ZAI_API_KEY",
       "environment-value-sentinel",
       "Bearer abcdefgh12345678",
       "sk-proj_abcdefgh12345678",
@@ -746,13 +684,13 @@ describe("client metadata projection", () => {
     expect(
       ClientMetadataPayloadSchema.safeParse({
         ...hostedPayload,
-        readiness: readiness("local-conformance-failed", "qwen"),
+        readiness: readiness("local-conformance-failed", "deepseek"),
       }).success,
     ).toBe(false);
     expect(
       ClientMetadataPayloadSchema.safeParse({
         ...hostedPayload,
-        readiness: readiness("conformance-failed", "qwen"),
+        readiness: readiness("conformance-failed", "deepseek"),
       }).success,
     ).toBe(true);
     expect(

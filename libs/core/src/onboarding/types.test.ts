@@ -24,10 +24,8 @@ describe("onboarding state", () => {
       family: "hosted-api",
       input: {
         transportFamily: "hosted-api",
-        productId: "qwen",
-        endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        region: "international",
-        workspace: "workspace-reference",
+        productId: "deepseek",
+        endpoint: "https://api.deepseek.com/v1",
         credential: { kind: "environment" },
       },
     },
@@ -61,12 +59,11 @@ describe("onboarding state", () => {
   it("requires explicit acknowledgement of the exact selected product notice", () => {
     const input = runnableState({
       transportFamily: "hosted-api",
-      productId: "mistral",
-      endpoint: "https://api.mistral.ai/v1",
-      region: "global",
+      productId: "deepseek",
+      endpoint: "https://api.deepseek.com/v1",
       credential: { kind: "literal", value: "write-only-value" },
     });
-    const notice = PRODUCT_REGISTRY.mistral.notice;
+    const notice = PRODUCT_REGISTRY.deepseek.notice;
 
     expect(onboardingTypes.OnboardingStateSchema.safeParse(input).success).toBe(true);
     expect(

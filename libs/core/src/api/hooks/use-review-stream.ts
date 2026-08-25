@@ -10,7 +10,7 @@ import {
   reviewReducer,
 } from "../../review/state.js";
 import type { StreamReviewError } from "../../review/stream.js";
-import { ReviewErrorCode } from "../../schemas/review/index.js";
+import { ReviewErrorCode, type ReviewSizeWarning } from "../../schemas/review/index.js";
 import type { CancelReason } from "../review.js";
 import { useApi } from "./context.js";
 
@@ -23,6 +23,8 @@ export interface ReviewStreamState extends ReviewState {
   hasCompleted: boolean;
   /** Non-blocking server notices (e.g. the streamed event-cap warning). */
   notices: string[];
+  /** The review-start size advisory, when the run was admitted with one. */
+  sizeWarning: ReviewSizeWarning | null;
 }
 
 export interface CancelReviewOptions {
@@ -32,7 +34,8 @@ export interface CancelReviewOptions {
 type StreamAction =
   | ReviewAction
   | { type: "SET_REVIEW_ID"; reviewId: string }
-  | { type: "NOTICE"; notice: string };
+  | { type: "NOTICE"; notice: string }
+  | { type: "SIZE_WARNING"; warning: ReviewSizeWarning };
 
 function createInitialStreamState(): ReviewStreamState {
   return {
@@ -40,6 +43,7 @@ function createInitialStreamState(): ReviewStreamState {
     reviewId: null,
     hasCompleted: false,
     notices: [],
+    sizeWarning: null,
   };
 }
 
@@ -49,9 +53,17 @@ function streamReducer(state: ReviewStreamState, action: StreamAction): ReviewSt
       return { ...state, reviewId: action.reviewId };
     case "NOTICE":
       return { ...state, notices: [...state.notices, action.notice] };
+    case "SIZE_WARNING":
+      return { ...state, sizeWarning: action.warning };
     case "START":
     case "RESET":
-      return { ...reviewReducer(state, action), reviewId: null, hasCompleted: false, notices: [] };
+      return {
+        ...reviewReducer(state, action),
+        reviewId: null,
+        hasCompleted: false,
+        notices: [],
+        sizeWarning: null,
+      };
   }
 
   if (action.type === "EVENT" && action.event.type === "review_started") {
@@ -61,6 +73,7 @@ function streamReducer(state: ReviewStreamState, action: StreamAction): ReviewSt
       reviewId: action.event.reviewId,
       hasCompleted: state.hasCompleted,
       notices: state.notices,
+      sizeWarning: state.sizeWarning,
     };
   }
 
@@ -69,6 +82,7 @@ function streamReducer(state: ReviewStreamState, action: StreamAction): ReviewSt
     reviewId: state.reviewId,
     hasCompleted: action.type === "COMPLETE_WITH_RESULT" ? true : state.hasCompleted,
     notices: state.notices,
+    sizeWarning: state.sizeWarning,
   };
 }
 
@@ -161,6 +175,13 @@ export function useReviewStream() {
       dispatch({ type: "NOTICE", notice });
     };
 
+    const dispatchSizeWarning = (warning: ReviewSizeWarning) => {
+      if (!isCurrentResume()) {
+        return;
+      }
+      dispatch({ type: "SIZE_WARNING", warning });
+    };
+
     try {
       const result = await api.resumeReviewStream({
         reviewId,
@@ -168,6 +189,7 @@ export function useReviewStream() {
         onAgentEvent: dispatchEvent,
         onStepEvent: dispatchEvent,
         onChunk: dispatchNotice,
+        onSizeWarning: dispatchSizeWarning,
       });
 
       if (!isCurrentResume()) {

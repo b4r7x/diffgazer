@@ -112,3 +112,33 @@ describe("processReviewStream", () => {
     expect(chunks).toEqual(["partial"]);
   });
 });
+
+describe("review size advisory", () => {
+  it("routes the streamed advisory to its own handler and still completes the review", async () => {
+    const warning = {
+      message: "Large review: 0.75MB across 40 files.",
+      diffBytes: 786_432,
+      estimatedInputTokens: 250_000,
+      contextTokens: 1_000_000,
+      modelId: "some-model",
+    };
+    const warnings: unknown[] = [];
+    const chunks: string[] = [];
+
+    const result = await processReviewStream(
+      createSSEReader([
+        { type: "review_size_warning", warning },
+        { type: "complete", reviewId: "r1", result: reviewResult },
+      ]),
+      {
+        onSizeWarning: (event) => warnings.push(event),
+        onChunk: (content) => chunks.push(content),
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(warnings).toEqual([warning]);
+    // It is not a free-text notice: the chunk channel never sees it.
+    expect(chunks).toEqual([]);
+  });
+});

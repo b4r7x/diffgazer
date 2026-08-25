@@ -161,6 +161,65 @@ describe("ReviewProgressView", () => {
     expect(status).toHaveTextContent(message);
   });
 
+  it("announces a large-diff run and names the way to narrow it while it reads", () => {
+    renderView({
+      isRunning: true,
+      data: makeProgressData({
+        sizeWarning: {
+          message: "This diff is about 180000 tokens against a 200000 token window.",
+          diffBytes: 720_000,
+          estimatedInputTokens: 180_000,
+          contextTokens: 200_000,
+          modelId: "openrouter/test-model",
+        },
+      }),
+    });
+
+    const callout = screen.getByText("Large Review").closest('[role="status"]');
+    if (!callout) throw new Error("size warning did not render as a live status region");
+    expect(callout).toHaveTextContent(
+      "This diff is about 180000 tokens against a 200000 token window.",
+    );
+    expect(callout).toHaveTextContent("Review Scope");
+  });
+
+  it("drops the narrowing line once the run has finished", () => {
+    renderView({
+      isRunning: false,
+      data: makeProgressData({
+        sizeWarning: {
+          message: "Large diff.",
+          diffBytes: 1,
+          estimatedInputTokens: 1,
+          contextTokens: null,
+          modelId: null,
+        },
+      }),
+    });
+
+    // There are results to read now; narrowing would throw them away.
+    expect(screen.getByText("Large Review")).toBeInTheDocument();
+    expect(screen.queryByText(/Review Scope/)).not.toBeInTheDocument();
+  });
+
+  it("stands the size advisory down while the run has a failure to report", () => {
+    renderView({
+      isRunning: false,
+      error: "Stream disconnected",
+      data: makeProgressData({
+        sizeWarning: {
+          message: "Large diff.",
+          diffBytes: 1,
+          estimatedInputTokens: 1,
+          contextTokens: null,
+          modelId: null,
+        },
+      }),
+    });
+
+    expect(screen.queryByText("Large Review")).not.toBeInTheDocument();
+  });
+
   it("publishes only available progress shortcuts", async () => {
     renderView();
 

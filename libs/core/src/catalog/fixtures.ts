@@ -152,14 +152,15 @@ export const RAW_CATALOG: Record<string, unknown> = {
       },
     },
   },
-  mistral: {
-    id: "mistral",
-    name: "Mistral",
+  deepseek: {
+    id: "deepseek",
+    name: "DeepSeek",
+    env: ["DEEPSEEK_API_KEY"],
     models: {
-      "mistral-small-2603": {
-        id: "mistral-small-2603",
-        name: "Mistral Small 2603",
-        family: "mistral-small",
+      "deepseek-v4-flash": {
+        id: "deepseek-v4-flash",
+        name: "DeepSeek V4 Flash",
+        family: "deepseek-v4",
         cost: { input: 0.1, output: 0.3 },
         limit: { context: 131072, output: 32768 },
         tool_call: true,

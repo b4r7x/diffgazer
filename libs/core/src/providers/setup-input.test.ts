@@ -126,50 +126,17 @@ describe("buildSetupInput", () => {
     });
   });
 
-  it.each([
-    ["moonshot", "mainland"],
-    ["mistral", "global"],
-  ] as const)("includes the default region for unconfigured %s create payloads", (productId, region) => {
-    const input = buildSetupInput(
-      unconfiguredRow(productId),
-      toSetupCredential("paste", "secret-key"),
-    );
-
-    expect(input).toMatchObject({
-      transportFamily: "hosted-api",
-      productId,
-      region,
-    });
-    expect(() => HostedApiConfigurationInputSchema.parse(input)).not.toThrow();
-  });
-
-  it("includes the default region for unconfigured qwen even before workspace is collected", () => {
-    const input = buildSetupInput(
-      unconfiguredRow("qwen"),
-      toSetupCredential("paste", "secret-key"),
-    );
-
-    expect(input).toMatchObject({
-      transportFamily: "hosted-api",
-      productId: "qwen",
-      region: "international",
-    });
-    expect(input).not.toHaveProperty("workspace");
-  });
-
-  it("preserves region and workspace when updating a configured hosted product", () => {
+  it("reuses the stored endpoint when updating a configured hosted product", () => {
     const row = configuredRow({
       configuration: {
-        configurationId: "qwen-1",
+        configurationId: "deepseek-1",
         revision: 2,
         status: "supported",
         transportFamily: "hosted-api",
-        productId: "qwen",
-        endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        region: "international",
-        workspace: "workspace-alpha",
-        selectedModelId: "qwen3-coder-flash",
-        notices: [makeClientNotice("qwen")],
+        productId: "deepseek",
+        endpoint: "https://api.deepseek.com/v1",
+        selectedModelId: "deepseek-v4-flash",
+        notices: [makeClientNotice("deepseek")],
         availableActions: [...CONFIGURED_ACTIONS],
       },
       readiness: readiness("credential-invalid"),
@@ -179,10 +146,8 @@ describe("buildSetupInput", () => {
 
     expect(input).toEqual({
       transportFamily: "hosted-api",
-      productId: "qwen",
-      endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-      region: "international",
-      workspace: "workspace-alpha",
+      productId: "deepseek",
+      endpoint: "https://api.deepseek.com/v1",
       credential: { kind: "environment" },
     });
     expect(() => HostedApiConfigurationInputSchema.parse(input)).not.toThrow();

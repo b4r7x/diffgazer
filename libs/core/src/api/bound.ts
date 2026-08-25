@@ -1,5 +1,6 @@
 import { createApiClient } from "./client.js";
 import { bindConfig } from "./config.js";
+import { bindGit } from "./git.js";
 import { bindReview } from "./review.js";
 import { bindSettings } from "./settings.js";
 import { bindShutdown } from "./shutdown.js";
@@ -12,6 +13,7 @@ export function createApi(config: ApiClientConfig) {
     request: client.request,
     ...bindConfig(client),
     ...bindSettings(client),
+    ...bindGit(client),
     ...bindReview(client),
     ...bindShutdown(client),
   };

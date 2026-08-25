@@ -78,7 +78,6 @@ describe("local transport setup docs", () => {
 
     expect(source).toContain("discovered-exact");
     expect(source).toContain("discovered-allowlist");
-    expect(source).toContain("discovered-family");
     expect(source).toContain("pinned downstream route");
     expect(source).not.toMatch(
       /For every selectable product, the model you select must.*appear in the admitted discovery result/i,

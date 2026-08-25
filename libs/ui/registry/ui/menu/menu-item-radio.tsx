@@ -12,7 +12,7 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useMenuContext } from "./menu-context";
-import { getItemState, menuItemBase, menuItemIndicator, menuItemLabel } from "./menu-item-variants";
+import { getItemState, menuItemBase, menuItemIndicator } from "./menu-item-variants";
 import { useMenuItemInteractions } from "./use-menu-item-interactions";
 
 const RADIO_SELECTED = "(*)";
@@ -43,10 +43,23 @@ export function MenuItemRadio({
   onClick,
   onFocus,
   onMouseDown,
+  onPointerMove,
+  onPointerLeave,
   ...rootProps
 }: MenuItemRadioProps) {
-  const { selectedId, highlighted, activate, highlight, idPrefix, registerItem, unregisterItem } =
-    useMenuContext();
+  const {
+    selectedId,
+    highlighted,
+    hoveredId,
+    activate,
+    highlight,
+    hover,
+    unhover,
+    trackPointer,
+    idPrefix,
+    registerItem,
+    unregisterItem,
+  } = useMenuContext();
   const registrationId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const composedRef = useComposedRefs(rootRef, ref);
@@ -61,17 +74,24 @@ export function MenuItemRadio({
     return () => unregisterItem(registrationId);
   }, [registerItem, unregisterItem, registrationId, id, disabled]);
 
-  const { handleClick, handleFocus, handleMouseDown } = useMenuItemInteractions({
-    id,
-    disabled,
-    activate,
-    highlight,
-    onClick,
-    onFocus,
-    onMouseDown,
-  });
+  const { handleClick, handleFocus, handleMouseDown, handlePointerMove, handlePointerLeave } =
+    useMenuItemInteractions({
+      id,
+      disabled,
+      activate,
+      highlight,
+      hover,
+      unhover,
+      trackPointer,
+      onClick,
+      onFocus,
+      onMouseDown,
+      onPointerMove,
+      onPointerLeave,
+    });
 
-  const state = getItemState({ disabled, isFocused, isSelected });
+  const state = getItemState({ disabled, isFocused, isSelected, isHovered: hoveredId === id });
+  const isHovered = state === "hovered";
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Enter/Space selection is handled centrally by the menu container via useNavigation, not per item.
@@ -85,6 +105,7 @@ export function MenuItemRadio({
       data-diffgazer-navigation-item="true"
       data-value={id}
       data-highlighted={isFocused ? "" : undefined}
+      data-hovered={isHovered ? "" : undefined}
       data-state={isSelected ? "checked" : "unchecked"}
       aria-checked={isSelected}
       aria-disabled={disabled || undefined}
@@ -92,15 +113,20 @@ export function MenuItemRadio({
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onFocus={handleFocus}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
       className={cn(
         menuItemBase({ menuVariant: "default", state, colorVariant: "default" }),
         className,
       )}
     >
-      <span aria-hidden="true" className={menuItemIndicator({ idle: !isActive && !disabled })}>
+      <span
+        aria-hidden="true"
+        className={menuItemIndicator({ idle: !isActive && !isHovered && !disabled })}
+      >
         {isSelected ? RADIO_SELECTED : RADIO_UNSELECTED}
       </span>
-      <span className={menuItemLabel({ idle: !isActive && !disabled })}>{children}</span>
+      <span className="tracking-wide">{children}</span>
     </div>
   );
 }

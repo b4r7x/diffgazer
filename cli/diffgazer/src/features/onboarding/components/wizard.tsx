@@ -6,7 +6,6 @@ import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
-import { Input } from "../../../components/ui/input";
 import { RadioGroup } from "../../../components/ui/radio";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
@@ -34,54 +33,23 @@ function EndpointBindingStep({ wizard }: WizardStepBodyProps): ReactElement | nu
   const isActive = wizard.focusArea === "step";
 
   if (input.transportFamily === "hosted-api") {
-    const endpoints = step.endpoints;
-    const selectedEndpoint =
-      endpoints.find((endpoint) => endpoint.endpoint === input.endpoint) ?? endpoints[0];
     return (
       <Box flexDirection="column" gap={1}>
         <Text color={tokens.muted}>Choose the endpoint profile for this hosted product.</Text>
-        {step.requiredFields.includes("region") ? (
-          <RadioGroup
-            value={input.region ?? selectedEndpoint?.region ?? ""}
-            onChange={(region) => {
-              const endpoint = endpoints.find((candidate) => candidate.region === region);
-              if (!endpoint || !("region" in endpoint)) return;
-              wizard.updateData({
-                configurationInput: {
-                  ...input,
-                  endpoint: endpoint.endpoint,
-                  region: endpoint.region,
-                },
-              });
-            }}
-            isActive={isActive}
-          >
-            {endpoints.map((endpoint) =>
-              "region" in endpoint ? (
-                <RadioGroup.Item
-                  key={endpoint.region ?? endpoint.endpoint}
-                  value={endpoint.region ?? ""}
-                  label={endpoint.region ?? ""}
-                  description={endpoint.endpoint}
-                />
-              ) : null,
-            )}
-          </RadioGroup>
-        ) : null}
-        {step.requiredFields.includes("workspace") ? (
-          <Box flexDirection="column" gap={1}>
-            <Text color={tokens.muted}>Workspace reference</Text>
-            <Input
-              value={input.workspace ?? ""}
-              onChange={(workspace) =>
-                wizard.updateData({
-                  configurationInput: { ...input, workspace },
-                })
-              }
-              isActive={isActive}
+        <RadioGroup
+          value={input.endpoint}
+          onChange={(endpoint) => wizard.updateData({ configurationInput: { ...input, endpoint } })}
+          isActive={isActive}
+        >
+          {step.endpoints.map((endpoint) => (
+            <RadioGroup.Item
+              key={endpoint.endpoint}
+              value={endpoint.endpoint}
+              label={endpoint.label}
+              description={endpoint.endpoint}
             />
-          </Box>
-        ) : null}
+          ))}
+        </RadioGroup>
       </Box>
     );
   }

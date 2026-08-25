@@ -33,7 +33,7 @@ export const BILLING_TIER_BADGES = {
 } as const satisfies Record<BillingTier, BillingTierBadge>;
 
 /** The declared billing modes that let an account run a priced model at no cost. */
-const FREE_TIER_BILLING_MODES: readonly BillingMode[] = ["free-tier", "evaluation"];
+const FREE_TIER_BILLING_MODES: readonly BillingMode[] = ["free-tier"];
 
 function declaresFreeTier(productId: RunnableProductId): boolean {
   return PRODUCT_REGISTRY[productId].billing.modes.some((mode) =>

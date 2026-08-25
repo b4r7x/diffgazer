@@ -61,7 +61,6 @@ export type AdmissionSnapshot = Readonly<{
   binding: SecretBinding | null;
   evidence: AdmissionEvidence | null;
   credentialReferenceIdentity: string | null;
-  workspaceAccountReference: string | null;
 }>;
 
 export type AdmittedExecutionPlan = Readonly<{
@@ -96,12 +95,6 @@ export type AuthorizedReviewExecution = Readonly<{
   budgetReservation: BudgetReservation;
   lease: ExecutionLease;
   resolveCredential: () => Promise<string | null>;
-  /**
-   * The workspace account the configuration is bound to, for the products whose
-   * endpoint is workspace-bound. The plan carries only its hashed reference, so
-   * the literal travels on the server-only execution channel.
-   */
-  workspaceAccountId: string | null;
   release: () => void;
 }>;
 
@@ -463,7 +456,6 @@ export async function authorizeReviewExecution(
       structuredOutputSchemaSha256: dependencies.structuredOutputSchemaSha256,
       runtime: dependencies.runtimeIdentity,
       credentialReferenceIdentity: snapshot.credentialReferenceIdentity,
-      workspaceAccountReference: snapshot.workspaceAccountReference,
     });
   } catch {
     return err(
@@ -483,7 +475,6 @@ export async function authorizeReviewExecution(
     runtime: dependencies.runtimeIdentity,
     structuredOutputSchemaSha256: dependencies.structuredOutputSchemaSha256,
     credentialReferenceIdentity: snapshot.credentialReferenceIdentity,
-    workspaceAccountReference: snapshot.workspaceAccountReference,
     now,
   });
 
@@ -632,8 +623,6 @@ export async function authorizeReviewExecution(
           configurationRevision: record.revision,
           binding: snapshot.binding,
         }),
-      workspaceAccountId:
-        record.input.transportFamily === "hosted-api" ? (record.input.workspace ?? null) : null,
       release,
     }),
   );

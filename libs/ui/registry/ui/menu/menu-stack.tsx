@@ -5,6 +5,7 @@ import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useMenuContext } from "./menu-context";
 import { getItemState, menuItemBase } from "./menu-item-variants";
+import { useMenuItemInteractions } from "./use-menu-item-interactions";
 
 /** Reserved item id for the drill-down back row. */
 export const MENU_STACK_BACK_ID = "__menu-stack-back";
@@ -23,7 +24,11 @@ interface MenuStackBackProps {
 export function MenuStackBack({ label }: MenuStackBackProps) {
   const {
     highlighted,
+    hoveredId,
     highlight,
+    hover,
+    unhover,
+    trackPointer,
     idPrefix,
     registerItem,
     unregisterItem,
@@ -38,7 +43,24 @@ export function MenuStackBack({ label }: MenuStackBackProps) {
   const pop = useCallback(() => popSub(), [popSub]);
 
   const isFocused = highlighted === MENU_STACK_BACK_ID;
-  const state = getItemState({ disabled: false, isFocused, isSelected: false });
+  const state = getItemState({
+    disabled: false,
+    isFocused,
+    isSelected: false,
+    isHovered: hoveredId === MENU_STACK_BACK_ID,
+  });
+  const isHovered = state === "hovered";
+
+  const { handleClick, handleFocus, handleMouseDown, handlePointerMove, handlePointerLeave } =
+    useMenuItemInteractions<HTMLButtonElement>({
+      id: MENU_STACK_BACK_ID,
+      disabled: false,
+      activate: pop,
+      highlight,
+      hover,
+      unhover,
+      trackPointer,
+    });
 
   useLayoutEffect(() => {
     registerItem(registrationId, MENU_STACK_BACK_ID, false, rowRef.current);
@@ -63,8 +85,12 @@ export function MenuStackBack({ label }: MenuStackBackProps) {
       data-diffgazer-navigation-item="true"
       data-value={MENU_STACK_BACK_ID}
       data-highlighted={isFocused ? "" : undefined}
-      onClick={pop}
-      onFocus={() => highlight(MENU_STACK_BACK_ID)}
+      data-hovered={isHovered ? "" : undefined}
+      onMouseDown={handleMouseDown}
+      onClick={handleClick}
+      onFocus={handleFocus}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
       className={cn(
         menuItemBase({ menuVariant: "default", state }),
         "min-h-11 gap-2 border-b border-border text-left",

@@ -28,23 +28,4 @@ describe("ApiKeyStep (TUI)", () => {
     expect(frame).not.toContain("GEMINI_API_KEY");
     expect(frame).toContain("Fixed for this provider");
   });
-
-  test("uses the qwen credential mapping instead of vendor aliases", async () => {
-    const { lastFrame } = render(
-      <CliThemeProvider initialTheme="dark">
-        <ApiKeyStep
-          productId="qwen"
-          transportFamily="hosted-api"
-          method="env"
-          onMethodChange={vi.fn()}
-          apiKey=""
-          onApiKeyChange={vi.fn()}
-        />
-      </CliThemeProvider>,
-    );
-
-    const frame = lastFrame() ?? "";
-    expect(frame).toContain("QWEN_API_KEY");
-    expect(frame).not.toContain("DASHSCOPE_API_KEY");
-  });
 });

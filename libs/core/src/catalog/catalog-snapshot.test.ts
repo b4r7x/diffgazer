@@ -278,14 +278,9 @@ describe("CATALOG_SNAPSHOT", () => {
     expect(offeredIds.get("zai")).toEqual(
       expect.arrayContaining(["glm-4.5-flash", "glm-4.7-flash", "glm-4.7", "glm-5-turbo"]),
     );
-    expect(offeredIds.get("mistral")).toEqual(
-      expect.arrayContaining(["mistral-medium-2604", "labs-devstral-small-2512"]),
-    );
     expect(offeredIds.get("groq")).toContain("allam-2-7b");
     expect(offeredIds.get("deepseek")).toEqual(["deepseek-v4-flash", "deepseek-v4-pro"]);
-    expect(offeredIds.get("qwen")).toEqual(["qwen3-coder-flash"]);
-    expect(offeredIds.get("moonshot")).toEqual(["kimi-k2.6", "kimi-k3"]);
-    for (const productId of ["zai", "mistral", "groq"] as const) {
+    for (const productId of ["zai", "groq"] as const) {
       expect(PROVIDER_DERIVED[productId].billing, productId).toBe("mixed");
     }
   });

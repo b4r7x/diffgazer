@@ -16,9 +16,6 @@ export const PROVIDER_OVERLAY: Partial<Record<RunnableProductId, ProviderOverlay
   openrouter: { modelsDevIds: ["openrouter"] },
   groq: { modelsDevIds: ["groq"] },
   cerebras: { modelsDevIds: ["cerebras"] },
-  mistral: { modelsDevIds: ["mistral"] },
   deepseek: { modelsDevIds: ["deepseek"] },
-  qwen: { modelsDevIds: ["alibaba"] },
-  moonshot: { modelsDevIds: ["moonshotai"] },
   "ollama-cloud": { modelsDevIds: ["ollama-cloud"] },
 };

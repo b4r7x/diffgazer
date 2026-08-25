@@ -54,7 +54,6 @@ function resolveRegistryAdapter(productId: RunnableProductId): Result<Adapter, A
 export type AdmittedExecutionChannel = Readonly<{
   adapter: Adapter;
   resolveCredential: () => Promise<string | null>;
-  workspaceAccountId?: string | null;
   reportDiagnostic?: AdapterExecuteRequest["reportDiagnostic"];
 }>;
 
@@ -72,7 +71,6 @@ function buildExecuteRequest(
     ...(options?.systemPrompt ? { systemPrompt: options.systemPrompt } : {}),
     signal: options?.signal,
     resolveCredential: channel?.resolveCredential,
-    workspaceAccountId: channel?.workspaceAccountId ?? null,
     reportDiagnostic: channel?.reportDiagnostic,
   };
 }

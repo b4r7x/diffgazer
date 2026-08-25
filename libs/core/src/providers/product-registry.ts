@@ -373,147 +373,6 @@ export const PRODUCT_REGISTRY = {
       ],
     },
   },
-  qwen: {
-    id: "qwen",
-    kind: "runnable",
-    selectable: true,
-    transportFamily: "hosted-api",
-    presentation: {
-      name: "Qwen International",
-      description: "Alibaba Model Studio international pay-as-you-go API.",
-      setupLabel: "Configure Qwen International PAYG",
-    },
-    configuration: {
-      credentialKind: "hosted-api-key-reference",
-      fields: ["credential", "region", "workspace"],
-      endpoints: PRODUCT_ENDPOINT_TUPLES.qwen,
-    },
-    modelPolicy: {
-      kind: "discovered-allowlist",
-      modelIds: ["qwen3-coder-flash", "qwen3-coder-plus"],
-      suggestedModelId: "qwen3-coder-flash",
-      higherCostModelIds: ["qwen3-coder-plus"],
-      higherCostModelEvidence: {
-        outputLimit: "required",
-        reviewConformance: "required",
-      },
-      aliases: "forbidden",
-    },
-    admission: {
-      requiredChecks: [...HOSTED_CHECKS, "region", "workspace"],
-      structuredOutput: "json-object-local-validation",
-      usage: "required-terminal",
-    },
-    billing: {
-      modes: ["pay-as-you-go"],
-      posture: "International PAYG only; no international free quota is promised.",
-    },
-    notice: {
-      id: "qwen-international-payg",
-      noticeVersion: 1,
-      acknowledgement: "required",
-      acknowledgeBefore: "first-context-send",
-      renewAcknowledgementOn: "material-notice-change",
-      billing: [
-        "The selected international region and workspace determine billing and availability.",
-        "No international free quota is promised.",
-        "Subscription plan credentials are excluded.",
-      ],
-      privacy: [
-        "The selected international region and workspace are bound to the configuration.",
-        "Provider material permits retention where required by law and gives no fixed retention period.",
-      ],
-    },
-  },
-  moonshot: {
-    id: "moonshot",
-    kind: "runnable",
-    selectable: true,
-    transportFamily: "hosted-api",
-    presentation: {
-      name: "Moonshot Open Platform",
-      description: "Moonshot/Kimi Open Platform pay-as-you-go API with isolated regions.",
-      setupLabel: "Configure Moonshot PAYG",
-    },
-    configuration: {
-      credentialKind: "hosted-api-key-reference",
-      fields: ["credential", "region"],
-      endpoints: PRODUCT_ENDPOINT_TUPLES.moonshot,
-    },
-    modelPolicy: {
-      kind: "discovered-family",
-      familyPrefixes: ["kimi-k3", "kimi-k2.6"],
-      rejectedAliases: ["kimi-latest", "latest"],
-      aliases: "forbidden",
-    },
-    admission: {
-      requiredChecks: [...HOSTED_CHECKS, "region"],
-      structuredOutput: "strict-json-schema",
-      usage: "required-terminal",
-    },
-    billing: {
-      modes: ["pay-as-you-go"],
-      posture: "Balance, price, and limits belong to the selected regional PAYG account.",
-    },
-    notice: {
-      id: "moonshot-open-platform-payg",
-      noticeVersion: 1,
-      acknowledgement: "required",
-      acknowledgeBefore: "first-context-send",
-      renewAcknowledgementOn: "material-notice-change",
-      billing: ["Mainland and international accounts, balances, and endpoints are isolated."],
-      privacy: [
-        "API no-training claims apply only to the selected Open Platform PAYG route.",
-        "Consumer and Kimi Code products have different terms and are not substituted.",
-      ],
-    },
-  },
-  mistral: {
-    id: "mistral",
-    kind: "runnable",
-    selectable: true,
-    transportFamily: "hosted-api",
-    presentation: {
-      name: "Mistral",
-      description: "Mistral hosted API with explicit global or EU endpoint selection.",
-      setupLabel: "Configure Mistral",
-    },
-    configuration: {
-      credentialKind: "hosted-api-key-reference",
-      fields: ["credential", "region"],
-      endpoints: PRODUCT_ENDPOINT_TUPLES.mistral,
-    },
-    modelPolicy: {
-      kind: "discovered-exact",
-      suggestedModelId: "mistral-medium-2604",
-      aliases: "forbidden",
-    },
-    admission: {
-      requiredChecks: [...HOSTED_CHECKS, "region"],
-      structuredOutput: "strict-json-schema",
-      usage: "optional",
-    },
-    billing: {
-      modes: ["evaluation", "pay-as-you-go"],
-      posture: "Free use is evaluation/prototyping with volatile account limits.",
-    },
-    notice: {
-      id: "mistral-regional-api",
-      noticeVersion: 1,
-      acknowledgement: "required",
-      acknowledgeBefore: "first-context-send",
-      renewAcknowledgementOn: "material-notice-change",
-      billing: [
-        "The selected global or EU endpoint and account determine price and limits.",
-        "Free mode is evaluation/prototyping, not unlimited production capacity.",
-      ],
-      privacy: [
-        "Submitted data may be used for training unless the account opts out.",
-        "API inputs and outputs normally have rolling 30-day retention.",
-        "Zero data retention requires an eligible approved arrangement and is never inferred.",
-      ],
-    },
-  },
   "ollama-cloud": {
     id: "ollama-cloud",
     kind: "runnable",
@@ -556,6 +415,57 @@ export const PRODUCT_REGISTRY = {
       privacy: [
         "Ollama states that cloud prompts and responses are not logged, stored, or trained on.",
         "Repository content is sent to ollama.com; this is not the loopback Ollama transport.",
+      ],
+    },
+  },
+  "opencode-zen": {
+    id: "opencode-zen",
+    kind: "runnable",
+    selectable: true,
+    transportFamily: "hosted-api",
+    presentation: {
+      name: "OpenCode Zen",
+      description:
+        "OpenCode's hosted OpenAI-compatible gateway, billed as Zen credits or an OpenCode Go subscription.",
+      setupLabel: "Configure OpenCode Zen",
+    },
+    configuration: {
+      credentialKind: "hosted-api-key-reference",
+      fields: ["credential"],
+      endpoints: PRODUCT_ENDPOINT_TUPLES["opencode-zen"],
+    },
+    // Zen publishes no stable allowlist and rotates stealth models, so the live
+    // `/models` list is the only admissible identity source; no model is suggested
+    // because a pinned guess would outlive the route it names.
+    modelPolicy: {
+      kind: "discovered-exact",
+      aliases: "forbidden",
+    },
+    admission: {
+      requiredChecks: HOSTED_CHECKS,
+      structuredOutput: "json-object-local-validation",
+      usage: "optional",
+    },
+    // One key and one endpoint serve two purchases, so both are named: a user on
+    // OpenCode Go must not read a credit-only posture and assume a second bill.
+    billing: {
+      modes: ["pay-as-you-go", "subscription-credit"],
+      posture:
+        "The same key and endpoint bill either way: Zen pay-as-you-go credits, or an OpenCode Go subscription.",
+    },
+    notice: {
+      id: "opencode-zen-hosted-api",
+      noticeVersion: 1,
+      acknowledgement: "required",
+      acknowledgeBefore: "first-context-send",
+      renewAcknowledgementOn: "material-notice-change",
+      billing: [
+        "Zen pay-as-you-go credits: each request is charged per token against the account's Zen credit balance.",
+        "OpenCode Go subscription: the same key and endpoint draw on the subscription's included usage instead of credits.",
+      ],
+      privacy: [
+        "Free and stealth Zen models may retain prompts and train on them.",
+        "Paid routes are mostly zero-retention; OpenAI- and Anthropic-backed models retain data for 30 days.",
       ],
     },
   },

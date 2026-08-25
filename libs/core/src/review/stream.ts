@@ -5,7 +5,7 @@ import type {
   StepEvent,
 } from "../schemas/events/index.js";
 import { FullReviewStreamEventSchema } from "../schemas/events/index.js";
-import type { ReviewError, ReviewResult } from "../schemas/review/index.js";
+import type { ReviewError, ReviewResult, ReviewSizeWarning } from "../schemas/review/index.js";
 import { parseSSEStream } from "./sse-parser.js";
 
 /** The handlers `processReviewStream` accepts; creation and abort live on the create/resume API options. */
@@ -13,6 +13,7 @@ export interface StreamReviewOptions {
   onAgentEvent?: (event: AgentStreamEvent) => void;
   onStepEvent?: (event: StepEvent) => void;
   onChunk?: (content: string) => void;
+  onSizeWarning?: (warning: ReviewSizeWarning) => void;
 }
 
 interface StreamReviewResult {
@@ -26,7 +27,7 @@ export async function processReviewStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   options: StreamReviewOptions,
 ): Promise<Result<StreamReviewResult, StreamReviewError>> {
-  const { onAgentEvent, onStepEvent, onChunk } = options;
+  const { onAgentEvent, onStepEvent, onChunk, onSizeWarning } = options;
 
   let reviewResult: ReviewResult | null = null;
   let reviewId: string | null = null;
@@ -64,6 +65,9 @@ export async function processReviewStream(
 
         case "chunk":
           onChunk?.(event.content);
+          break;
+        case "review_size_warning":
+          onSizeWarning?.(event.warning);
           break;
         case "complete":
           reviewResult = event.result;

@@ -32,20 +32,12 @@ export const PROVIDER_DERIVED: Record<
     displayName: "DeepSeek",
     billing: "paid",
   },
-  qwen: {
-    displayName: "Qwen International",
-    billing: "paid",
-  },
-  moonshot: {
-    displayName: "Moonshot Open Platform",
-    billing: "paid",
-  },
-  mistral: {
-    displayName: "Mistral",
-    billing: "mixed",
-  },
   "ollama-cloud": {
     displayName: "Ollama Cloud",
+    billing: "unknown",
+  },
+  "opencode-zen": {
+    displayName: "OpenCode Zen",
     billing: "unknown",
   },
   ollama: {

@@ -64,7 +64,7 @@ function rowValue(productId: RunnableProductId, rowId: ProviderSettingsRowId) {
 describe("buildProviderSettingsRows", () => {
   test.each([
     ["PAYG", "zai" as const, "Pay as you go (PAYG)"],
-    ["evaluation", "mistral" as const, "Evaluation, Pay as you go (PAYG)"],
+    ["free tier and PAYG", "gemini" as const, "Evaluation/free quota, Pay as you go (PAYG)"],
     ["subscription", "copilot-cli" as const, "Subscription credit/rate limits"],
     ["local", "ollama" as const, "Local execution costs"],
   ])("distinguishes %s billing", (_billingClass, productId, expected) => {
@@ -72,14 +72,13 @@ describe("buildProviderSettingsRows", () => {
   });
 
   test("renders billing and privacy text from the client projection", () => {
-    const rows = buildProviderSettingsRows(metadataFor("mistral"));
+    const rows = buildProviderSettingsRows(metadataFor("deepseek"));
     const billing = rows.find(({ id }) => id === "billing");
     const privacy = rows.find(({ id }) => id === "privacy");
 
-    expect(billing?.description).toContain("evaluation/prototyping");
-    expect(billing?.description).toContain("selected global or EU endpoint");
-    expect(privacy?.value).toContain("rolling 30-day retention");
-    expect(privacy?.value).toContain("never inferred");
+    expect(billing?.description).toContain("opt-in pay-as-you-go usage");
+    expect(privacy?.value).toContain("processed and stored in the PRC");
+    expect(privacy?.value).toContain("not presented as zero retention");
   });
 
   test("renders readiness with the shared status label from the client projection", () => {

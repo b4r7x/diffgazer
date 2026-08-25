@@ -34,15 +34,28 @@ describe("getBillingTier", () => {
   });
 
   // A zero-priced catalog model outranks the declared account tier: Groq and
-  // Mistral publish free models beside priced ones, so the badge names the mix
-  // rather than the quota, and Z.AI earns it with no declared free quota at all.
+  // OpenRouter publish free models beside priced ones, so the badge names the
+  // mix rather than the quota, and Z.AI earns it with no declared free quota at all.
   it("reports a product offering both priced and zero-priced models as mixed", () => {
-    for (const productId of ["openrouter", "groq", "mistral", "zai"] as const) {
+    for (const productId of ["openrouter", "groq", "zai"] as const) {
       expect(PROVIDER_DERIVED[productId].billing, productId).toBe("mixed");
       expect(getBillingTier(productId), productId).toBe("mixed");
       expect(offersFreeModels(getBillingTier(productId)), productId).toBe(true);
     }
     expect(PRODUCT_REGISTRY.zai.billing.modes).toEqual(["pay-as-you-go"]);
+  });
+
+  // A subscription is not a free quota. OpenCode Go buys included usage on the
+  // same key and endpoint as Zen credits, so neither declared mode may promise
+  // a no-cost route; Zen's free and stealth models speak per model instead.
+  it("does not read a subscription-credit mode as a declared free tier", () => {
+    expect(PRODUCT_REGISTRY["opencode-zen"].billing.modes).toEqual([
+      "pay-as-you-go",
+      "subscription-credit",
+    ]);
+    expect(PROVIDER_DERIVED["opencode-zen"].billing).toBe("unknown");
+    expect(getBillingTier("opencode-zen")).toBe("paid");
+    expect(offersFreeModels(getBillingTier("opencode-zen"))).toBe(false);
   });
 
   it("stays paid for a pay-as-you-go product that declares no free quota", () => {

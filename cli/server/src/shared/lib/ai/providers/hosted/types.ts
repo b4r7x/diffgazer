@@ -14,7 +14,6 @@ export type HostedExecutionContext = Readonly<{
   credential: string;
   reviewSchema: z.ZodType;
   structuredOutputSchema?: Record<string, unknown>;
-  workspaceAccountId?: string | null;
   fetch?: typeof fetch;
   now?: () => Date;
 }>;

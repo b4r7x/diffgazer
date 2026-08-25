@@ -99,7 +99,7 @@ describe("product registry authority", () => {
     expect(PRODUCT_REGISTRY.gemini.configuration.endpoints).toBe(PRODUCT_ENDPOINT_TUPLES.gemini);
   });
 
-  it("enumerates exactly the 14 selectable products with add-now notices and gates", () => {
+  it("enumerates exactly the 12 selectable products with add-now notices and gates", () => {
     expect(SELECTABLE_PRODUCT_IDS).toEqual([
       "gemini",
       "zai",
@@ -107,10 +107,8 @@ describe("product registry authority", () => {
       "groq",
       "cerebras",
       "deepseek",
-      "qwen",
-      "moonshot",
-      "mistral",
       "ollama-cloud",
+      "opencode-zen",
       "ollama",
       "local-openai",
       "codex-cli",
@@ -151,8 +149,6 @@ describe("product registry authority", () => {
           transportFamily: "hosted-api" as const,
           productId,
           endpoint: endpoint.endpoint,
-          ...("region" in endpoint ? { region: endpoint.region } : {}),
-          ...("workspaceBound" in endpoint ? { workspace: "workspace-reference" } : {}),
         };
 
         expect(ClientConfigurationInputSchema.parse(input)).toEqual(input);
@@ -313,115 +309,6 @@ describe("product registry authority", () => {
         ),
       },
       {
-        id: "qwen",
-        endpoints: [
-          {
-            id: "international",
-            label: "International",
-            endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-            region: "international",
-            workspaceBound: true,
-          },
-        ],
-        modelPolicy: {
-          kind: "discovered-allowlist",
-          modelIds: ["qwen3-coder-flash", "qwen3-coder-plus"],
-          suggestedModelId: "qwen3-coder-flash",
-          higherCostModelIds: ["qwen3-coder-plus"],
-          higherCostModelEvidence: {
-            outputLimit: "required",
-            reviewConformance: "required",
-          },
-          aliases: "forbidden",
-        },
-        checks: [...HOSTED_CHECKS, "region", "workspace"],
-        structuredOutput: "json-object-local-validation",
-        usage: "required-terminal",
-        notice: notice(
-          "qwen-international-payg",
-          [
-            "The selected international region and workspace determine billing and availability.",
-            "No international free quota is promised.",
-            "Subscription plan credentials are excluded.",
-          ],
-          [
-            "The selected international region and workspace are bound to the configuration.",
-            "Provider material permits retention where required by law and gives no fixed retention period.",
-          ],
-        ),
-      },
-      {
-        id: "moonshot",
-        endpoints: [
-          {
-            id: "mainland",
-            label: "Mainland China",
-            endpoint: "https://api.moonshot.cn/v1",
-            region: "mainland",
-          },
-          {
-            id: "international",
-            label: "International",
-            endpoint: "https://api.moonshot.ai/v1",
-            region: "international",
-          },
-        ],
-        modelPolicy: {
-          kind: "discovered-family",
-          familyPrefixes: ["kimi-k3", "kimi-k2.6"],
-          rejectedAliases: ["kimi-latest", "latest"],
-          aliases: "forbidden",
-        },
-        checks: [...HOSTED_CHECKS, "region"],
-        structuredOutput: "strict-json-schema",
-        usage: "required-terminal",
-        notice: notice(
-          "moonshot-open-platform-payg",
-          ["Mainland and international accounts, balances, and endpoints are isolated."],
-          [
-            "API no-training claims apply only to the selected Open Platform PAYG route.",
-            "Consumer and Kimi Code products have different terms and are not substituted.",
-          ],
-        ),
-      },
-      {
-        id: "mistral",
-        endpoints: [
-          {
-            id: "global",
-            label: "Global",
-            endpoint: "https://api.mistral.ai/v1",
-            region: "global",
-          },
-          {
-            id: "eu",
-            label: "European Union",
-            endpoint: "https://api.eu.mistral.ai/v1",
-            region: "eu",
-          },
-        ],
-        modelPolicy: {
-          kind: "discovered-exact",
-          suggestedModelId: "mistral-medium-2604",
-          aliases: "forbidden",
-        },
-        checks: [...HOSTED_CHECKS, "region"],
-        structuredOutput: "strict-json-schema",
-        usage: "optional",
-        notice: notice(
-          "mistral-regional-api",
-          [
-            "The selected global or EU endpoint and account determine price and limits.",
-            "Free mode is evaluation/prototyping, not unlimited production capacity.",
-          ],
-          [
-            "Submitted data may be used for training unless the account opts out.",
-            "API inputs and outputs normally have rolling 30-day retention.",
-            "Zero data retention requires an eligible approved arrangement and is never inferred.",
-          ],
-        ),
-      },
-      {
         id: "ollama-cloud",
         endpoints: [{ id: "cloud", label: "Ollama Cloud", endpoint: "https://ollama.com/v1" }],
         modelPolicy: {
@@ -440,6 +327,27 @@ describe("product registry authority", () => {
           [
             "Ollama states that cloud prompts and responses are not logged, stored, or trained on.",
             "Repository content is sent to ollama.com; this is not the loopback Ollama transport.",
+          ],
+        ),
+      },
+      {
+        id: "opencode-zen",
+        endpoints: [{ id: "zen", label: "OpenCode Zen", endpoint: "https://opencode.ai/zen/v1" }],
+        // No suggested model: Zen rotates stealth routes, so a pinned guess
+        // would outlive the model it names.
+        modelPolicy: { kind: "discovered-exact", aliases: "forbidden" },
+        checks: HOSTED_CHECKS,
+        structuredOutput: "json-object-local-validation",
+        usage: "optional",
+        notice: notice(
+          "opencode-zen-hosted-api",
+          [
+            "Zen pay-as-you-go credits: each request is charged per token against the account's Zen credit balance.",
+            "OpenCode Go subscription: the same key and endpoint draw on the subscription's included usage instead of credits.",
+          ],
+          [
+            "Free and stealth Zen models may retain prompts and train on them.",
+            "Paid routes are mostly zero-retention; OpenAI- and Anthropic-backed models retain data for 30 days.",
           ],
         ),
       },
@@ -537,32 +445,6 @@ describe("product registry authority", () => {
     );
   });
 
-  it("keeps Qwen Plus opt-in and evidence-gated without inventing a limit", () => {
-    const policy = PRODUCT_REGISTRY.qwen.modelPolicy;
-
-    expect(policy).toMatchObject({
-      kind: "discovered-allowlist",
-      modelIds: ["qwen3-coder-flash", "qwen3-coder-plus"],
-      suggestedModelId: "qwen3-coder-flash",
-      higherCostModelIds: ["qwen3-coder-plus"],
-      higherCostModelEvidence: {
-        outputLimit: "required",
-        reviewConformance: "required",
-      },
-      aliases: "forbidden",
-    });
-
-    if (policy.kind !== "discovered-allowlist") throw new Error("Unexpected Qwen policy kind");
-    expect(policy.suggestedModelId).toBe("qwen3-coder-flash");
-    expect(policy.higherCostModelIds).toEqual(["qwen3-coder-plus"]);
-    expect(policy.higherCostModelEvidence).toEqual({
-      outputLimit: "required",
-      reviewConformance: "required",
-    });
-    expect(policy).not.toHaveProperty("outputLimit");
-    expect(JSON.stringify(policy)).not.toMatch(/\b\d{3,}\b/);
-  });
-
   // A pinned variant suffix names a separately priced catalog identity, so it is
   // admitted; a dynamic selector is a request-time sort or route instruction and
   // is not, and an unknown suffix fails closed rather than riding in on shape.
@@ -655,11 +537,6 @@ describe("the registry-owned model policy predicate", () => {
     { productId: "zai", modelId: "glm-4.7-flash", allowed: true },
     { productId: "deepseek", modelId: "deepseek-v4-flash", allowed: true },
     { productId: "deepseek", modelId: "deepseek-v5-flash", allowed: false },
-    // Qwen Plus needs server-only higher-cost evidence.
-    { productId: "qwen", modelId: "qwen3-coder-flash", allowed: true },
-    { productId: "qwen", modelId: "qwen3-coder-plus", allowed: false },
-    { productId: "moonshot", modelId: "kimi-k3-turbo", allowed: true },
-    { productId: "moonshot", modelId: "kimi-latest", allowed: false },
     { productId: "openrouter", modelId: "openai/gpt-4.1-mini", allowed: true },
     { productId: "openrouter", modelId: "openrouter/auto", allowed: false },
     { productId: "gemini", modelId: "gemini-2.5-flash", allowed: true },
@@ -677,12 +554,7 @@ describe("the registry-owned model policy predicate", () => {
     );
 
     expect(coveredKinds).toEqual(
-      new Set([
-        "discovered-exact",
-        "discovered-allowlist",
-        "discovered-family",
-        "pinned-downstream-route",
-      ]),
+      new Set(["discovered-exact", "discovered-allowlist", "pinned-downstream-route"]),
     );
   });
 });

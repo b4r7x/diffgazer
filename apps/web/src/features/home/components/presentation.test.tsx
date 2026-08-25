@@ -1,6 +1,7 @@
 import { createApi } from "@diffgazer/core/api";
 import { ApiProvider, useProviderConsentGate } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
+import type { GitStatus } from "@diffgazer/core/schemas/git";
 import type { HomeContextInfo } from "@diffgazer/core/schemas/presentation";
 import { KeyboardProvider, useKey } from "@diffgazer/keys";
 import { Toaster, toast } from "@diffgazer/ui/components/toast";
@@ -854,6 +855,183 @@ describe("HomePagePresentation — review-start pending state", () => {
     expect(screen.getByRole("menuitem", { name: "Review Unstaged" })).not.toHaveTextContent(
       /starting/i,
     );
+  });
+});
+
+describe("HomePagePresentation — pane Tab cycle", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /** Stands in for the shell chrome outside the panes — the skip link, the header. */
+  function renderWithChrome(props: HomePagePresentationProps) {
+    return render(
+      <>
+        <button type="button">Before the panes</button>
+        <HomePagePresentation {...props} />
+      </>,
+      { wrapper: Wrapper },
+    );
+  }
+
+  it("hops Tab between the menu and the context pane instead of leaving the page", async () => {
+    const user = userEvent.setup();
+    renderPresentation(buildProps());
+
+    const menu = screen.getByRole("menu");
+    const providerRow = screen.getByRole("button", { name: "Configure provider settings" });
+    await waitFor(() => expect(menu).toHaveFocus());
+
+    await user.tab();
+    await waitFor(() => expect(providerRow).toHaveFocus());
+
+    await user.tab();
+    await waitFor(() => expect(menu).toHaveFocus());
+
+    // Shift+Tab reverses the same two-pane cycle rather than falling out of it.
+    await user.tab({ shift: true });
+    await waitFor(() => expect(providerRow).toHaveFocus());
+  });
+
+  it("keeps Tab native while focus sits outside both panes", async () => {
+    const user = userEvent.setup();
+    renderWithChrome(buildProps());
+
+    const chromeControl = screen.getByRole("button", { name: "Before the panes" });
+    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
+    await user.click(chromeControl);
+    expect(chromeControl).toHaveFocus();
+
+    // The containers-scoped cycle declines here, so Tab walks into the page in
+    // DOM order; a claimed Tab would have jumped straight to the context pane.
+    await user.tab();
+    expect(screen.getByRole("menu")).toHaveFocus();
+  });
+
+  it("stands the cycle down while a review is starting so Tab stays native", async () => {
+    const createReview = vi.fn(() => new Promise<{ reviewId: string }>(() => {}));
+    const user = userEvent.setup();
+    renderWithChrome(buildProps({ createReview }));
+
+    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
+    await user.keyboard("r");
+    await waitFor(() => expect(createReview).toHaveBeenCalled());
+
+    // The start turns the sidebar inert, so a claimed Shift+Tab would land the
+    // cycle in a pane with nothing to focus; native Tab walks out instead.
+    await user.tab({ shift: true });
+    expect(screen.getByRole("button", { name: "Before the panes" })).toHaveFocus();
+  });
+
+  it("leaves Tab native while the trust prompt replaces both panes", async () => {
+    const user = userEvent.setup();
+    renderPresentationWithApi(
+      buildProps({ isTrusted: false, needsTrust: true, repoRoot: "/some/repo" }),
+    );
+
+    const action = await screen.findByRole("button", { name: "Trust & Continue" });
+    // Neither pane is mounted, so a live cycle would claim Tab document-wide
+    // and freeze focus on the body it starts from.
+    await user.tab();
+
+    expect(action).toHaveFocus();
+  });
+});
+
+describe("HomePagePresentation — file picker entry", () => {
+  const PICKER_STATUS: GitStatus = {
+    isGitRepo: true,
+    branch: "main",
+    remoteBranch: null,
+    ahead: 0,
+    behind: 0,
+    hasChanges: true,
+    conflicted: [],
+    files: {
+      staged: [],
+      unstaged: [{ path: "src/a.ts", indexStatus: " ", workTreeStatus: "M" }],
+      untracked: [],
+    },
+  };
+
+  // The picker reads the working tree, so this path needs a real ApiProvider —
+  // the rest of home's tests deliberately render without one.
+  function renderWithGitStatus(props: HomePagePresentationProps) {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getGitStatus: vi.fn(async () => PICKER_STATUS),
+    };
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <ApiProvider value={api}>
+          <HomePagePresentation {...props} />
+        </ApiProvider>
+      </QueryClientProvider>,
+      { wrapper: Wrapper },
+    );
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("opens the picker on f and starts the review the picked scope names", async () => {
+    const createReview = vi.fn(async () => ({ reviewId: "rev-filtered" }));
+    const user = userEvent.setup();
+    renderWithGitStatus(buildProps({ createReview }));
+
+    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
+    await user.keyboard("f");
+
+    const picker = await screen.findByRole("dialog", { name: "Review Specific Files" });
+    await within(picker).findByRole("checkbox", { name: "src/a.ts" });
+    await user.click(within(picker).getByRole("button", { name: "Review 1 File" }));
+
+    // The whole scope is picked, so the start carries no pathspecs: this is the
+    // menu row's own start.
+    await waitFor(() =>
+      expect(createReview).toHaveBeenCalledWith({ mode: "unstaged", files: undefined }),
+    );
+  });
+
+  it("reaches the picker from the sidebar's Review Scope row", async () => {
+    const user = userEvent.setup();
+    renderWithGitStatus(buildProps());
+
+    await user.click(screen.getByRole("button", { name: "Choose files to review" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Review Specific Files" }),
+    ).toBeInTheDocument();
+  });
+
+  it("stands down while the repo is untrusted", async () => {
+    const user = userEvent.setup();
+    renderWithGitStatus(buildProps({ isTrusted: false }));
+
+    await user.keyboard("f");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // Nothing to pick files for, so the sidebar offers no way in either.
+    expect(
+      screen.queryByRole("button", { name: "Choose files to review" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("stands down while a review is already starting", async () => {
+    const createReview = vi.fn(() => new Promise<{ reviewId: string }>(() => {}));
+    const user = userEvent.setup();
+    renderWithGitStatus(buildProps({ createReview }));
+
+    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
+    await user.keyboard("r");
+    await waitFor(() => expect(createReview).toHaveBeenCalled());
+
+    await user.keyboard("f");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
 

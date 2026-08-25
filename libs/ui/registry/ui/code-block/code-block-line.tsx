@@ -13,8 +13,13 @@ export interface CodeBlockToken {
 export type CodeBlockLineState = "highlight" | "added" | "removed";
 
 export interface CodeBlockLineProps extends Omit<ComponentProps<"span">, "content" | "children"> {
-  /** Line number rendered in the gutter. Omit to hide the gutter for this line. */
-  number?: number;
+  /**
+   * Line number rendered in the gutter. Pass `null` for a row that belongs to a
+   * numbered block but prints no line of its own — a gap or truncation marker —
+   * and it renders an empty gutter cell so the code beside it keeps its indent.
+   * Omit to render no gutter cell at all.
+   */
+  number?: number | null;
   /**
    * Line content. Either a plain string or an array of tokens for syntax coloring. Ignored when
    * `children` is provided.
@@ -71,7 +76,7 @@ export function CodeBlockLine({
   const isDiffLine = state === "added" || state === "removed";
   return (
     <span ref={ref} data-slot="code-block-line" data-state={state} className={className} {...props}>
-      {number != null ? (
+      {number !== undefined ? (
         <span aria-hidden="true" data-slot="code-block-line-number">
           {number}
         </span>

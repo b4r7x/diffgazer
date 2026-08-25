@@ -13,23 +13,21 @@ import { useWizardState } from "./use-wizard-state.js";
 
 const ACCEPTED_AT = "2026-07-31T12:00:00.000Z";
 
-function readyDraft(productId: "qwen" | "local-openai" = "qwen"): OnboardingDraft {
+function readyDraft(productId: "deepseek" | "local-openai" = "deepseek"): OnboardingDraft {
   const draft = getInitialWizardData(productId);
   const notice = PRODUCT_REGISTRY[productId].notice;
   return {
     ...draft,
     configurationInput:
-      productId === "qwen"
+      productId === "deepseek"
         ? {
             transportFamily: "hosted-api",
-            productId: "qwen",
-            endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-            region: "international",
-            workspace: "workspace-reference",
+            productId: "deepseek",
+            endpoint: "https://api.deepseek.com/v1",
             credential: { kind: "environment" },
           }
         : draft.configurationInput,
-    selectedModelId: productId === "qwen" ? "qwen3-coder-flash" : "local-model",
+    selectedModelId: productId === "deepseek" ? "deepseek-v4-flash" : "local-model",
     acknowledgement: {
       status: "accepted",
       noticeId: notice.id,
@@ -53,8 +51,6 @@ function configurationSummary(
       transportFamily: "hosted-api" as const,
       productId: input.productId,
       endpoint: input.endpoint,
-      region: input.region,
-      workspace: input.workspace,
       selectedModelId,
       notices: [
         {
@@ -191,7 +187,7 @@ function makeCallbacks(
 
 describe("useWizardState", () => {
   it("derives steps from the selected product plan and resets the full tuple atomically", () => {
-    const { result } = renderHook(() => useWizardState({ initial: getInitialWizardData("qwen") }));
+    const { result } = renderHook(() => useWizardState({ initial: getInitialWizardData("deepseek") }));
 
     expect(result.current.steps).toEqual([
       "product",
@@ -205,13 +201,11 @@ describe("useWizardState", () => {
       result.current.updateData({
         configurationInput: {
           transportFamily: "hosted-api",
-          productId: "qwen",
-          endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-          region: "international",
-          workspace: "stale-workspace",
+          productId: "deepseek",
+          endpoint: "https://api.deepseek.com/v1",
           credential: { kind: "literal", value: "write-only" },
         },
-        selectedModelId: "qwen3-coder-flash",
+        selectedModelId: "deepseek-v4-flash",
       });
       result.current.setProduct("local-openai");
     });
@@ -225,7 +219,7 @@ describe("useWizardState", () => {
     ]);
     expect(result.current.wizardData).toEqual(getInitialWizardData("local-openai"));
     expect(JSON.stringify(result.current.wizardData.configurationInput)).not.toMatch(
-      /workspace|credential|region|qwen3-coder-flash/,
+      /credential|deepseek-v4-flash/,
     );
     expect(result.current.stepIndex).toBe(0);
   });
@@ -239,9 +233,8 @@ describe("useWizardState", () => {
       result.current.updateData({
         configurationInput: {
           transportFamily: "hosted-api",
-          productId: "qwen",
-          endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-          region: "international",
+          productId: "deepseek",
+          endpoint: "https://api.deepseek.com/v1",
         },
       });
     });
@@ -296,19 +289,19 @@ describe("useWizardState", () => {
   });
 
   it("evaluates rapid product changes against the latest selection", () => {
-    const { result } = renderHook(() => useWizardState({ initial: getInitialWizardData("qwen") }));
+    const { result } = renderHook(() => useWizardState({ initial: getInitialWizardData("deepseek") }));
 
     act(() => {
       result.current.setProduct("local-openai");
-      result.current.setProduct("qwen");
+      result.current.setProduct("deepseek");
     });
 
-    expect(result.current.wizardData).toEqual(getInitialWizardData("qwen"));
+    expect(result.current.wizardData).toEqual(getInitialWizardData("deepseek"));
     expect(result.current.stepIndex).toBe(0);
   });
 
   it("uses the shorter local CLI plan without inventing endpoint or credential fields", () => {
-    const { result } = renderHook(() => useWizardState({ initial: getInitialWizardData("qwen") }));
+    const { result } = renderHook(() => useWizardState({ initial: getInitialWizardData("deepseek") }));
 
     act(() => result.current.setProduct("codex-cli"));
 
@@ -322,9 +315,9 @@ describe("useWizardState", () => {
   it("invalidates acknowledgement when the exact tuple or model changes", () => {
     const { result } = renderHook(() => useWizardState({ initial: readyDraft() }));
 
-    act(() => result.current.updateData({ selectedModelId: "qwen3-coder-plus" }));
+    act(() => result.current.updateData({ selectedModelId: "deepseek-v4-pro" }));
     expect(result.current.wizardData).toMatchObject({
-      selectedModelId: "qwen3-coder-plus",
+      selectedModelId: "deepseek-v4-pro",
       acknowledgement: { status: "required" },
     });
 
@@ -332,8 +325,8 @@ describe("useWizardState", () => {
       result.current.updateData({
         acknowledgement: {
           status: "accepted",
-          noticeId: PRODUCT_REGISTRY.qwen.notice.id,
-          noticeVersion: PRODUCT_REGISTRY.qwen.notice.noticeVersion,
+          noticeId: PRODUCT_REGISTRY.deepseek.notice.id,
+          noticeVersion: PRODUCT_REGISTRY.deepseek.notice.noticeVersion,
           acceptedAt: ACCEPTED_AT,
         },
       }),
@@ -342,11 +335,9 @@ describe("useWizardState", () => {
       result.current.updateData({
         configurationInput: {
           transportFamily: "hosted-api",
-          productId: "qwen",
-          endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-          region: "international",
-          workspace: "new-workspace",
-          credential: { kind: "environment" },
+          productId: "deepseek",
+          endpoint: "https://api.deepseek.com/v1",
+          credential: { kind: "literal", value: "rotated-credential" },
         },
       }),
     );
@@ -377,8 +368,8 @@ describe("useWizardState", () => {
     expect(result.current.currentStep).toBe("acknowledgement");
     expect(result.current.wizardData.acknowledgement).toEqual({
       status: "accepted",
-      noticeId: PRODUCT_REGISTRY.qwen.notice.id,
-      noticeVersion: PRODUCT_REGISTRY.qwen.notice.noticeVersion,
+      noticeId: PRODUCT_REGISTRY.deepseek.notice.id,
+      noticeVersion: PRODUCT_REGISTRY.deepseek.notice.noticeVersion,
       acceptedAt: "2026-08-01T09:00:00.000Z",
     });
     expect(result.current.canProceed).toBe(true);
@@ -528,7 +519,7 @@ describe("useWizardState", () => {
     await vi.waitFor(() => expect(result.current.isReconciling).toBe(false));
 
     expect(result.current.wizardData).toBe(retainedDraft);
-    expect(result.current.wizardData.plan.productId).toBe("qwen");
+    expect(result.current.wizardData.plan.productId).toBe("deepseek");
     expect(result.current.draftConfiguration?.configurationId).toBe("created-configuration");
     expect(result.current.error).toContain("Failed to remove the incomplete configuration");
     expect(result.current.error).toContain("[REDACTED]");
@@ -561,7 +552,7 @@ describe("useWizardState", () => {
     await createStarted.promise;
     act(() => result.current.setProduct("local-openai"));
     expect(result.current.isReconciling).toBe(true);
-    expect(result.current.wizardData.plan.productId).toBe("qwen");
+    expect(result.current.wizardData.plan.productId).toBe("deepseek");
 
     createResponse.resolve({
       action: "create",
@@ -893,11 +884,9 @@ describe("useWizardState", () => {
       result.current.updateData({
         configurationInput: {
           transportFamily: "hosted-api",
-          productId: "qwen",
-          endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-          region: "international",
-          workspace: "a-different-workspace",
-          credential: { kind: "environment" },
+          productId: "deepseek",
+          endpoint: "https://api.deepseek.com/v1",
+          credential: { kind: "literal", value: "a-different-credential" },
         },
       });
     });
@@ -920,8 +909,6 @@ describe("useWizardState", () => {
           transportFamily: "hosted-api",
           productId: hostedInput.productId,
           endpoint: hostedInput.endpoint,
-          region: hostedInput.region,
-          workspace: hostedInput.workspace,
           credential: { kind: "environment" },
         },
       }),
@@ -995,7 +982,7 @@ describe("useWizardState", () => {
     });
 
     expect(onComplete).toHaveBeenCalledTimes(1);
-    expect(result.current.wizardData.plan.productId).toBe("qwen");
+    expect(result.current.wizardData.plan.productId).toBe("deepseek");
     expect(callbacks.runConfigurationAction).not.toHaveBeenCalledWith(
       expect.objectContaining({ action: "delete" }),
     );
@@ -1014,7 +1001,7 @@ describe("useWizardState", () => {
     const runConfigurationAction = vi.mocked(callbacks.runConfigurationAction);
     const callsAfterSave = runConfigurationAction.mock.calls.length;
 
-    act(() => result.current.setProduct("qwen"));
+    act(() => result.current.setProduct("deepseek"));
     expect(callbacks.runConfigurationAction).not.toHaveBeenCalledWith(
       expect.objectContaining({ action: "delete" }),
     );

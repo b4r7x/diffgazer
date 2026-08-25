@@ -10,10 +10,7 @@ import type {
 import { RUNTIME_IDENTITY, STRUCTURED_OUTPUT_SCHEMA_SHA256 } from "../ai/admission/protocol.js";
 import { findSecretBinding } from "./persistence/secrets.js";
 import { computeProviderReadinessResult } from "./readiness.js";
-import {
-  credentialReferenceIdentityFor,
-  workspaceAccountReferenceFor,
-} from "./store/credential-lifecycle.js";
+import { credentialReferenceIdentityFor } from "./store/credential-lifecycle.js";
 import { getStore } from "./store.js";
 import type { ConfigurationActionError } from "./types.js";
 
@@ -85,7 +82,6 @@ export const getSetupVerdict = async (): Promise<
     runtime: RUNTIME_IDENTITY,
     structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
     credentialReferenceIdentity: credentialReferenceIdentityFor(binding),
-    workspaceAccountReference: workspaceAccountReferenceFor(selected.record),
   }).readiness;
   return ok(verdictFromReadiness(readiness, selected.record.configurationId));
 };

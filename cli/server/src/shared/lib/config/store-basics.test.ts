@@ -21,7 +21,7 @@ import {
 } from "./store.test-support.js";
 
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
-const QWEN_ENDPOINT = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
+const ZAI_ENDPOINT = "https://api.z.ai/api/paas/v4";
 const OLLAMA_ENDPOINT = "http://127.0.0.1:11434";
 const LM_STUDIO_ENDPOINT = "http://127.0.0.1:1234/v1";
 const CREATED_AT = "2026-01-01T00:00:00.000Z";
@@ -180,7 +180,6 @@ const evidenceKeyForPersisted = (configurationId: string): EvidenceKey => {
       binding?.kind === "file-0600" && binding.filePath
         ? sha256CanonicalJsonSync({ kind: "file-0600", filePath: binding.filePath })
         : null,
-    workspaceAccountReference: null,
   });
 };
 
@@ -561,26 +560,24 @@ describe("config store actions", () => {
     if (!env.ok) return;
     responses.push(env.value);
 
-    const qwen = await store.runConfigurationAction({
+    const zai = await store.runConfigurationAction({
       action: "create",
       input: {
         transportFamily: "hosted-api",
-        productId: "qwen",
-        endpoint: QWEN_ENDPOINT,
-        region: "international",
-        workspace: "workspace-alpha",
-        credential: { kind: "literal", value: "sk-proj-qwen-literal-secret" },
+        productId: "zai",
+        endpoint: ZAI_ENDPOINT,
+        credential: { kind: "literal", value: "sk-proj-zai-literal-secret" },
       },
     });
-    expect(qwen.ok).toBe(true);
-    if (!qwen.ok) return;
-    responses.push(qwen.value);
+    expect(zai.ok).toBe(true);
+    if (!zai.ok) return;
+    responses.push(zai.value);
 
     const serialized = JSON.stringify(responses);
     expect(serialized).not.toContain("sk-proj-hosted-literal-secret");
-    expect(serialized).not.toContain("sk-proj-qwen-literal-secret");
+    expect(serialized).not.toContain("sk-proj-zai-literal-secret");
     expect(serialized).not.toContain("GOOGLE_API_KEY");
-    expect(serialized).not.toContain("QWEN_API_KEY");
+    expect(serialized).not.toContain("ZAI_API_KEY");
     expect(serialized).not.toContain("credentials/");
     expect(serialized).not.toContain("file-0600");
     expect(serialized).not.toContain("keyId");
@@ -590,28 +587,8 @@ describe("config store actions", () => {
 
     const configText = readFileSync(configPath(), "utf8");
     expect(configText).not.toContain("sk-proj-hosted-literal-secret");
-    expect(configText).not.toContain("sk-proj-qwen-literal-secret");
+    expect(configText).not.toContain("sk-proj-zai-literal-secret");
     expect(configText).not.toContain("GOOGLE_API_KEY");
-  });
-
-  it("rejects a secret-like workspace before any state is persisted", async () => {
-    const store = await loadStore();
-
-    const result = await store.runConfigurationAction({
-      action: "create",
-      input: {
-        transportFamily: "hosted-api",
-        productId: "qwen",
-        endpoint: QWEN_ENDPOINT,
-        region: "international",
-        workspace: "sk-proj-workspace-secret",
-        credential: { kind: "literal", value: "sk-proj-workspace-test" },
-      },
-    });
-
-    expect(result).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-    expect(existsSync(configPath())).toBe(false);
-    expect(existsSync(secretsPath())).toBe(false);
   });
 
   it("rolls back a failed create without partial records or bindings", async () => {

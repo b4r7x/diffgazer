@@ -75,7 +75,7 @@ function createWrapper() {
     createElement(Wrapper, null, createElement(ConfigProvider, null, children));
 }
 
-function readyDraft(productId: "mistral" | "gemini" = "mistral"): OnboardingDraft {
+function readyDraft(productId: "zai" | "gemini" = "zai"): OnboardingDraft {
   const draft = getInitialWizardData(productId);
   const notice = PRODUCT_REGISTRY[productId].notice;
   if (draft.configurationInput.transportFamily !== "hosted-api") {
@@ -87,7 +87,7 @@ function readyDraft(productId: "mistral" | "gemini" = "mistral"): OnboardingDraf
       ...draft.configurationInput,
       credential: { kind: "environment" },
     },
-    selectedModelId: productId === "gemini" ? "gemini-2.5-flash" : "mistral-small-2603",
+    selectedModelId: productId === "gemini" ? "gemini-2.5-flash" : "glm-5",
     acknowledgement: {
       status: "accepted",
       noticeId: notice.id,
@@ -134,8 +134,6 @@ function configurationSummary(
       transportFamily: "hosted-api" as const,
       productId: input.productId,
       endpoint: input.endpoint,
-      region: input.region,
-      workspace: input.workspace,
       selectedModelId,
       notices: [
         {

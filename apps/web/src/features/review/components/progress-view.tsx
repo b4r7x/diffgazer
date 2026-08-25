@@ -17,6 +17,7 @@ import {
   type ProgressStepData,
   type ReviewProgressMetrics,
 } from "@diffgazer/core/schemas/presentation";
+import type { ReviewSizeWarning } from "@diffgazer/core/schemas/review";
 import { clampIndex, useActionRowNavigation } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
@@ -52,6 +53,8 @@ export interface ReviewProgressData {
   startTime?: Date;
   contextSnapshot?: ReviewContextResponse | null;
   notices: string[];
+  /** The admitted-but-large advisory the stream reported, once, right after the run started. */
+  sizeWarning?: ReviewSizeWarning | null;
 }
 
 export interface ReviewProgressViewProps {
@@ -248,6 +251,11 @@ function ErrorDisplay({
   );
 }
 
+const SIZE_WARNING_TITLE = "Large Review";
+/** The way out of a diff the model may not fit, named the way home names it. */
+const SIZE_WARNING_ACTION_LINE =
+  "Cancel this run, then narrow it from Home: the Review Scope row, or [f].";
+
 const PANEL_TONE_BY_LIVENESS = {
   flowing: undefined,
   quiet: "warning",
@@ -341,6 +349,9 @@ export function ReviewProgressView({
   const { steps, events, agents, lensStats, metrics, startTime, contextSnapshot, notices } = data;
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const hasError = Boolean(error);
+  // The advisory stands down the moment the run has a failure to report: two
+  // callouts about the same review would only compete for the reader.
+  const sizeWarning = hasError ? null : (data.sizeWarning ?? null);
 
   const progressPaneFocus = useFocusWithin<HTMLElement>();
   const logPaneFocus = useFocusWithin<HTMLElement>();
@@ -548,6 +559,19 @@ export function ReviewProgressView({
           </div>
 
           <div ref={logContentRef} className="flex flex-1 min-h-0 flex-col">
+            {sizeWarning && (
+              <div className="px-4 pb-2">
+                <Callout tone="warning" live>
+                  <Callout.Title>{SIZE_WARNING_TITLE}</Callout.Title>
+                  <Callout.Content>{sanitizePresentationText(sizeWarning.message)}</Callout.Content>
+                  {/* Only while the run is still reading: once it has finished
+                      there are results to read, and narrowing it now would throw
+                      them away for nothing. */}
+                  {isRunning && <Callout.Content>{SIZE_WARNING_ACTION_LINE}</Callout.Content>}
+                </Callout>
+              </div>
+            )}
+
             {partialFailure.hasPartialFailure && (
               <div className="px-4 pb-2">
                 <Callout tone="warning" live>

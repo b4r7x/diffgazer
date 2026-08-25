@@ -1,8 +1,13 @@
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 import type { ReviewEvent } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
+import type { GitStatus } from "@diffgazer/core/schemas/git";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
+import {
+  ReviewErrorCode,
+  type ReviewMode,
+  type ReviewSizeWarning,
+} from "@diffgazer/core/schemas/review";
 import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
 import { makeAllConfigurationsListResponse } from "@diffgazer/core/testing/provider-fixtures";
 import { Text } from "ink";
@@ -193,14 +198,22 @@ function renderContainer({
   initialShortcuts = [],
   showFooterProbe = false,
   onViewRunDetails,
+  gitStatus,
 }: {
   initialRoute?: Route;
   initialShortcuts?: Shortcut[];
   showFooterProbe?: boolean;
   onViewRunDetails?: (reviewId: string) => void;
+  /** Supplied by the tests that open the file picker, which reads the working tree. */
+  gitStatus?: GitStatus;
 } = {}) {
   return render(
-    <ApiBoundary api={{ saveSettings: apiMocks.saveSettings }}>
+    <ApiBoundary
+      api={{
+        saveSettings: apiMocks.saveSettings,
+        ...(gitStatus ? { getGitStatus: async () => gitStatus } : {}),
+      }}
+    >
       <CliThemeProvider initialTheme="dark">
         <TerminalKeyboardProvider>
           <NavigationProvider initialRoute={initialRoute}>
@@ -214,6 +227,35 @@ function renderContainer({
     </ApiBoundary>,
   );
 }
+
+const STAGED_TWO_FILES: GitStatus = {
+  isGitRepo: true,
+  branch: "main",
+  remoteBranch: null,
+  ahead: 0,
+  behind: 0,
+  files: {
+    staged: [
+      { path: "src/a.ts", indexStatus: "M", workTreeStatus: " " },
+      { path: "src/b.ts", indexStatus: "M", workTreeStatus: " " },
+    ],
+    unstaged: [],
+    untracked: [],
+  },
+  hasChanges: true,
+  conflicted: [],
+};
+
+const OVER_WINDOW_ERROR =
+  "This diff does not fit gpt-test. It is 1.20MB across 40 files, about 400,000 prompt tokens, against a 128,000-token context window.";
+
+const SIZE_WARNING: ReviewSizeWarning = {
+  message: "Large review: 0.60MB across 30 files, about 190,000 prompt tokens.",
+  diffBytes: 629_145,
+  estimatedInputTokens: 190_000,
+  contextTokens: 400_000,
+  modelId: "gpt-test",
+};
 
 describe("ReviewContainer", () => {
   test("shows live orchestrator lens failures and filtered issue counts in the immediate summary", async () => {
@@ -858,5 +900,124 @@ describe("ReviewContainer", () => {
       .split("\n")
       .find((line) => line.includes("Loading configuration"));
     expect(readoutLine).toMatch(/^ {2,}\S/);
+  });
+  test("offers the file picker on a failure a narrower run would survive", async () => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        error: OVER_WINDOW_ERROR,
+        errorCode: ReviewErrorCode.DIFF_TOO_LARGE,
+        gate: "terminal-error",
+        isTerminalStreamError: true,
+        reviewId: "review-123",
+      }),
+    );
+
+    const { stdin, lastFrame } = renderContainer({
+      showFooterProbe: true,
+      gitStatus: STAGED_TWO_FILES,
+    });
+    await flush();
+
+    const failureFrame = frameText(lastFrame());
+    expect(failureFrame).toContain("[ Review Specific Files ]");
+    expect(failureFrame).toContain("f Review Specific Files");
+
+    stdin.write("f");
+    await waitUntil(() => frameText(lastFrame()).includes("src/a.ts"));
+
+    const pickerFrame = frameText(lastFrame());
+    expect(pickerFrame).toContain("Select Staged Files");
+    expect(pickerFrame).toContain("a All, n None, s Review Selected");
+    // The picker carries the failure that sent the user here, numbers and all.
+    expect(pickerFrame).toContain("does not fit gpt-test");
+
+    stdin.write(ESC);
+    await waitUntil(() => frameText(lastFrame()).includes("Diff Too Large"));
+  });
+
+  test("starts a new review when the picker keeps every file on an attached run", async () => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        error: OVER_WINDOW_ERROR,
+        errorCode: ReviewErrorCode.DIFF_TOO_LARGE,
+        gate: "terminal-error",
+        isTerminalStreamError: true,
+        reviewId: "review-123",
+      }),
+    );
+
+    const { stdin, lastFrame } = renderContainer({
+      initialRoute: { screen: "review", reviewId: "review-123", mode: "staged", live: true },
+      gitStatus: STAGED_TWO_FILES,
+    });
+    await flush();
+
+    stdin.write("f");
+    await waitUntil(() => frameText(lastFrame()).includes("src/a.ts"));
+
+    stdin.write("a");
+    await waitUntil(() => frameText(lastFrame()).includes("2 selected"));
+    stdin.write("s");
+
+    // Selecting everything is still a new run, not a replay of the dead one the
+    // route is attached to.
+    await waitUntil(() => apiMocks.createReview.mock.calls.length > 0);
+    expect(apiMocks.createReview).toHaveBeenCalledWith(expect.objectContaining({ mode: "staged" }));
+    expect(apiMocks.createReview.mock.calls[0]?.[0]).not.toHaveProperty("files");
+  });
+
+  test.each([
+    ReviewErrorCode.MODEL_INCOMPATIBLE,
+    // A generation fault is not a size fault: narrowing the file set cannot fix it.
+    ReviewErrorCode.GENERATION_FAILED,
+  ])("keeps the picker away from a %s failure a smaller file set cannot fix", async (errorCode) => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        error: "Adapter response failed schema validation.",
+        errorCode,
+        gate: "terminal-error",
+        isTerminalStreamError: true,
+        reviewId: "review-123",
+      }),
+    );
+
+    const { lastFrame } = renderContainer({ gitStatus: STAGED_TWO_FILES });
+    await flush();
+
+    expect(frameText(lastFrame())).not.toContain("Review Specific Files");
+  });
+
+  test("lets a warned run stop and narrow itself from the progress screen", async () => {
+    const cancel = vi.fn(async () => ({
+      status: "cancelled" as const,
+      reason: "cancelled" as const,
+    }));
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        cancel,
+        isStreaming: true,
+        reviewId: "review-123",
+        sizeWarning: SIZE_WARNING,
+      }),
+    );
+
+    const { stdin, lastFrame } = renderContainer({
+      showFooterProbe: true,
+      gitStatus: STAGED_TWO_FILES,
+    });
+    await flush();
+
+    const runningFrame = frameText(lastFrame());
+    expect(runningFrame).toContain("Large Review");
+    expect(runningFrame).toContain("about 190,000 prompt tokens");
+    expect(runningFrame).toContain("f Filter Files");
+
+    stdin.write("f");
+    await waitUntil(() => frameText(lastFrame()).includes("src/a.ts"));
+    expect(frameText(lastFrame())).toContain("Select Staged Files");
+
+    // The run is stopped before the picker opens: the server takes one review at
+    // a time, so a narrowed start would otherwise be refused.
+    expect(cancel).toHaveBeenCalledWith("review-123");
   });
 });

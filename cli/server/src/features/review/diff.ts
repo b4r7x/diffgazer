@@ -11,7 +11,14 @@ import type { ParsedDiff } from "./engine/diff/types.js";
 import { stepComplete, stepStart } from "./stream/steps.js";
 import type { EmitFn } from "./types.js";
 
-export const MAX_DIFF_SIZE_BYTES = 512 * 1024;
+/**
+ * The one hard byte ceiling left on a diff. It is not the model gate — that is
+ * `evaluateReviewCapacity`, which prices the diff against the selected model's
+ * context window and knows how many tokens it would actually cost. This ceiling
+ * only catches the pathological input no model choice would rescue: a committed
+ * lockfile, a vendored tree, or a generated bundle arriving as megabytes of text.
+ */
+export const MAX_DIFF_SIZE_BYTES = 10 * 1024 * 1024;
 const DIFFGAZER_DIR_PREFIX = ".diffgazer/";
 
 function getReviewErrorCodeForGitDiff(error: GitDiffError): ReviewErrorCode {
@@ -151,12 +158,11 @@ export async function resolveGitDiff(params: {
 
   if (parsed.totalStats.totalSizeBytes > MAX_DIFF_SIZE_BYTES) {
     const sizeMB = (parsed.totalStats.totalSizeBytes / 1024 / 1024).toFixed(2);
-    const maxMB = (MAX_DIFF_SIZE_BYTES / 1024 / 1024).toFixed(2);
+    const maxMB = (MAX_DIFF_SIZE_BYTES / 1024 / 1024).toFixed(0);
     return err(
       reviewAbort(
-        `Diff too large (${sizeMB}MB exceeds ${maxMB}MB limit). Try reviewing fewer files or use file filtering.`,
-        // Diff-size overflow has no ReviewErrorCode of its own; it reuses GENERATION_FAILED.
-        ReviewErrorCode.GENERATION_FAILED,
+        `Diff is ${sizeMB}MB, past the ${maxMB}MB ceiling a review will read at all. A diff this size is usually a lockfile, a vendored directory, or a generated bundle — exclude it, or review specific files.`,
+        ReviewErrorCode.DIFF_TOO_LARGE,
         "diff",
       ),
     );

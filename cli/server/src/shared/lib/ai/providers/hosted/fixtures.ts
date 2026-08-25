@@ -2,6 +2,7 @@ import { PRODUCT_REGISTRY, resolveCredentialEnvironmentVariable } from "@diffgaz
 import { HOSTED_API_PRODUCT_IDS, type HostedApiProductId } from "@diffgazer/core/schemas/config";
 import type { EvidenceKey, TerminalOutcome } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
+import { z } from "zod";
 import {
   DEFAULT_HOSTED_REVIEW_SCHEMA,
   executeHostedReview,
@@ -15,7 +16,7 @@ type HostedConformanceRequirement = "REQ-084" | "REQ-085" | "REQ-086";
 export type HostedConformanceSkipReason =
   | "live-probes-disabled"
   | "credential-missing"
-  | "entitlement-missing";
+  | "model-unresolved";
 
 export type HostedConformanceObservation = Readonly<{
   status: "passed" | "failed" | "skipped";
@@ -38,7 +39,6 @@ export type HostedMockConformanceCase = Readonly<{
   productId: HostedApiProductId;
   evidencePatch?: Partial<Extract<EvidenceKey, { transportFamily: "hosted-api" }>>;
   prompt?: string;
-  workspaceAccountId?: string | null;
   aborted?: boolean;
   limitsPatch?: Partial<EvidenceKey["limits"]>;
   fetch: typeof fetch;
@@ -47,23 +47,22 @@ export type HostedMockConformanceCase = Readonly<{
   /** Findings the completed case must return; a non-completed outcome must return none. */
   expectedFindingsCount?: number;
   expectedUsageAvailability?: string;
-  /** Endpoint the case requires the adapter to call; asserts regional routing. */
+  /** Endpoint the case requires the adapter to call; asserts product routing. */
   expectedEndpoint?: string;
 }>;
 
 export type HostedLiveProbeDescriptor = Readonly<{
   productId: HostedApiProductId;
   credentialEnv: string;
-  modelId: string;
-  region?: string | null;
+  /** Null when the product suggests no model; the live probe discovers one instead. */
+  modelId: string | null;
   normalizedEndpoint?: string;
-  workspaceAccountId?: string | null;
-  requiresEntitlement?: boolean;
 }>;
 
+/** Stand-in model id for mock cases, whose requests never leave the process. */
+const MOCK_MODEL_ID = "model-1";
 const SCHEMA_SHA256 = "1".repeat(64);
 const CREDENTIAL_REFERENCE_IDENTITY = "3".repeat(64);
-const WORKSPACE_ACCOUNT_REFERENCE = "4".repeat(64);
 const TEST_CREDENTIAL = "hosted-conformance-synthetic-credential";
 
 const STRUCTURED_OUTPUT_SCHEMA = {
@@ -89,23 +88,23 @@ const DEFAULT_LIMITS = {
 
 const LONG_DIFF_PROMPT = `Review this diff:\n${"@@ -1,1 +1,1 @@\n-old\n+new\n".repeat(400)}`;
 
-function suggestedModelId(productId: HostedApiProductId): string {
+/**
+ * The product's suggested model id, or null when it publishes none: a
+ * `discovered-exact` product rotates its routes, so its live `/models` list is
+ * the only admissible identity source and a pinned guess would name a dead route.
+ */
+function suggestedModelId(productId: HostedApiProductId): string | null {
   const policy = PRODUCT_REGISTRY[productId].modelPolicy;
   if ("suggestedModelId" in policy && policy.suggestedModelId) {
     return policy.suggestedModelId;
   }
-  if (productId === "openrouter") return "anthropic/claude-3.7-sonnet";
-  if (productId === "moonshot") return "kimi-k3-2026-01";
-  return "model-1";
+  return null;
 }
 
-function defaultEndpoint(productId: HostedApiProductId, region?: string | null): string {
-  const endpoints = PRODUCT_REGISTRY[productId].configuration.endpoints;
-  if (region) {
-    const match = endpoints.find((entry) => "region" in entry && entry.region === region);
-    if (match) return match.endpoint;
-  }
-  return endpoints[0]?.endpoint ?? "https://example.invalid/v1";
+function defaultEndpoint(productId: HostedApiProductId): string {
+  return (
+    PRODUCT_REGISTRY[productId].configuration.endpoints[0]?.endpoint ?? "https://example.invalid/v1"
+  );
 }
 
 function evidenceKeyFor(
@@ -113,12 +112,6 @@ function evidenceKeyFor(
   patch: Partial<Extract<EvidenceKey, { transportFamily: "hosted-api" }>> = {},
 ): EvidenceKey {
   const product = PRODUCT_REGISTRY[productId];
-  const endpoint = product.configuration.endpoints[0];
-  const region = endpoint && "region" in endpoint ? (endpoint.region ?? null) : null;
-  const workspaceAccountReference =
-    endpoint && "workspaceBound" in endpoint && endpoint.workspaceBound
-      ? WORKSPACE_ACCOUNT_REFERENCE
-      : null;
 
   return {
     authentication: null,
@@ -126,10 +119,10 @@ function evidenceKeyFor(
     installationId: null,
     productId,
     transportFamily: "hosted-api",
-    normalizedEndpoint: endpoint?.endpoint ?? "https://example.invalid/v1",
-    region,
-    workspaceAccountReference,
-    modelId: suggestedModelId(productId),
+    normalizedEndpoint: defaultEndpoint(productId),
+    region: null,
+    workspaceAccountReference: null,
+    modelId: suggestedModelId(productId) ?? MOCK_MODEL_ID,
     runtime: { identity: "diffgazer-server", version: "1.2.3" },
     structuredOutputSchemaSha256: SCHEMA_SHA256,
     noticeVersion: product.notice.noticeVersion,
@@ -179,16 +172,12 @@ function successFetch(productId: HostedApiProductId, content: unknown): typeof f
   return (async () => mockResponse(body)) as typeof fetch;
 }
 
-function hostedContext(
-  fetchFn: typeof fetch,
-  patch: Record<string, unknown> = {},
-): HostedExecutionContext {
+function hostedContext(fetchFn: typeof fetch): HostedExecutionContext {
   return {
     credential: TEST_CREDENTIAL,
     reviewSchema: DEFAULT_HOSTED_REVIEW_SCHEMA,
     structuredOutputSchema: STRUCTURED_OUTPUT_SCHEMA,
     fetch: fetchFn,
-    ...patch,
   };
 }
 
@@ -221,8 +210,6 @@ export function resolveHostedLiveSkipReason(
 ): HostedConformanceSkipReason | null {
   if (!isHostedLiveProbeOptIn()) return "live-probes-disabled";
   if (!process.env[descriptor.credentialEnv]) return "credential-missing";
-  if (descriptor.requiresEntitlement && !descriptor.workspaceAccountId)
-    return "entitlement-missing";
   return null;
 }
 
@@ -250,9 +237,7 @@ export async function runHostedMockConformanceCase(
     },
     prompt: testCase.prompt ?? "review this diff",
     signal: controller.signal,
-    context: hostedContext(observingFetch, {
-      workspaceAccountId: testCase.workspaceAccountId,
-    }),
+    context: hostedContext(observingFetch),
   });
 
   const findingsCount = result.result.issues.length;
@@ -286,10 +271,10 @@ export async function runHostedMockConformanceCase(
   };
 }
 
-const mistralNullableReview = {
+const nullableFieldsReview = {
   issues: [
     {
-      id: "mistral-nullable-1",
+      id: "nullable-fields-1",
       severity: "low",
       category: "style",
       title: "Nullable field probe",
@@ -434,20 +419,32 @@ export const HOSTED_REQ_085_CASES: readonly HostedMockConformanceCase[] = [
     expectedAttemptCount: 2,
   },
   {
-    id: "REQ-085:qwen-local-schema-validation",
+    id: "REQ-085:opencode-zen-local-schema-validation",
     requirement: "REQ-085",
-    productId: "qwen",
-    evidencePatch: { region: "international" },
-    workspaceAccountId: "ws-conformance-123",
-    fetch: successFetch("qwen", { issues: [] }),
+    productId: "opencode-zen",
+    fetch: successFetch("opencode-zen", { issues: [makeIssue()] }),
+    expectedOutcome: "completed",
+    expectedFindingsCount: 1,
+  },
+  {
+    id: "REQ-085:opencode-zen-malformed-output-retry-limit",
+    requirement: "REQ-085",
+    productId: "opencode-zen",
+    fetch: malformedRetryFetch(),
+    expectedOutcome: "schema-failed",
+    expectedAttemptCount: 2,
+  },
+  {
+    id: "REQ-085:ollama-cloud-local-schema-validation",
+    requirement: "REQ-085",
+    productId: "ollama-cloud",
+    fetch: successFetch("ollama-cloud", { issues: [] }),
     expectedOutcome: "completed",
     expectedFindingsCount: 0,
   },
 ];
 
-const MISTRAL_REGIONS = ["global", "eu"] as const;
-
-type MistralBehaviour = Readonly<{
+type DepthBehaviour = Readonly<{
   behaviour: string;
   fetch: () => typeof fetch;
   expectedOutcome: HostedMockConformanceCase["expectedOutcome"];
@@ -456,10 +453,10 @@ type MistralBehaviour = Readonly<{
   prompt?: string;
 }>;
 
-const MISTRAL_BEHAVIOURS: readonly MistralBehaviour[] = [
+const DEPTH_BEHAVIOURS: readonly DepthBehaviour[] = [
   {
     behaviour: "long-diff",
-    fetch: () => successFetch("mistral", { issues: [] }),
+    fetch: () => successFetch("cerebras", { issues: [] }),
     expectedOutcome: "completed",
     expectedAttemptCount: 1,
     expectedFindingsCount: 0,
@@ -467,10 +464,10 @@ const MISTRAL_BEHAVIOURS: readonly MistralBehaviour[] = [
   },
   {
     behaviour: "nullable-fields",
-    fetch: () => successFetch("mistral", mistralNullableReview),
+    fetch: () => successFetch("cerebras", nullableFieldsReview),
     expectedOutcome: "completed",
     expectedAttemptCount: 1,
-    expectedFindingsCount: mistralNullableReview.issues.length,
+    expectedFindingsCount: nullableFieldsReview.issues.length,
   },
   {
     behaviour: "refusal",
@@ -498,7 +495,7 @@ const MISTRAL_BEHAVIOURS: readonly MistralBehaviour[] = [
     expectedAttemptCount: 1,
   },
   {
-    // Mistral's profile forbids the malformed-output retry, so a repeated
+    // Cerebras's profile forbids the malformed-output retry, so a repeated
     // malformed body must still settle after exactly one attempt.
     behaviour: "bounded-retry",
     fetch: () => malformedRetryFetch(),
@@ -507,46 +504,54 @@ const MISTRAL_BEHAVIOURS: readonly MistralBehaviour[] = [
   },
 ];
 
-/** Full Mistral endpoint x behaviour matrix: every behaviour is observed in both regions (REQ-086). */
-export const HOSTED_REQ_086_CASES: readonly HostedMockConformanceCase[] = MISTRAL_REGIONS.flatMap(
-  (region) =>
-    MISTRAL_BEHAVIOURS.map((behaviour) => ({
-      id: `REQ-086:mistral-${region}-${behaviour.behaviour}`,
-      requirement: "REQ-086" as const,
-      productId: "mistral" as const,
-      evidencePatch: {
-        normalizedEndpoint: defaultEndpoint("mistral", region),
-        region,
-        modelId: "mistral-small-2603",
-      },
-      ...(behaviour.prompt === undefined ? {} : { prompt: behaviour.prompt }),
-      fetch: behaviour.fetch(),
-      expectedOutcome: behaviour.expectedOutcome,
-      expectedAttemptCount: behaviour.expectedAttemptCount,
-      ...(behaviour.expectedFindingsCount === undefined
-        ? {}
-        : { expectedFindingsCount: behaviour.expectedFindingsCount }),
-      expectedEndpoint: defaultEndpoint("mistral", region),
-    })),
+/** Depth matrix for a strict-schema, no-retry hosted product (REQ-086). */
+export const HOSTED_REQ_086_CASES: readonly HostedMockConformanceCase[] = DEPTH_BEHAVIOURS.map(
+  (behaviour) => ({
+    id: `REQ-086:cerebras-${behaviour.behaviour}`,
+    requirement: "REQ-086" as const,
+    productId: "cerebras" as const,
+    ...(behaviour.prompt === undefined ? {} : { prompt: behaviour.prompt }),
+    fetch: behaviour.fetch(),
+    expectedOutcome: behaviour.expectedOutcome,
+    expectedAttemptCount: behaviour.expectedAttemptCount,
+    ...(behaviour.expectedFindingsCount === undefined
+      ? {}
+      : { expectedFindingsCount: behaviour.expectedFindingsCount }),
+    expectedEndpoint: defaultEndpoint("cerebras"),
+  }),
 );
 
 export const HOSTED_LIVE_PROBE_DESCRIPTORS: readonly HostedLiveProbeDescriptor[] =
-  HOSTED_API_PRODUCT_IDS.map((productId) => {
-    let region: string | null = null;
-    if (productId === "mistral") region = "global";
-    if (productId === "qwen") region = "international";
+  HOSTED_API_PRODUCT_IDS.map((productId) => ({
+    productId,
+    credentialEnv: resolveCredentialEnvironmentVariable(productId),
+    modelId: suggestedModelId(productId),
+    normalizedEndpoint: defaultEndpoint(productId),
+  }));
 
-    return {
-      productId,
-      credentialEnv: resolveCredentialEnvironmentVariable(productId),
-      modelId: suggestedModelId(productId),
-      region,
-      normalizedEndpoint:
-        productId === "mistral" ? defaultEndpoint("mistral", "global") : defaultEndpoint(productId),
-      workspaceAccountId: productId === "qwen" ? (process.env.QWEN_WORKSPACE_ID ?? null) : null,
-      requiresEntitlement: productId === "qwen",
-    };
-  });
+const LiveModelListSchema = z.object({
+  data: z.array(z.object({ id: z.string().min(1) })).nonempty(),
+});
+
+/**
+ * The first model the product's own `/models` list names, or null when the list
+ * cannot be read — the caller reports that as a skip, never a failed probe,
+ * because an unreadable list is a missing prerequisite and not a verdict.
+ */
+async function discoverLiveModelId(
+  descriptor: HostedLiveProbeDescriptor,
+  credential: string,
+): Promise<string | null> {
+  const endpoint = descriptor.normalizedEndpoint ?? defaultEndpoint(descriptor.productId);
+  const response = await globalThis
+    .fetch(`${endpoint}/models`, { headers: { authorization: `Bearer ${credential}` } })
+    .catch(() => null);
+  if (!response?.ok) return null;
+
+  const body = await response.json().catch(() => null);
+  const parsed = LiveModelListSchema.safeParse(body);
+  return parsed.success ? (parsed.data.data[0]?.id ?? null) : null;
+}
 
 export async function runHostedLiveProbe(
   descriptor: HostedLiveProbeDescriptor,
@@ -558,10 +563,16 @@ export async function runHostedLiveProbe(
 
   const credential = process.env[descriptor.credentialEnv] as string;
   const fetch = globalThis.fetch;
+  const modelId = descriptor.modelId ?? (await discoverLiveModelId(descriptor, credential));
+  if (modelId === null) {
+    return reportHostedLiveSkipped(descriptor, "model-unresolved");
+  }
+
   const evidenceKey = evidenceKeyFor(descriptor.productId, {
-    modelId: descriptor.modelId,
-    normalizedEndpoint: descriptor.normalizedEndpoint,
-    region: descriptor.region ?? null,
+    modelId,
+    ...(descriptor.normalizedEndpoint === undefined
+      ? {}
+      : { normalizedEndpoint: descriptor.normalizedEndpoint }),
   });
 
   const result = await executeHostedReview({
@@ -574,7 +585,6 @@ export async function runHostedLiveProbe(
       reviewSchema: DEFAULT_HOSTED_REVIEW_SCHEMA,
       structuredOutputSchema: STRUCTURED_OUTPUT_SCHEMA,
       fetch,
-      workspaceAccountId: descriptor.workspaceAccountId,
     },
   });
 

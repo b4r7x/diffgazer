@@ -272,7 +272,6 @@ export function buildRequestInit(
     prompt: string;
     systemPrompt?: string;
     structuredOutputSchema?: Record<string, unknown>;
-    workspaceAccountId?: string | null;
     signal?: AbortSignal;
   }>,
 ): RequestInit {
@@ -319,9 +318,6 @@ export function buildRequestInit(
     }
     case "openai-compatible": {
       headers.authorization = `Bearer ${input.credential}`;
-      if (input.productId === "qwen" && input.workspaceAccountId) {
-        headers["x-dashscope-workspace"] = input.workspaceAccountId;
-      }
       body = {
         model: input.evidenceKey.modelId,
         messages: buildOpenAiMessages(input.prompt, input.systemPrompt),

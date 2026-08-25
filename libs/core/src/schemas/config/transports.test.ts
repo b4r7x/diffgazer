@@ -12,7 +12,6 @@ import {
   LOCAL_OPENAI_PRESET_ENDPOINTS,
   LOCAL_OPENAI_PRESET_IDS,
   LoopbackHttpEndpointSchema,
-  matchesHostedApiTransportTuple,
   matchesLocalHttpTransportTuple,
   REJECTED_PRODUCT_IDS,
   RUNNABLE_PRODUCT_IDS,
@@ -31,7 +30,7 @@ describe("transport family contract", () => {
     expect(TransportFamilySchema.safeParse("sdk").success).toBe(false);
   });
 
-  it("partitions exactly 14 runnable product identities", () => {
+  it("partitions exactly 12 runnable product identities", () => {
     expect(RUNNABLE_PRODUCT_IDS).toEqual([
       "gemini",
       "zai",
@@ -39,10 +38,8 @@ describe("transport family contract", () => {
       "groq",
       "cerebras",
       "deepseek",
-      "qwen",
-      "moonshot",
-      "mistral",
       "ollama-cloud",
+      "opencode-zen",
       "ollama",
       "local-openai",
       "codex-cli",
@@ -106,30 +103,9 @@ describe("endpoint contracts", () => {
 });
 
 describe("endpoint tuple authority", () => {
-  it("centralizes hosted region/workspace and local preset matching", () => {
-    const qwenTuple = getHostedApiEndpointTuple(
-      "qwen",
-      "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-      "international",
-    );
-    expect(qwenTuple && "workspaceBound" in qwenTuple ? qwenTuple.workspaceBound : undefined).toBe(
-      true,
-    );
-    expect(
-      matchesHostedApiTransportTuple({
-        productId: "qwen",
-        endpoint: qwenTuple?.endpoint ?? "",
-        region: "international",
-        workspace: "workspace-reference",
-      }),
-    ).toBe(true);
-    expect(
-      matchesHostedApiTransportTuple({
-        productId: "qwen",
-        endpoint: qwenTuple?.endpoint ?? "",
-        region: "international",
-      }),
-    ).toBe(false);
+  it("centralizes hosted endpoint and local preset matching", () => {
+    expect(getHostedApiEndpointTuple("deepseek", "https://api.deepseek.com/v1")?.id).toBe("payg");
+    expect(getHostedApiEndpointTuple("deepseek", "https://api.z.ai/api/paas/v4")).toBeUndefined();
     expect(
       matchesLocalHttpTransportTuple({
         productId: "local-openai",
@@ -160,8 +136,6 @@ describe("endpoint tuple authority", () => {
             transportFamily: "hosted-api",
             productId,
             endpoint: endpoint.endpoint,
-            ...("region" in endpoint ? { region: endpoint.region } : {}),
-            ...("workspaceBound" in endpoint ? { workspace: "workspace-reference" } : {}),
           }).success,
         ).toBe(true);
       }
@@ -172,10 +146,8 @@ describe("endpoint tuple authority", () => {
 describe("transport-specific configuration", () => {
   const hostedInput = {
     transportFamily: "hosted-api" as const,
-    productId: "qwen" as const,
-    endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-    region: "international",
-    workspace: "workspace-reference",
+    productId: "deepseek" as const,
+    endpoint: "https://api.deepseek.com/v1",
   };
   const localHttpInput = {
     transportFamily: "local-http" as const,
@@ -197,7 +169,7 @@ describe("transport-specific configuration", () => {
 
   it.each([
     { ...hostedInput, installationId: "codex-installation-1" },
-    { ...localHttpInput, region: "international" },
+    { ...localHttpInput, installationId: "codex-installation-1" },
     { ...localCliInput, endpoint: "http://localhost:11434" },
     { ...localHttpInput, productId: "gemini" },
     { ...localCliInput, productId: "ollama" },
@@ -220,24 +192,7 @@ describe("transport-specific configuration", () => {
   });
 
   it.each([
-    {
-      ...hostedInput,
-      endpoint: "https://api.moonshot.ai/v1",
-      region: "international",
-    },
-    { ...hostedInput, region: "mainland" },
-    { ...hostedInput, workspace: undefined },
-    {
-      transportFamily: "hosted-api",
-      productId: "moonshot",
-      endpoint: "https://api.moonshot.cn/v1",
-      region: "international",
-    },
-    {
-      transportFamily: "hosted-api",
-      productId: "mistral",
-      endpoint: "https://api.mistral.ai/v1",
-    },
+    { ...hostedInput, endpoint: "https://api.z.ai/api/paas/v4" },
     {
       transportFamily: "hosted-api",
       productId: "gemini",
@@ -258,35 +213,6 @@ describe("transport-specific configuration", () => {
     },
   ])("rejects a hosted endpoint tuple outside its product contract", (input) => {
     expect(ClientConfigurationInputSchema.safeParse(input).success).toBe(false);
-  });
-
-  it.each([
-    {
-      transportFamily: "hosted-api",
-      productId: "moonshot",
-      endpoint: "https://api.moonshot.cn/v1",
-      region: "mainland",
-    },
-    {
-      transportFamily: "hosted-api",
-      productId: "moonshot",
-      endpoint: "https://api.moonshot.ai/v1",
-      region: "international",
-    },
-    {
-      transportFamily: "hosted-api",
-      productId: "mistral",
-      endpoint: "https://api.mistral.ai/v1",
-      region: "global",
-    },
-    {
-      transportFamily: "hosted-api",
-      productId: "mistral",
-      endpoint: "https://api.eu.mistral.ai/v1",
-      region: "eu",
-    },
-  ])("accepts an exact regional endpoint tuple", (input) => {
-    expect(ClientConfigurationInputSchema.parse(input)).toEqual(input);
   });
 
   it("binds local-openai presets to their exact identities and URLs", () => {
@@ -334,44 +260,8 @@ describe("transport-specific configuration", () => {
     ).toBe(false);
   });
 
-  it("rejects control characters in opaque region and workspace references", () => {
-    const controlCharacters = [
-      "\u0000",
-      "\u0007",
-      "\u0009",
-      "\u000a",
-      "\u000d",
-      "\u001b",
-      "\u001f",
-      "\u007f",
-      "\u0085",
-      "\u009f",
-      "\u2028",
-      "\u2029",
-    ];
-
-    for (const controlCharacter of controlCharacters) {
-      expect(
-        ClientConfigurationInputSchema.safeParse({
-          ...hostedInput,
-          workspace: `workspace${controlCharacter}reference`,
-        }).success,
-      ).toBe(false);
-      expect(
-        ClientConfigurationInputSchema.safeParse({
-          ...hostedInput,
-          region: `international${controlCharacter}`,
-        }).success,
-      ).toBe(false);
-    }
-  });
-
-  it("keeps printable opaque references and exact normalized tuples valid", () => {
-    const input = {
-      ...hostedInput,
-      workspace: "référence-équipe_01",
-    } as const;
-    expect(ClientConfigurationInputSchema.parse(input)).toEqual(input);
-    expect(HostedApiEndpointSchema.parse(input.endpoint)).toBe(input.endpoint);
+  it("keeps the exact normalized hosted tuple valid", () => {
+    expect(ClientConfigurationInputSchema.parse(hostedInput)).toEqual(hostedInput);
+    expect(HostedApiEndpointSchema.parse(hostedInput.endpoint)).toBe(hostedInput.endpoint);
   });
 });

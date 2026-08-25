@@ -33,18 +33,16 @@ function readyDraft(
   };
 }
 
-const qwen = () =>
+const deepseek = () =>
   readyDraft(
-    "qwen",
+    "deepseek",
     {
       transportFamily: "hosted-api",
-      productId: "qwen",
-      endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-      region: "international",
-      workspace: "workspace-reference",
+      productId: "deepseek",
+      endpoint: "https://api.deepseek.com/v1",
       credential: { kind: "literal", value: "write-only-credential" },
     },
-    "qwen3-coder-flash",
+    "deepseek-v4-flash",
   );
 
 function configurationSummary(
@@ -65,8 +63,6 @@ function configurationSummary(
     transportFamily: configurationInput.transportFamily,
     productId: configurationInput.productId,
     endpoint: configurationInput.endpoint,
-    region: configurationInput.region,
-    ...(configurationInput.workspace ? { workspace: configurationInput.workspace } : {}),
     selectedModelId,
     notices: [
       {
@@ -85,7 +81,7 @@ function configurationSummary(
 
 describe("wizard payloads", () => {
   it("serializes a hosted credential only in a V2 create action", () => {
-    const data = qwen();
+    const data = deepseek();
 
     expect(buildConfigPayload(data)).toEqual({
       action: "create",
@@ -95,9 +91,9 @@ describe("wizard payloads", () => {
   });
 
   it("serializes an environment credential without an environment name or legacy key", () => {
-    const base = qwen();
+    const base = deepseek();
     if (base.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Qwen fixture must use hosted API transport");
+      throw new Error("DeepSeek fixture must use hosted API transport");
     }
     const data = {
       ...base,
@@ -166,12 +162,12 @@ describe("wizard payloads", () => {
   });
 
   it("emits an exact selected model before notice acknowledgement is persisted", () => {
-    const data = qwen();
+    const data = deepseek();
 
     expect(buildSelectPayload(data, "configuration-1")).toEqual({
       action: "select",
       configurationId: "configuration-1",
-      modelId: "qwen3-coder-flash",
+      modelId: "deepseek-v4-flash",
     });
     expect(
       buildSelectPayload(
@@ -184,10 +180,10 @@ describe("wizard payloads", () => {
     ).toEqual({
       action: "select",
       configurationId: "configuration-1",
-      modelId: "qwen3-coder-flash",
+      modelId: "deepseek-v4-flash",
     });
     expect(() =>
-      buildSelectPayload({ ...data, selectedModelId: "qwen-latest" }, "configuration-1"),
+      buildSelectPayload({ ...data, selectedModelId: "deepseek-latest" }, "configuration-1"),
     ).toThrow("configured transport and exact model");
 
     expect(buildUpdatePayload(data, "configuration-1", 3)).toEqual({
@@ -201,7 +197,7 @@ describe("wizard payloads", () => {
 
   it("serializes review preferences and the provider consent the notice step recorded", () => {
     const data = {
-      ...qwen(),
+      ...deepseek(),
       defaultLenses: ["security"],
       agentExecution: "parallel",
     } satisfies OnboardingDraft;
@@ -219,7 +215,7 @@ describe("wizard payloads", () => {
 
 describe("saveWizard", () => {
   it("persists settings, the exact model, and the explicit notice without a paid conformance test", async () => {
-    const data = qwen();
+    const data = deepseek();
     const actions: ClientConfigurationAction[] = [];
     const saveSettings = vi.fn(async () => {});
     const runConfigurationAction = vi.fn(async (action: ClientConfigurationAction) => {
@@ -265,7 +261,7 @@ describe("saveWizard", () => {
       {
         action: "select",
         configurationId: "configuration-1",
-        modelId: "qwen3-coder-flash",
+        modelId: "deepseek-v4-flash",
       },
       {
         action: "update",
@@ -281,7 +277,7 @@ describe("saveWizard", () => {
   });
 
   it("completes with store-aligned readiness projection without a pre-select test", async () => {
-    const data = qwen();
+    const data = deepseek();
     const productId = data.plan.productId;
     const actions: ClientConfigurationAction[] = [];
     let revision = 1;
@@ -336,7 +332,7 @@ describe("saveWizard", () => {
   });
 
   it("rejects a select response that does not match the explicit selected tuple", async () => {
-    const data = qwen();
+    const data = deepseek();
     const runConfigurationAction = vi.fn(async (action: ClientConfigurationAction) => {
       if (action.action === "create") {
         return { action: "create", status: "succeeded", configuration: configurationSummary(data) };
@@ -345,7 +341,7 @@ describe("saveWizard", () => {
         return {
           action: "select",
           status: "succeeded",
-          configuration: configurationSummary(data, action.configurationId, "qwen-latest", 2),
+          configuration: configurationSummary(data, action.configurationId, "deepseek-latest", 2),
         };
       }
       throw new Error(`Unexpected action ${action.action}`);
@@ -366,7 +362,7 @@ describe("saveWizard", () => {
     const runConfigurationAction = vi.fn();
 
     await expect(
-      saveWizard(qwen(), { saveSettings, runConfigurationAction }),
+      saveWizard(deepseek(), { saveSettings, runConfigurationAction }),
     ).resolves.toMatchObject({
       status: "partial",
       completedSteps: [],
@@ -375,7 +371,7 @@ describe("saveWizard", () => {
   });
 
   it("reports a created configuration when model selection fails", async () => {
-    const data = qwen();
+    const data = deepseek();
     const actions: ClientConfigurationAction[] = [];
     const runConfigurationAction = vi.fn(async (action: ClientConfigurationAction) => {
       actions.push(action);

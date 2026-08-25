@@ -128,7 +128,7 @@ describe("useOnboardingWizard", () => {
     const hook = renderHook(() => useOnboardingWizard(), { wrapper });
 
     act(() => {
-      hook.result.current.handleProductChange("qwen");
+      hook.result.current.handleProductChange("zai");
       hook.result.current.handleInputMethodChange("paste");
       hook.result.current.handleApiKeyChange("write-only-secret");
       hook.result.current.handleProductChange("local-openai");

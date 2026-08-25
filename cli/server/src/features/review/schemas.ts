@@ -1,6 +1,11 @@
 import { posix } from "node:path";
 import { UuidSchema } from "@diffgazer/core/schemas/fields";
-import { LensIdSchema, ProfileIdSchema, ReviewModeSchema } from "@diffgazer/core/schemas/review";
+import {
+  LensIdSchema,
+  MAX_REVIEW_FILES,
+  ProfileIdSchema,
+  ReviewModeSchema,
+} from "@diffgazer/core/schemas/review";
 import { z } from "zod";
 import { isRepoRelativePath } from "../../shared/lib/paths.js";
 import { isReviewCursor } from "./storage/cursor.js";
@@ -13,7 +18,6 @@ export const ContextRefreshSchema = z.object({
   force: z.boolean().optional(),
 });
 
-export const MAX_REVIEW_FILES = 200;
 export const MAX_REVIEW_PATH_LENGTH = 500;
 
 export const ActiveSessionQuerySchema = z.object({

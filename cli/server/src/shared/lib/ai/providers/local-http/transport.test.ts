@@ -485,7 +485,7 @@ describe("exact selected-model and server-version invalidation", () => {
       modelId: "llama3.2",
     };
     const original = hashLocalConformanceIdentity(base);
-    expect(hashLocalConformanceIdentity({ ...base, modelId: "mistral" })).not.toBe(original);
+    expect(hashLocalConformanceIdentity({ ...base, modelId: "llama3.3" })).not.toBe(original);
     expect(
       hashLocalConformanceIdentity({
         ...base,

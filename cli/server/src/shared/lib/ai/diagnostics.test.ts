@@ -178,15 +178,6 @@ const REDACTION_CASES = [
     sensitive: { accountIdentifiers: ["acct_cli_account_redact_9a"] },
   },
   {
-    category: "workspace",
-    secret: "workspace-ref-redact-9a",
-    stdout: "workspace_id=workspace-ref-redact-9a",
-    stderr: "workspace.workspace-ref-redact-9a missing",
-    network: "workspace: workspace-ref-redact-9a",
-    parser: "tenant_id workspace-ref-redact-9a",
-    sensitive: { workspaceAccountReferences: ["workspace-ref-redact-9a"] },
-  },
-  {
     category: "home",
     secret: "/Users/alice/private/diffgazer/auth.json",
     stdout: `auth path=/Users/alice/private/diffgazer/auth.json`,

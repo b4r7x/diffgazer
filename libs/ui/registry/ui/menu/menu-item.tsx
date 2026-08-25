@@ -43,8 +43,8 @@ export interface MenuItemProps<TId extends string = string>
   /** Decorative hotkey label rendered as [n]. Does not bind a key listener. */
   hotkey?: number | string;
   /**
-   * Leading icon rendered in the indicator slot. Replaces the default ▌/> indicator when
-   * provided.
+   * Leading icon rendered in the indicator slot. Replaces the default ▌ cursor and hover
+   * chevron when provided.
    */
   icon?: ReactNode;
   /** Detail variant only. Right-aligned value (badge, count, or status text). */
@@ -75,13 +75,19 @@ export function MenuItem<TId extends string = string>({
   onClick,
   onFocus,
   onMouseDown,
+  onPointerMove,
+  onPointerLeave,
   ...rootProps
 }: MenuItemProps<TId>) {
   const {
     selectedId,
     highlighted,
+    hoveredId,
     activate,
     highlight,
+    hover,
+    unhover,
+    trackPointer,
     variant: menuVariant,
     idPrefix,
     itemRole,
@@ -102,18 +108,27 @@ export function MenuItem<TId extends string = string>({
   const isActive = !disabled && (isFocused || isSelected);
   const isDanger = variant === "danger";
   const isDetail = menuVariant === "detail";
-  const state = getItemState({ disabled, isFocused, isSelected });
+  const state = getItemState({ disabled, isFocused, isSelected, isHovered: hoveredId === id });
+  // Post-precedence: a row that is both hovered and keyboard-highlighted renders
+  // the keyboard treatment, so hover visuals exist only in the "hovered" state.
+  const isHovered = state === "hovered";
   const itemId = getEncodedListboxItemId(idPrefix, id);
 
-  const { handleClick, handleFocus, handleMouseDown } = useMenuItemInteractions({
-    id,
-    disabled,
-    activate,
-    highlight,
-    onClick,
-    onFocus,
-    onMouseDown,
-  });
+  const { handleClick, handleFocus, handleMouseDown, handlePointerMove, handlePointerLeave } =
+    useMenuItemInteractions({
+      id,
+      disabled,
+      activate,
+      highlight,
+      hover,
+      unhover,
+      trackPointer,
+      onClick,
+      onFocus,
+      onMouseDown,
+      onPointerMove,
+      onPointerLeave,
+    });
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: menuitem with centralized keyboard handling — the menu container owns arrow/Enter/Space via useNavigation; the item only mirrors focus/click.
@@ -129,18 +144,22 @@ export function MenuItem<TId extends string = string>({
       data-diffgazer-navigation-item="true"
       data-value={id}
       data-highlighted={isFocused ? "" : undefined}
+      data-hovered={isHovered ? "" : undefined}
       aria-checked={itemRole === "menuitemradio" ? isSelected : undefined}
       aria-disabled={disabled || undefined}
       data-selected={isSelected ? "" : undefined}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onFocus={handleFocus}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
       className={cn(menuItemBase({ menuVariant, state, colorVariant: variant }), className)}
     >
       {isDetail ? (
         <DetailItemLayout
           isFocused={isFocused}
           isSelected={isSelected}
+          isHovered={isHovered}
           value={value}
           valueClassName={menuItemValue({ valueVariant, active: isActive })}
           valueGlyph={MENU_VALUE_GLYPHS[valueVariant]}
@@ -152,6 +171,7 @@ export function MenuItem<TId extends string = string>({
         <DefaultItemLayout
           isFocused={isFocused}
           isSelected={isSelected}
+          isHovered={isHovered}
           isDanger={isDanger}
           hotkey={hotkey}
           icon={icon}

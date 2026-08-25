@@ -10,14 +10,12 @@ import type { ConfigurationActionError } from "./types.js";
 
 /**
  * The immutable tuple a single conformance observation is made against. Every
- * field is server-owned; credential and workspace references are digests, never
- * their values.
+ * field is server-owned; the credential reference is a digest, never its value.
  */
 export interface ConfigurationConformanceSubject {
   readonly record: SupportedProviderConfigurationRecord;
   readonly binding: SecretBinding | null;
   readonly credentialReferenceIdentity: string | null;
-  readonly workspaceAccountReference: string | null;
 }
 
 export type ConfigurationConformanceObservation =

@@ -23,6 +23,16 @@ export function executionLimitsFromBudget(budget: ConfigurationBudgetLimits): Ex
 }
 
 /**
+ * The answer length a review reserves inside the model's context window: the
+ * planned length, or the model's own output ceiling when that is smaller — a
+ * model that cannot emit 32k tokens must not have 32k held back from its input.
+ * A catalog that states no output ceiling reserves nothing.
+ */
+function answerReservationTokens(outputTokens: number | undefined): number {
+  return Math.min(outputTokens ?? 0, PLANNING_OUTPUT_TOKENS);
+}
+
+/**
  * Provider-advertised ceilings may only reduce configured local caps. The input
  * cap is whatever the model's context window leaves once the planned answer
  * length is reserved — the same reservation the cost estimate prices, so the
@@ -34,7 +44,7 @@ export function budgetWithinModelObservation(
 ): ConfigurationBudgetLimits {
   if (observation.contextTokens === undefined) return budget;
   const availableInputTokens =
-    observation.contextTokens - Math.min(observation.outputTokens ?? 0, PLANNING_OUTPUT_TOKENS);
+    observation.contextTokens - answerReservationTokens(observation.outputTokens);
   if (availableInputTokens <= 0) return budget;
   return {
     ...budget,
@@ -61,6 +71,24 @@ function catalogObservationForModel(
     };
   }
   return null;
+}
+
+/**
+ * What one call to the selected model has room for: the context window the
+ * bundled catalog states, and the answer length a review holds back inside it.
+ * `null` when the catalog states no window — a size gate that cannot name the
+ * ceiling must not invent one.
+ */
+export function resolveModelContextBudget(
+  productId: RunnableProductId,
+  modelId: string,
+): { contextTokens: number; reservedAnswerTokens: number } | null {
+  const observation = catalogObservationForModel(productId, modelId);
+  if (observation?.contextTokens === undefined) return null;
+  return {
+    contextTokens: observation.contextTokens,
+    reservedAnswerTokens: answerReservationTokens(observation.outputTokens),
+  };
 }
 
 export function budgetForSelectedModel(

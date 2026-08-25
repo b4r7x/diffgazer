@@ -8,10 +8,10 @@ afterEach(() => {
   cleanup();
 });
 
-function renderSnippet(startLine?: number) {
+function renderSnippet(lineNumbers?: readonly (number | null)[]) {
   return render(
     <CliThemeProvider initialTheme="dark">
-      <CodeSnippet filePath="src/example.ts" startLine={startLine} code={"alpha();\nbeta();"} />
+      <CodeSnippet filePath="src/example.ts" lineNumbers={lineNumbers} code={"alpha();\nbeta();"} />
     </CliThemeProvider>,
   );
 }
@@ -26,12 +26,36 @@ describe("CodeSnippet (TUI)", () => {
     expect(frame).not.toMatch(/\b1\s+alpha\(\);/);
   });
 
-  test("renders gutter numbers when a start line is provided", () => {
-    const { lastFrame } = renderSnippet(42);
+  test("renders the gutter number published for each row", () => {
+    const { lastFrame } = renderSnippet([42, 43]);
     const frame = lastFrame() ?? "";
 
     expect(frame).toMatch(/\b42\s+alpha\(\);/);
     expect(frame).toMatch(/\b43\s+beta\(\);/);
+  });
+
+  test("keeps non-contiguous rows on their own numbers instead of counting from the start", () => {
+    const { lastFrame } = renderSnippet([42, 908]);
+    const frame = lastFrame() ?? "";
+
+    expect(frame).toMatch(/\b42\s+alpha\(\);/);
+    expect(frame).toMatch(/\b908\s+beta\(\);/);
+    expect(frame).not.toMatch(/\b43\s+beta\(\);/);
+  });
+
+  test("prints a blank gutter cell for a row that stands in for skipped lines", () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <CodeSnippet
+          filePath="src/example.ts"
+          lineNumbers={[42, null, 908]}
+          code={"alpha();\n... [evidence gap] ...\nbeta();"}
+        />
+      </CliThemeProvider>,
+    );
+    const gapRow = (lastFrame() ?? "").split("\n").find((row) => row.includes("evidence gap"));
+
+    expect(gapRow).toMatch(/ {5}\.\.\. \[evidence gap\]/);
   });
 
   test("sanitizes OSC/ESC bytes from filePath and code without dropping surrounding text", () => {
@@ -57,7 +81,7 @@ describe("CodeSnippet (TUI)", () => {
         <Box width={80}>
           <CodeSnippet
             filePath="src/example.ts"
-            startLine={42}
+            lineNumbers={[42]}
             code={`const value = "${"x".repeat(200)}";`}
           />
         </Box>

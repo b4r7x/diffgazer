@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type EvidenceRef, SavedReviewSchema } from "../../schemas/review/index.js";
+import { EVIDENCE_GAP_MARKER, type EvidenceRef, SavedReviewSchema } from "../../schemas/review/index.js";
 import {
   buildSeverityBreakdownRows,
   formatSeverityFilterLabel,
@@ -132,8 +132,89 @@ describe("toEvidencePresentation", () => {
       sourceText: "source:parser",
       file: "src/parser.ts",
       startLine: 7,
+      lineNumbers: undefined,
       excerpt: "",
       ordinal: 3,
+    });
+  });
+
+  it("numbers each excerpt row from the line numbers the backend published", () => {
+    const evidence: EvidenceRef = {
+      type: "code",
+      title: "Parser location",
+      sourceId: "source:parser",
+      file: "src/parser.ts",
+      range: { start: 40, end: 61 },
+      excerpt: "const parsed = parse(input);\n... [evidence gap] ...\nreturn parsed;",
+      excerptLineNumbers: [40, null, 61],
+    };
+
+    // The gap row prints no line: numbering through it would put line 42 on code
+    // that lives at 61.
+    expect(toEvidencePresentation(evidence, "src/fallback.ts", 0)).toMatchObject({
+      lineNumbers: [40, null, 61],
+    });
+  });
+
+  it("numbers a run saved before per-row numbers from its range start", () => {
+    const evidence: EvidenceRef = {
+      type: "code",
+      title: "Parser location",
+      sourceId: "source:parser",
+      file: "src/parser.ts",
+      range: { start: 12, end: 13 },
+      excerpt: "const parsed = parse(input);\nvalidate(parsed);",
+    };
+
+    expect(toEvidencePresentation(evidence, "src/fallback.ts", 0)).toMatchObject({
+      lineNumbers: [12, 13],
+    });
+  });
+
+  it("shows no gutter for a legacy windowed excerpt with a gap marker", () => {
+    const evidence: EvidenceRef = {
+      type: "code",
+      title: "Parser location",
+      sourceId: "source:parser",
+      file: "src/parser.ts",
+      range: { start: 10, end: 33 },
+      excerpt: `const parsed = parse(input);\n${EVIDENCE_GAP_MARKER}\nvalidate(parsed);`,
+    };
+
+    expect(toEvidencePresentation(evidence, "src/fallback.ts", 0)).toMatchObject({
+      lineNumbers: undefined,
+    });
+  });
+
+  it("drops a published number no line can hold instead of the whole gutter", () => {
+    const evidence: EvidenceRef = {
+      type: "code",
+      title: "Parser location",
+      sourceId: "source:parser",
+      file: "src/parser.ts",
+      range: { start: 40, end: 41 },
+      excerpt: "const parsed = parse(input);\nvalidate(parsed);",
+      excerptLineNumbers: [40, 0],
+    };
+
+    expect(toEvidencePresentation(evidence, "src/fallback.ts", 0)).toMatchObject({
+      lineNumbers: [40, null],
+    });
+  });
+
+  it("publishes no numbering when the published rows do not match the excerpt", () => {
+    const evidence: EvidenceRef = {
+      type: "code",
+      title: "Parser location",
+      sourceId: "source:parser",
+      file: "src/parser.ts",
+      range: { start: 40, end: 41 },
+      excerpt: "const parsed = parse(input);\nvalidate(parsed);",
+      excerptLineNumbers: [40],
+    };
+
+    expect(toEvidencePresentation(evidence, "src/fallback.ts", 0)).toMatchObject({
+      lineNumbers: undefined,
     });
   });
 

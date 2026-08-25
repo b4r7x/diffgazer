@@ -391,6 +391,7 @@ describe("runLensAnalysis", () => {
         file: "src/file-0.ts",
         range: { start: 1, end: 5 },
         excerpt: "line1\nline2\nline3\nline4\nline5",
+        excerptLineNumbers: [1, 2, 3, 4, 5],
       },
     ]);
   });
@@ -431,12 +432,13 @@ describe("runLensAnalysis", () => {
     if (!result.ok) return;
     const evidence = requireValue(result.value.issues[0]?.evidence?.[0], "cross-hunk evidence");
     const excerptLines = evidence.excerpt.split("\n");
-    expect(excerptLines).toHaveLength(5);
+    expect(excerptLines).toHaveLength(10);
     expect(excerptLines[0]).toBe("first-2");
     expect(excerptLines).toContain("second-20");
     expect(excerptLines.filter((line) => line === "... [evidence gap] ...")).toHaveLength(1);
     expect(evidence.range).toEqual({ start: 2, end: 22 });
     expect(evidence.sourceId).toBe("src/two-hunks.ts:2-22");
+    expect(evidence.excerptLineNumbers).toEqual([2, 3, 4, 5, 6, 7, null, 20, 21, 22]);
   });
 
   it("maps opaque file ids back to exact control-bearing Git paths", async () => {

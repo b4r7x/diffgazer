@@ -119,6 +119,7 @@ const EMPTY_EVIDENCE_EXCERPT = "(empty excerpt)";
 function CodeEvidence({ item }: { item: Extract<EvidencePresentation, { kind: "code" }> }) {
   const lines: (string | CodeBlockToken[])[] =
     item.excerpt.length > 0 ? highlightExcerpt(item.excerpt, item.file) : [EMPTY_EVIDENCE_EXCERPT];
+  const lineNumbers = item.lineNumbers;
 
   return (
     // Rail, not the default enclosure: an aside annotates the issue prose it sits
@@ -147,9 +148,11 @@ function CodeEvidence({ item }: { item: Extract<EvidencePresentation, { kind: "c
             {lines.map((line, offset) => (
               <CodeBlock.Line
                 key={`${item.ordinal}:${offset}`}
-                // Number every row, including any past range.end: a line without a
-                // number renders no gutter cell at all, so a mixed block steps its indent.
-                number={item.startLine === undefined ? undefined : item.startLine + offset}
+                // Every row of a located excerpt keeps a gutter cell, so the block
+                // never steps its indent: a row the backend numbered prints that
+                // line, and a gap or truncation marker prints an empty cell rather
+                // than borrowing the number of code it is not.
+                number={lineNumbers === undefined ? undefined : (lineNumbers[offset] ?? null)}
                 content={line}
               />
             ))}

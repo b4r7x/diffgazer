@@ -39,25 +39,13 @@ export const HOSTED_PROFILES = {
     usageContract: "required-terminal",
     malformedOutputRetry: true,
   },
-  qwen: {
+  "ollama-cloud": {
     wireFamily: "openai-compatible",
     structuredOutput: "json-object-local-validation",
-    usageContract: "required-terminal",
+    usageContract: "optional",
     malformedOutputRetry: true,
   },
-  moonshot: {
-    wireFamily: "openai-compatible",
-    structuredOutput: "strict-json-schema",
-    usageContract: "required-terminal",
-    malformedOutputRetry: false,
-  },
-  mistral: {
-    wireFamily: "openai-compatible",
-    structuredOutput: "strict-json-schema",
-    usageContract: "optional",
-    malformedOutputRetry: false,
-  },
-  "ollama-cloud": {
+  "opencode-zen": {
     wireFamily: "openai-compatible",
     structuredOutput: "json-object-local-validation",
     usageContract: "optional",
