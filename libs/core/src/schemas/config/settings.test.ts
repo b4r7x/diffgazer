@@ -3,6 +3,8 @@ import {
   acceptProviderConsent,
   applySettingsPatch,
   DEFAULT_SETTINGS,
+  EFFECTIVE_CALL_TOKEN_CAP,
+  parseEffectiveCallTokenCap,
   parseSettingsRecord,
   SettingsConfigSchema,
   serializeSettingsRecord,
@@ -34,6 +36,26 @@ describe("SettingsConfigSchema", () => {
     });
 
     expect(settings.defaultLenses).toEqual(["correctness"]);
+  });
+
+  it("refuses the engine-only synthesis lens as a persisted default", () => {
+    const result = SettingsConfigSchema.safeParse({
+      ...baseSettings,
+      defaultLenses: ["correctness", "synthesis"],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a per-call token cap outside the supported range", () => {
+    for (const effectiveCallTokenCap of [EFFECTIVE_CALL_TOKEN_CAP.min - 1, 2_000_000, 49_152.5]) {
+      const result = SettingsConfigSchema.safeParse({
+        ...baseSettings,
+        defaultLenses: ["correctness"],
+        effectiveCallTokenCap,
+      });
+      expect(result.success).toBe(false);
+    }
   });
 
   it("rejects an empty default lens list", () => {
@@ -93,6 +115,34 @@ describe("parseSettingsRecord", () => {
     expect(serializeSettingsRecord(parseSettingsRecord(patched)).agentExecution).toBe("turbo");
   });
 
+  it("loads settings written before the per-call token cap existed", () => {
+    const { effectiveCallTokenCap: _absent, ...legacy } = DEFAULT_SETTINGS;
+    const parsed = parseSettingsRecord(legacy);
+
+    expect(parsed.settings.effectiveCallTokenCap).toBe(49_152);
+    expect(parsed.diagnostics).toEqual([]);
+  });
+
+  it("salvages an out-of-range per-call token cap instead of adopting it", () => {
+    const parsed = parseSettingsRecord({
+      ...DEFAULT_SETTINGS,
+      effectiveCallTokenCap: EFFECTIVE_CALL_TOKEN_CAP.max + 1,
+    });
+
+    expect(parsed.settings.effectiveCallTokenCap).toBe(49_152);
+    expect(parsed.diagnostics).toEqual([{ field: "effectiveCallTokenCap", code: "invalid-value" }]);
+  });
+
+  it("keeps a persisted synthesis lens out of the selectable defaults", () => {
+    const parsed = parseSettingsRecord({
+      ...DEFAULT_SETTINGS,
+      defaultLenses: ["correctness", "synthesis"],
+    });
+
+    expect(parsed.settings.defaultLenses).not.toContain("synthesis");
+    expect(parsed.diagnostics).toEqual([{ field: "defaultLenses", code: "invalid-value" }]);
+  });
+
   it("treats a provider consent recorded under another version as not given", () => {
     const accepted = parseSettingsRecord({
       ...DEFAULT_SETTINGS,
@@ -121,5 +171,26 @@ describe("parseSettingsRecord", () => {
     expect(repaired.theme).toBe("dark");
     expect(parseSettingsRecord(repaired).unknown).not.toHaveProperty("theme");
     expect(parseSettingsRecord(repaired).diagnostics).toEqual([]);
+  });
+});
+
+describe("parseEffectiveCallTokenCap", () => {
+  it("accepts whole numbers inside the range, ignoring surrounding whitespace", () => {
+    expect(parseEffectiveCallTokenCap(" 49152 ")).toBe(49_152);
+    expect(parseEffectiveCallTokenCap(String(EFFECTIVE_CALL_TOKEN_CAP.min))).toBe(
+      EFFECTIVE_CALL_TOKEN_CAP.min,
+    );
+    expect(parseEffectiveCallTokenCap(String(EFFECTIVE_CALL_TOKEN_CAP.max))).toBe(
+      EFFECTIVE_CALL_TOKEN_CAP.max,
+    );
+  });
+
+  it("rejects anything that is not a plain in-range integer", () => {
+    expect(parseEffectiveCallTokenCap("1e5")).toBeNull();
+    expect(parseEffectiveCallTokenCap("0x10000")).toBeNull();
+    expect(parseEffectiveCallTokenCap("49152.5")).toBeNull();
+    expect(parseEffectiveCallTokenCap("")).toBeNull();
+    expect(parseEffectiveCallTokenCap(String(EFFECTIVE_CALL_TOKEN_CAP.min - 1))).toBeNull();
+    expect(parseEffectiveCallTokenCap(String(EFFECTIVE_CALL_TOKEN_CAP.max + 1))).toBeNull();
   });
 });

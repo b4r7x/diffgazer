@@ -160,45 +160,191 @@ describe("RouteRecoveryPage", () => {
     expect(reloadDocument).toHaveBeenCalledOnce();
   });
 
-  it("renders a minimal root recovery page without footer hooks", () => {
-    render(
+  function renderRootRecovery({
+    error = new Error("root failure"),
+    reloadDocument = vi.fn(),
+    navigateHome = vi.fn(),
+  }: {
+    error?: Error;
+    reloadDocument?: () => void;
+    navigateHome?: () => void;
+  } = {}) {
+    // No provider wrapper on purpose: the root error slot replaces the layout
+    // that mounts KeyboardProvider, so the gate must bring its own.
+    return render(
       <RouteRecoveryPage
-        error={new Error("root failure")}
+        error={error}
         clearFooter={false}
+        reloadDocument={reloadDocument}
+        navigateHome={navigateHome}
         reset={() => {}}
         info={{ componentStack: "" }}
       />,
     );
+  }
 
-    expect(screen.getByRole("heading", { name: "Something went wrong" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /go to home/i })).not.toBeInTheDocument();
+  it("announces the root crash without ever rendering the raw error", () => {
+    renderRootRecovery({ error: new Error("secret provider token leaked") });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("render aborted");
+    expect(screen.getByRole("heading", { name: /render aborted/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Error" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /home/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /copy report/i })).toBeInTheDocument();
+    expect(screen.queryByText(/secret provider token leaked/)).not.toBeInTheDocument();
   });
 
-  it("focuses Try again on the root recovery page and retries on r", async () => {
+  it("seats the session chip in the wordmark band on desktop and announces it once", () => {
+    renderRootRecovery();
+
+    // The chip root is the parent of its "interrupted" span.
+    const chipRoots = screen
+      .getAllByText("interrupted")
+      .map((el) => el.parentElement as HTMLElement);
+    expect(chipRoots).toHaveLength(2);
+
+    // The desktop chip lives in the band's right grid cell, so containment is
+    // checked from the band down — it must hold both the wordmark and one chip.
+    const band = document.querySelector('[data-slot="session-band"]') as HTMLElement;
+    expect(band).toContainElement(screen.getByRole("img", { name: "diffgazer" }));
+    const inBand = chipRoots.filter((chip) => band.contains(chip));
+    expect(inBand).toHaveLength(1);
+
+    // jsdom cannot compute media queries; the breakpoint classes ARE the
+    // contract that exactly one rendering is in the accessibility tree at a
+    // time, so the chip is announced once.
+    const bandChip = inBand[0] as HTMLElement;
+    const stackedChip = chipRoots.find((chip) => chip !== bandChip) as HTMLElement;
+    expect(bandChip.className).toContain("hidden sm:flex");
+    expect(stackedChip.parentElement?.className).toContain("sm:hidden");
+  });
+
+  it("focuses retry on the root recovery page and retries on r", async () => {
     const user = userEvent.setup();
     const reloadDocument = vi.fn();
-    render(
-      <KeyboardProvider>
-        <RouteRecoveryPage
-          error={
-            new RouteModuleImportError(new TypeError("Failed to fetch dynamically imported module"))
-          }
-          clearFooter={false}
-          reloadDocument={reloadDocument}
-          reset={() => {}}
-          info={{ componentStack: "" }}
-        />
-      </KeyboardProvider>,
-    );
+    renderRootRecovery({
+      error: new RouteModuleImportError(
+        new TypeError("Failed to fetch dynamically imported module"),
+      ),
+      reloadDocument,
+    });
 
-    expect(screen.getByRole("button", { name: /try again/i })).toHaveFocus();
-    // The gate renders outside the shell, so the hint beside the button is the
-    // only place r is advertised.
-    expect(screen.getByText("r")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toHaveFocus();
 
     await user.keyboard("r");
 
     expect(reloadDocument).toHaveBeenCalledOnce();
+  });
+
+  it("goes home on h and on Escape at the root, where the router may be dead", async () => {
+    const user = userEvent.setup();
+    const navigateHome = vi.fn();
+    renderRootRecovery({ navigateHome });
+
+    await user.keyboard("h");
+    expect(navigateHome).toHaveBeenCalledTimes(1);
+
+    await user.keyboard("{Escape}");
+    expect(navigateHome).toHaveBeenCalledTimes(2);
+  });
+
+  it("moves prompt focus with arrows and activates the focused action on Enter", async () => {
+    const user = userEvent.setup();
+    const navigateHome = vi.fn();
+    renderRootRecovery({ navigateHome });
+
+    expect(screen.getByRole("button", { name: /retry/i })).toHaveFocus();
+
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: /home/i })).toHaveFocus();
+    // Roving tabindex: the toolbar stays a single Tab stop.
+    expect(screen.getByRole("button", { name: /home/i })).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("button", { name: /retry/i })).toHaveAttribute("tabindex", "-1");
+    expect(screen.getByRole("button", { name: /copy report/i })).toHaveAttribute("tabindex", "-1");
+
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: /copy report/i })).toHaveFocus();
+
+    await user.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("button", { name: /home/i })).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(navigateHome).toHaveBeenCalledOnce();
+  });
+
+  it("copies a redacted report on c, never the raw message", async () => {
+    const user = userEvent.setup();
+    renderRootRecovery({ error: new Error("boom: token=sk-abcdefgh12345678 leaked") });
+
+    await user.keyboard("c");
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /copied/i })).toBeInTheDocument(),
+    );
+    const report = await window.navigator.clipboard.readText();
+    expect(report).toContain("[REDACTED]");
+    expect(report).not.toContain("sk-abcdefgh12345678");
+    expect(report).toContain("route: /");
+  });
+
+  it("shows copy failed when the clipboard write is rejected", async () => {
+    const user = userEvent.setup();
+    renderRootRecovery();
+    vi.spyOn(window.navigator.clipboard, "writeText").mockRejectedValueOnce(new Error("denied"));
+
+    await user.keyboard("c");
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /copy failed/i })).toBeInTheDocument(),
+    );
+  });
+
+  it("shows the real route path in the log tail", () => {
+    window.history.replaceState(null, "", "/review/8f2c");
+    try {
+      renderRootRecovery();
+      expect(screen.getByRole("log", { name: "log tail" })).toHaveTextContent("/review/8f2c");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("redacts a secret-bearing query string and error name in the log tail and the copied report", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/review/8f2c?access_token=sk-abcdefgh12345678");
+    try {
+      // err.name is assignable to arbitrary strings, so it goes through the
+      // battery like everything else error-derived.
+      renderRootRecovery({
+        error: Object.assign(new Error("boom"), { name: "token=sk-poisonedname123" }),
+      });
+
+      const logTail = screen.getByRole("log", { name: "log tail" });
+      expect(logTail).toHaveTextContent("[REDACTED]");
+      expect(logTail).not.toHaveTextContent("sk-abcdefgh12345678");
+      expect(logTail).not.toHaveTextContent("sk-poisonedname123");
+
+      await user.keyboard("c");
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /copied/i })).toBeInTheDocument(),
+      );
+      const report = await window.navigator.clipboard.readText();
+      expect(report).toContain("route: /review/8f2c?[REDACTED]");
+      expect(report).toContain("error: [REDACTED]");
+      expect(report).not.toContain("sk-abcdefgh12345678");
+      expect(report).not.toContain("sk-poisonedname123");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("gates the blinking prompt cursor behind prefers-reduced-motion", () => {
+    // Class presence is the contract here: jsdom cannot compute the media
+    // query, and `motion-reduce:animate-none` IS the reduced-motion gate.
+    const { container } = renderRootRecovery();
+    const cursor = container.querySelector('[data-slot="prompt-cursor"]');
+    expect(cursor?.className).toContain("animate-[erb-cursor-blink");
+    expect(cursor?.className).toContain("motion-reduce:animate-none");
   });
 });

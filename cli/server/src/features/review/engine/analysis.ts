@@ -1,6 +1,6 @@
 import type { Result } from "@diffgazer/core/result";
 import { ok } from "@diffgazer/core/result";
-import type { AgentStreamEvent, StepEvent } from "@diffgazer/core/schemas/events";
+import type { AgentId, AgentStreamEvent, StepEvent } from "@diffgazer/core/schemas/events";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/core/schemas/events";
 import type {
   Lens,
@@ -8,7 +8,11 @@ import type {
   ReviewIssue,
   SeverityFilter,
 } from "@diffgazer/core/schemas/review";
-import { LensReviewResultSchema } from "@diffgazer/core/schemas/review";
+import {
+  LensReviewResultSchema,
+  MAX_REVIEW_ISSUES_PER_LENS,
+  severityRank,
+} from "@diffgazer/core/schemas/review";
 import { pluralize } from "@diffgazer/core/strings";
 import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
 import type { ParsedDiff } from "./diff/types.js";
@@ -19,9 +23,10 @@ import {
   validateIssueCompleteness,
 } from "./issues/normalization.js";
 import { severityMeetsMinimum } from "./issues/ordering.js";
-import { buildReviewPrompt } from "./prompts.js";
+import { SYNTHESIS_LENS } from "./lenses.js";
+import { buildReviewPrompt, buildSynthesisPrompt, type ReviewPrompt } from "./prompts.js";
 import { sanitizeIssue } from "./sanitize-issue.js";
-import type { LensResult } from "./types.js";
+import type { LensResult, ReviewError } from "./types.js";
 
 function getThinkingMessage(lens: Lens): string {
   switch (lens.id) {
@@ -35,6 +40,8 @@ function getThinkingMessage(lens: Lens): string {
       return "Analyzing diff for complexity and maintainability...";
     case "tests":
       return "Analyzing diff for test coverage and quality...";
+    case "synthesis":
+      return "Connecting findings across review batches...";
     default:
       return `Analyzing diff with ${lens.name} lens...`;
   }
@@ -107,117 +114,21 @@ function resolvePromptFileIdentities(
   };
 }
 
-export async function runLensAnalysis(
-  client: AIClient,
-  lens: Lens,
-  diff: ParsedDiff,
-  onEvent: (event: AgentStreamEvent | StepEvent) => void,
-  projectContext?: string,
-  signal?: AbortSignal,
-  severityFilter?: SeverityFilter,
-): Promise<Result<LensResult, AIError>> {
-  const agentId = LENS_TO_AGENT[lens.id];
-  const agentMeta = AGENT_METADATA[agentId];
-
-  onEvent({
-    type: "agent_start",
-    agent: agentMeta,
-    timestamp: new Date().toISOString(),
-  });
-
-  onEvent({
-    type: "agent_thinking",
-    agent: agentId,
-    thought: getThinkingMessage(lens),
-    timestamp: new Date().toISOString(),
-  });
-
-  onEvent({
-    type: "agent_progress",
-    agent: agentId,
-    progress: 15,
-    message: `Gathering context (${diff.files.length} files)`,
-    timestamp: new Date().toISOString(),
-  });
-
-  const {
-    user: prompt,
-    system,
-    files: promptFiles,
-  } = buildReviewPrompt(lens, diff, projectContext);
-
-  for (const [index, { file }] of promptFiles.entries()) {
-    onEvent({
-      type: "file_progress",
-      agent: agentId,
-      file: file.filePath,
-      completed: index + 1,
-      total: promptFiles.length,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  onEvent({
-    type: "agent_progress",
-    agent: agentId,
-    progress: 60,
-    message: `Prompt includes ${pluralize(promptFiles.length, "file")} and ${pluralize(countDiffLines(diff), "diff line")}`,
-    timestamp: new Date().toISOString(),
-  });
-
-  onEvent({
-    type: "agent_progress",
-    agent: agentId,
-    progress: 65,
-    message: "Waiting for model response",
-    timestamp: new Date().toISOString(),
-  });
-
-  let progressTimer: ReturnType<typeof setInterval> | null = null;
-  const timerStart = Date.now();
-  progressTimer = setInterval(() => {
-    if (signal?.aborted) {
-      if (progressTimer !== null) clearInterval(progressTimer);
-      return;
-    }
-    const elapsedSec = Math.round((Date.now() - timerStart) / 1000);
-    onEvent({
-      type: "agent_progress",
-      agent: agentId,
-      progress: 65,
-      message: `Waiting for model response — ${elapsedSec}s`,
-      timestamp: new Date().toISOString(),
-    });
-  }, 2000);
-
-  let result: Result<LensReviewResult, AIError>;
-  try {
-    result = await client.generate(prompt, LensReviewResultSchema, {
-      signal,
-      systemPrompt: system,
-    });
-  } finally {
-    if (progressTimer) clearInterval(progressTimer);
-  }
-
-  if (!result.ok) {
-    const errorLabel = result.error.code
-      ? `${result.error.code}: ${result.error.message}`
-      : result.error.message;
-    onEvent({
-      type: "agent_error",
-      agent: agentId,
-      error: errorLabel,
-      timestamp: new Date().toISOString(),
-    });
-    return result;
-  }
-
+/**
+ * Resolves one batch's provider issues against that batch's own prompt identities
+ * and diff. Opaque `file-N` ids are batch-local, so this has to run per batch,
+ * before the batches' issues are concatenated.
+ */
+function resolveBatchIssues(
+  batch: ParsedDiff,
+  promptFiles: ReviewPrompt["files"],
+  providerIssues: LensReviewResult["issues"],
+): { issues: ReviewIssue[]; droppedCount: number } {
   const filePathsById = new Map(promptFiles.map(({ id, file }) => [id, file.filePath]));
-  const ensureEvidence = createIssueEvidenceResolver(diff);
+  const ensureEvidence = createIssueEvidenceResolver(batch);
   const resolvedIssues: ReviewIssue[] = [];
   let droppedUnknownFileIdentities = 0;
-  for (const issue of result.value.issues) {
+  for (const issue of providerIssues) {
     const resolvedIssue = resolvePromptFileIdentities(issue, filePathsById);
     if (resolvedIssue === null) {
       droppedUnknownFileIdentities += 1;
@@ -232,16 +143,59 @@ export async function runLensAnalysis(
     .map((issue: ReviewIssue) => dropProviderTrace(issue))
     .map((issue: ReviewIssue) => sanitizeIssue(issue));
   const completeIssues = normalizedIssues.filter(validateIssueCompleteness);
-  const droppedIncompleteProviderIssues =
-    normalizedIssues.length - completeIssues.length + droppedUnknownFileIdentities;
-  const processedIssues = ensureUniqueIssueIds(completeIssues, lens.id);
 
-  // Stream only issues meeting the threshold; the full set is still returned.
+  return {
+    issues: completeIssues,
+    droppedCount: normalizedIssues.length - completeIssues.length + droppedUnknownFileIdentities,
+  };
+}
+
+/**
+ * Keeps the highest-severity issues, in their original order, when concatenated
+ * batches overflow the per-lens cap the persisted result is validated against.
+ * Each single call is already capped by `LensReviewResultSchema`; only a batched
+ * lens can exceed it.
+ */
+function capIssuesBySeverity(issues: ReviewIssue[]): ReviewIssue[] {
+  if (issues.length <= MAX_REVIEW_ISSUES_PER_LENS) return issues;
+  return issues
+    .map((issue, index) => ({ issue, index }))
+    .sort(
+      (a, b) =>
+        severityRank(a.issue.severity) - severityRank(b.issue.severity) || a.index - b.index,
+    )
+    .slice(0, MAX_REVIEW_ISSUES_PER_LENS)
+    .sort((a, b) => a.index - b.index)
+    .map(({ issue }) => issue);
+}
+
+function emitDispatchError(
+  onEvent: (event: AgentStreamEvent | StepEvent) => void,
+  agentId: AgentId,
+  error: AIError,
+): void {
+  onEvent({
+    type: "agent_error",
+    agent: agentId,
+    error: error.code ? `${error.code}: ${error.message}` : error.message,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+/**
+ * Streams the issues that meet the threshold and closes the lens's event pair.
+ * The full set is still what the caller persists.
+ */
+function streamLensCompletion(params: {
+  agentId: AgentId;
+  issues: ReviewIssue[];
+  severityFilter: SeverityFilter | undefined;
+  onEvent: (event: AgentStreamEvent | StepEvent) => void;
+}): void {
+  const { agentId, issues, severityFilter, onEvent } = params;
   const streamedIssues = severityFilter
-    ? processedIssues.filter((issue) =>
-        severityMeetsMinimum(issue.severity, severityFilter.minSeverity),
-      )
-    : processedIssues;
+    ? issues.filter((issue) => severityMeetsMinimum(issue.severity, severityFilter.minSeverity))
+    : issues;
 
   for (const issue of streamedIssues) {
     onEvent({
@@ -266,10 +220,254 @@ export async function runLensAnalysis(
     issueCount: streamedIssues.length,
     timestamp: new Date().toISOString(),
   });
+}
+
+async function generateWithWaitProgress(params: {
+  client: AIClient;
+  prompt: string;
+  system: string;
+  agentId: AgentId;
+  batchSuffix: string;
+  onEvent: (event: AgentStreamEvent | StepEvent) => void;
+  signal?: AbortSignal;
+}): Promise<Result<LensReviewResult, AIError>> {
+  const { client, prompt, system, agentId, batchSuffix, onEvent, signal } = params;
+  const timerStart = Date.now();
+  const progressTimer = setInterval(() => {
+    if (signal?.aborted) {
+      clearInterval(progressTimer);
+      return;
+    }
+    const elapsedSec = Math.round((Date.now() - timerStart) / 1000);
+    onEvent({
+      type: "agent_progress",
+      agent: agentId,
+      progress: 65,
+      message: `Waiting for model response — ${elapsedSec}s${batchSuffix}`,
+      timestamp: new Date().toISOString(),
+    });
+  }, 2000);
+
+  try {
+    return await client.generate(prompt, LensReviewResultSchema, {
+      signal,
+      systemPrompt: system,
+    });
+  } finally {
+    clearInterval(progressTimer);
+  }
+}
+
+export interface LensAnalysisOptions {
+  client: AIClient;
+  lens: Lens;
+  /**
+   * Dispatch batches, run in order; never empty. A single batch dispatches
+   * exactly what an unbatched review dispatches.
+   */
+  batches: readonly ParsedDiff[];
+  /** Every path the review changed, so each batch can name what it cannot see. */
+  allChangedFilePaths: readonly string[];
+  onEvent: (event: AgentStreamEvent | StepEvent) => void;
+  projectContext?: string;
+  signal?: AbortSignal;
+  severityFilter?: SeverityFilter;
+}
+
+export async function runLensAnalysis({
+  client,
+  lens,
+  batches,
+  allChangedFilePaths,
+  onEvent,
+  projectContext,
+  signal,
+  severityFilter,
+}: LensAnalysisOptions): Promise<Result<LensResult, AIError>> {
+  const agentId = LENS_TO_AGENT[lens.id];
+  const agentMeta = AGENT_METADATA[agentId];
+  const batchCount = batches.length;
+  const totalFiles = batches.reduce((sum, batch) => sum + batch.files.length, 0);
+
+  onEvent({
+    type: "agent_start",
+    agent: agentMeta,
+    timestamp: new Date().toISOString(),
+  });
+
+  onEvent({
+    type: "agent_thinking",
+    agent: agentId,
+    thought: getThinkingMessage(lens),
+    timestamp: new Date().toISOString(),
+  });
+
+  onEvent({
+    type: "agent_progress",
+    agent: agentId,
+    progress: 15,
+    message: `Gathering context (${totalFiles} files)`,
+    timestamp: new Date().toISOString(),
+  });
+
+  const collectedIssues: ReviewIssue[] = [];
+  let droppedIncompleteProviderIssues = 0;
+  let filesReported = 0;
+  let batchError: ReviewError | undefined;
+
+  for (const [batchIndex, batch] of batches.entries()) {
+    const batchSuffix = batchCount > 1 ? ` (batch ${batchIndex + 1}/${batchCount})` : "";
+    const {
+      user: prompt,
+      system,
+      files: promptFiles,
+    } = buildReviewPrompt(lens, batch, projectContext, allChangedFilePaths);
+
+    for (const { file } of promptFiles) {
+      filesReported += 1;
+      onEvent({
+        type: "file_progress",
+        agent: agentId,
+        file: file.filePath,
+        completed: filesReported,
+        total: totalFiles,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    onEvent({
+      type: "agent_progress",
+      agent: agentId,
+      progress: 60,
+      message: `Prompt includes ${pluralize(promptFiles.length, "file")} and ${pluralize(countDiffLines(batch), "diff line")}${batchSuffix}`,
+      timestamp: new Date().toISOString(),
+    });
+
+    onEvent({
+      type: "agent_progress",
+      agent: agentId,
+      progress: 65,
+      message: `Waiting for model response${batchSuffix}`,
+      timestamp: new Date().toISOString(),
+    });
+
+    const result = await generateWithWaitProgress({
+      client,
+      prompt,
+      system,
+      agentId,
+      batchSuffix,
+      onEvent,
+      signal,
+    });
+
+    if (!result.ok) {
+      emitDispatchError(onEvent, agentId, result.error);
+      if (collectedIssues.length === 0) return result;
+      batchError = {
+        code: result.error.code ?? "AI_ERROR",
+        message: result.error.message,
+      };
+      break;
+    }
+
+    const batchIssues = resolveBatchIssues(batch, promptFiles, result.value.issues);
+    collectedIssues.push(...batchIssues.issues);
+    droppedIncompleteProviderIssues += batchIssues.droppedCount;
+  }
+
+  const uniqueIssues = ensureUniqueIssueIds(collectedIssues, lens.id);
+  const processedIssues = capIssuesBySeverity(uniqueIssues);
+
+  streamLensCompletion({ agentId, issues: processedIssues, severityFilter, onEvent });
 
   return ok({
     lensId: lens.id,
     issues: processedIssues,
     droppedIncompleteProviderIssues,
+    droppedOverLensCap: uniqueIssues.length - processedIssues.length,
+    batchError,
+  });
+}
+
+export interface SynthesisAnalysisOptions {
+  client: AIClient;
+  /** The whole review's diff: file identities and evidence resolve against every changed file. */
+  diff: ParsedDiff;
+  collectedIssues: readonly ReviewIssue[];
+  onEvent: (event: AgentStreamEvent | StepEvent) => void;
+  projectContext?: string;
+  signal?: AbortSignal;
+  severityFilter?: SeverityFilter;
+}
+
+/**
+ * The one cross-batch dispatch of a batched review. It follows the per-lens
+ * grammar — one `agent_start`/`agent_complete` pair, issues streamed as
+ * `issue_found` — so its findings persist and render like any lens's.
+ */
+export async function runSynthesisAnalysis({
+  client,
+  diff,
+  collectedIssues,
+  onEvent,
+  projectContext,
+  signal,
+  severityFilter,
+}: SynthesisAnalysisOptions): Promise<Result<LensResult, AIError>> {
+  const lens = SYNTHESIS_LENS;
+  const agentId = LENS_TO_AGENT[lens.id];
+
+  onEvent({
+    type: "agent_start",
+    agent: AGENT_METADATA[agentId],
+    timestamp: new Date().toISOString(),
+  });
+
+  onEvent({
+    type: "agent_thinking",
+    agent: agentId,
+    thought: getThinkingMessage(lens),
+    timestamp: new Date().toISOString(),
+  });
+
+  const {
+    user: prompt,
+    system,
+    files: promptFiles,
+  } = buildSynthesisPrompt(lens, diff, collectedIssues, projectContext);
+
+  onEvent({
+    type: "agent_progress",
+    agent: agentId,
+    progress: 65,
+    message: "Waiting for model response",
+    timestamp: new Date().toISOString(),
+  });
+
+  const result = await generateWithWaitProgress({
+    client,
+    prompt,
+    system,
+    agentId,
+    batchSuffix: "",
+    onEvent,
+    signal,
+  });
+
+  if (!result.ok) {
+    emitDispatchError(onEvent, agentId, result.error);
+    return result;
+  }
+
+  const resolved = resolveBatchIssues(diff, promptFiles, result.value.issues);
+  const processedIssues = capIssuesBySeverity(ensureUniqueIssueIds(resolved.issues, lens.id));
+
+  streamLensCompletion({ agentId, issues: processedIssues, severityFilter, onEvent });
+
+  return ok({
+    lensId: lens.id,
+    issues: processedIssues,
+    droppedIncompleteProviderIssues: resolved.droppedCount,
   });
 }

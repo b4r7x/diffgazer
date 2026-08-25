@@ -25,8 +25,21 @@ import { Spinner } from "../../../components/ui/spinner";
 import { getListWindow } from "../../../lib/list-window";
 import { useTheme } from "../../../theme/provider";
 
+type FileScope = Exclude<ReviewMode, "files">;
+
+/** The narrowed run the picker asks for: a scope, and the files it is cut down to. */
+export interface ReviewFileFilterStart {
+  mode: FileScope;
+  files?: [string, ...string[]];
+}
+
 export interface ReviewFileFilterViewProps {
-  mode: Exclude<ReviewMode, "files">;
+  /**
+   * The scope the picker is locked to — the mode of the run that sent the user
+   * here. Omitted before any run has started, where there is no run to inherit
+   * from and the picker owns the choice.
+   */
+  mode?: FileScope;
   /** Why the picker was opened — the size warning or the over-window failure that sent the user here. */
   reason?: string;
   /**
@@ -34,7 +47,7 @@ export interface ReviewFileFilterViewProps {
    * picked: that is the run the mode already describes, and naming each file
    * would only restate it.
    */
-  onStart: (files?: [string, ...string[]]) => void;
+  onStart: (input: ReviewFileFilterStart) => void;
   onBack: () => void;
 }
 
@@ -49,12 +62,13 @@ const START_KEY = "s";
  */
 const LIST_CHROME_ROWS = 6;
 
-function getFileFilterShortcuts(hasSelection: boolean): Shortcut[] {
+function getFileFilterShortcuts(hasSelection: boolean, ownsScope: boolean): Shortcut[] {
   return [
     NAVIGATE_SHORTCUT,
     { key: "Space", label: "Toggle" },
     { key: SELECT_ALL_KEY, label: "All" },
     { key: CLEAR_SELECTION_KEY, label: "None" },
+    ...(ownsScope ? [{ key: "Tab", label: "Switch Scope" }] : []),
     { key: START_KEY, label: "Review Selected", disabled: !hasSelection },
   ];
 }
@@ -64,7 +78,6 @@ function describeSelection(selectedCount: number, total: number): string {
   return `${total} reviewable, ${selectedCount} selected`;
 }
 
-/** Width of the status column, so the paths line up under each other. */
 function getStatusWidth(rows: ReviewableFile[]): number {
   return rows.reduce((width, row) => Math.max(width, describeFileStatus(row.status).length), 0);
 }
@@ -81,14 +94,21 @@ export function ReviewFileFilterView({
   const [selected, setSelected] = useState<string[]>([]);
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [limitNotice, setLimitNotice] = useState<string | null>(null);
+  const [pickedScope, setPickedScope] = useState<FileScope | null>(null);
 
-  const rows = gitStatus.data ? reviewableFilesForMode(gitStatus.data, mode) : [];
+  const ownsScope = mode === undefined;
+  const rowsByScope: Record<FileScope, ReviewableFile[]> = {
+    unstaged: gitStatus.data ? reviewableFilesForMode(gitStatus.data, "unstaged") : [],
+    staged: gitStatus.data ? reviewableFilesForMode(gitStatus.data, "staged") : [],
+  };
+  // Opened cold, the picker lands on the side that has something to pick, so a
+  // repo with only staged work does not open on an empty unstaged list.
+  const hasStagedOnly = rowsByScope.unstaged.length === 0 && rowsByScope.staged.length > 0;
+  const scope: FileScope = mode ?? pickedScope ?? (hasStagedOnly ? "staged" : "unstaged");
+  const rows = rowsByScope[scope];
   // The server excludes conflicted files from every review, so they are shown as
   // dead rows rather than offered: picking one would silently review nothing.
   const selectableRows = rows.filter((row) => !row.conflicted);
-  // Derived, never synced: a file that left the working tree since the picker
-  // opened simply stops being the highlight, and the list starts over at the
-  // first row that can actually be picked.
   const highlightedPath =
     highlighted !== null && selectableRows.some((row) => row.path === highlighted)
       ? highlighted
@@ -99,7 +119,10 @@ export function ReviewFileFilterView({
   function start() {
     const [first, ...rest] = selectedPaths;
     if (first === undefined) return;
-    onStart(selectedPaths.length === selectableRows.length ? undefined : [first, ...rest]);
+    onStart({
+      mode: scope,
+      ...(selectedPaths.length === selectableRows.length ? {} : { files: [first, ...rest] }),
+    });
   }
 
   function changeSelection(next: string[]) {
@@ -119,6 +142,10 @@ export function ReviewFileFilterView({
         onBack();
         return;
       }
+      if (ownsScope && key.tab) {
+        setPickedScope(scope === "staged" ? "unstaged" : "staged");
+        return;
+      }
       if (input === START_KEY && hasSelection) {
         start();
         return;
@@ -135,7 +162,7 @@ export function ReviewFileFilterView({
   );
 
   usePageFooter({
-    shortcuts: getFileFilterShortcuts(hasSelection),
+    shortcuts: getFileFilterShortcuts(hasSelection, ownsScope),
     rightShortcuts: BACK_SHORTCUTS,
   });
 
@@ -169,7 +196,7 @@ export function ReviewFileFilterView({
         <EmptyState>
           <EmptyState.Message>No changed files to pick from</EmptyState.Message>
           <EmptyState.Description>
-            {mode === "staged"
+            {scope === "staged"
               ? "Nothing is staged right now."
               : "The working tree has no unstaged changes right now."}
           </EmptyState.Description>
@@ -224,7 +251,7 @@ export function ReviewFileFilterView({
       ) : null}
       <Panel>
         <Panel.Header>
-          {mode === "staged" ? "Select Staged Files" : "Select Unstaged Files"}
+          {scope === "staged" ? "Select Staged Files" : "Select Unstaged Files"}
         </Panel.Header>
         <Panel.Content>
           <Box flexDirection="column">

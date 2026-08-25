@@ -167,6 +167,7 @@ describe("HealthGate startup-failure recovery", () => {
         settings: {
           theme: "auto",
           defaultLenses: [],
+          effectiveCallTokenCap: 49_152,
           defaultProfile: null,
           severityThreshold: "low",
           secretsStorage: null,

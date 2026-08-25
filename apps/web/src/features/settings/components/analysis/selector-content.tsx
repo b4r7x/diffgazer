@@ -1,5 +1,5 @@
 import type { LensOption } from "@diffgazer/core/schemas/events";
-import type { LensId } from "@diffgazer/core/schemas/review";
+import type { SelectableLensId } from "@diffgazer/core/schemas/review";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
@@ -7,15 +7,15 @@ import { useId, useState } from "react";
 
 interface AnalysisSelectorContentProps {
   options: readonly LensOption[];
-  value: LensId[];
-  onChange: (value: LensId[]) => void;
+  value: SelectableLensId[];
+  onChange: (value: SelectableLensId[]) => void;
   disabled?: boolean;
   enabled?: boolean;
   autoFocusList?: boolean;
   required?: boolean;
   invalid?: boolean;
   descriptionId?: string;
-  onFocus?: (value: LensId) => void;
+  onFocus?: (value: SelectableLensId) => void;
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
@@ -33,7 +33,9 @@ export function AnalysisSelectorContent({
   onBoundaryReached,
 }: AnalysisSelectorContentProps) {
   const labelId = useId();
-  const [focusedLens, setFocusedLens] = useState<LensId | null>(() => options[0]?.id ?? null);
+  const [focusedLens, setFocusedLens] = useState<SelectableLensId | null>(
+    () => options[0]?.id ?? null,
+  );
 
   const optionIds = options.map((option) => option.id);
   const effectiveFocusedLens =
@@ -43,7 +45,11 @@ export function AnalysisSelectorContent({
   const autoFocusReady = autoFocusList && navigationEnabled;
 
   const handleChange = (nextValue: string[]) => {
-    onChange(nextValue.filter((id): id is LensId => optionIds.some((optionId) => optionId === id)));
+    onChange(
+      nextValue.filter((id): id is SelectableLensId =>
+        optionIds.some((optionId) => optionId === id),
+      ),
+    );
   };
 
   return (

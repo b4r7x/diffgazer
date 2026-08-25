@@ -313,6 +313,46 @@ describe("settings trust routes — server-scoped project", () => {
     expect(res.status).toBe(400);
   });
 
+  it("persists the per-call token cap and refuses one outside the supported range", async () => {
+    const app = await loadApp();
+    const headers = {
+      Host: "localhost:3000",
+      "Content-Type": "application/json",
+      [SHUTDOWN_TOKEN_HEADER]: TEST_TOKEN,
+    };
+
+    const write = await app.request("/api/settings", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ effectiveCallTokenCap: 65_536 }),
+    });
+    expect(write.status).toBe(200);
+    const read = await app.request("/api/settings", { headers });
+    await expect(read.json()).resolves.toMatchObject({ effectiveCallTokenCap: 65_536 });
+
+    const rejected = await app.request("/api/settings", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ effectiveCallTokenCap: 4_096 }),
+    });
+    expect(rejected.status).toBe(400);
+  });
+
+  it("refuses the engine-only synthesis lens as a persisted default", async () => {
+    const app = await loadApp();
+    const res = await app.request("/api/settings", {
+      method: "POST",
+      headers: {
+        Host: "localhost:3000",
+        "Content-Type": "application/json",
+        [SHUTDOWN_TOKEN_HEADER]: TEST_TOKEN,
+      },
+      body: JSON.stringify({ defaultLenses: ["correctness", "synthesis"] }),
+    });
+
+    expect(res.status).toBe(400);
+  });
+
   it("persists the global provider consent and serves it back", async () => {
     const app = await loadApp();
     const providerConsent = acceptProviderConsent("2026-08-18T10:00:00.000Z");

@@ -176,6 +176,21 @@ describe("ReviewSummaryView", () => {
     expect(within(table).getByText("failed [CANCELLED]")).toBeInTheDocument();
   });
 
+  it("renders the engine-dispatched synthesis lens under its display label", () => {
+    renderSummary({
+      lensStats: [
+        { lensId: "correctness", issueCount: 1, status: "success" },
+        { lensId: "synthesis", issueCount: 2, status: "success" },
+      ],
+    });
+
+    const table = screen.getByRole("table", { name: /issues by lens/i });
+    expect(within(table).getByRole("rowheader", { name: "Synthesis" })).toHaveAttribute(
+      "scope",
+      "row",
+    );
+  });
+
   it("omits the hidden-count notice when nothing was dropped", () => {
     renderSummary();
 

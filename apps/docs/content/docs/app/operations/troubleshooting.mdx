@@ -167,19 +167,27 @@ For local HTTP and local CLI products, the picker shows the skipped catalog reas
 
 **Fix.** Run Diffgazer inside a git repository.
 
-## Diff does not fit the model
+## A single file does not fit the model
 
-**Symptom.** A review stops before it starts, saying the diff does not fit the selected model. The message states the diff size, the estimated prompt tokens, and the model's context window.
+**Symptom.** A review stops before it starts, saying a file does not fit the selected model on its own. The message names the file, its estimated prompt tokens, and the model's context window.
 
-**Cause.** Diffgazer estimates what the diff will cost as a prompt and compares it against the context window the model catalog publishes for the model you selected. A diff past that window cannot be reviewed, so the run is refused rather than truncated — a review of a diff you did not choose is worse than no review.
+**Cause.** A review too large for one call is split into batches of whole files, so total diff size no longer refuses a run — but batching splits between files, never inside one. A file whose own diff outgrows the context window cannot be dispatched, and the run is refused rather than truncated — a review of a diff you did not choose is worse than no review.
 
-**Fix.** Review a subset of the files, or select a model with a larger context window.
+**Fix.** Exclude that file from the review, or select a model with a larger context window.
+
+## Review runs in batches
+
+**Symptom.** A review starts, but warns that it is too large for one call: each lens reads it in a stated number of sequential batches, with an estimated input-token total for the whole run.
+
+**Cause.** The estimated prompt exceeds the per-call budget — the smaller of the model's usable window and the `effectiveCallTokenCap` setting (default 49,152 tokens), which keeps each call at a size models read well. The diff is split into batches of whole files, a synthesis pass afterwards hunts for findings that span batches, and the review's budget envelope is scaled to the disclosed estimate so an admitted run is not stopped mid-review.
+
+**Fix.** Nothing is required — the review runs. Cross-file findings between batches are only reachable by the synthesis pass, so they are less certain than in a single-batch review. For a sharper result, review fewer files at a time; if your model handles longer calls well, raise `effectiveCallTokenCap` in [configuration](/app/reference/configuration).
 
 ## Large review advisory
 
 **Symptom.** A review starts, but warns that the diff is large.
 
-**Cause.** The diff fits the model's context window but is over 512KB. One model pass over that much change finds less than several narrower passes would.
+**Cause.** The diff fits one call but is over 512KB. One model pass over that much change finds less than several narrower passes would.
 
 **Fix.** The review runs either way. For a sharper result, filter to the files you care about and review them separately.
 

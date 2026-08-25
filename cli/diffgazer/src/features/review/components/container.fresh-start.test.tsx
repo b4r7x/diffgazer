@@ -29,6 +29,7 @@ function makeReadyInitResponse() {
     settings: {
       theme: "dark" as const,
       defaultLenses: [],
+      effectiveCallTokenCap: 49_152,
       defaultProfile: null,
       severityThreshold: "low" as const,
       secretsStorage: "file" as const,
@@ -81,6 +82,7 @@ function createFreshStartWrapper(initialRoute: Route, apiOverrides: Partial<Boun
     getSettings: vi.fn(async () => ({
       theme: "terminal" as const,
       defaultLenses: [],
+      effectiveCallTokenCap: 49_152,
       defaultProfile: null,
       severityThreshold: "low" as const,
       secretsStorage: "file" as const,
@@ -106,6 +108,30 @@ function createFreshStartWrapper(initialRoute: Route, apiOverrides: Partial<Boun
 
 function FreshStartHarness({ mode }: { mode: Exclude<ReviewMode, "files"> }): ReactElement {
   return <ReviewContainer mode={mode} />;
+}
+
+const CONSENTED_SETTINGS = {
+  providerConsent: { version: 1 as const, acceptedAt: "2026-01-01T00:00:00.000Z" },
+};
+
+function makeStagedGitStatus() {
+  return {
+    isGitRepo: true,
+    branch: "main",
+    remoteBranch: null,
+    ahead: 0,
+    behind: 0,
+    files: {
+      staged: [
+        { path: "src/a.ts", indexStatus: "M" as const, workTreeStatus: " " as const },
+        { path: "src/b.ts", indexStatus: "M" as const, workTreeStatus: " " as const },
+      ],
+      unstaged: [],
+      untracked: [],
+    },
+    hasChanges: true,
+    conflicted: [],
+  };
 }
 
 describe("ReviewContainer fresh start", () => {
@@ -166,5 +192,45 @@ describe("ReviewContainer fresh start", () => {
 
     const settledFrame = frames.findIndex((frame) => frame.includes("No staged changes"));
     expect(frames.slice(settledFrame).some((frame) => frame.includes("Collect diff"))).toBe(false);
+  });
+
+  test("picks files before it starts anything when the route asked to choose the scope", async () => {
+    apiMocks.useConfigurationInit.mockReturnValue({
+      data: {
+        ...makeReadyInitResponse(),
+        settings: { ...makeReadyInitResponse().settings, ...CONSENTED_SETTINGS },
+      },
+      isLoading: false,
+      isFetching: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    const Wrapper = createFreshStartWrapper(
+      { screen: "review", mode: "staged", pickFiles: true },
+      {
+        createReview: apiMocks.createReview,
+        getGitStatus: vi.fn(async () => makeStagedGitStatus()),
+      },
+    );
+
+    const { lastFrame, stdin } = renderInk(
+      <Wrapper>
+        <ReviewContainer mode="staged" pickFiles />
+      </Wrapper>,
+    );
+
+    await waitUntil(() => (lastFrame() ?? "").includes("src/a.ts"));
+    // The point of the pre-run picker: nothing has been sent yet.
+    expect(apiMocks.createReview).not.toHaveBeenCalled();
+
+    stdin.write(" ");
+    await waitUntil(() => (lastFrame() ?? "").includes("2 reviewable, 1 selected"));
+    stdin.write("s");
+
+    await waitUntil(() => apiMocks.createReview.mock.calls.length === 1);
+    expect(apiMocks.createReview).toHaveBeenCalledWith({
+      mode: "staged",
+      files: ["src/a.ts"],
+    });
   });
 });

@@ -115,8 +115,6 @@ describe("CheckboxGroup navigation", () => {
 });
 
 describe("CheckboxGroup windowed navigation", () => {
-  // The picker renders only the rows that fit its frame, so the group is told
-  // the whole list separately; without that it would stop at the window edge.
   function WindowHarness({
     onHighlightChange,
     onChange,
@@ -158,7 +156,6 @@ describe("CheckboxGroup windowed navigation", () => {
 
     stdin.write(ARROW_UP);
     await flush();
-    // "a" is off screen, and navigation reaches it anyway.
     expect(onHighlightChange).toHaveBeenLastCalledWith("a");
 
     stdin.write(ARROW_UP);

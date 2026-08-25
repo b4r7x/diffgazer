@@ -252,7 +252,10 @@ function ErrorDisplay({
 }
 
 const SIZE_WARNING_TITLE = "Large Review";
-/** The way out of a diff the model may not fit, named the way home names it. */
+/**
+ * Escape hatch for a diff the model may not fit; the copy must name Home's real
+ * affordances — the Review Scope row and [f] — exactly as Home labels them.
+ */
 const SIZE_WARNING_ACTION_LINE =
   "Cancel this run, then narrow it from Home: the Review Scope row, or [f].";
 
@@ -563,11 +566,15 @@ export function ReviewProgressView({
               <div className="px-4 pb-2">
                 <Callout tone="warning" live>
                   <Callout.Title>{SIZE_WARNING_TITLE}</Callout.Title>
-                  <Callout.Content>{sanitizePresentationText(sizeWarning.message)}</Callout.Content>
-                  {/* Only while the run is still reading: once it has finished
-                      there are results to read, and narrowing it now would throw
-                      them away for nothing. */}
-                  {isRunning && <Callout.Content>{SIZE_WARNING_ACTION_LINE}</Callout.Content>}
+                  {/* One Content only: the callout grid has a single `body`
+                      cell, so two Content children render on top of each other. */}
+                  <Callout.Content>
+                    {sanitizePresentationText(sizeWarning.message)}
+                    {/* Only while the run is still reading: once it has finished
+                        there are results to read, and narrowing it now would throw
+                        them away for nothing. */}
+                    {isRunning && <span className="mt-1 block">{SIZE_WARNING_ACTION_LINE}</span>}
+                  </Callout.Content>
                 </Callout>
               </div>
             )}

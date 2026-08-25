@@ -145,7 +145,9 @@ describe("FilePickerDialog", () => {
     expect(onStart).toHaveBeenCalledWith({ mode: "unstaged", files: ["src/b.ts"] });
   });
 
-  it("refuses a subset past the server's file cap but exempts the full selection", async () => {
+  // 202 real checkbox rows and pointer-event clicks through them are slow under
+  // a fully loaded turbo run; the default 30s occasionally times out.
+  it("refuses a subset past the server's file cap but exempts the full selection", { timeout: 90_000 }, async () => {
     const paths = Array.from({ length: MAX_REVIEW_FILES + 2 }, (_, index) =>
       makeEntry(`src/file-${String(index).padStart(4, "0")}.ts`, " ", "M"),
     );

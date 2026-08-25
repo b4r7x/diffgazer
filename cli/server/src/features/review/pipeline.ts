@@ -3,7 +3,6 @@ import { err, ok, type Result } from "@diffgazer/core/result";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import {
   type ExecutionResult,
-  type LensId,
   type NormalizedUsage,
   NormalizedUsageSchema,
   type ProfileId,
@@ -12,6 +11,7 @@ import {
   type ReviewMode,
   type ReviewResult,
   type ReviewSeverity,
+  type SelectableLensId,
   type SeverityFilter,
   severityRank,
   type TerminalOutcome,
@@ -22,6 +22,7 @@ import {
   type AuthorizedReviewExecution,
   STRUCTURED_OUTPUT_FAILURE_GUIDANCE,
 } from "../../shared/lib/ai/admission/service.js";
+import { estimateWorstCaseCostUsd } from "../../shared/lib/ai/budget/cost.js";
 import {
   buildExecutionResult,
   normalizeBuildExecutionUsageInput,
@@ -30,6 +31,7 @@ import { PROVIDER_REJECTED_DIAGNOSTIC_CODE } from "../../shared/lib/ai/diagnosti
 import type { AIClient, AIErrorDiagnostic } from "../../shared/lib/ai/types.js";
 import { log } from "../../shared/lib/log.js";
 import { type ReviewAbort, reviewAbort } from "./abort.js";
+import type { ReviewCapacityPlan } from "./capacity.js";
 import { buildProjectContextSnapshot } from "./context/snapshot/build.js";
 import type { ParsedDiff } from "./engine/diff/types.js";
 import { orchestrateReview } from "./engine/orchestrate.js";
@@ -47,10 +49,10 @@ import type {
 
 /** Resolve the active lenses using an explicit ordered fallback. */
 function resolveActiveLenses(
-  lensIds: LensId[] | undefined,
+  lensIds: SelectableLensId[] | undefined,
   profile: ReturnType<typeof getProfile> | undefined,
   settings: SettingsConfig,
-): LensId[] {
+): SelectableLensId[] {
   const selected =
     (lensIds?.length ? lensIds : undefined) ??
     (profile?.lenses.length ? profile.lenses : undefined) ??
@@ -79,7 +81,7 @@ function resolveSeverityFilter(
 }
 
 export function resolveReviewDefaults(params: {
-  lensIds?: LensId[];
+  lensIds?: SelectableLensId[];
   profileId?: ProfileId;
   settings: SettingsConfig;
 }): ResolvedReviewDefaults {
@@ -342,6 +344,66 @@ function dispatchReceiptTiming(
   };
 }
 
+/**
+ * Headroom over the plan's estimate. The estimate prices the diff the prompts
+ * carry, not the retries a lens may take, the answers the review bills for on
+ * top of them, or the one synthesis pass a batched review closes with.
+ */
+const BATCHED_ENVELOPE_HEADROOM = 1.2;
+
+/**
+ * Opens the review's ledger reservation at what a batched review actually
+ * spends. Admission projected the envelope for one call per lens; a plan the
+ * size gate split into batches costs a multiple of it, and admitting the review
+ * only to exhaust it two lenses in would turn "too large for one call" into
+ * "budget exhausted mid-review". A single-batch plan spends what it always did
+ * and leaves the configured base alone.
+ *
+ * The size axes are raised; the per-review spend cap is not. It is the user's
+ * money, so a batched plan whose worst case runs past it is refused here,
+ * before the first dispatch, rather than stopped halfway through.
+ */
+function scaleBudgetEnvelope(
+  executionContext: ReviewExecutionContext,
+  capacity: ReviewCapacityPlan,
+  callCount: number,
+): ReviewAbort | null {
+  if (capacity.batches.length <= 1) return null;
+
+  const { budgetLedger, budgetReservation, plan } = executionContext.authorization;
+  const configuredBase = budgetLedger.limits;
+  const scaledInputTokens = Math.max(
+    configuredBase.maxInputTokens,
+    Math.ceil(capacity.estimatedTotalInputTokens * BATCHED_ENVELOPE_HEADROOM),
+  );
+  const scaleFactor = scaledInputTokens / configuredBase.maxInputTokens;
+  const scaledWallTimeMs = Math.ceil(configuredBase.wallTimeMs * scaleFactor);
+  const scaledResponseBytes = Math.ceil(configuredBase.maxResponseBytes * scaleFactor);
+
+  const worstCaseCostUsd = estimateWorstCaseCostUsd(
+    plan.productId,
+    plan.evidenceKey.modelId,
+    { maxInputTokens: scaledInputTokens },
+    callCount,
+  );
+  if (worstCaseCostUsd !== null && worstCaseCostUsd > configuredBase.maxCostUsd) {
+    return reviewAbort(
+      `This review needs ${capacity.batches.length} batches per lens, which can bill up to ` +
+        `$${worstCaseCostUsd.toFixed(2)} against your $${configuredBase.maxCostUsd.toFixed(2)} ` +
+        `per-review spend cap. Review fewer files at a time, or raise the cap.`,
+      ReviewErrorCode.DIFF_TOO_LARGE,
+      "diff",
+    );
+  }
+
+  budgetLedger.raiseReviewEnvelope(budgetReservation, {
+    inputTokens: scaledInputTokens,
+    responseBytes: scaledResponseBytes,
+    wallTimeMs: scaledWallTimeMs,
+  });
+  return null;
+}
+
 export async function executeReview(params: {
   aiClient: ReviewAIClient;
   parsed: ParsedDiff;
@@ -349,8 +411,13 @@ export async function executeReview(params: {
   emit: EmitFn;
   signal?: AbortSignal;
   executionContext?: ReviewExecutionContext;
+  /**
+   * The size gate's dispatch plan. Absent is an unbatched review on the
+   * configured envelope: the diff read whole, in one call per lens.
+   */
+  capacity?: ReviewCapacityPlan;
 }): Promise<Result<ReviewOutcome, ReviewAbort>> {
-  const { aiClient, parsed, config, emit, signal, executionContext } = params;
+  const { aiClient, parsed, config, emit, signal, executionContext, capacity } = params;
   const startedAt = new Date().toISOString();
 
   await emit(stepStart("review"));
@@ -361,6 +428,13 @@ export async function executeReview(params: {
       attemptCount: 0,
     });
     return ok({ issues: [], execution });
+  }
+
+  if (capacity && executionContext) {
+    // Every lens reads every batch, and a batched run closes with one synthesis.
+    const callCount = capacity.batches.length * config.activeLenses.length + 1;
+    const abort = scaleBudgetEnvelope(executionContext, capacity, callCount);
+    if (abort) return err(abort);
   }
 
   const result = await orchestrateReview(
@@ -375,6 +449,7 @@ export async function executeReview(params: {
     },
     {
       concurrency: config.concurrency,
+      ...(capacity ? { batches: capacity.batches } : {}),
       projectContext: config.projectContext,
       signal,
     },
@@ -471,7 +546,7 @@ export async function finalizeReview(params: {
   mode: ReviewMode;
   parsed: ParsedDiff;
   profileId?: ProfileId;
-  activeLenses: LensId[];
+  activeLenses: SelectableLensId[];
   durationMs: number;
   signal?: AbortSignal;
   branch: string | null;

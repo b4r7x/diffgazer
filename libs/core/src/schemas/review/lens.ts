@@ -7,6 +7,9 @@ export {
   type ProfileId,
   ProfileIdSchema,
   type ReviewProfile,
+  SELECTABLE_LENS_IDS,
+  type SelectableLensId,
+  SelectableLensIdSchema,
 } from "./enums.js";
 
 // Lenses are a closed, source-owned set constructed in the daemon; nothing

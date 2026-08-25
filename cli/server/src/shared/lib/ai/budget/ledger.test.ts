@@ -344,6 +344,51 @@ describe("BudgetLedger settlement", () => {
   });
 });
 
+describe("raiseReviewEnvelope", () => {
+  it("lets a batched review spend past the base envelope on the same reservation", () => {
+    const limits = sampleLimits({ maxInputTokens: 10_000, wallTimeMs: 60_000 });
+    const ledger = createBudgetLedger(limits);
+    const reserved = ledger.reserveAttempt(
+      estimate({ inputTokens: 10_000, wallTimeMs: 60_000, responseBytes: 0, costUsd: 0 }),
+    );
+    if (!reserved.ok) throw new Error("reservation failed");
+
+    ledger.raiseReviewEnvelope(reserved.value, {
+      inputTokens: 60_000,
+      responseBytes: 6_000_000,
+      wallTimeMs: 360_000,
+    });
+
+    expect(ledger.snapshot().limits).toMatchObject({
+      maxInputTokens: 60_000,
+      maxResponseBytes: 6_000_000,
+      wallTimeMs: 360_000,
+    });
+    expect(ledger.snapshot().reserved).toMatchObject({
+      inputTokens: 60_000,
+      responseBytes: 6_000_000,
+      wallTimeMs: 360_000,
+    });
+    const committed = ledger.commitAttemptUsage(reserved.value, {
+      inputTokens: 25_000,
+      wallTimeMs: 0,
+    });
+    expect(committed).toMatchObject({ ok: true });
+    expect(ledger.snapshot().exhaustedLimit).toBeNull();
+  });
+
+  it("never lowers the envelope", () => {
+    const ledger = createBudgetLedger(sampleLimits());
+    const reserved = ledger.reserveAttempt(estimate());
+    if (!reserved.ok) throw new Error("reservation failed");
+    const before = ledger.snapshot();
+
+    ledger.raiseReviewEnvelope(reserved.value, { inputTokens: 1, responseBytes: 1, wallTimeMs: 1 });
+
+    expect(ledger.snapshot()).toEqual(before);
+  });
+});
+
 function emptyUsage(): AttemptEstimate {
   return {
     inputTokens: 0,

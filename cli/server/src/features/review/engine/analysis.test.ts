@@ -1,14 +1,16 @@
 import { canonicalJson } from "@diffgazer/core/json";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { AgentStreamEvent, StepEvent } from "@diffgazer/core/schemas/events";
-import type { Lens, ReviewIssue } from "@diffgazer/core/schemas/review";
+import type { Lens, ReviewIssue, SeverityFilter } from "@diffgazer/core/schemas/review";
+import { MAX_REVIEW_ISSUES_PER_LENS } from "@diffgazer/core/schemas/review";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
 import { makeFileDiff, makeParsedDiff } from "../testing/factories.js";
-import { runLensAnalysis } from "./analysis.js";
+import { runLensAnalysis, runSynthesisAnalysis } from "./analysis.js";
+import type { ParsedDiff } from "./diff/types.js";
 
 const CORRECTNESS_LENS: Lens = {
   id: "correctness",
@@ -24,25 +26,31 @@ const CORRECTNESS_LENS: Lens = {
   },
 };
 
+function makeAnalysisFile(filePath: string) {
+  return makeFileDiff({
+    filePath,
+    hunks: [
+      {
+        oldStart: 1,
+        oldCount: 5,
+        newStart: 1,
+        newCount: 7,
+        content: "line1\nline2\nline3\nline4\nline5\nline6\nline7",
+      },
+    ],
+    rawDiff: "diff --git a/file b/file\n+added line\n-removed line",
+    stats: { additions: 2, deletions: 1, sizeBytes: 100 },
+  });
+}
+
 function makeAnalysisDiff(fileCount = 1) {
   return makeParsedDiff(
-    Array.from({ length: fileCount }, (_, i) =>
-      makeFileDiff({
-        filePath: `src/file-${i}.ts`,
-        hunks: [
-          {
-            oldStart: 1,
-            oldCount: 5,
-            newStart: 1,
-            newCount: 7,
-            content: "line1\nline2\nline3\nline4\nline5\nline6\nline7",
-          },
-        ],
-        rawDiff: "diff --git a/file b/file\n+added line\n-removed line",
-        stats: { additions: 2, deletions: 1, sizeBytes: 100 },
-      }),
-    ),
+    Array.from({ length: fileCount }, (_, i) => makeAnalysisFile(`src/file-${i}.ts`)),
   );
+}
+
+function makeBatchDiff(filePath: string): ParsedDiff {
+  return makeParsedDiff([makeAnalysisFile(filePath)]);
 }
 
 function makeLensIssue(
@@ -61,6 +69,44 @@ function makeLensIssue(
     whyItMatters: "matters",
     line_start: 1,
     line_end: 5,
+  });
+}
+
+function makeSequencedAIClient(results: Array<Awaited<ReturnType<AIClient["generate"]>>>): {
+  client: AIClient;
+  calls: () => number;
+} {
+  let callCount = 0;
+  const client: AIClient = {
+    provider: "openrouter",
+    async generate(_prompt, schema) {
+      const result = results[callCount];
+      callCount += 1;
+      if (result === undefined) throw new Error("unexpected extra batch dispatch");
+      if (!result.ok) return result;
+      return ok(schema.parse(result.value));
+    },
+  };
+  return { client, calls: () => callCount };
+}
+
+function allPaths(batches: readonly ParsedDiff[]): string[] {
+  return batches.flatMap((batch) => batch.files.map((file) => file.filePath));
+}
+
+function runSingleBatchLens(
+  client: AIClient,
+  diff: ParsedDiff,
+  onEvent: (event: AgentStreamEvent | StepEvent) => void = () => {},
+  severityFilter?: SeverityFilter,
+) {
+  return runLensAnalysis({
+    client,
+    lens: CORRECTNESS_LENS,
+    batches: [diff],
+    allChangedFilePaths: allPaths([diff]),
+    onEvent,
+    severityFilter,
   });
 }
 
@@ -100,7 +146,7 @@ describe("runLensAnalysis", () => {
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
 
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent);
+    const promise = runSingleBatchLens(client, diff, onEvent);
 
     const eventTypes = events.map((e) => e.type);
     expect(eventTypes).toContain("agent_start");
@@ -146,9 +192,7 @@ describe("runLensAnalysis", () => {
   it("omits unused tracing metadata from emitted events", async () => {
     const client = makeMockAIClient(ok({ issues: [] }));
     const events: Array<AgentStreamEvent | StepEvent> = [];
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, makeAnalysisDiff(), (event) =>
-      events.push(event),
-    );
+    const promise = runSingleBatchLens(client, makeAnalysisDiff(), (event) => events.push(event));
 
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
@@ -172,9 +216,7 @@ describe("runLensAnalysis", () => {
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
 
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent, undefined, undefined, {
-      minSeverity: "low",
-    });
+    const promise = runSingleBatchLens(client, diff, onEvent, { minSeverity: "low" });
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -197,9 +239,7 @@ describe("runLensAnalysis", () => {
     const client = makeMockAIClient(ok({ issues: [complete, whitespaceOnly] }));
     const events: Array<AgentStreamEvent | StepEvent> = [];
 
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, makeAnalysisDiff(), (event) =>
-      events.push(event),
-    );
+    const promise = runSingleBatchLens(client, makeAnalysisDiff(), (event) => events.push(event));
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -230,7 +270,7 @@ describe("runLensAnalysis", () => {
     const diff = makeAnalysisDiff(1);
     const client = makeMockAIClient(ok({ issues: [makeLensIssue("plain", "file-1")] }));
 
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, () => {});
+    const promise = runSingleBatchLens(client, diff);
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -253,7 +293,7 @@ describe("runLensAnalysis", () => {
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
 
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent);
+    const promise = runSingleBatchLens(client, diff, onEvent);
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -272,7 +312,7 @@ describe("runLensAnalysis", () => {
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
 
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent);
+    const promise = runSingleBatchLens(client, diff, onEvent);
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -299,7 +339,7 @@ describe("runLensAnalysis", () => {
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
 
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent);
+    const promise = runSingleBatchLens(client, diff, onEvent);
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -321,7 +361,7 @@ describe("runLensAnalysis", () => {
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
 
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent);
+    const promise = runSingleBatchLens(client, diff, onEvent);
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -372,9 +412,7 @@ describe("runLensAnalysis", () => {
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const client = makeMockAIClient(ok({ issues: [issue] }));
 
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, makeAnalysisDiff(), (event) =>
-      events.push(event),
-    );
+    const promise = runSingleBatchLens(client, makeAnalysisDiff(), (event) => events.push(event));
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -424,7 +462,7 @@ describe("runLensAnalysis", () => {
     issue.evidence = [];
     const client = makeMockAIClient(ok({ issues: [issue] }));
 
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, () => {});
+    const promise = runSingleBatchLens(client, diff);
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -468,7 +506,7 @@ describe("runLensAnalysis", () => {
     }
     const client = makeMockAIClient(ok({ issues }));
 
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, () => {});
+    const promise = runSingleBatchLens(client, diff);
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -518,7 +556,7 @@ describe("runLensAnalysis", () => {
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
 
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent);
+    const promise = runSingleBatchLens(client, diff, onEvent);
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
@@ -528,6 +566,125 @@ describe("runLensAnalysis", () => {
     expect(result.value.droppedIncompleteProviderIssues).toBe(1);
     expect(events.filter((event) => event.type === "issue_found")).toHaveLength(0);
     expect(events.filter((event) => event.type === "agent_error")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(1);
+  });
+
+  it("resolves each batch's opaque ids against its own files and merges the results", async () => {
+    const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
+    const client = makeSequencedAIClient([
+      ok({ issues: [makeLensIssue("dupe", "file-1")] }),
+      ok({ issues: [makeLensIssue("dupe", "file-1")] }),
+    ]);
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.issues.map((issue) => issue.file)).toEqual(["src/one.ts", "src/two.ts"]);
+    const ids = result.value.issues.map((issue) => issue.id);
+    expect(new Set(ids).size).toBe(2);
+    expect(ids).toEqual(["correctness:dupe", "correctness:dupe#2"]);
+
+    expect(events.filter((event) => event.type === "agent_start")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(1);
+    const messages = events.map((event) => ("message" in event ? (event.message ?? "") : ""));
+    expect(messages.some((message) => message.includes("(batch 1/2)"))).toBe(true);
+    expect(messages.some((message) => message.includes("(batch 2/2)"))).toBe(true);
+  });
+
+  it("caps concatenated batch issues at the per-lens maximum, keeping the highest severities", async () => {
+    const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
+    const client = makeSequencedAIClient([
+      ok({
+        issues: Array.from({ length: MAX_REVIEW_ISSUES_PER_LENS }, (_, index) =>
+          makeLensIssue(`low-${index}`, "file-1", "low"),
+        ),
+      }),
+      ok({
+        issues: Array.from({ length: 10 }, (_, index) =>
+          makeLensIssue(`blocker-${index}`, "file-1", "blocker"),
+        ),
+      }),
+    ]);
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.issues).toHaveLength(MAX_REVIEW_ISSUES_PER_LENS);
+    // Every blocker from the second batch survives; the overflow comes off the lows.
+    expect(result.value.issues.filter((issue) => issue.severity === "blocker")).toHaveLength(10);
+    expect(result.value.issues.filter((issue) => issue.file === "src/two.ts")).toHaveLength(10);
+    expect(new Set(result.value.issues.map((issue) => issue.id)).size).toBe(
+      MAX_REVIEW_ISSUES_PER_LENS,
+    );
+    expect(result.value.droppedOverLensCap).toBe(10);
+  });
+
+  it("stops dispatching batches once one of them fails", async () => {
+    const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
+    const client = makeSequencedAIClient([
+      err({ code: "MODEL_ERROR", message: "Model failed" }),
+      ok({ issues: [] }),
+    ]);
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(false);
+    expect(client.calls()).toBe(1);
+    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(0);
+  });
+
+  it("keeps the earlier batches' findings when a later batch fails", async () => {
+    const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
+    const client = makeSequencedAIClient([
+      ok({ issues: [makeLensIssue("kept", "file-1", "high")] }),
+      err({ code: "MODEL_ERROR", message: "Model failed" }),
+    ]);
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.issues.map((issue) => issue.file)).toEqual(["src/one.ts"]);
+    expect(result.value.batchError).toEqual({ code: "MODEL_ERROR", message: "Model failed" });
+    expect(client.calls()).toBe(2);
     expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(1);
   });
 
@@ -541,7 +698,7 @@ describe("runLensAnalysis", () => {
     const events: Array<AgentStreamEvent | StepEvent> = [];
     const onEvent = (e: AgentStreamEvent | StepEvent) => events.push(e);
 
-    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, onEvent);
+    const promise = runSingleBatchLens(client, diff, onEvent);
 
     await expect(promise).rejects.toThrow("Network failure");
 
@@ -549,5 +706,67 @@ describe("runLensAnalysis", () => {
     await vi.advanceTimersByTimeAsync(15000);
     const eventCountAfter = events.filter((e) => e.type === "agent_progress").length;
     expect(eventCountAfter).toBe(eventCountBefore);
+  });
+});
+
+describe("runSynthesisAnalysis", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("resolves file ids against the whole diff and streams under the synthesis lens", async () => {
+    const diff = makeParsedDiff([makeAnalysisFile("src/one.ts"), makeAnalysisFile("src/two.ts")]);
+    const client = makeMockAIClient(ok({ issues: [makeLensIssue("cross-1", "file-2")] }));
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runSynthesisAnalysis({
+      client,
+      diff,
+      collectedIssues: [makeLensIssue("correctness:seed", "src/one.ts")],
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.lensId).toBe("synthesis");
+    expect(result.value.issues.map((issue) => issue.id)).toEqual(["synthesis:cross-1"]);
+    expect(result.value.issues.map((issue) => issue.file)).toEqual(["src/two.ts"]);
+
+    const starts = events.filter((event) => event.type === "agent_start");
+    const completes = events.filter((event) => event.type === "agent_complete");
+    expect(starts).toHaveLength(1);
+    expect(completes).toHaveLength(1);
+    expect(starts[0] && "agent" in starts[0] ? starts[0].agent : undefined).toMatchObject({
+      id: "synthesizer",
+      lens: "synthesis",
+    });
+    expect(events.filter((event) => event.type === "issue_found")).toHaveLength(1);
+  });
+
+  it("returns the dispatch error and emits agent_error when the synthesis call fails", async () => {
+    const diff = makeParsedDiff([makeAnalysisFile("src/one.ts")]);
+    const client = makeMockAIClient(err({ code: "MODEL_ERROR", message: "boom" }));
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runSynthesisAnalysis({
+      client,
+      diff,
+      collectedIssues: [],
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("MODEL_ERROR");
+    expect(events.some((event) => event.type === "agent_error")).toBe(true);
+    expect(events.some((event) => event.type === "agent_complete")).toBe(false);
   });
 });

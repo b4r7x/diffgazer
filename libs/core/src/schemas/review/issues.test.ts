@@ -163,4 +163,21 @@ describe("ReviewSizeWarningSchema", () => {
   it("rejects a context window of zero, which no model has", () => {
     expect(ReviewSizeWarningSchema.safeParse({ ...warning, contextTokens: 0 }).success).toBe(false);
   });
+
+  it("round-trips a batched review's disclosure", () => {
+    const batched = { ...warning, batchCount: 3, estimatedTotalInputTokens: 750_000 };
+
+    expect(ReviewSizeWarningSchema.parse(batched)).toEqual(batched);
+  });
+
+  it("parses a single-call advisory that states no batch numbers", () => {
+    const parsed = ReviewSizeWarningSchema.parse(warning);
+
+    expect(parsed.batchCount).toBeUndefined();
+    expect(parsed.estimatedTotalInputTokens).toBeUndefined();
+  });
+
+  it("rejects a batch count of zero, which no plan has", () => {
+    expect(ReviewSizeWarningSchema.safeParse({ ...warning, batchCount: 0 }).success).toBe(false);
+  });
 });

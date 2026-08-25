@@ -34,7 +34,7 @@ import {
   ConfigurationErrorView,
   ReviewTerminalReceiptView,
 } from "./api-key-missing-view";
-import { ReviewFileFilterView } from "./file-filter-view";
+import { type ReviewFileFilterStart, ReviewFileFilterView } from "./file-filter-view";
 import { ACTION_SHORTCUTS } from "./gate-view";
 import { NoChangesView } from "./no-changes-view";
 import { ReviewProgressView } from "./progress-view/view";
@@ -44,6 +44,8 @@ import { ReviewSummaryView } from "./summary-view";
 interface ReviewStreamContainerProps {
   // Matches the review route, which carries no file-selection mode.
   mode?: Exclude<ReviewMode, "files">;
+  /** Opens the file picker instead of starting the run, for a scope chosen before any run exists. */
+  pickFiles?: boolean;
   reviewId?: string;
   allowResumeWithoutSetup?: boolean;
   onStreamNotFound?: (reviewId: string) => void;
@@ -66,6 +68,12 @@ const NARROWABLE_ERROR_CODES: ReadonlySet<string> = new Set<string>([
   ReviewErrorCode.DIFF_TOO_LARGE,
   ReviewErrorCode.BUDGET_EXHAUSTED,
 ]);
+
+/**
+ * Where the picker was opened from: a run that was warned or refused carries
+ * the reason it sends the user here, a scope picked before any run has none.
+ */
+type FileFilterState = { origin: "pre-run" } | { origin: "narrow"; reason: string };
 
 interface ReviewTerminalReceiptContainerProps {
   terminalOutcome: FailedTerminalOutcome;
@@ -196,6 +204,7 @@ export function ReviewContainer(props: ReviewContainerProps): ReactElement {
 
 function ReviewStreamContainer({
   mode,
+  pickFiles = false,
   reviewId,
   allowResumeWithoutSetup = false,
   onStreamNotFound,
@@ -212,11 +221,13 @@ function ReviewStreamContainer({
   );
   const [isSwitchingMode, setIsSwitchingMode] = useState(false);
   const switchingModeRef = useRef(false);
-  // The picker is a step of this flow, not a route: it is only ever reached from
-  // a run that was warned or refused, and leaving it returns to that run's
-  // screen rather than to whatever pushed the review route.
-  const [fileFilterReason, setFileFilterReason] = useState<string | null>(null);
-  const isFilteringFiles = fileFilterReason !== null;
+  // The picker is a step of this flow, not a route: reached from a run that was
+  // warned or refused, leaving it returns to that run's screen rather than to
+  // whatever pushed the review route; reached before any run, it is the first
+  // thing the screen shows.
+  const [fileFilter, setFileFilter] = useState<FileFilterState | null>(
+    pickFiles ? { origin: "pre-run" } : null,
+  );
   // Switching starts a new review, so it waits for the provider consent like
   // the start on home does; declining leaves the no-diff screen as it was.
   const consent = useProviderConsentGate(state.providerConsent);
@@ -243,17 +254,19 @@ function ReviewStreamContainer({
   function cancelAndFilterFiles(reason: string) {
     void cancel().then((cancelError) => {
       if (cancelError) return;
-      setFileFilterReason(reason);
+      setFileFilter({ origin: "narrow", reason });
     });
   }
 
-  async function startFilteredReview(files?: [string, ...string[]]) {
-    setFileFilterReason(null);
-    const result = await start(state.mode, { fresh: true, ...(files ? { files } : {}) });
+  async function startFilteredReview({ mode: scope, files }: ReviewFileFilterStart) {
+    setFileFilter(null);
+    const result = await start(scope, { fresh: true, ...(files ? { files } : {}) });
     if (result === "setup-required") navigate({ screen: "settings/providers" });
   }
 
-  const hasStarted = useRef(false);
+  // A picked scope is the start this screen was opened for, so the automatic
+  // one stands down rather than racing it with the whole diff.
+  const hasStarted = useRef(pickFiles);
 
   useEffect(() => {
     if (mode && !reviewId && state.initState.status === "ready" && !hasStarted.current) {
@@ -291,15 +304,21 @@ function ReviewStreamContainer({
 
   if (consent.isOpen) return <ProviderConsentOverlay gate={consent} />;
 
-  if (isFilteringFiles) {
-    return (
+  if (fileFilter) {
+    // Before any run there is no mode to inherit and nothing to go back to on
+    // this screen, so the picker owns the scope and Escape returns to whatever
+    // opened the route. Either way the start asks for the consent the menu
+    // rows on home ask for.
+    const onStart = (input: ReviewFileFilterStart) =>
+      consent.require(() => void startFilteredReview(input));
+    return fileFilter.origin === "pre-run" ? (
+      <ReviewFileFilterView onStart={onStart} onBack={goBack} />
+    ) : (
       <ReviewFileFilterView
         mode={state.mode}
-        reason={fileFilterReason}
-        onStart={(files) => {
-          void startFilteredReview(files);
-        }}
-        onBack={() => setFileFilterReason(null)}
+        reason={fileFilter.reason}
+        onStart={onStart}
+        onBack={() => setFileFilter(null)}
       />
     );
   }
@@ -397,7 +416,9 @@ function ReviewStreamContainer({
         guidance={guidance.guidance}
         onBack={handleGateBack}
         recovery={recovery}
-        onFilterFiles={canNarrow ? () => setFileFilterReason(error) : undefined}
+        onFilterFiles={
+          canNarrow ? () => setFileFilter({ origin: "narrow", reason: error }) : undefined
+        }
       />
     );
   }

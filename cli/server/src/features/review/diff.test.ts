@@ -499,8 +499,6 @@ describe("createReviewSession canonical file-scoped identity", () => {
     trackedSessionIds.add(result.value.reviewId);
     sessionsWithRunners.add(result.value.reviewId);
 
-    // Advisory, not a gate: the run is admitted and the review still starts,
-    // carrying the caveat on the buffered stream event every surface reads.
     expect(result.value.outcome).toBe("running");
     const warningEvent = result.value.session.events.find(
       (event) => event.type === "review_size_warning",

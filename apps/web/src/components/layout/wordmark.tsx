@@ -3,9 +3,10 @@ import { cva } from "class-variance-authority";
 
 /**
  * Brand weight. `hero` is the full banner the cover screens open with, `dense`
- * the same art shrunk for work-screen headers. Both are the one block under a
- * transform: a single canonical rendering keeps the glyph geometry identical at
- * every size, so the size ladder is scale-only.
+ * the same art shrunk for chrome that must recede but stay legible: work-screen
+ * headers and the root crash screen. Both are the one block under a transform:
+ * a single canonical rendering keeps the glyph geometry identical at every size,
+ * so the size ladder is scale-only.
  */
 export type WordmarkTier = "hero" | "dense";
 

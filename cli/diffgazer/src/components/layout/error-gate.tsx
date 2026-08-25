@@ -76,7 +76,15 @@ export function ErrorGatePanel({
             <Text color={tokens[variant]} bold>
               {VARIANT_ICONS[variant]} {title}
             </Text>
-            {meta ? <Text color={tokens.fg}>{meta}</Text> : null}
+            {meta ? (
+              <>
+                <Text color={tokens.fg}>{meta}</Text>
+                {/* The interrupted-rule stitch the web FailureView draws under its meta line. */}
+                <Text color={tokens.muted} dimColor>
+                  ── ──
+                </Text>
+              </>
+            ) : null}
             <Text color={tokens.muted}>{message}</Text>
             {children}
           </Box>

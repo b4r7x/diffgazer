@@ -185,6 +185,36 @@ describe("FailureView", () => {
     expect(screen.getByRole("heading", { name: "API Key Required" })).toBeVisible();
   });
 
+  it("marks the error title with an aria-hidden glyph outside the accessible name", () => {
+    renderFailure();
+
+    const heading = screen.getByRole("heading", { name: "Reviews Unavailable" });
+    const glyph = heading.querySelector('[aria-hidden="true"]');
+    expect(glyph).toHaveTextContent("✖");
+  });
+
+  it("swaps the title glyph for the warning tone", () => {
+    renderFailure({ tone: "warning" });
+
+    const heading = screen.getByRole("heading", { name: "Reviews Unavailable" });
+    expect(heading.querySelector('[aria-hidden="true"]')).toHaveTextContent("⚠");
+  });
+
+  it("stitches the interrupted rule under the meta line", () => {
+    renderFailure({ meta: "openai / gpt-5" });
+
+    const stitch = screen.getByText("openai / gpt-5").nextElementSibling;
+    expect(stitch).toHaveAttribute("aria-hidden", "true");
+    expect(stitch?.children).toHaveLength(2);
+  });
+
+  it("omits the stitch when the gate has no meta line", () => {
+    renderFailure();
+
+    const message = screen.getByText("Diffgazer could not read the review history.");
+    expect(message.previousElementSibling).not.toHaveAttribute("aria-hidden");
+  });
+
   it("renders the title at the requested heading level", () => {
     renderFailure({ titleAs: "h1", title: "Page Not Found" });
 

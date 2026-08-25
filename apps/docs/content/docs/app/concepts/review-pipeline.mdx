@@ -25,7 +25,17 @@ This is where the agents do their work. The active lenses run over the diff, eac
 
 The surviving issues are assembled into the final report, which is then persisted to disk along with the branch, commit, profile, lenses, and how long the run took. Once this step completes, the review is saved and available in your history.
 
-> Note: Review size is checked against the model, not against a fixed cap. Once the diff is collected, Diffgazer estimates what it will cost as a prompt and compares that to the context window the catalog publishes for your selected model. A diff past that window stops the run and names both numbers, so you can review fewer files or pick a model with a larger window; the diff is never silently truncated. A diff over 512KB that still fits starts the review with an advisory, because one pass over that much change finds less than several narrower ones. One fixed ceiling remains at 10MB, for the lockfiles and vendored trees no model choice would rescue. Every limit is on the combined byte size of all changed files, not on any single file.
+## Large reviews: batching and synthesis
+
+Once the diff is collected, Diffgazer estimates what it will cost as a prompt and compares that to a per-call budget: the smaller of the model's context window minus the tokens reserved for the answer, and the `effectiveCallTokenCap` setting. The cap defaults to 49,152 tokens (48k) even when the model advertises a much larger window, because models read a short call better than a full one — long-context evaluations show review quality dropping well before large windows fill. You can raise or lower the cap in [configuration](/app/reference/configuration) if your model handles longer calls well.
+
+A diff under the budget runs exactly as described above, one call per lens. A diff over it is never truncated or refused: it is split into batches of whole files, kept in diff order, and each lens reads its batches sequentially, one call per batch. A file is never split across batches. Every batch's prompt still names every changed file, so the model knows what else changed by name, but its `<code-diff>` carries only that batch's files.
+
+Splitting has a cost, and Diffgazer says so up front: a batched review starts with a warning stating the batch count and the estimated input tokens for the whole run. A finding that spans two batches — a function changed in one file, its caller in another — is invisible to any single call. That is what the **synthesis pass** is for: after all lenses settle, one extra dispatch reads a digest of every collected issue (severity, category, file, lines, title) plus the full changed-file list, and reports cross-file problems only, attributed to lens `synthesis`. It sees the digest and the file names, not the diffs, so it connects findings the batches already made; it cannot surface a cross-file bug no batch flagged any side of. If the synthesis dispatch fails, it is reported like any other failed lens and the review still completes.
+
+A batched review also costs more than a single call, so the per-review budget envelope (input tokens, response bytes, and wall time) is raised before the first dispatch to the plan's disclosed estimate plus 20% headroom — an admitted review is not stopped mid-run by a budget sized for one call. The per-review spend cap is never raised: it is your money, so a batched plan whose worst case runs past it is refused up front, naming the cap, instead of being started and stopped halfway. Single-batch reviews keep the configured budgets untouched, and their prompts, events, and warnings are identical to a review run before batching existed.
+
+Two hard failures survive batching. A single file that does not fit the model's window even on its own stops the run, naming the file, its estimated tokens, and the window — batching splits between files, never inside one. And one fixed ceiling remains at 10MB, for the lockfiles and vendored trees no model choice would rescue. A diff over 512KB that still fits one call starts the review with an advisory, because one pass over that much change finds less than several narrower ones.
 
 ## Lenses and agents
 
@@ -38,6 +48,8 @@ Five lenses ship with Diffgazer, and each maps to exactly one agent. The lens is
 | performance | Optimizer | Spots performance bottlenecks |
 | simplicity | Simplifier | Reduces complexity and improves readability |
 | tests | Tester | Evaluates test coverage and quality |
+
+A sixth lens id, `synthesis`, exists but is never yours to pick: the engine dispatches its Synthesizer agent only after a review that ran in more than one batch, and its cross-file issues appear in the report like any other lens's.
 
 Which lenses run comes from an ordered fallback: an explicit lens list wins, then the active profile's lenses, then your configured default lenses. Settings validation guarantees that the configured list is non-empty. See [providers and models](/app/concepts/providers-and-models) for how each agent reaches your AI provider.
 

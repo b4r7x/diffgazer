@@ -12,6 +12,7 @@ import { vi } from "vitest";
 const SHELL_SETTINGS_FIXTURE: ConfigurationInitResponse["settings"] = {
   theme: "terminal",
   defaultLenses: [] as ConfigurationInitResponse["settings"]["defaultLenses"],
+  effectiveCallTokenCap: 49_152,
   defaultProfile: null,
   severityThreshold: "low",
   secretsStorage: "file",

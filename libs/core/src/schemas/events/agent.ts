@@ -4,7 +4,14 @@ import { ReviewSeveritySchema } from "../review/enums.js";
 import { ReviewIssueSchema } from "../review/issues.js";
 import { type LensId, LensIdSchema } from "../review/lens.js";
 
-const AGENT_IDS = ["detective", "guardian", "optimizer", "simplifier", "tester"] as const;
+const AGENT_IDS = [
+  "detective",
+  "guardian",
+  "optimizer",
+  "simplifier",
+  "tester",
+  "synthesizer",
+] as const;
 export type AgentId = (typeof AGENT_IDS)[number];
 
 const AGENT_ID_SET = new Set<AgentId>(AGENT_IDS);
@@ -20,6 +27,7 @@ export const LENS_TO_AGENT = {
   performance: "optimizer",
   simplicity: "simplifier",
   tests: "tester",
+  synthesis: "synthesizer",
 } as const satisfies Readonly<Record<LensId, AgentId>>;
 
 const CountSchema = z.int().nonnegative();
@@ -97,6 +105,14 @@ export const AGENT_METADATA = {
     badgeLabel: "TEST",
     badgeVariant: "info",
     description: "Evaluates test coverage and quality",
+  },
+  synthesizer: {
+    id: "synthesizer",
+    lens: "synthesis",
+    name: "Synthesizer",
+    badgeLabel: "SYN",
+    badgeVariant: "info",
+    description: "Connects findings across batches of a split diff",
   },
 } as const satisfies { [Id in AgentId]: AgentMeta & { id: Id } };
 
@@ -196,6 +212,9 @@ const OrchestratorCompleteEventSchema = z.strictObject({
   droppedDuplicates: CountSchema.optional(),
   droppedBelowThreshold: CountSchema.optional(),
   droppedIncompleteProviderIssues: CountSchema.optional(),
+  // Findings a batched lens trimmed off the per-lens cap, disclosed like the
+  // other drop paths rather than disappearing silently.
+  droppedOverLensCap: CountSchema.optional(),
   // The resolved severity floor the dropped issues fell below, so the hidden-count
   // notice can name the threshold the user can lower to surface them.
   minSeverity: ReviewSeveritySchema.optional(),

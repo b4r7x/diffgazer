@@ -1,4 +1,4 @@
-import type { Lens, LensId } from "@diffgazer/core/schemas/review";
+import type { Lens, SelectableLensId } from "@diffgazer/core/schemas/review";
 import {
   CORRECTNESS_SEVERITY_RUBRIC,
   CORRECTNESS_SYSTEM_PROMPT,
@@ -8,6 +8,8 @@ import {
   SECURITY_SYSTEM_PROMPT,
   SIMPLICITY_SEVERITY_RUBRIC,
   SIMPLICITY_SYSTEM_PROMPT,
+  SYNTHESIS_SEVERITY_RUBRIC,
+  SYNTHESIS_SYSTEM_PROMPT,
   TESTS_SEVERITY_RUBRIC,
   TESTS_SYSTEM_PROMPT,
 } from "./prompts.js";
@@ -52,7 +54,19 @@ const testsLens: Lens = {
   severityRubric: TESTS_SEVERITY_RUBRIC,
 };
 
-const LENSES: Record<LensId, Lens> = {
+/**
+ * The engine-only cross-batch pass. Never selectable: it is dispatched by the
+ * orchestrator, once, after the lens fold of a review that ran in >1 batch.
+ */
+export const SYNTHESIS_LENS: Lens = {
+  id: "synthesis",
+  name: "Synthesis",
+  description: "Connects findings across batches of a split diff",
+  systemPrompt: SYNTHESIS_SYSTEM_PROMPT,
+  severityRubric: SYNTHESIS_SEVERITY_RUBRIC,
+};
+
+const LENSES: Record<SelectableLensId, Lens> = {
   correctness: correctnessLens,
   security: securityLens,
   performance: performanceLens,
@@ -60,6 +74,6 @@ const LENSES: Record<LensId, Lens> = {
   tests: testsLens,
 };
 
-export function getLenses(ids: LensId[]): Lens[] {
+export function getLenses(ids: SelectableLensId[]): Lens[] {
   return ids.map((id) => LENSES[id]);
 }

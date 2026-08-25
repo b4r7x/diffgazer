@@ -15,7 +15,7 @@ import {
   LocalOpenAIPresetIdSchema,
   LoopbackHttpEndpointSchema,
 } from "../schemas/config/index.js";
-import { LENS_IDS, type LensId } from "../schemas/review/index.js";
+import { SELECTABLE_LENS_IDS, type SelectableLensId } from "../schemas/review/index.js";
 import { buildSetupPlan, type RunnableSetupPlan } from "./setup-plan.js";
 import type { OnboardingAcknowledgement } from "./types.js";
 
@@ -35,7 +35,7 @@ export interface OnboardingDraft {
   readonly configurationInput: OnboardingConfigurationDraft;
   readonly selectedModelId: string | null;
   readonly acknowledgement: OnboardingAcknowledgement;
-  readonly defaultLenses: readonly LensId[];
+  readonly defaultLenses: readonly SelectableLensId[];
   readonly agentExecution: AgentExecution;
   readonly plan: RunnableSetupPlan;
 }
@@ -88,7 +88,7 @@ export function getInitialWizardData(
     configurationInput: buildConfigurationDraft(productId),
     selectedModelId: null,
     acknowledgement: { status: "required" },
-    defaultLenses: [...LENS_IDS],
+    defaultLenses: [...SELECTABLE_LENS_IDS],
     agentExecution: "sequential",
     plan,
   };

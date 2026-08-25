@@ -204,7 +204,6 @@ function renderContainer({
   initialShortcuts?: Shortcut[];
   showFooterProbe?: boolean;
   onViewRunDetails?: (reviewId: string) => void;
-  /** Supplied by the tests that open the file picker, which reads the working tree. */
   gitStatus?: GitStatus;
 } = {}) {
   return render(
@@ -928,7 +927,6 @@ describe("ReviewContainer", () => {
     const pickerFrame = frameText(lastFrame());
     expect(pickerFrame).toContain("Select Staged Files");
     expect(pickerFrame).toContain("a All, n None, s Review Selected");
-    // The picker carries the failure that sent the user here, numbers and all.
     expect(pickerFrame).toContain("does not fit gpt-test");
 
     stdin.write(ESC);
@@ -959,8 +957,6 @@ describe("ReviewContainer", () => {
     await waitUntil(() => frameText(lastFrame()).includes("2 selected"));
     stdin.write("s");
 
-    // Selecting everything is still a new run, not a replay of the dead one the
-    // route is attached to.
     await waitUntil(() => apiMocks.createReview.mock.calls.length > 0);
     expect(apiMocks.createReview).toHaveBeenCalledWith(expect.objectContaining({ mode: "staged" }));
     expect(apiMocks.createReview.mock.calls[0]?.[0]).not.toHaveProperty("files");
@@ -968,7 +964,6 @@ describe("ReviewContainer", () => {
 
   test.each([
     ReviewErrorCode.MODEL_INCOMPATIBLE,
-    // A generation fault is not a size fault: narrowing the file set cannot fix it.
     ReviewErrorCode.GENERATION_FAILED,
   ])("keeps the picker away from a %s failure a smaller file set cannot fix", async (errorCode) => {
     apiMocks.useReviewLifecycleBase.mockReturnValue(

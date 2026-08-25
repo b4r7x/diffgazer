@@ -25,6 +25,7 @@ function makeInitResponse(theme: SettingsTheme): InitResponse {
     settings: {
       theme,
       defaultLenses: [],
+      effectiveCallTokenCap: 49_152,
       defaultProfile: null,
       severityThreshold: "low",
       secretsStorage: "file",

@@ -130,6 +130,7 @@ const configurationInit: ConfigurationInitResponse = {
   settings: {
     theme: "auto",
     defaultLenses: ["correctness"],
+    effectiveCallTokenCap: 49_152,
     defaultProfile: null,
     severityThreshold: "low",
     secretsStorage: null,

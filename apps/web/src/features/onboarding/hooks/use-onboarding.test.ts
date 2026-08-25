@@ -35,6 +35,7 @@ let ConfigProvider: typeof import("@/hooks/use-config").ConfigProvider;
 const SETTINGS_FIXTURE: SettingsConfig = {
   theme: "terminal",
   defaultLenses: [],
+  effectiveCallTokenCap: 49_152,
   defaultProfile: null,
   severityThreshold: "low",
   secretsStorage: null,

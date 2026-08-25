@@ -1,9 +1,39 @@
 import { makeReadyInitResponse } from "@diffgazer/core/testing/provider-fixtures";
-import { cleanup } from "ink-testing-library";
+import { cleanup, render } from "ink-testing-library";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { NavigationContext } from "../../../hooks/use-navigation";
 import { ApiBoundary } from "../../../testing/api-boundary";
+import { flush } from "../../../testing/flush";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
+import { CliThemeProvider } from "../../../theme/provider";
 import { HomeScreen } from "./screen";
+
+const TRUST = {
+  projectId: "project-1",
+  repoRoot: "/tmp/repo",
+  trustedAt: "2026-01-01T00:00:00.000Z",
+  trustMode: "persistent" as const,
+  capabilities: { readFiles: true, runCommands: false },
+};
+
+function renderHomeWithNavigation(navigate: (route: unknown) => void) {
+  return render(
+    <ApiBoundary api={{ saveSettings: saveSettingsMock }}>
+      <CliThemeProvider initialTheme="dark">
+        <NavigationContext
+          value={{
+            route: { screen: "home" },
+            navigate: navigate as never,
+            goBack: () => {},
+            canGoBack: false,
+          }}
+        >
+          <HomeScreen />
+        </NavigationContext>
+      </CliThemeProvider>
+    </ApiBoundary>,
+  );
+}
 
 const renderHome = () => (
   <ApiBoundary api={{ saveSettings: saveSettingsMock }}>
@@ -133,6 +163,41 @@ describe("HomeScreen", () => {
     expect(saveSettingsMock).toHaveBeenCalledWith({
       providerConsent: { version: 1, acceptedAt: expect.any(String) },
     });
+  });
+
+  test("opens the file picker on f, which only a trusted repo may reach", async () => {
+    const init = makeInitResponse();
+    useConfigurationInitMock.mockReturnValue({
+      data: { ...init, project: { ...init.project, trust: TRUST } },
+      isLoading: false,
+      error: null,
+      refetch: refetchInitMock,
+    });
+
+    const navigate = vi.fn();
+    const trusted = renderHomeWithNavigation(navigate);
+    await vi.waitFor(() => expect(trusted.lastFrame()).toContain("Review Unstaged"));
+
+    trusted.stdin.write("f");
+    await vi.waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({ screen: "review", pickFiles: true }),
+    );
+
+    cleanup();
+    navigate.mockClear();
+    useConfigurationInitMock.mockReturnValue({
+      data: makeInitResponse(),
+      isLoading: false,
+      error: null,
+      refetch: refetchInitMock,
+    });
+
+    const untrusted = renderHomeWithNavigation(navigate);
+    await vi.waitFor(() => expect(untrusted.lastFrame()).toContain("Trust & Continue"));
+
+    untrusted.stdin.write("f");
+    await flush();
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   test("keeps the menu row the notice was opened from highlighted after Not now", async () => {

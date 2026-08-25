@@ -240,6 +240,11 @@ export const ReviewSizeWarningSchema = z.object({
   estimatedInputTokens: z.int().nonnegative(),
   contextTokens: z.int().positive().nullable(),
   modelId: z.string().min(1).max(128).nullable(),
+  // Present only when the review had to be split: how many batches it runs and
+  // what the whole run is estimated to cost in input tokens. Absent on the
+  // single-call advisory, and on every warning saved before batching existed.
+  batchCount: z.int().positive().optional(),
+  estimatedTotalInputTokens: z.int().nonnegative().optional(),
 });
 export type ReviewSizeWarning = z.infer<typeof ReviewSizeWarningSchema>;
 

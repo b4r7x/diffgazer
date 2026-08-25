@@ -4,7 +4,7 @@ import { FooterProvider } from "@diffgazer/core/footer";
 import type { GitStatus } from "@diffgazer/core/schemas/git";
 import type { HomeContextInfo } from "@diffgazer/core/schemas/presentation";
 import { KeyboardProvider, useKey } from "@diffgazer/keys";
-import { Toaster, toast } from "@diffgazer/ui/components/toast";
+import { Toaster } from "@diffgazer/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -15,6 +15,7 @@ import type { ShutdownResult } from "@/lib/shutdown";
 
 import { FooterView } from "@/testing/footer-view";
 import { expectSingleReticle } from "@/testing/reticle";
+import { drainToasts } from "@/testing/toast-fixtures";
 import { HomePagePresentation, type HomePagePresentationProps } from "./presentation";
 
 type Navigate = HomePagePresentationProps["navigate"];
@@ -147,20 +148,6 @@ function renderConsentGatedHome(props: HomePagePresentationProps) {
     </QueryClientProvider>,
     { wrapper: Wrapper },
   );
-}
-
-// Toasts live in a module-scoped store that outlives `cleanup()`, so the
-// persistent error/warning toasts one row raises would otherwise leak into the
-// next row's absence checks. Draining goes through the public dismiss API and
-// waits for the Toaster to unmount them; the toast root is queried by its DOM
-// contract because a dismissed toast has no accessible name left to match.
-async function drainToasts() {
-  const { unmount } = render(<Toaster />);
-  act(() => {
-    toast.dismiss();
-  });
-  await waitFor(() => expect(document.querySelectorAll('[data-slot="toast"]')).toHaveLength(0));
-  unmount();
 }
 
 beforeEach(async () => {

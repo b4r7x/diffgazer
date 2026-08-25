@@ -1,13 +1,13 @@
 import { LENS_OPTIONS } from "@diffgazer/core/schemas/events";
-import type { LensId } from "@diffgazer/core/schemas/review";
+import type { SelectableLensId } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { Badge } from "../ui/badge";
 import { CheckboxGroup } from "../ui/checkbox";
 
 interface AnalysisSelectorProps {
-  selectedLenses: LensId[];
-  onChange: (lenses: LensId[]) => void;
+  selectedLenses: SelectableLensId[];
+  onChange: (lenses: SelectableLensId[]) => void;
   isActive?: boolean;
   disabled?: boolean;
   compact?: boolean;
@@ -23,7 +23,7 @@ export function AnalysisSelector({
   onDownBoundary,
 }: AnalysisSelectorProps): ReactElement {
   return (
-    <CheckboxGroup<LensId>
+    <CheckboxGroup<SelectableLensId>
       value={selectedLenses}
       onChange={onChange}
       isActive={isActive}

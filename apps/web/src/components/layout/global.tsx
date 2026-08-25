@@ -3,15 +3,16 @@ import { useFooterData } from "@diffgazer/core/footer";
 import { resolveShellProviderIdentity, type ShellProviderState } from "@diffgazer/core/providers";
 import type { ClientConfigurationSummary, Readiness } from "@diffgazer/core/schemas/config";
 import { useKey, useKeyboardContext } from "@diffgazer/keys";
+import { Button } from "@diffgazer/ui/components/button";
+import { toast } from "@diffgazer/ui/components/toast";
 import { useCanGoBack, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useConfigData } from "@/hooks/use-config";
 import { isDialogScope } from "@/hooks/use-dialog-scope";
 import { usePointerFocusGuard } from "@/hooks/use-pointer-focus-guard";
 import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
 import { getMainContent, MAIN_CONTENT_ID } from "@/lib/main-content";
 import { reportShutdownResult, shutdown } from "@/lib/shutdown";
-import { ConnectionStrip } from "./connection-strip";
 import { Footer } from "./footer";
 import { Header, type HeaderServerState } from "./header";
 import { HeaderChromeProvider, useHeaderBackButtonRef } from "./header-chrome";
@@ -54,6 +55,39 @@ function useTransportState(): { state: HeaderServerState; retry: () => void } {
       void retry().catch(() => {});
     },
   };
+}
+
+const CONNECTION_TOAST_ID = "server-connection";
+
+/**
+ * A lost connection surfaces as one persistent error toast with a Retry
+ * action; the header chip carries the Reconnecting word while a retry is in
+ * flight. Reconnecting dismisses the outage toast and confirms briefly. The
+ * toast store is an external system, so a transition effect is the right tool.
+ */
+function useConnectionToast(state: HeaderServerState, retry: () => void) {
+  const wasOffline = useRef(false);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retry delegates to React Query's stable refetch, so the closure never goes stale; the per-render wrapper identity would re-issue the offline toast every render if listed.
+  useEffect(() => {
+    if (state === "offline") {
+      wasOffline.current = true;
+      toast.error("Server not responding — reviews and history are frozen.", {
+        id: CONNECTION_TOAST_ID,
+        action: (
+          <Button variant="secondary" size="sm" bracket onClick={retry}>
+            Retry
+          </Button>
+        ),
+      });
+      return;
+    }
+    if (state === "live" && wasOffline.current) {
+      wasOffline.current = false;
+      toast.dismiss(CONNECTION_TOAST_ID);
+      toast.success("Reconnected", { duration: 2500 });
+    }
+  }, [state]);
 }
 
 function toShellProviderState(config: {
@@ -156,6 +190,7 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
   const streamingReviewCancel = useRef<(() => void) | null>(null);
 
   usePointerFocusGuard(mainRef);
+  useConnectionToast(transport.state, transport.retry);
 
   return (
     <HeaderChromeProvider value={backButtonRef}>
@@ -174,9 +209,6 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
             Skip to main content
           </a>
           <ConnectedHeader serverState={transport.state} />
-          {transport.state === "live" ? null : (
-            <ConnectionStrip state={transport.state} onRetry={transport.retry} />
-          )}
           <GlobalShortcuts />
           <main
             ref={mainRef}

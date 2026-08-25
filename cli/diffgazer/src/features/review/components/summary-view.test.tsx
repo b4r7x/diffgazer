@@ -99,6 +99,19 @@ describe("ReviewSummaryView (TUI)", () => {
     expect(frame).toContain("failed (CANCELLED)");
   });
 
+  test("renders the synthesis lens row with its display label like any other lens", () => {
+    const { lastFrame } = renderSummary({
+      lensStats: [
+        { lensId: "correctness", issueCount: 2, status: "success" },
+        { lensId: "synthesis", issueCount: 1, status: "success" },
+      ],
+    });
+    const frame = lastFrame() ?? "";
+
+    expect(frame).toContain("Synthesis");
+    expect(frame).toContain("1 issue");
+  });
+
   test("omits the hidden-count notice when nothing was dropped", () => {
     const { lastFrame } = renderSummary();
 

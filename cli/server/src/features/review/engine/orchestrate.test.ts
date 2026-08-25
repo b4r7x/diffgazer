@@ -120,6 +120,145 @@ describe("orchestrateReview", () => {
     expect(JSON.stringify(events)).not.toMatch(/"(?:traceId|spanId|parentSpanId)":/);
   });
 
+  it("dispatches one call per planned batch and only the batch's own files", async () => {
+    const prompts: string[] = [];
+    const client: AIClient = {
+      provider: "openrouter",
+      generate: async <T extends z.ZodType>(prompt: string, schema: T) => {
+        prompts.push(prompt);
+        return ok(schema.parse({ issues: [] }) as z.output<T>);
+      },
+    };
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts", "src/b.ts"]),
+      { lenses: ["correctness"] },
+      () => {},
+      {
+        concurrency: 1,
+        batches: [createDiffForFiles(["src/a.ts"]), createDiffForFiles(["src/b.ts"])],
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    // Two batch calls, then the synthesis pass a batched review earns.
+    expect(prompts).toHaveLength(3);
+    // The raw diff header only appears where the file's own diff was rendered.
+    expect(prompts[0]).toContain("+++ b/src/a.ts");
+    expect(prompts[0]).not.toContain("+++ b/src/b.ts");
+    expect(prompts[1]).toContain("+++ b/src/b.ts");
+    expect(prompts[1]).not.toContain("+++ b/src/a.ts");
+    // Synthesis names every changed file but carries no diff at all.
+    expect(prompts[2]).toContain('display-path="src/a.ts"');
+    expect(prompts[2]).toContain('display-path="src/b.ts"');
+    expect(prompts[2]).not.toContain("+++ b/");
+  });
+
+  it("skips the synthesis pass on a single-batch review", async () => {
+    const prompts: string[] = [];
+    const client: AIClient = {
+      provider: "openrouter",
+      generate: async <T extends z.ZodType>(prompt: string, schema: T) => {
+        prompts.push(prompt);
+        return ok(schema.parse({ issues: [] }) as z.output<T>);
+      },
+    };
+    const diff = createDiffForFiles(["src/a.ts", "src/b.ts"]);
+
+    const result = await orchestrateReview(
+      client,
+      diff,
+      { lenses: ["correctness"] },
+      () => {},
+      { concurrency: 1, batches: [diff] },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(prompts).toHaveLength(1);
+    if (result.ok) {
+      expect(result.value.lensStats.map((stat) => stat.lensId)).toEqual(["correctness"]);
+    }
+  });
+
+  it("dispatches synthesis once after the lens fold and reports its LensStat row", async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const crossFileIssue = makeIssue({
+      id: "cross-1",
+      file: "file-1",
+      title: "Schema changed without its consumer",
+    });
+    // Two lenses x two batches = four lens calls, then exactly one synthesis call.
+    const client = makeClient([
+      ok({ issues: [makeIssue({ id: "batch-a", file: "file-1" })] }),
+      ok({ issues: [] }),
+      ok({ issues: [] }),
+      ok({ issues: [] }),
+      ok({ issues: [crossFileIssue] }),
+    ]);
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts", "src/b.ts"]),
+      { lenses: ["correctness", "security"] },
+      (event) => events.push(event as Record<string, unknown>),
+      {
+        concurrency: 1,
+        batches: [createDiffForFiles(["src/a.ts"]), createDiffForFiles(["src/b.ts"])],
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.lensStats).toContainEqual({
+        lensId: "synthesis",
+        issueCount: 1,
+        status: "success",
+      });
+      expect(result.value.issues.map((issue) => issue.id)).toContain("synthesis:cross-1");
+    }
+    const synthesisStarts = events.filter(
+      (event) =>
+        event.type === "agent_start" &&
+        (event.agent as { id?: string } | undefined)?.id === "synthesizer",
+    );
+    expect(synthesisStarts).toHaveLength(1);
+  });
+
+  it("reports a synthesis failure as a failed lens while keeping the review's findings", async () => {
+    const client = makeClient([
+      ok({ issues: [makeIssue({ id: "kept-1", file: "file-1" })] }),
+      ok({ issues: [] }),
+      err({ code: "MODEL_ERROR", message: "synthesis dispatch failed" }),
+    ]);
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts", "src/b.ts"]),
+      { lenses: ["correctness"] },
+      () => {},
+      {
+        concurrency: 1,
+        batches: [createDiffForFiles(["src/a.ts"]), createDiffForFiles(["src/b.ts"])],
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.issues.map((issue) => issue.id)).toEqual(["correctness:kept-1"]);
+      expect(result.value.lensStats).toContainEqual({
+        lensId: "synthesis",
+        issueCount: 0,
+        status: "failed",
+        errorCode: "MODEL_ERROR",
+        errorMessage: "synthesis dispatch failed",
+      });
+      expect(
+        result.value.lensStats.find((stat) => stat.lensId === "correctness")?.status,
+      ).toBe("success");
+    }
+  });
+
   it("keeps successful lens output and reports the failed lens in its stats", async () => {
     const client = makeClient([
       ok({ issues: [makeIssue({ id: "issue-1", file: "file-1" })] }),

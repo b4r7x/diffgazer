@@ -14,11 +14,12 @@ vi.mock("../../../components/layout/global", () => ({
   useContentZone: () => ({ columns: 100, contentColumns: 100, contentRows: 40 }),
 }));
 
-import { ReviewFileFilterView } from "./file-filter-view";
+import { ReviewFileFilterView, type ReviewFileFilterViewProps } from "./file-filter-view";
 
 const ESCAPE = "\u001b";
 const SPACE = " ";
 const ARROW_DOWN = "\u001b[B";
+const TAB = "\t";
 
 function entry(
   path: string,
@@ -50,6 +51,9 @@ function makeGitStatus(overrides: {
   };
 }
 
+/** Stands for the pre-run picker, which is handed no mode and picks the scope itself. */
+const PICKER_OWNED = "picker-owned" as const;
+
 function renderPicker({
   status,
   mode = "staged",
@@ -58,16 +62,21 @@ function renderPicker({
   onBack = vi.fn(),
 }: {
   status: GitStatus;
-  mode?: Exclude<ReviewMode, "files">;
+  mode?: Exclude<ReviewMode, "files"> | typeof PICKER_OWNED;
   reason?: string;
-  onStart?: (files?: [string, ...string[]]) => void;
+  onStart?: ReviewFileFilterViewProps["onStart"];
   onBack?: () => void;
 }) {
   return render(
     <ApiBoundary api={{ getGitStatus: async () => status }}>
       <CliThemeProvider initialTheme="dark">
         <FooterProvider initialShortcuts={[]}>
-          <ReviewFileFilterView mode={mode} reason={reason} onStart={onStart} onBack={onBack} />
+          <ReviewFileFilterView
+            {...(mode === PICKER_OWNED ? {} : { mode })}
+            reason={reason}
+            onStart={onStart}
+            onBack={onBack}
+          />
         </FooterProvider>
       </CliThemeProvider>
     </ApiBoundary>,
@@ -95,7 +104,6 @@ describe("ReviewFileFilterView (TUI)", () => {
 
     expect(frame).toContain("src/staged.ts");
     expect(frame).toContain("src/added.ts");
-    // Each row names what happened to the file, not a bare porcelain letter.
     expect(frame).toContain("modified");
     expect(frame).toContain("added");
     // The staged diff is `git diff --cached`: it never reports a worktree-only
@@ -117,7 +125,6 @@ describe("ReviewFileFilterView (TUI)", () => {
 
     await waitUntil(() => frameText(lastFrame()).includes("src/merge.ts"));
     expect(frameText(lastFrame())).toContain("Resolve the conflict first");
-    // Only one of the two rows can be picked, so "all" is the clean file alone.
     expect(frameText(lastFrame())).toContain("1 reviewable, none selected");
 
     stdin.write("a");
@@ -127,7 +134,7 @@ describe("ReviewFileFilterView (TUI)", () => {
     await waitUntil(() => onStart.mock.calls.length === 1);
     // Every reviewable file is picked, so the run keeps its plain unstaged scope
     // instead of restating it as a files[] list.
-    expect(onStart).toHaveBeenCalledWith(undefined);
+    expect(onStart).toHaveBeenCalledWith({ mode: "unstaged" });
   });
 
   test("sends the picked subset and nothing else", async () => {
@@ -155,7 +162,7 @@ describe("ReviewFileFilterView (TUI)", () => {
     stdin.write("s");
     await waitUntil(() => onStart.mock.calls.length === 1);
 
-    expect(onStart).toHaveBeenCalledWith(["src/a.ts", "src/b.ts"]);
+    expect(onStart).toHaveBeenCalledWith({ mode: "staged", files: ["src/a.ts", "src/b.ts"] });
   });
 
   test("clears the selection on n and refuses to start with nothing picked", async () => {
@@ -191,7 +198,7 @@ describe("ReviewFileFilterView (TUI)", () => {
 
     stdin.write("s");
     await waitUntil(() => onStart.mock.calls.length > 0);
-    expect(onStart).toHaveBeenCalledWith(undefined);
+    expect(onStart).toHaveBeenCalledWith({ mode: "staged" });
   });
 
   test("states the file ceiling for a subset the server would refuse", async () => {
@@ -212,6 +219,60 @@ describe("ReviewFileFilterView (TUI)", () => {
 
     expect(frameText(lastFrame())).toContain(`${MAX_REVIEW_FILES + 2} selected`);
     expect(onStart).not.toHaveBeenCalled();
+  });
+
+  test("opens on the side that has changes when no run picked the scope", async () => {
+    const { lastFrame } = renderPicker({
+      mode: PICKER_OWNED,
+      status: makeGitStatus({ staged: [entry("src/staged.ts", "M", " ")] }),
+    });
+
+    await waitUntil(() => frameText(lastFrame()).includes("src/staged.ts"));
+    expect(frameText(lastFrame())).toContain("Select Staged Files");
+  });
+
+  test("switches the scope it starts on Tab when it owns the choice", async () => {
+    const onStart = vi.fn();
+    const { lastFrame, stdin } = renderPicker({
+      mode: PICKER_OWNED,
+      onStart,
+      status: makeGitStatus({
+        staged: [entry("src/staged.ts", "M", " ")],
+        unstaged: [entry("src/worktree.ts", " ", "M")],
+      }),
+    });
+
+    await waitUntil(() => frameText(lastFrame()).includes("src/worktree.ts"));
+    expect(frameText(lastFrame())).toContain("Select Unstaged Files");
+
+    stdin.write(TAB);
+    await waitUntil(() => frameText(lastFrame()).includes("Select Staged Files"));
+    expect(frameText(lastFrame())).toContain("src/staged.ts");
+    expect(frameText(lastFrame())).not.toContain("src/worktree.ts");
+
+    stdin.write("a");
+    await waitUntil(() => frameText(lastFrame()).includes("1 reviewable, 1 selected"));
+    stdin.write("s");
+    await waitUntil(() => onStart.mock.calls.length === 1);
+
+    expect(onStart).toHaveBeenCalledWith({ mode: "staged" });
+  });
+
+  test("keeps the scope the run it was opened from is running", async () => {
+    const { lastFrame, stdin } = renderPicker({
+      mode: "unstaged",
+      status: makeGitStatus({
+        staged: [entry("src/staged.ts", "M", " ")],
+        unstaged: [entry("src/worktree.ts", " ", "M")],
+      }),
+    });
+
+    await waitUntil(() => frameText(lastFrame()).includes("src/worktree.ts"));
+    stdin.write(TAB);
+    await flush();
+
+    expect(frameText(lastFrame())).toContain("Select Unstaged Files");
+    expect(frameText(lastFrame())).not.toContain("src/staged.ts");
   });
 
   test("repeats the failure that sent the user here", async () => {

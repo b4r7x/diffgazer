@@ -1,0 +1,8 @@
+/* Terminal-cursor blink for the root crash screen's prompt row. A keyframe
+   cannot be expressed inline in Tailwind, so it lives here; the element gates
+   it behind prefers-reduced-motion via `motion-reduce:animate-none`. */
+@keyframes erb-cursor-blink {
+  50% {
+    opacity: 0;
+  }
+}

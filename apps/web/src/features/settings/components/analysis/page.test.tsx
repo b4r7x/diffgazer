@@ -13,7 +13,7 @@ const { allLenses, mockNavigate, mockSaveSettings, mockSettingsQuery, mockIsSavi
       mockSaveSettings: vi.fn(),
       mockSettingsQuery: {
         current: {
-          data: { defaultLenses: lensIds },
+          data: { defaultLenses: lensIds, effectiveCallTokenCap: 49_152 },
           error: null,
           isLoading: false,
         },
@@ -52,7 +52,9 @@ function renderPage() {
 
 async function moveFromSelectedLensToFooter(user: ReturnType<typeof userEvent.setup>) {
   const lensGroup = screen.getByRole("group", { name: /active lenses/i });
-  await user.keyboard("{ArrowDown}".repeat(within(lensGroup).getAllByRole("checkbox").length));
+  // One ArrowDown per lens reaches the token cap input below the list; one more
+  // leaves the input for the footer actions.
+  await user.keyboard("{ArrowDown}".repeat(within(lensGroup).getAllByRole("checkbox").length + 1));
 }
 
 describe("SettingsAnalysisPage keyboard behavior", () => {
@@ -61,7 +63,7 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
     mockSaveSettings.mockReset();
     mockSaveSettings.mockResolvedValue(undefined);
     mockSettingsQuery.current = {
-      data: { defaultLenses: allLenses },
+      data: { defaultLenses: allLenses, effectiveCallTokenCap: 49_152 },
       error: null,
       isLoading: false,
     };
@@ -122,7 +124,7 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
 
   it("uses every lens as the untouched fallback when persisted defaults are empty", () => {
     mockSettingsQuery.current = {
-      data: { defaultLenses: [] },
+      data: { defaultLenses: [], effectiveCallTokenCap: 49_152 },
       error: null,
       isLoading: false,
     };
@@ -152,6 +154,7 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
     expect(screen.getByRole("button", { name: "Save" })).toHaveFocus();
     expect(mockSaveSettings).toHaveBeenCalledWith({
       defaultLenses: ["security", "performance", "simplicity", "tests"],
+      effectiveCallTokenCap: 49_152,
     });
   });
 
@@ -181,5 +184,40 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
     expect(liveRegion).toHaveTextContent("");
     expect(group).not.toHaveAttribute("aria-invalid");
     expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
+
+  it("saves an edited per-call token cap through the settings payload", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const capInput = screen.getByRole("textbox", { name: /per-call token cap/i });
+    expect(capInput).toHaveValue("49152");
+
+    await user.clear(capInput);
+    await user.type(capInput, "65536");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(mockSaveSettings).toHaveBeenCalledWith({
+      defaultLenses: allLenses,
+      effectiveCallTokenCap: 65_536,
+    });
+  });
+
+  it("shows the field error instead of saving for an out-of-range token cap", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const capInput = screen.getByRole("textbox", { name: /per-call token cap/i });
+    await user.clear(capInput);
+    await user.type(capInput, "999");
+
+    expect(capInput).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Enter a whole number between 16,384 and 1,048,576.",
+    );
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    await user.click(save);
+    expect(mockSaveSettings).not.toHaveBeenCalled();
   });
 });

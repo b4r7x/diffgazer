@@ -10,7 +10,6 @@ export interface ReviewableFile {
   path: string;
   /** Porcelain code for the change this mode sees: `M`, `A`, `D`, `R`, and so on. */
   status: GitFileStatusCode;
-  /** Set for a rename; the name the file had before. */
   previousPath?: string;
   /** Unresolved merge conflicts. The review excludes these files, so a picker must not offer them. */
   conflicted: boolean;

@@ -1,10 +1,10 @@
 import { posix } from "node:path";
 import { UuidSchema } from "@diffgazer/core/schemas/fields";
 import {
-  LensIdSchema,
   MAX_REVIEW_FILES,
   ProfileIdSchema,
   ReviewModeSchema,
+  SelectableLensIdSchema,
 } from "@diffgazer/core/schemas/review";
 import { z } from "zod";
 import { isRepoRelativePath } from "../../shared/lib/paths.js";
@@ -60,7 +60,7 @@ export const CreateReviewBodySchema = z
     mode: ReviewModeSchema.optional(),
     profile: ProfileIdSchema.optional(),
     lenses: z
-      .array(LensIdSchema)
+      .array(SelectableLensIdSchema)
       .transform((arr) => [...new Set(arr)])
       .transform((arr) => (arr.length === 0 ? undefined : arr))
       .optional(),

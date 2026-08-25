@@ -26,6 +26,7 @@ export { assertClientSafeDom, assertClientSafePayload };
 const SETTINGS_FIXTURE: ConfigurationInitResponse["settings"] = {
   theme: "terminal",
   defaultLenses: ["correctness"],
+  effectiveCallTokenCap: 49_152,
   defaultProfile: null,
   severityThreshold: "low",
   secretsStorage: "file",
@@ -41,6 +42,7 @@ export const ONBOARDING_E2E_INIT: ConfigurationInitResponse = {
   settings: {
     theme: "terminal",
     defaultLenses: ["correctness"],
+    effectiveCallTokenCap: 49_152,
     defaultProfile: null,
     secretsStorage: null,
     severityThreshold: "low",

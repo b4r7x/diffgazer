@@ -123,13 +123,26 @@ export function FailureView({
                 isError ? "text-error-text" : "text-warning-text",
               )}
             >
+              {/* Keep these glyphs in sync with the TUI's VARIANT_ICONS (error-gate.tsx);
+                  aria-hidden so the heading's accessible name stays the title. */}
+              <span aria-hidden="true">{isError ? "✖" : "⚠"} </span>
               {title}
             </TitleTag>
           </div>
           {meta ? (
-            // Data, not prose: the identity of the failed configuration keeps its
-            // real casing and reads at full foreground strength.
-            <p className="mb-3 break-words font-mono text-sm text-foreground">{meta}</p>
+            <>
+              {/* Data, not prose: the identity of the failed configuration keeps its
+                  real casing and reads at full foreground strength. */}
+              <p className="mb-3 break-words font-mono text-sm tabular-nums text-foreground">
+                {meta}
+              </p>
+              {/* The crash page's interrupted-rule motif, stitched between the
+                  failed identity and the cause. */}
+              <div aria-hidden="true" className="mb-3 flex justify-center gap-1.5">
+                <span className="h-px w-4 bg-border" />
+                <span className="h-px w-4 bg-border" />
+              </div>
+            </>
           ) : null}
           <p className="mx-auto mb-6 max-w-[46ch] break-words font-mono text-sm text-muted-foreground">
             {message}

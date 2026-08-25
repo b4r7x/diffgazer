@@ -1,11 +1,11 @@
 import type { FullReviewStreamEvent, LensStat } from "@diffgazer/core/schemas/events";
 import type {
   ExecutionResult,
-  LensId,
   ProfileId,
   ReviewIssue,
   ReviewMode,
   ReviewSeverity,
+  SelectableLensId,
   SeverityFilter,
 } from "@diffgazer/core/schemas/review";
 import type { AuthorizedReviewExecution } from "../../shared/lib/ai/admission/service.js";
@@ -17,14 +17,14 @@ export type EmitFn = (event: FullReviewStreamEvent) => Promise<void>;
 export interface StreamReviewParams {
   mode?: ReviewMode;
   files?: string[];
-  lenses?: LensId[];
+  lenses?: SelectableLensId[];
   profile?: ProfileId;
   projectPath?: string;
 }
 
 /** Review pipeline resolved config (lenses + profile). @see cli/add/src/context.ts for CLI-specific variants. */
 export interface ResolvedReviewDefaults {
-  activeLenses: LensId[];
+  activeLenses: SelectableLensId[];
   effectiveProfileId?: ProfileId;
   profile: ReturnType<typeof getProfile> | undefined;
   severityFilter?: SeverityFilter;

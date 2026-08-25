@@ -100,6 +100,7 @@ These are the fields in the settings config. Anything you do not set falls back 
 | --- | --- | --- | --- |
 | `theme` | `auto` \| `dark` \| `light` \| `terminal` | `auto` | The UI theme. |
 | `defaultLenses` | array of lens ids | `correctness`, `security`, `performance`, `simplicity`, `tests` | Which review lenses run by default. |
+| `effectiveCallTokenCap` | integer, `16384`–`1048576` | `49152` | The per-call prompt-token cap. A review estimated over it runs in sequential batches of whole files, with a synthesis pass for cross-file findings. |
 | `defaultProfile` | profile id or `null` | `null` | A saved review profile to apply by default. |
 | `severityThreshold` | `blocker` \| `high` \| `medium` \| `low` \| `nit` | `low` | The lowest severity an issue can have and still be shown. |
 | `secretsStorage` | `file` \| `keyring` \| `null` | `null` | Where literal credentials are stored when you choose stored secrets. |

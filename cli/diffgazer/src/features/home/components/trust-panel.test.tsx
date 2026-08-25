@@ -20,6 +20,7 @@ function makeInitResponse(): ConfigurationInitResponse {
     settings: {
       theme: "dark",
       defaultLenses: [],
+      effectiveCallTokenCap: 49_152,
       defaultProfile: null,
       severityThreshold: "low",
       secretsStorage: "file",

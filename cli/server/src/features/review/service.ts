@@ -18,7 +18,7 @@ import { createGitService } from "../../shared/lib/git/service.js";
 import { log } from "../../shared/lib/log.js";
 import { activateSessionForProject } from "../../shared/lib/session-registry.js";
 import { isReviewAbort, type ReviewAbort } from "./abort.js";
-import { evaluateReviewCapacity } from "./capacity.js";
+import { evaluateReviewCapacity, type ReviewCapacityPlan } from "./capacity.js";
 import { resolveGitDiff } from "./diff.js";
 import type { ParsedDiff } from "./engine/diff/types.js";
 import {
@@ -104,9 +104,25 @@ function handleDetachedReviewSessionError(reviewId: string, error: unknown): voi
   markComplete(reviewId);
 }
 
-function resolveCreateOutcome(parsed: Result<ParsedDiff, ReviewAbort>): CreateReviewOutcome {
-  if (parsed.ok) return "running";
-  return parsed.error.code === ReviewErrorCode.NO_DIFF ? "no-diff" : "failed";
+function resolveCreateOutcome(start: Result<unknown, ReviewAbort>): CreateReviewOutcome {
+  if (start.ok) return "running";
+  return start.error.code === ReviewErrorCode.NO_DIFF ? "no-diff" : "failed";
+}
+
+type ReviewStart = { parsed: ParsedDiff; capacity: ReviewCapacityPlan };
+
+/**
+ * The size gate only has something to judge once the diff parsed, and a review
+ * that fails either step starts nowhere — so both answers travel as one result.
+ */
+function planReviewStart(
+  parsedResult: Result<ParsedDiff, ReviewAbort>,
+  evaluate: (parsed: ParsedDiff) => Result<ReviewCapacityPlan, ReviewAbort>,
+): Result<ReviewStart, ReviewAbort> {
+  if (!parsedResult.ok) return parsedResult;
+  const capacity = evaluate(parsedResult.value);
+  if (!capacity.ok) return capacity;
+  return ok({ parsed: parsedResult.value, capacity: capacity.value });
 }
 
 export interface CreateReviewSessionResult {
@@ -225,17 +241,20 @@ export async function createReviewSession(
   // The model that will read the diff is known here, so the size gate runs here
   // too: a diff past its context window fails now, with the numbers, instead of
   // dying mid-review as an exhausted budget.
-  const capacityResult = parsedResult.ok
-    ? evaluateReviewCapacity({ parsed: parsedResult.value, plan: admittedPlan })
-    : null;
-  const startResult: Result<ParsedDiff, ReviewAbort> =
-    capacityResult && !capacityResult.ok ? err(capacityResult.error) : parsedResult;
-  const sizeWarning = capacityResult?.ok ? capacityResult.value : null;
+  const startResult = planReviewStart(parsedResult, (parsedDiff) =>
+    evaluateReviewCapacity({
+      parsed: parsedDiff,
+      plan: admittedPlan,
+      effectiveCallTokenCap: settings.value.effectiveCallTokenCap,
+      lensCount: reviewDefaults.activeLenses.length,
+    }),
+  );
+  const sizeWarning = startResult.ok ? startResult.value.capacity.warning : null;
   if (sizeWarning) {
     bufferedEvents.push({ type: "review_size_warning", warning: sizeWarning });
   }
 
-  const parsed = startResult.ok ? startResult.value : null;
+  const parsed = startResult.ok ? startResult.value.parsed : null;
   // The diff is resolved here, so the response can say a clean tree or a git
   // failure ended the run instead of leaving the client to learn it from the
   // replayed stream.
@@ -322,7 +341,8 @@ export async function createReviewSession(
         reviewId,
         signal: session.controller.signal,
         headCommit,
-        parsed: startResult.value,
+        parsed: startResult.value.parsed,
+        capacity: startResult.value.capacity,
         branch,
         elapsedStart,
         emit,
@@ -408,6 +428,7 @@ interface RunReviewSessionOptions {
   signal: AbortSignal;
   headCommit: string;
   parsed: ParsedDiff;
+  capacity: ReviewCapacityPlan;
   branch: string | null;
   elapsedStart: number;
   emit: EmitFn;
@@ -423,6 +444,7 @@ async function runReviewSession({
   signal,
   headCommit,
   parsed,
+  capacity,
   branch,
   elapsedStart,
   emit,
@@ -443,6 +465,7 @@ async function runReviewSession({
     const outcomeResult = await executeReview({
       aiClient,
       parsed,
+      capacity,
       config,
       emit,
       signal,

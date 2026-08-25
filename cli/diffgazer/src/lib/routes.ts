@@ -7,6 +7,8 @@ export type Route =
       issueId?: string;
       mode?: "unstaged" | "staged";
       live?: boolean;
+      /** Opens the file picker first, for a review scoped before it starts. */
+      pickFiles?: boolean;
     }
   | { screen: "history" }
   | { screen: "help" }

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { getDateKey } from "../../format.js";
 import { ReviewSeveritySchema } from "../review/issues.js";
-import { LensIdSchema, ProfileIdSchema } from "../review/lens.js";
+import { ProfileIdSchema, SELECTABLE_LENS_IDS, SelectableLensIdSchema } from "../review/lens.js";
 
 export const TrustCapabilitiesSchema = z.object({
   readFiles: z.boolean(),
@@ -85,12 +85,29 @@ export function describeAcceptedProviderConsent(consent: ProviderConsent): strin
   return `Accepted ${getDateKey(consent.acceptedAt)}`;
 }
 
+/**
+ * Ceiling on the prompt tokens the review engine spends in a single model call.
+ * Budget models review worse near the top of their advertised window, so the
+ * engine batches large diffs under this cap instead of filling the window.
+ */
+export const EFFECTIVE_CALL_TOKEN_CAP = {
+  min: 16_384,
+  max: 1_048_576,
+  default: 49_152,
+} as const;
+
 export const SettingsConfigSchema = z.object({
   theme: ThemeSchema,
+  // Selectable ids only: `synthesis` is dispatched by the engine, never chosen.
   defaultLenses: z
-    .array(LensIdSchema)
+    .array(SelectableLensIdSchema)
     .min(1)
     .overwrite((lenses) => [...new Set(lenses)]),
+  effectiveCallTokenCap: z
+    .int()
+    .min(EFFECTIVE_CALL_TOKEN_CAP.min)
+    .max(EFFECTIVE_CALL_TOKEN_CAP.max)
+    .default(EFFECTIVE_CALL_TOKEN_CAP.default),
   defaultProfile: ProfileIdSchema.nullable(),
   severityThreshold: ReviewSeveritySchema,
   secretsStorage: SecretsStorageSchema.nullable(),
@@ -99,10 +116,23 @@ export const SettingsConfigSchema = z.object({
 });
 export type SettingsConfig = z.infer<typeof SettingsConfigSchema>;
 
+/**
+ * Reads a typed cap out of what a settings field holds, or `null` when the text
+ * is not a whole number inside the range. Decimal digits only: `Number()` alone
+ * would accept `"1e5"` and `"0x10000"`, which the surfaces call invalid.
+ */
+export function parseEffectiveCallTokenCap(text: string): number | null {
+  const trimmed = text.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const result = SettingsConfigSchema.shape.effectiveCallTokenCap.safeParse(Number(trimmed));
+  return result.success ? result.data : null;
+}
+
 export const DEFAULT_SETTINGS: SettingsConfig = {
   theme: "auto",
   secretsStorage: null,
-  defaultLenses: ["correctness", "security", "performance", "simplicity", "tests"],
+  defaultLenses: [...SELECTABLE_LENS_IDS],
+  effectiveCallTokenCap: EFFECTIVE_CALL_TOKEN_CAP.default,
   defaultProfile: null,
   severityThreshold: "low",
   agentExecution: "sequential",

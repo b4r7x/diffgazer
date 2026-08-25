@@ -41,7 +41,6 @@ const SCOPE_LABELS: Record<ReviewFileScope, string> = {
   staged: "Staged",
 };
 
-/** What this scope's diff will say about the file: core's status label, plus where a rename came from. */
 function describeRow(row: ReviewableFile): string {
   if (row.conflicted) return CONFLICTED_FILE_NOTE;
   const label = describeFileStatus(row.status);
@@ -64,10 +63,10 @@ export interface FilePickerDialogProps {
 }
 
 /**
- * The file-scoped review start. The server has always accepted a `files[]`
- * filter beside the mode; this is the screen that offers it, so a diff too big
- * for the model's window — or simply too broad to review well in one pass — can
- * be cut down to the files the user cares about instead of being abandoned.
+ * The file-scoped review start: the server accepts a `files[]` pathspec filter
+ * beside either mode, so a diff too big for the model's window — or too broad
+ * to review well in one pass — can be narrowed to the files the user cares
+ * about instead of abandoned.
  */
 export function FilePickerDialog({
   open,

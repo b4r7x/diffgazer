@@ -256,10 +256,8 @@ describe("route recovery", () => {
 
     render(<RouterProvider router={testRouter} />);
 
-    await waitFor(() =>
-      expect(screen.getByRole("alert")).toHaveTextContent("Something went wrong"),
-    );
-    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("render aborted"));
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 
   it("invalidates a rejected route loader without reloading", async () => {

@@ -52,6 +52,7 @@ import { SettingsHubScreen } from "./hub-screen";
 const SETTINGS: SettingsConfig = {
   theme: "dark",
   defaultLenses: ["security"],
+  effectiveCallTokenCap: 49_152,
   defaultProfile: null,
   severityThreshold: "low",
   secretsStorage: "file",

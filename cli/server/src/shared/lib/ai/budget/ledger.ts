@@ -144,7 +144,7 @@ type ReservationRecord = {
 };
 
 export class BudgetLedger {
-  readonly limits: BudgetLimits;
+  private currentLimits: BudgetLimits;
 
   private readonly committed: UsageTotals = emptyUsage();
   private readonly reserved: UsageTotals = emptyUsage();
@@ -155,7 +155,56 @@ export class BudgetLedger {
   private cancelled = false;
 
   constructor(limits: BudgetLimits) {
-    this.limits = Object.freeze({ ...limits });
+    this.currentLimits = Object.freeze({ ...limits });
+  }
+
+  get limits(): BudgetLimits {
+    return this.currentLimits;
+  }
+
+  /**
+   * Raises the envelope this review is allowed to spend and grows the standing
+   * reservation to match. A diff the size gate split into batches costs a
+   * multiple of the envelope admission projected for one call per lens, so
+   * without this the review the gate just admitted would exhaust its budget
+   * partway through and report the remaining lenses as failures. It moves once,
+   * before the first dispatch, and only upwards; the admitted plan's own limits
+   * are left alone because they are part of the execution fingerprint.
+   *
+   * `maxCostUsd` is never raised here. It is the user's per-review spend cap,
+   * and a batched plan that cannot fit under it is refused before the first
+   * dispatch rather than admitted and stopped halfway.
+   */
+  raiseReviewEnvelope(
+    reservation: BudgetReservation,
+    raised: Readonly<{ inputTokens: number; responseBytes: number; wallTimeMs: number }>,
+  ): void {
+    const record = this.reservations.get(reservation.id);
+    if (!record) return;
+
+    const inputTokens = Math.max(raised.inputTokens, this.currentLimits.maxInputTokens);
+    const responseBytes = Math.max(raised.responseBytes, this.currentLimits.maxResponseBytes);
+    const wallTimeMs = Math.max(raised.wallTimeMs, this.currentLimits.wallTimeMs);
+    if (
+      inputTokens === this.currentLimits.maxInputTokens &&
+      responseBytes === this.currentLimits.maxResponseBytes &&
+      wallTimeMs === this.currentLimits.wallTimeMs
+    ) {
+      return;
+    }
+
+    this.currentLimits = Object.freeze({
+      ...this.currentLimits,
+      maxInputTokens: inputTokens,
+      maxResponseBytes: responseBytes,
+      wallTimeMs,
+    });
+    this.reserved.inputTokens += inputTokens - record.estimate.inputTokens;
+    this.reserved.responseBytes += responseBytes - record.estimate.responseBytes;
+    this.reserved.wallTimeMs += wallTimeMs - record.estimate.wallTimeMs;
+    record.estimate.inputTokens = inputTokens;
+    record.estimate.responseBytes = responseBytes;
+    record.estimate.wallTimeMs = wallTimeMs;
   }
 
   snapshot(): BudgetSnapshot {

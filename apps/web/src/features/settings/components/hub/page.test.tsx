@@ -37,6 +37,7 @@ import { SettingsHubPage } from "./page";
 const SETTINGS_FIXTURE: SettingsConfig = {
   theme: "dark",
   defaultLenses: [],
+  effectiveCallTokenCap: 49_152,
   defaultProfile: null,
   severityThreshold: "low",
   secretsStorage: null,

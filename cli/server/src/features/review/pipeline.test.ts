@@ -5,9 +5,9 @@ import type { FullReviewStreamEvent, LensStat } from "@diffgazer/core/schemas/ev
 import {
   type EvidenceKey,
   type ExecutionLimits,
-  LENS_IDS,
-  type LensId,
   ReviewErrorCode,
+  SELECTABLE_LENS_IDS,
+  type SelectableLensId,
 } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue } from "@diffgazer/core/testing/factories";
@@ -76,6 +76,7 @@ describe("resolveReviewDefaults", () => {
     theme: "auto",
     secretsStorage: null,
     defaultLenses: ["correctness", "security"],
+    effectiveCallTokenCap: 49_152,
     defaultProfile: null,
     severityThreshold: "low",
     agentExecution: "sequential",
@@ -86,6 +87,7 @@ describe("resolveReviewDefaults", () => {
     const settings: SettingsConfig = {
       theme: "auto",
       defaultLenses: ["security"],
+      effectiveCallTokenCap: 49_152,
       defaultProfile: null,
       severityThreshold: "low",
       secretsStorage: null,
@@ -145,7 +147,7 @@ describe("resolveReviewDefaults", () => {
       "performance",
       "simplicity",
     ]);
-    expect(defaults.activeLenses).toHaveLength(LENS_IDS.length);
+    expect(defaults.activeLenses).toHaveLength(SELECTABLE_LENS_IDS.length);
   });
 
   it("captures execution concurrency with the resolved defaults", () => {
@@ -274,7 +276,7 @@ function authorizePipelineExecution(plan: AdmittedExecutionPlan, adapter: Adapte
 
 function pipelineConfig() {
   return {
-    activeLenses: ["correctness"] as LensId[],
+    activeLenses: ["correctness"] as SelectableLensId[],
     effectiveProfileId: undefined,
     profile: undefined,
     severityFilter: undefined,
@@ -293,6 +295,176 @@ function orchestrationSuccess(issues = [makePipelineIssue("1", "a.ts", "high")])
     }),
   );
 }
+
+const ENVELOPE_BASE_LIMITS: ExecutionLimits = Object.freeze({
+  maxInputTokens: 200_000,
+  maxResponseBytes: 8_000_000,
+  wallTimeMs: 300_000,
+  maxRetries: 1,
+  maxConcurrency: 2,
+  maxCostUsd: 5,
+});
+
+function authorizeAtBaseEnvelope(modelId?: string) {
+  const base = pipelineAdmittedPlan();
+  const plan: AdmittedExecutionPlan = Object.freeze({
+    ...base,
+    evidenceKey: Object.freeze({
+      ...base.evidenceKey,
+      modelId: modelId ?? base.evidenceKey.modelId,
+      limits: ENVELOPE_BASE_LIMITS,
+    }),
+    limits: ENVELOPE_BASE_LIMITS,
+  });
+  const ledger = createBudgetLedger(ENVELOPE_BASE_LIMITS);
+  // Admission reserves the whole envelope up front, and every dispatch draws on
+  // that one standing reservation — so a raise has to grow it, not open another.
+  const reservation = ledger.reserveAttempt({
+    inputTokens: ENVELOPE_BASE_LIMITS.maxInputTokens,
+    responseBytes: ENVELOPE_BASE_LIMITS.maxResponseBytes,
+    wallTimeMs: ENVELOPE_BASE_LIMITS.wallTimeMs,
+    costUsd: 0,
+  });
+  if (!reservation.ok) throw new Error("budget reservation failed in test setup");
+  const lease = new ExecutionLeaseRegistry().tryAcquire({
+    configurationId: plan.configurationId,
+    configurationRevision: plan.configurationRevision,
+    executionFingerprint: plan.executionFingerprint,
+    limits: plan.limits,
+  });
+  if (!lease.ok) throw new Error("lease acquisition failed in test setup");
+  return {
+    ledger,
+    authorization: Object.freeze({
+      plan,
+      adapter: {
+        productId: "gemini" as const,
+        transportFamily: "hosted-api" as const,
+        execute: vi.fn(),
+      },
+      evidenceState: "proven" as const,
+      budgetLedger: ledger,
+      budgetReservation: reservation.value,
+      lease: lease.value,
+      resolveCredential: async () => "super-secret-token",
+      release: () => {
+        ledger.releaseReservation(reservation.value);
+        lease.value.release();
+      },
+    }),
+  };
+}
+
+function capacityPlan(batchCount: number, estimatedTotalInputTokens: number) {
+  return {
+    batches: Array.from({ length: batchCount }, (_, index) =>
+      makeParsedDiff([makePipelineFile(`batch-${index}.ts`)]),
+    ),
+    perCallBudgetTokens: 49_152,
+    estimatedTotalInputTokens,
+    warning: null,
+  };
+}
+
+describe("batched review budget envelope", () => {
+  afterEach(() => {
+    orchestrateReview.mockReset();
+  });
+
+  it("opens the reservation at the scaled envelope for a multi-batch plan", async () => {
+    const { authorization, ledger } = authorizeAtBaseEnvelope();
+    orchestrationSuccess();
+
+    await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      capacity: capacityPlan(2, 1_000_000),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    const snapshot = ledger.snapshot();
+    expect(snapshot.limits.maxInputTokens).toBe(1_200_000);
+    expect(snapshot.limits.wallTimeMs).toBe(1_800_000);
+    expect(snapshot.reserved.inputTokens).toBe(1_200_000);
+    expect(snapshot.reserved.wallTimeMs).toBe(1_800_000);
+  });
+
+  it("leaves the configured base untouched for a single-batch plan", async () => {
+    const { authorization, ledger } = authorizeAtBaseEnvelope();
+    orchestrationSuccess();
+
+    await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      capacity: capacityPlan(1, 1_000_000),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    const snapshot = ledger.snapshot();
+    expect(snapshot.limits.maxInputTokens).toBe(200_000);
+    expect(snapshot.limits.wallTimeMs).toBe(300_000);
+    expect(snapshot.reserved.inputTokens).toBe(200_000);
+    expect(snapshot.reserved.wallTimeMs).toBe(300_000);
+  });
+
+  it("refuses a batched plan whose worst case runs past the per-review spend cap", async () => {
+    const { authorization, ledger } = authorizeAtBaseEnvelope("gemini-2.5-pro");
+    orchestrationSuccess();
+
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      capacity: capacityPlan(6, 3_000_000),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe(ReviewErrorCode.DIFF_TOO_LARGE);
+    expect(result.error.message).toContain("spend cap");
+    expect(orchestrateReview).not.toHaveBeenCalled();
+    expect(ledger.snapshot().limits.maxInputTokens).toBe(200_000);
+  });
+
+  it("dispatches the plan's batches through the orchestration options", async () => {
+    const { authorization } = authorizeAtBaseEnvelope();
+    orchestrationSuccess();
+    const capacity = capacityPlan(3, 900_000);
+
+    await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      capacity,
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(orchestrateReview.mock.calls[0]?.[4]).toMatchObject({ batches: capacity.batches });
+  });
+});
 
 describe("admitted execution lifecycle", () => {
   afterEach(() => {
@@ -714,7 +886,7 @@ describe("admitted execution lifecycle", () => {
 
   it("keeps retry counts per dispatch across the five default lenses", async () => {
     const plan = pipelineAdmittedPlan();
-    const dispatches = LENS_IDS.map((_, index) =>
+    const dispatches = SELECTABLE_LENS_IDS.map((_, index) =>
       buildExecutionResult(plan, "completed", {
         startedAt: `2026-07-31T10:00:0${index}.000Z`,
         finishedAt: `2026-07-31T10:00:0${index + 1}.000Z`,
@@ -736,7 +908,11 @@ describe("admitted execution lifecycle", () => {
         terminalExecutions: dispatches,
       },
       parsed: makeParsedDiff([makePipelineFile("a.ts")]),
-      config: { ...pipelineConfig(), activeLenses: [...LENS_IDS], concurrency: LENS_IDS.length },
+      config: {
+        ...pipelineConfig(),
+        activeLenses: [...SELECTABLE_LENS_IDS],
+        concurrency: SELECTABLE_LENS_IDS.length,
+      },
       emit: async () => undefined,
       executionContext: createReviewExecutionContext(authorization),
     });

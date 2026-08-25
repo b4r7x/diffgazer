@@ -98,9 +98,6 @@ export function ContextSidebar({
             </span>
           </div>
         </InfoField>
-        {/* The other half of what shapes the next run: the provider row says
-            which model reads the diff, this one says how much of the diff it
-            reads. Inert without a repo to pick files from. */}
         <InfoField
           label="Review Scope"
           onClick={pending ? undefined : onChooseFiles}

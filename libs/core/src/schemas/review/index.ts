@@ -62,9 +62,12 @@ export {
   type ProfileId,
   ProfileIdSchema,
   type ReviewProfile,
+  SELECTABLE_LENS_IDS,
+  type SelectableLensId,
+  SelectableLensIdSchema,
   type SeverityRubric,
 } from "./lens.js";
-export { deriveLensSelectionState, isLensId } from "./lens-selection.js";
+export { deriveLensSelectionState, isSelectableLensId } from "./lens-selection.js";
 export { calculateSeverityCounts, type SeverityCounts, severityRank } from "./severity.js";
 export {
   type ActiveReviewSession,
@@ -75,11 +78,11 @@ export {
   CreateReviewOutcomeSchema,
   type CreateReviewResponse,
   CreateReviewResponseSchema,
+  MAX_REVIEW_FILES,
   ParsedDiffSchema,
   type ReviewCursor,
   ReviewCursorSchema,
   type ReviewGitContext,
-  MAX_REVIEW_FILES,
   ReviewGitContextSchema,
   type ReviewListWarning,
   ReviewListWarningSchema,

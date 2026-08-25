@@ -4,7 +4,7 @@ import type { AgentStreamEvent, LensStat, StepEvent } from "@diffgazer/core/sche
 import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
-import { runLensAnalysis } from "./analysis.js";
+import { runLensAnalysis, runSynthesisAnalysis } from "./analysis.js";
 import type { ParsedDiff } from "./diff/types.js";
 import {
   deduplicateIssues,
@@ -167,15 +167,16 @@ export async function orchestrateReview(
     concurrency,
     async (task) => {
       try {
-        const result = await runLensAnalysis(
+        const result = await runLensAnalysis({
           client,
-          task.lens,
-          diff,
+          lens: task.lens,
+          batches: orchestrationOptions.batches ?? [diff],
+          allChangedFilePaths: diff.files.map((file) => file.filePath),
           onEvent,
-          orchestrationOptions.projectContext,
+          projectContext: orchestrationOptions.projectContext,
           signal,
-          filter,
-        );
+          severityFilter: filter,
+        });
         if (result.ok) {
           anyLensSucceeded = true;
         } else if (!anyLensSucceeded && isStructuredOutputFailure(result.error)) {
@@ -203,6 +204,7 @@ export async function orchestrateReview(
   let failedLensCount = 0;
   let lastError: ReviewError | null = null;
   let droppedIncompleteProviderIssues = 0;
+  let droppedOverLensCap = 0;
   // The budget abort and a user cancellation reject an undispatched lens with
   // the same synthetic reason, so only the controller that fired tells them
   // apart — and a lens skipped for budget must not report a cancellation.
@@ -261,14 +263,56 @@ export async function orchestrateReview(
 
     allIssues.push(...result.value.issues);
     droppedIncompleteProviderIssues += result.value.droppedIncompleteProviderIssues;
+    droppedOverLensCap += result.value.droppedOverLensCap ?? 0;
     // Count only issues that meet the severity threshold, matching the streamed
     // per-agent counter so the persisted lens stats stay consistent with the UI.
+    // A lens whose later batch failed still succeeded on what it dispatched, so
+    // it reports its findings and names the error that cut the run short.
     lensStats.push({
       lensId: result.value.lensId,
       issueCount: filterIssuesByMinSeverity(result.value.issues, filter).length,
       status: "success",
+      errorCode: result.value.batchError?.code,
+      errorMessage: result.value.batchError?.message,
     });
   });
+
+  // A batched review's per-lens calls never saw the whole diff at once, so one
+  // synthesis pass reads the digest of everything they found and hunts for
+  // cross-file problems. It is skipped when nothing decoded (the review is
+  // failing anyway) and when dispatching stopped (cancelled, budget spent,
+  // structured output disproven). Its failure is a failed lens, never a failed
+  // review: it stays out of `failedLensCount` and `lastError`, because the
+  // per-batch findings are already paid for and cross-file coverage only adds.
+  const batchCount = orchestrationOptions.batches?.length ?? 1;
+  if (batchCount > 1 && anyLensSucceeded && !dispatchSignal.aborted) {
+    const synthesisResult = await runSynthesisAnalysis({
+      client,
+      diff,
+      collectedIssues: allIssues,
+      onEvent,
+      projectContext: orchestrationOptions.projectContext,
+      signal: dispatchSignal,
+      severityFilter: filter,
+    });
+    if (synthesisResult.ok) {
+      allIssues.push(...synthesisResult.value.issues);
+      droppedIncompleteProviderIssues += synthesisResult.value.droppedIncompleteProviderIssues;
+      lensStats.push({
+        lensId: "synthesis",
+        issueCount: filterIssuesByMinSeverity(synthesisResult.value.issues, filter).length,
+        status: "success",
+      });
+    } else {
+      lensStats.push({
+        lensId: "synthesis",
+        issueCount: 0,
+        status: "failed",
+        errorCode: synthesisResult.error.code,
+        errorMessage: synthesisResult.error.message,
+      });
+    }
+  }
 
   const deduplicated = deduplicateIssues(allIssues);
   const droppedDuplicates = allIssues.length - deduplicated.length;
@@ -284,6 +328,7 @@ export async function orchestrateReview(
     droppedDuplicates,
     droppedBelowThreshold,
     droppedIncompleteProviderIssues,
+    droppedOverLensCap,
     minSeverity: filter?.minSeverity,
     timestamp: new Date().toISOString(),
   });

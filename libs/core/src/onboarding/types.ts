@@ -4,7 +4,7 @@ import {
   ClientConfigurationInputSchema,
   ExactModelIdSchema,
 } from "../schemas/config/index.js";
-import { LensIdSchema } from "../schemas/review/index.js";
+import { SelectableLensIdSchema } from "../schemas/review/index.js";
 import { buildSetupPlan, getPlanNotice, type RunnableSetupPlan } from "./setup-plan.js";
 
 /**
@@ -27,7 +27,7 @@ export type OnboardingAcknowledgement = z.infer<typeof OnboardingAcknowledgement
 
 const OnboardingPreferencesShape = {
   defaultLenses: z
-    .array(LensIdSchema)
+    .array(SelectableLensIdSchema)
     .min(1)
     .overwrite((lenses) => [...new Set(lenses)]),
   agentExecution: AgentExecutionSchema,

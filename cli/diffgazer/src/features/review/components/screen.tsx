@@ -142,6 +142,7 @@ export function ReviewScreen(): ReactElement {
   const reviewId = route.screen === "review" ? route.reviewId : undefined;
   const issueId = route.screen === "review" ? route.issueId : undefined;
   const isLiveRoute = route.screen === "review" && route.live === true;
+  const pickFiles = route.screen === "review" && route.pickFiles === true;
 
   const [streamNotFound, setStreamNotFound] = useState(false);
   // The run a failed live stream handed over: its record is read on this screen
@@ -221,6 +222,7 @@ export function ReviewScreen(): ReactElement {
   return (
     <ReviewContainer
       mode={routeMode}
+      pickFiles={pickFiles}
       reviewId={reviewId}
       allowResumeWithoutSetup={allowResumeWithoutSetup}
       onStreamNotFound={handleStreamNotFound}

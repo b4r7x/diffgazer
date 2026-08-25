@@ -210,7 +210,7 @@ describe("bundled catalog observations", () => {
     expect(modelIds).not.toContain("openrouter/free");
   });
 
-  // Owner evidence: the picker's Free tab reads `tier === "free"`, so the model
+  // The picker's Free tab reads `tier === "free"`, so the model
   // policy must admit Z.AI's `-flash` models for that tab to have anything in it.
   it("lists Z.AI's free -flash tiers alongside the paid models", async () => {
     const zai = await getProviderModels("zai");

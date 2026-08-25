@@ -83,18 +83,21 @@ export const PLANNING_OUTPUT_TOKENS = 32_768;
 /**
  * What the admitted model can bill if it spends the whole admitted input
  * envelope and answers up to the planned output length. A model the catalog
- * states no output limit for reserves input only.
+ * states no output limit for reserves input only. `answerCount` prices a plan
+ * that answers more than once — a batched review bills an answer per call.
  */
 export function estimateWorstCaseCostUsd(
   productId: RunnableProductId,
   modelId: string,
   limits: Pick<ExecutionLimits, "maxInputTokens">,
+  answerCount = 1,
 ): number | null {
   const pricing = resolveModelPricing(productId, modelId);
   if (!pricing) return null;
   const outputLimit = resolveModelOutputLimit(productId, modelId);
+  const answerTokens = outputLimit === null ? 0 : Math.min(outputLimit, PLANNING_OUTPUT_TOKENS);
   return estimateUsageCostUsd(pricing, {
     inputTokens: limits.maxInputTokens,
-    outputTokens: outputLimit === null ? 0 : Math.min(outputLimit, PLANNING_OUTPUT_TOKENS),
+    outputTokens: answerTokens * answerCount,
   });
 }

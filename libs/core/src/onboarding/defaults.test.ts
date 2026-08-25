@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PRODUCT_REGISTRY } from "../providers/product-registry.js";
-import { LENS_IDS } from "../schemas/review/index.js";
+import { SELECTABLE_LENS_IDS } from "../schemas/review/index.js";
 import { getInitialWizardData, type OnboardingDraft, resetWizardProduct } from "./defaults.js";
 
 describe("family-specific onboarding defaults", () => {
@@ -15,7 +15,7 @@ describe("family-specific onboarding defaults", () => {
     expect(data).toMatchObject({
       selectedModelId: null,
       acknowledgement: { status: "required" },
-      defaultLenses: [...LENS_IDS],
+      defaultLenses: [...SELECTABLE_LENS_IDS],
       agentExecution: "sequential",
     });
   });

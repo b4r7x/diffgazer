@@ -2,13 +2,15 @@ import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { KeyboardProvider } from "@diffgazer/keys";
+import { Toaster } from "@diffgazer/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
 import { makeShellApiOverrides, makeShellInitResponse } from "@/testing/shell-fixtures";
+import { drainToasts } from "@/testing/toast-fixtures";
 
 // Boundary mock: Router is the routing library; the shell reads location/back state.
 const { navigateSpy, backSpy, routerState } = vi.hoisted(() => ({
@@ -31,7 +33,8 @@ let queryClient: QueryClient;
 let mockApi: BoundApi;
 const shellInit = makeShellInitResponse();
 
-beforeEach(() => {
+beforeEach(async () => {
+  await drainToasts();
   queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -49,20 +52,25 @@ afterEach(() => {
   queryClient.clear();
 });
 
-function renderShell(children: ReactNode = <p>Help content</p>) {
-  return render(
+function shellTree(children: ReactNode) {
+  return (
     <QueryClientProvider client={queryClient}>
       <ApiProvider value={mockApi}>
         <ConfigProvider>
           <FooterProvider>
             <KeyboardProvider>
               <GlobalLayout>{children}</GlobalLayout>
+              <Toaster position="bottom-right" />
             </KeyboardProvider>
           </FooterProvider>
         </ConfigProvider>
       </ApiProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
+}
+
+function renderShell(children: ReactNode = <p>Help content</p>) {
+  return render(shellTree(children));
 }
 
 function createMockApi(): BoundApi {
@@ -226,7 +234,7 @@ describe("GlobalLayout", () => {
     expect(status).toHaveTextContent("Google Gemini / Gemini 2.5 Flash");
   });
 
-  it("keeps the shell mounted and names the cause when the server stops answering", async () => {
+  it("keeps the shell mounted and raises the outage toast when the server stops answering", async () => {
     const user = userEvent.setup();
     vi.mocked(mockApi.request).mockRejectedValue(new Error("connection refused"));
 
@@ -240,15 +248,31 @@ describe("GlobalLayout", () => {
     await user.click(screen.getByRole("button", { name: "Retry" }));
 
     await screen.findByLabelText(/server live$/);
-    expect(screen.queryByText(/server not responding/i)).not.toBeInTheDocument();
+    expect(await screen.findByText("Reconnected")).toBeVisible();
+    await waitFor(() =>
+      expect(screen.queryByText(/server not responding/i)).not.toBeInTheDocument(),
+    );
   });
 
-  it("shows no connection strip while the server answers", async () => {
+  it("raises the outage toast once, surviving shell rerenders without duplicating", async () => {
+    vi.mocked(mockApi.request).mockRejectedValue(new Error("connection refused"));
+
+    const { rerender } = renderShell();
+    await screen.findByText(/server not responding/i);
+
+    rerender(shellTree(<p>Help content</p>));
+
+    expect(screen.getAllByText(/server not responding/i)).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Retry" })).toHaveLength(1);
+  });
+
+  it("fires no outage toast while the server answers", async () => {
     renderShell();
 
     await screen.findByLabelText(/server live$/);
     expect(screen.queryByText(/server not responding/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Reconnected")).not.toBeInTheDocument();
   });
 
   it("labels an init failure without presenting an unconfigured provider", async () => {

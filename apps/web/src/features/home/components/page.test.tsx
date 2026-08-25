@@ -8,7 +8,7 @@ import {
   makeCreateReviewResponse,
 } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { Toaster, toast } from "@diffgazer/ui/components/toast";
+import { Toaster } from "@diffgazer/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -17,6 +17,7 @@ import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
 import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
 import { makeShellApiOverrides, makeShellInitResponse } from "@/testing/shell-fixtures";
+import { drainToasts } from "@/testing/toast-fixtures";
 
 type ActiveSessionState = ActiveReviewSession | null;
 
@@ -81,18 +82,6 @@ function renderHomePage(api = createTestApi()) {
   }
 
   return render(<HomePage />, { wrapper: Wrapper });
-}
-
-// The toast store outlives a render, so a toast one row raises would otherwise
-// leak into the next row's role queries. Draining goes through the public
-// dismiss API and waits for the Toaster to unmount them.
-async function drainToasts() {
-  const { unmount } = render(<Toaster />);
-  act(() => {
-    toast.dismiss();
-  });
-  await waitFor(() => expect(document.querySelectorAll('[data-slot="toast"]')).toHaveLength(0));
-  unmount();
 }
 
 describe("HomePage composition", () => {
