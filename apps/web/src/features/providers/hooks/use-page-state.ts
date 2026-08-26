@@ -13,7 +13,7 @@ import {
   type UnrecognizedConfiguration,
 } from "@diffgazer/core/schemas/config";
 import { useSearch } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useProvidersKeyboard } from "@/features/providers/hooks/use-keyboard";
 import {
   type ModelDialogOwner,
@@ -129,6 +129,20 @@ export function useProvidersPageState() {
       filteredProviders.find((row) => row.product.productId === id);
     setSelectedId(matched?.product.productId ?? id);
   };
+
+  // "Change model" deep-links land in the model dialog itself. An effect
+  // because the rows arrive async; the ref makes the intent one-shot so closing
+  // the dialog does not reopen it.
+  const modelIntent = search.intent === "select-model";
+  const modelIntentConsumedRef = useRef(false);
+  useEffect(() => {
+    if (!modelIntent || modelIntentConsumedRef.current || isLoading) return;
+    if (!selectedRow) return;
+    modelIntentConsumedRef.current = true;
+    if (selectedRow.configuration) {
+      openModelDialog(getProviderRowId(selectedRow));
+    }
+  }, [modelIntent, isLoading, selectedRow, openModelDialog]);
 
   const dialogRow = findProviderDialogRow(providers, dialogOwner);
 

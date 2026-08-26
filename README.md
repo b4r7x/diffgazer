@@ -22,7 +22,7 @@ Run one command, get a review. Only the diff and prompt content go to the provid
 - **Review pipeline** - diff, context, review, enrich, and report steps run in order.
 - **Web and terminal modes** - the browser UI by default; the Ink terminal UI (`--tui`) is in beta and still catching up (see [terminal UI](https://docs.b4r7.dev/app/tui)).
 - **Issue details** - read findings inline against your diff with evidence and fix guidance.
-- **Provider choice** - twelve selectable products across hosted API, local HTTP, and local CLI transports (see [providers reference](https://docs.b4r7.dev/app/reference/providers)).
+- **Provider choice** - nine selectable hosted API products (see [providers reference](https://docs.b4r7.dev/app/reference/providers)).
 - **Privacy controls** - localhost binding, host allowlist, CSRF protection, per-run token, explicit repo trust, and server-only secret/admission boundaries.
 - **Registry and packages** - `@diffgazer/ui`, `@diffgazer/keys`, and `dgadd` support copy-first and package consumption paths.
 
@@ -35,6 +35,10 @@ diffgazer
 ```
 
 First run walks you through product selection, endpoint binding, authentication, exact model selection, the provider consent, and repo trust.
+
+### Free models
+
+Free tiers throttle. Z.AI's free Flash models allow one concurrent request (Diffgazer knows this and caps them to one dispatch at a time), and free OpenRouter models rate-limit under parallel load. Review agents run sequentially by default (`agentExecution: "sequential"`), and with a free model that's the setting to keep. Switch to `parallel` only on a paid tier that actually allows concurrent requests. See the [configuration reference](https://docs.b4r7.dev/app/reference/configuration).
 
 Diffgazer is also a pnpm monorepo for the CLI, docs app, shared registry tooling, keyboard hooks, and UI packages.
 
@@ -138,6 +142,18 @@ Packs local workspace packages into isolated temp projects and verifies public i
 
 ```bash
 pnpm run smoke:packages
+```
+
+## Live Review E2E (opt-in)
+
+Boots the real embedded API server against a scratch git repo, runs one bounded
+single-lens review through a real provider over HTTP + SSE, and verifies the run
+persists. Off by default; skips honestly without the opt-in envs. Uses an isolated
+temp config home — your `~/.diffgazer` is never touched. Spends tokens on the
+selected model (defaults to a free OpenRouter route).
+
+```bash
+DIFFGAZER_SMOKE_ALLOW_NETWORK=1 DIFFGAZER_LIVE_E2E=1 OPENROUTER_API_KEY=sk-... pnpm run smoke:review
 ```
 
 ## Package Governance

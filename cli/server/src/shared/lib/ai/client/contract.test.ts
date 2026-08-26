@@ -35,8 +35,8 @@ describe("executeReviewGeneration contract", () => {
   afterEach(teardownClientTestHome);
 
   it("dispatches to the authorized adapter with the server-only credential resolver", async () => {
-    const plan = admittedPlan("groq");
-    const adapter = clientTestCreateMockAdapter("groq", async () =>
+    const plan = admittedPlan("openrouter");
+    const adapter = clientTestCreateMockAdapter("openrouter", async () =>
       clientTestExecutionResult(plan, "transport-failed"),
     );
     const executeSpy = vi.spyOn(adapter, "execute");
@@ -175,8 +175,8 @@ describe("executeReviewGeneration contract", () => {
   });
 
   it("keeps the review reservation open after a dispatch and leaves release to the owning session", async () => {
-    const plan = admittedPlan("groq");
-    const adapter = clientTestCreateMockAdapter("groq", async () =>
+    const plan = admittedPlan("openrouter");
+    const adapter = clientTestCreateMockAdapter("openrouter", async () =>
       clientTestExecutionResult(plan, "transport-failed"),
     );
     const { authorization, ledger, releaseTracker } = clientTestAuthorize(plan, adapter, {
@@ -205,13 +205,13 @@ describe("createFromAdmittedPlan generation surface", () => {
   afterEach(teardownClientTestHome);
 
   it("creates an admitted-plan client that delegates to the registry adapter", async () => {
-    const plan = admittedPlan("cerebras");
+    const plan = admittedPlan("zai");
     const clientResult = createFromAdmittedPlan(plan);
     expect(clientResult.ok).toBe(true);
     if (!clientResult.ok) return;
 
     const execution = await clientResult.value.execute("review prompt");
-    expect(execution.receipt.productId).toBe("cerebras");
+    expect(execution.receipt.productId).toBe("zai");
     expect(execution.result.issues).toEqual([]);
   });
 });

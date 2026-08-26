@@ -15,8 +15,6 @@ const MODELS: ModelInfo[] = [
   makeModel("gpt-35", "GPT-3.5", "free", "Fast and cheap"),
   makeModel("claude", "Claude", "paid", "Anthropic model"),
   makeModel("gemini", "Gemini", "free", "Google model"),
-  makeModel("ollama-local", "Ollama", "local", "Local runtime"),
-  makeModel("codex-ambient", "Codex CLI", "ambient", "Vendor-managed local auth"),
   makeModel("glm-5.3", "glm-5.3", "unknown", LIVE_ONLY_MODEL_DESCRIPTION),
 ];
 
@@ -29,8 +27,6 @@ describe("filterModels", () => {
       "gpt-35",
       "claude",
       "gemini",
-      "ollama-local",
-      "codex-ambient",
       "glm-5.3",
     ]);
   });
@@ -41,11 +37,11 @@ describe("filterModels", () => {
     expect(ids(filterModels(MODELS, "all", ""))).toContain("glm-5.3");
   });
 
-  it("filters to free tier only, excluding neutral local and ambient models", () => {
+  it("filters to free tier only", () => {
     expect(ids(filterModels(MODELS, "free", ""))).toEqual(["gpt-35", "gemini"]);
   });
 
-  it("filters to paid tier only, excluding neutral local and ambient models", () => {
+  it("filters to paid tier only", () => {
     expect(ids(filterModels(MODELS, "paid", ""))).toEqual(["gpt-4", "claude"]);
   });
 

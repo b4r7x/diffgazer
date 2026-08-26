@@ -153,11 +153,19 @@ const buildV1UpgradePlan = (
   const records: DecodedProviderConfigurationRecord[] = [];
   const legacyConfigurations: LegacySecretConfiguration[] = [];
   const activeConfigurationIds: string[] = [];
+  const retiredProviders = new Set<string>();
 
   for (const entry of configV1.providers) {
     if (entry.status === "unknown") return migrationFailure();
     const productId = upgradableProductId(entry.record.provider);
-    const record = productId ? upgradeRunnableRecord(entry.record, productId, now, options) : null;
+    if (!productId) {
+      // A retired legacy provider has no V2 product to upgrade into. Dropping
+      // the entry (and its secret) lets still-supported siblings migrate
+      // instead of stranding the whole document in V1.
+      retiredProviders.add(entry.record.provider);
+      continue;
+    }
+    const record = upgradeRunnableRecord(entry.record, productId, now, options);
     if (!record) return migrationFailure();
     records.push({ status: "supported", record, rawBytes: encodeJsonBytes(record) });
     legacyConfigurations.push({
@@ -171,11 +179,18 @@ const buildV1UpgradePlan = (
 
   if (activeConfigurationIds.length > 1) return migrationFailure();
   const configuredProviders = new Set(legacyConfigurations.map((entry) => entry.provider));
-  if (Object.keys(secretsV1.providers).some((provider) => !configuredProviders.has(provider))) {
+  const migratableSecrets: SecretsState = {
+    providers: Object.fromEntries(
+      Object.entries(secretsV1.providers).filter(([provider]) => !retiredProviders.has(provider)),
+    ),
+  };
+  if (
+    Object.keys(migratableSecrets.providers).some((provider) => !configuredProviders.has(provider))
+  ) {
     return migrationFailure();
   }
   const secretPreflight = preflightV1SecretsMigration(
-    secretsV1,
+    migratableSecrets,
     legacyConfigurations,
     storage.value,
   );
@@ -205,8 +220,9 @@ export function preflightV1Documents(
  * document passes preflight, and the V1 source stays readable until the caller
  * commits the returned documents.
  *
- * Inputs that cannot be represented losslessly remain V1 and require manual
- * intervention.
+ * Entries naming a retired legacy provider are dropped together with their
+ * secrets; the remaining inputs that cannot be represented losslessly stay V1
+ * and require manual intervention.
  */
 export async function upgradeV1Documents(
   configV1: ConfigDocumentV1,

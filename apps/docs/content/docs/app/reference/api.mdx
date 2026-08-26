@@ -76,9 +76,9 @@ The only other config routes are reads:
 | --- | --- | --- |
 | `GET` | `/api/config/init` | Resolve initial setup state for the current project. |
 | `GET` | `/api/config/providers` | List client-safe product metadata and saved configuration summaries. |
-| `GET` | `/api/config/providers/:configurationId/models` | Return the admitted model catalog for one saved configuration. Local HTTP and local CLI products currently receive a skipped envelope with no models. |
+| `GET` | `/api/config/providers/:configurationId/models` | Return the admitted model catalog for one saved configuration. |
 
-A passed models response carries `source` and `cached` describing where the list came from: `live`, `cache`, or `snapshot` mean the models.dev catalog (a fresh fetch, the hourly disk cache, or the bundled snapshot); `provider-live` or `provider-cache` mean the product's own model list supplied the ids — OpenRouter's and Ollama Cloud's public lists, or `{endpoint}/models` asked with the configuration's own credential for Z.AI, Groq, Cerebras, and DeepSeek — with models.dev supplying names and prices for the ids it also knows; an id it does not know yet keeps `tier: "unknown"` and a description reading "Pricing unknown — not in models.dev yet". `cached` is `true` exactly for `cache` and `provider-cache`. See [Privacy](/app/concepts/privacy) for what each request carries.
+A passed models response carries `source` and `cached` describing where the list came from: `live`, `cache`, or `snapshot` mean the models.dev catalog (a fresh fetch, the hourly disk cache, or the bundled snapshot); `provider-live` or `provider-cache` mean the product's own model list supplied the ids — OpenRouter's and Ollama Cloud's public lists, or `{endpoint}/models` asked with the configuration's own credential for Z.AI and OpenCode Zen — with models.dev supplying names and prices for the ids it also knows; an id it does not know yet keeps `tier: "unknown"` and a description reading "Pricing unknown". `cached` is `true` exactly for `cache` and `provider-cache`. See [Privacy](/app/concepts/privacy) for what each request carries.
 
 There is no per-provider activate or delete route. `GET …/models` is the picker read path; `test` also discovers models as part of readiness probing. `select` both pins the exact model and makes that configuration the globally selected one.
 

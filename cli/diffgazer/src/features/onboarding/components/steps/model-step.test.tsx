@@ -188,7 +188,8 @@ describe("ModelStep (TUI catalog)", () => {
       transportFamily: DRAFT_CONFIGURATION.transportFamily,
       models: [],
       checkedAt: "2026-07-31T12:00:00.000Z",
-      reason: "Catalog observations are unavailable for this configuration product.",
+      reason:
+        "The catalog lists no model this product's model policy admits. Configure a different provider to run reviews.",
     });
 
     const { lastFrame } = render(
@@ -202,7 +203,7 @@ describe("ModelStep (TUI catalog)", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Catalog observations are unavailable") ?? false);
+    await flushUntil(() => lastFrame()?.includes("no model this product") ?? false);
     expect(lastFrame()).not.toMatch(/api key/i);
   });
 

@@ -72,6 +72,37 @@ describe("deriveVisibleEvents", () => {
     ]);
   });
 
+  test("keeps file_progress events under their agent's source filter", () => {
+    let state = appendThinking(createInitialReviewState(), "detective", "detective-thought");
+    state = reviewReducer(state, {
+      type: "EVENT",
+      event: trackEvent({
+        type: "file_progress",
+        agent: "detective",
+        file: "src/a.ts",
+        completed: 1,
+        total: 2,
+        timestamp: "2026-01-01T00:00:00.000Z",
+      }),
+    });
+    state = reviewReducer(state, {
+      type: "EVENT",
+      event: trackEvent({
+        type: "file_progress",
+        agent: "guardian",
+        file: "src/b.ts",
+        completed: 1,
+        total: 2,
+        timestamp: "2026-01-01T00:00:00.000Z",
+      }),
+    });
+
+    expect(getThoughts(deriveVisibleEvents(null, state.events, "Detective").visible)).toEqual([
+      "detective-thought",
+      "file_progress",
+    ]);
+  });
+
   test("classifies only the appended events when the history grows", () => {
     const state = buildThinkingHistory(50);
     const first = deriveVisibleEvents(null, state.events, undefined);

@@ -63,33 +63,33 @@ const supportedConfiguration = {
   availableActions: ["inspect", "select", "test", "update", "delete"],
 } satisfies Extract<ClientConfigurationSummary, { status: "supported" }>;
 
-const deepseekConfiguration = {
+const openrouterConfiguration = {
   ...supportedConfiguration,
-  configurationId: "deepseek-payg",
-  productId: "deepseek" as const,
-  endpoint: "https://api.deepseek.com/v1",
-  selectedModelId: "deepseek-v4-flash",
+  configurationId: "openrouter-primary",
+  productId: "openrouter" as const,
+  endpoint: "https://openrouter.ai/api/v1",
+  selectedModelId: "openai/gpt-4.1-mini",
   notices: [
     {
-      ...PRODUCT_REGISTRY.deepseek.notice,
-      billing: [...PRODUCT_REGISTRY.deepseek.notice.billing],
-      privacy: [...PRODUCT_REGISTRY.deepseek.notice.privacy],
+      ...PRODUCT_REGISTRY.openrouter.notice,
+      billing: [...PRODUCT_REGISTRY.openrouter.notice.billing],
+      privacy: [...PRODUCT_REGISTRY.openrouter.notice.privacy],
     },
   ],
 } satisfies Extract<ClientConfigurationSummary, { status: "supported" }>;
 
 const alternateConfiguration = {
   ...supportedConfiguration,
-  configurationId: "groq-primary",
+  configurationId: "zai-primary",
   revision: 2,
-  productId: "groq" as const,
-  endpoint: "https://api.groq.com/openai/v1",
-  selectedModelId: "openai/gpt-oss-120b",
+  productId: "zai" as const,
+  endpoint: "https://api.z.ai/api/paas/v4",
+  selectedModelId: "glm-4.7",
   notices: [
     {
-      ...PRODUCT_REGISTRY.groq.notice,
-      billing: [...PRODUCT_REGISTRY.groq.notice.billing],
-      privacy: [...PRODUCT_REGISTRY.groq.notice.privacy],
+      ...PRODUCT_REGISTRY.zai.notice,
+      billing: [...PRODUCT_REGISTRY.zai.notice.billing],
+      privacy: [...PRODUCT_REGISTRY.zai.notice.privacy],
     },
   ],
 } satisfies Extract<ClientConfigurationSummary, { status: "supported" }>;
@@ -238,14 +238,14 @@ describe("configuration queries", () => {
     });
     const getConfigurationModels = vi.fn<BoundApi["getConfigurationModels"]>().mockResolvedValue({
       status: "passed",
-      configurationId: deepseekConfiguration.configurationId,
-      productId: deepseekConfiguration.productId,
-      transportFamily: deepseekConfiguration.transportFamily,
+      configurationId: openrouterConfiguration.configurationId,
+      productId: openrouterConfiguration.productId,
+      transportFamily: openrouterConfiguration.transportFamily,
       models: [
-        model("deepseek-v4-flash"),
-        model("deepseek-latest"),
-        model("../deepseek-v4-flash"),
-        model("deepseek-v5-flash"),
+        model("openai/gpt-4.1-mini"),
+        model("openrouter/auto"),
+        model("../openai/gpt-4.1-mini"),
+        model("gpt-4.1-mini-latest"),
       ],
       checkedAt: "2026-07-31T12:00:00.000Z",
       source: "snapshot",
@@ -254,10 +254,10 @@ describe("configuration queries", () => {
     const harness = createTestQueryWrapper({ api: { getConfigurationModels } });
 
     const response = await harness.queryClient.fetchQuery(
-      configurationModelsQuery(harness.api, deepseekConfiguration),
+      configurationModelsQuery(harness.api, openrouterConfiguration),
     );
 
-    expect(response.models.map(({ id }) => id)).toEqual(["deepseek-v4-flash"]);
+    expect(response.models.map(({ id }) => id)).toEqual(["openai/gpt-4.1-mini"]);
   });
 });
 

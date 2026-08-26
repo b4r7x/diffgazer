@@ -10,7 +10,6 @@ interface StepShortcutState {
   canProceed: boolean;
   inputMethod: InputMethod;
   apiKeyInputFocused: boolean;
-  transportFamily?: "hosted-api" | "local-http" | "local-cli";
 }
 
 export function getStepShortcuts({
@@ -22,7 +21,6 @@ export function getStepShortcuts({
   canProceed,
   inputMethod,
   apiKeyInputFocused,
-  transportFamily,
 }: StepShortcutState): Shortcut[] {
   if (focusArea === "nav") {
     const isBackFocused = !isFirstStep && navIndex === 0;
@@ -53,9 +51,6 @@ export function getStepShortcuts({
         { key: "Tab", label: "Focus Actions" },
       ];
     case "authentication":
-      if (transportFamily !== "hosted-api") {
-        return [{ key: "Tab", label: "Focus Actions" }];
-      }
       if (apiKeyInputFocused) {
         return [{ key: "Tab", label: "Focus Actions" }];
       }

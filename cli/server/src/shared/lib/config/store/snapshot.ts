@@ -88,6 +88,9 @@ export function projectConfigurationSnapshot(
     captured.selectedConfigurationId !== null &&
     !configurations.some(
       ({ configuration }) => configuration.configurationId === captured.selectedConfigurationId,
+    ) &&
+    !unrecognizedConfigurations.some(
+      ({ configurationId }) => configurationId === captured.selectedConfigurationId,
     )
   ) {
     return {

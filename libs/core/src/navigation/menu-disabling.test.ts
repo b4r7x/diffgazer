@@ -7,6 +7,7 @@ describe("isReviewStartAction", () => {
   it("matches the two review-start ids only", () => {
     expect(isReviewStartAction("review-unstaged")).toBe(true);
     expect(isReviewStartAction("review-staged")).toBe(true);
+    expect(isReviewStartAction("review-files")).toBe(false);
     expect(isReviewStartAction("resume-review")).toBe(false);
     expect(isReviewStartAction("history")).toBe(false);
     expect(isReviewStartAction("quit")).toBe(false);
@@ -18,12 +19,14 @@ describe("isMenuActionDisabled", () => {
     const ctx = { isTrusted: false, hasResumableSession: true };
     expect(isMenuActionDisabled("review-unstaged", ctx)).toBe(true);
     expect(isMenuActionDisabled("review-staged", ctx)).toBe(true);
+    expect(isMenuActionDisabled("review-files", ctx)).toBe(true);
   });
 
   it("enables review-start actions when trusted", () => {
     const ctx = { isTrusted: true, hasResumableSession: false };
     expect(isMenuActionDisabled("review-unstaged", ctx)).toBe(false);
     expect(isMenuActionDisabled("review-staged", ctx)).toBe(false);
+    expect(isMenuActionDisabled("review-files", ctx)).toBe(false);
   });
 
   it("disables resume-review when there is no resumable session even if trusted", () => {

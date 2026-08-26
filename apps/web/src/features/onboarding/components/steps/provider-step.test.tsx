@@ -34,11 +34,11 @@ describe("ProviderStep", () => {
     expect(onCommit).toHaveBeenCalledWith(selectedProduct.productId);
   });
 
-  it("shows exactly 12 selectable product rows", () => {
+  it("shows every selectable product row", () => {
     render(<ProviderStep value={null} onChange={vi.fn()} />);
 
     expect(screen.getByRole("radiogroup", { name: "Select product" })).toBeInTheDocument();
-    expect(screen.getAllByRole("radio")).toHaveLength(12);
+    expect(screen.getAllByRole("radio")).toHaveLength(9);
   });
 
   it("uses identical shared product names and descriptions", () => {

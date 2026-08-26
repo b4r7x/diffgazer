@@ -1,9 +1,5 @@
 import type { HostedApiProductId } from "@diffgazer/core/schemas/config";
-import type {
-  EvidenceKey,
-  NormalizedUsage,
-  UsageAvailability,
-} from "@diffgazer/core/schemas/review";
+import type { EvidenceKey, NormalizedUsage } from "@diffgazer/core/schemas/review";
 import { NormalizedUsageSchema } from "@diffgazer/core/schemas/review";
 import { boundedFetchInit } from "../endpoints.js";
 import { HOSTED_PROFILES, USAGE_FIELDS } from "./profiles.js";
@@ -17,6 +13,18 @@ import type { HostedProductProfile } from "./types.js";
  * The value is an owner-tunable quality/cost trade.
  */
 const GEMINI_THINKING_BUDGET_TOKENS = 2_048;
+
+/**
+ * OpenRouter's cross-provider reasoning bound (`reasoning.max_tokens`,
+ * Anthropic-style token allocation; verified against the OpenRouter reasoning
+ * docs 2026-08). Same trade as the Gemini budget above: reasoning bills as
+ * output, and a reasoning-default route with no bound has been observed
+ * spending its entire completion budget on thought and returning zero content
+ * tokens. Sent only for routes whose live list declares the `reasoning`
+ * parameter, so non-reasoning routes are never narrowed by it under
+ * `require_parameters`.
+ */
+const OPENROUTER_REASONING_BUDGET_TOKENS = 2_048;
 
 /** Gemini 2.5 models whose thinking is ON by default and spends the output budget. */
 const GEMINI_THINKING_DEFAULT_MODELS = ["gemini-2.5-pro", "gemini-2.5-flash"] as const;
@@ -199,6 +207,46 @@ function extractOpenAiContent(payload: unknown): string | null {
   return typeof content === "string" ? content : null;
 }
 
+/**
+ * OpenRouter embeds an upstream provider's mid-generation failure as an
+ * `error` object on the final choice (non-streaming), beside any partial
+ * content. Its presence is transport evidence, whatever the finish reason says.
+ */
+function extractOpenAiChoiceError(payload: unknown): ChoiceError | null {
+  if (!payload || typeof payload !== "object") return null;
+  const choices = (payload as Record<string, unknown>).choices;
+  if (!Array.isArray(choices) || choices.length === 0) return null;
+  const first = choices[0];
+  if (!first || typeof first !== "object") return null;
+  const error = (first as Record<string, unknown>).error;
+  if (!error || typeof error !== "object") return null;
+  const { code, message } = error as { code?: unknown; message?: unknown };
+  return {
+    code: typeof code === "string" || typeof code === "number" ? String(code) : null,
+    message: typeof message === "string" ? message : null,
+  };
+}
+
+function extractOpenAiChoiceString(payload: unknown, field: string): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const choices = (payload as Record<string, unknown>).choices;
+  if (!Array.isArray(choices) || choices.length === 0) return null;
+  const first = choices[0];
+  if (!first || typeof first !== "object") return null;
+  const value = (first as Record<string, unknown>)[field];
+  return typeof value === "string" ? value : null;
+}
+
+function extractGoogleFinishReason(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const candidates = (payload as Record<string, unknown>).candidates;
+  if (!Array.isArray(candidates) || candidates.length === 0) return null;
+  const first = candidates[0];
+  if (!first || typeof first !== "object") return null;
+  const finishReason = (first as Record<string, unknown>).finishReason;
+  return typeof finishReason === "string" ? finishReason : null;
+}
+
 function extractGoogleContent(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
   const candidates = (payload as Record<string, unknown>).candidates;
@@ -220,10 +268,10 @@ function extractGoogleContent(payload: unknown): string | null {
 }
 
 function buildOpenAiResponseFormat(
-  profile: HostedProductProfile,
+  structuredOutput: HostedProductProfile["structuredOutput"],
   structuredOutputSchema?: Record<string, unknown>,
 ): Record<string, unknown> | undefined {
-  if (profile.structuredOutput === "json-object-local-validation") {
+  if (structuredOutput === "json-object-local-validation") {
     return { type: "json_object" };
   }
   if (!structuredOutputSchema) return undefined;
@@ -252,16 +300,31 @@ export function buildRequestUrl(
   }
 }
 
+/**
+ * A corrective retry replays the failed answer as an assistant turn and asks
+ * for the fix, instead of blindly repeating the identical temperature-0
+ * request that already produced it.
+ */
+export type OutputCorrection = Readonly<{
+  failedOutput: string;
+  instruction: string;
+}>;
+
 function buildOpenAiMessages(
   prompt: string,
   systemPrompt: string | undefined,
+  correction: OutputCorrection | undefined,
 ): Array<Record<string, string>> {
-  return systemPrompt
-    ? [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
-      ]
-    : [{ role: "user", content: prompt }];
+  return [
+    ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
+    { role: "user", content: prompt },
+    ...(correction
+      ? [
+          { role: "assistant", content: correction.failedOutput },
+          { role: "user", content: correction.instruction },
+        ]
+      : []),
+  ];
 }
 
 export function buildRequestInit(
@@ -272,10 +335,14 @@ export function buildRequestInit(
     prompt: string;
     systemPrompt?: string;
     structuredOutputSchema?: Record<string, unknown>;
+    structuredOutputMode?: HostedProductProfile["structuredOutput"];
+    boundReasoning?: boolean;
+    correction?: OutputCorrection;
     signal?: AbortSignal;
   }>,
 ): RequestInit {
   const profile = HOSTED_PROFILES[input.productId];
+  const structuredOutput = input.structuredOutputMode ?? profile.structuredOutput;
   const headers: Record<string, string> = {
     "content-type": "application/json",
     accept: "application/json",
@@ -287,7 +354,15 @@ export function buildRequestInit(
     case "google": {
       headers["x-goog-api-key"] = input.credential;
       body = {
-        contents: [{ role: "user", parts: [{ text: input.prompt }] }],
+        contents: [
+          { role: "user", parts: [{ text: input.prompt }] },
+          ...(input.correction
+            ? [
+                { role: "model", parts: [{ text: input.correction.failedOutput }] },
+                { role: "user", parts: [{ text: input.correction.instruction }] },
+              ]
+            : []),
+        ],
         ...(input.systemPrompt
           ? { systemInstruction: { parts: [{ text: input.systemPrompt }] } }
           : {}),
@@ -308,11 +383,21 @@ export function buildRequestInit(
       headers["x-title"] = "Diffgazer";
       body = {
         model: input.evidenceKey.modelId,
-        messages: buildOpenAiMessages(input.prompt, input.systemPrompt),
+        messages: buildOpenAiMessages(input.prompt, input.systemPrompt, input.correction),
         temperature: 0,
         stream: false,
-        provider: { require_parameters: true },
-        response_format: buildOpenAiResponseFormat(profile, input.structuredOutputSchema),
+        ...(input.boundReasoning
+          ? { reasoning: { max_tokens: OPENROUTER_REASONING_BUDGET_TOKENS } }
+          : {}),
+        // require_parameters pins routing to endpoints that support every
+        // requested parameter. It is only sent alongside the strict schema:
+        // demanding it for JSON mode would 404 routes that lack response_format
+        // instead of letting the gateway drop it, and local validation covers
+        // the output either way.
+        ...(structuredOutput === "strict-json-schema"
+          ? { provider: { require_parameters: true } }
+          : {}),
+        response_format: buildOpenAiResponseFormat(structuredOutput, input.structuredOutputSchema),
       };
       break;
     }
@@ -320,10 +405,10 @@ export function buildRequestInit(
       headers.authorization = `Bearer ${input.credential}`;
       body = {
         model: input.evidenceKey.modelId,
-        messages: buildOpenAiMessages(input.prompt, input.systemPrompt),
+        messages: buildOpenAiMessages(input.prompt, input.systemPrompt, input.correction),
         temperature: 0,
         stream: false,
-        response_format: buildOpenAiResponseFormat(profile, input.structuredOutputSchema),
+        response_format: buildOpenAiResponseFormat(structuredOutput, input.structuredOutputSchema),
       };
       break;
     }
@@ -337,21 +422,20 @@ export function buildRequestInit(
   });
 }
 
-export function resolveUsageAvailability(
-  productId: HostedApiProductId,
-  usage: NormalizedUsage | null,
-  usageFieldPresent = usage !== null,
-): UsageAvailability {
-  const contract = HOSTED_PROFILES[productId].usageContract;
-  if (usage) return "reported";
-  if (usageFieldPresent) return "unavailable";
-  return contract === "required-terminal" ? "required-missing" : "unavailable";
-}
+export type ChoiceError = Readonly<{ code: string | null; message: string | null }>;
 
 type ParsedProviderPayload = Readonly<{
   content: string | null;
   usage: NormalizedUsage | null;
-  usageFieldPresent: boolean;
+  finishReason: string | null;
+  /** The upstream provider's own mid-generation failure, embedded on the choice. */
+  choiceError: ChoiceError | null;
+  /**
+   * OpenRouter's untranslated upstream finish reason. The normalized
+   * `finish_reason` has been observed hiding a completion-cap stop that
+   * `native_finish_reason` still names, so length detection reads both.
+   */
+  nativeFinishReason: string | null;
 }>;
 
 export function parseProviderPayload(
@@ -361,8 +445,6 @@ export function parseProviderPayload(
   const profile = HOSTED_PROFILES[productId];
   switch (profile.wireFamily) {
     case "google": {
-      const usageFieldPresent =
-        payload !== null && typeof payload === "object" && Object.hasOwn(payload, "usageMetadata");
       return {
         content: extractGoogleContent(payload),
         usage: normalizeGoogleUsage(
@@ -370,13 +452,13 @@ export function parseProviderPayload(
             ? (payload as Record<string, unknown>).usageMetadata
             : null,
         ),
-        usageFieldPresent,
+        finishReason: extractGoogleFinishReason(payload),
+        nativeFinishReason: null,
+        choiceError: null,
       };
     }
     case "openrouter":
     case "openai-compatible": {
-      const usageFieldPresent =
-        payload !== null && typeof payload === "object" && Object.hasOwn(payload, "usage");
       return {
         content: extractOpenAiContent(payload),
         usage: normalizeOpenAiUsage(
@@ -384,7 +466,9 @@ export function parseProviderPayload(
             ? (payload as Record<string, unknown>).usage
             : null,
         ),
-        usageFieldPresent,
+        finishReason: extractOpenAiChoiceString(payload, "finish_reason"),
+        nativeFinishReason: extractOpenAiChoiceString(payload, "native_finish_reason"),
+        choiceError: extractOpenAiChoiceError(payload),
       };
     }
   }

@@ -1,5 +1,7 @@
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
+import { log } from "../../../shared/lib/log.js";
 import { reviewAbort } from "../abort.js";
 import {
   isAbortError,
@@ -8,6 +10,8 @@ import {
   normalizeReviewStreamError,
   reviewStreamError,
 } from "./events.js";
+
+vi.mock("../../../shared/lib/log.js", () => ({ log: vi.fn() }));
 
 describe("isReviewStreamErrorCode", () => {
   it("returns true for known review error codes", () => {
@@ -112,6 +116,113 @@ describe("stream error redaction", () => {
     );
 
     expect(normalizeReviewStreamError(abort).message).not.toContain("/Users/");
+  });
+});
+
+describe("internal-error boundary", () => {
+  const HONEST_COPY_START = "Diffgazer hit an internal error while processing this review.";
+
+  beforeEach(() => {
+    vi.mocked(log).mockClear();
+  });
+
+  function makeZodError(): z.ZodError {
+    const parsed = z.strictObject({ usage: z.number() }).safeParse({ usage: "many" });
+    if (parsed.success) throw new Error("expected a zod failure");
+    return parsed.error;
+  }
+
+  it("turns a real ZodError into honest copy with the first issue, never raw JSON", () => {
+    const normalized = normalizeReviewStreamError(makeZodError(), undefined, { reviewId: "rid" });
+
+    expect(normalized.code).toBe(ReviewErrorCode.INTERNAL_ERROR);
+    expect(normalized.message.startsWith(HONEST_COPY_START)).toBe(true);
+    expect(normalized.message).toContain("Internal check failed:");
+    expect(normalized.message.startsWith("[")).toBe(false);
+    expect(normalized.message.startsWith("{")).toBe(false);
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log).toHaveBeenCalledWith(
+      "error",
+      "review_error_scrubbed",
+      expect.objectContaining({
+        reason: "zod",
+        code: ReviewErrorCode.INTERNAL_ERROR,
+        reviewId: "rid",
+      }),
+    );
+  });
+
+  it("caps the first-issue sentence at 200 chars", () => {
+    const oversized = "x".repeat(500);
+    const parsed = z
+      .string()
+      .refine(() => false, oversized)
+      .safeParse("value");
+    if (parsed.success) throw new Error("expected a zod failure");
+
+    const normalized = normalizeReviewStreamError(parsed.error);
+    const detail = normalized.message.split("Internal check failed: ")[1];
+
+    expect(detail).toHaveLength(200);
+  });
+
+  it.each([
+    ReviewErrorCode.CANCELLED,
+    ReviewErrorCode.INTERNAL_ERROR,
+  ])("replaces a serialized JSON message inside a typed abort and keeps code %s", (code) => {
+    const abort = reviewAbort('[{"code":"too_big","message":"Too big"}]', code, "diff");
+    const normalized = normalizeReviewStreamError(abort);
+
+    expect(normalized.code).toBe(code);
+    expect(normalized.message.startsWith(HONEST_COPY_START)).toBe(true);
+    expect(normalized.message).not.toContain("Internal check failed");
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log).toHaveBeenCalledWith(
+      "error",
+      "review_error_scrubbed",
+      expect.objectContaining({ reason: "serialized-message", code }),
+    );
+  });
+
+  it("replaces a serialized JSON message on an untyped error and resolves INTERNAL_ERROR", () => {
+    const normalized = normalizeReviewStreamError(new Error('{"issues":[]}'));
+
+    expect(normalized.code).toBe(ReviewErrorCode.INTERNAL_ERROR);
+    expect(normalized.message.startsWith(HONEST_COPY_START)).toBe(true);
+    expect(log).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a provider code while replacing its serialized JSON message", () => {
+    const normalized = normalizeReviewStreamError({
+      code: ReviewErrorCode.PROVIDER_REJECTED,
+      message: '{"error":{"message":"quota exceeded"}}',
+    });
+
+    expect(normalized.code).toBe(ReviewErrorCode.PROVIDER_REJECTED);
+    expect(normalized.message.startsWith(HONEST_COPY_START)).toBe(true);
+    expect(log).toHaveBeenCalledWith(
+      "error",
+      "review_error_scrubbed",
+      expect.objectContaining({
+        reason: "serialized-message",
+        code: ReviewErrorCode.PROVIDER_REJECTED,
+      }),
+    );
+  });
+
+  it("passes the provider-400 prose through verbatim without logging", () => {
+    const prose =
+      "Z.AI rejected the request as invalid (HTTP 400). Often the diff is too large for the model's context window. Reduce the review scope, or choose a model with a larger context.";
+
+    expect(normalizeReviewStreamError(new Error(prose)).message).toBe(prose);
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it("passes a plain provider error through verbatim without logging", () => {
+    expect(normalizeReviewStreamError(new Error("provider said no")).message).toBe(
+      "provider said no",
+    );
+    expect(log).not.toHaveBeenCalled();
   });
 });
 

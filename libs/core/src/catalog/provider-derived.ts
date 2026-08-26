@@ -20,16 +20,20 @@ export const PROVIDER_DERIVED: Record<
     displayName: "OpenRouter",
     billing: "mixed",
   },
-  groq: {
-    displayName: "Groq",
-    billing: "mixed",
-  },
-  cerebras: {
-    displayName: "Cerebras",
-    billing: "paid",
-  },
   deepseek: {
     displayName: "DeepSeek",
+    billing: "paid",
+  },
+  qwen: {
+    displayName: "Qwen International",
+    billing: "paid",
+  },
+  moonshot: {
+    displayName: "Moonshot Open Platform",
+    billing: "paid",
+  },
+  minimax: {
+    displayName: "MiniMax International",
     billing: "paid",
   },
   "ollama-cloud": {
@@ -38,22 +42,6 @@ export const PROVIDER_DERIVED: Record<
   },
   "opencode-zen": {
     displayName: "OpenCode Zen",
-    billing: "unknown",
-  },
-  ollama: {
-    displayName: "Ollama",
-    billing: "unknown",
-  },
-  "local-openai": {
-    displayName: "Local OpenAI-compatible",
-    billing: "unknown",
-  },
-  "codex-cli": {
-    displayName: "OpenAI Codex CLI",
-    billing: "unknown",
-  },
-  "copilot-cli": {
-    displayName: "GitHub Copilot CLI",
-    billing: "unknown",
+    billing: "mixed",
   },
 };

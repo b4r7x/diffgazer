@@ -1120,6 +1120,35 @@ describe("Dialog", () => {
     });
   });
 
+  describe("DialogContent height", () => {
+    it("defaults to content-driven height with the dynamic-viewport cap", () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Title>Auto height</Dialog.Title>
+          </Dialog.Content>
+        </Dialog>,
+      );
+      const dialog = screen.getByRole("dialog", { name: "Auto height" });
+      expect(dialog).not.toHaveClass("h-[min(40rem,85dvh)]");
+      expect(dialog).toHaveClass("max-h-[90dvh]");
+    });
+
+    it('height="stable" declares one content-independent height capped by the viewport', () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content height="stable">
+            <Dialog.Title>Stable height</Dialog.Title>
+          </Dialog.Content>
+        </Dialog>,
+      );
+      const dialog = screen.getByRole("dialog", { name: "Stable height" });
+      expect(dialog).toHaveClass("h-[min(40rem,85dvh)]");
+      // The flex column is what lets Header/Footer hold and Body flex+scroll.
+      expect(dialog).toHaveClass("flex", "flex-col");
+    });
+  });
+
   describe("DialogTitle data-slot", () => {
     it('exposes data-slot="dialog-title" on the heading element', () => {
       render(

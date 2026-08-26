@@ -76,6 +76,13 @@ export function FailureView({
 
   const focusedLabel = actions[footer.focusedIndex]?.label ?? primary.label;
   const isError = tone === "error";
+  // The action row must never render 2+1: the row hook steps by index with
+  // ←/→ only, so a wrapped third button sits where ↑/↓ point and the footer
+  // hint reads as a lie. Three actions take the next width tier and a tighter
+  // gap to hold one desktop row; below sm they stack one per row, keeping
+  // visible order = DOM order = index order (←/→ still step the stacked
+  // chain — the hint stays truthful about which keys move).
+  const hasThreeActions = actions.length === 3;
 
   usePageFooter({
     // A lone action has nowhere to move to, so the row hint stays off that screen.
@@ -88,11 +95,12 @@ export function FailureView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
-      {/* Gates centre in the content area — the composition the TUI's GateShell
-          draws for the same dead ends (cli/diffgazer/src/components/layout/error-gate.tsx);
-          the page-card screens keep the 1:2 optical band (card.tsx, hub, help,
-          diagnostics, home, summary). Equal spacers collapse once the panel
-          outgrows the viewport, so a short window scrolls from the top. */}
+      {/* Boxed dead-end panels dead-centre. Sparse page cards and loading keep
+          the app-wide 1:2 band (card.tsx, centered-status.tsx); the 404
+          interruption strip is banded by its own rule. Centring
+          also restores parity with the TUI's GateShell, which centres too
+          (error-gate.tsx). The spacers collapse once the panel outgrows the
+          viewport, so a short window scrolls from the top. */}
       <div aria-hidden className="grow" />
       <Panel
         {...focusProps}
@@ -101,7 +109,10 @@ export function FailureView({
         tone={isError ? "error" : "warning"}
         focused={focusWithin}
         aria-labelledby={titleId}
-        className="mx-auto w-full max-w-lg shrink-0 text-center focus:outline-none"
+        className={cn(
+          "mx-auto w-full shrink-0 text-center focus:outline-none",
+          hasThreeActions ? "max-w-xl" : "max-w-lg",
+        )}
       >
         {/* Wayfinding only: the corner chip is a fixed 11px uppercase strip with
             no wrap, so it names the kind of dead end and the failure's own
@@ -147,7 +158,14 @@ export function FailureView({
           <p className="mx-auto mb-6 max-w-[46ch] break-words font-mono text-sm text-muted-foreground">
             {message}
           </p>
-          <div className="flex flex-wrap justify-center gap-4">
+          <div
+            className={cn(
+              "flex justify-center",
+              hasThreeActions
+                ? "flex-col items-stretch gap-3 sm:flex-row sm:items-center"
+                : "flex-wrap gap-4",
+            )}
+          >
             {actions.map((action, index) => (
               <Button
                 key={action.label}

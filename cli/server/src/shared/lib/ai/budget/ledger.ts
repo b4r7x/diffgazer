@@ -19,12 +19,19 @@ export type AttemptEstimate = {
  * Provider-reported usage settled after a terminal attempt. Dimensions the
  * provider did not report are absent and are never committed — the ledger
  * settles measured facts, never estimates derived from other dimensions.
+ * Wall time is never settled: the review wall dimension is an elapsed
+ * real-time clock, not a sum of dispatch durations.
  */
 export type AttemptActual = {
   inputTokens: number;
-  wallTimeMs: number;
   responseBytes?: number;
   costUsd?: number;
+};
+
+/** Elapsed review clock the wall dimension consults once attached. */
+export type ReviewClock = {
+  remainingMs(): number;
+  expired(): boolean;
 };
 
 /** Zero findings returned for every non-completed terminal outcome. */
@@ -96,7 +103,7 @@ function settledUsage(actual: AttemptActual): AttemptEstimate {
   return {
     inputTokens: actual.inputTokens,
     responseBytes: actual.responseBytes ?? 0,
-    wallTimeMs: actual.wallTimeMs,
+    wallTimeMs: 0,
     costUsd: actual.costUsd ?? 0,
   };
 }
@@ -153,6 +160,7 @@ export class BudgetLedger {
   private settledAttempts = 0;
   private exhaustedLimit: BudgetLimitKey | null = null;
   private cancelled = false;
+  private reviewClock: { clock: ReviewClock; minimumDispatchMs: number } | null = null;
 
   constructor(limits: BudgetLimits) {
     this.currentLimits = Object.freeze({ ...limits });
@@ -207,6 +215,16 @@ export class BudgetLedger {
     record.estimate.wallTimeMs = wallTimeMs;
   }
 
+  /**
+   * Attaches the review's elapsed clock. From then on the wall dimension is
+   * enforced at reserve time only: a dispatch that cannot fit at least
+   * `minimumDispatchMs` in the remaining clock is refused, not started. The
+   * ledger never owns a timer, so a fake clock keeps it synchronous in tests.
+   */
+  attachReviewClock(clock: ReviewClock, minimumDispatchMs: number): void {
+    this.reviewClock = { clock, minimumDispatchMs };
+  }
+
   snapshot(): BudgetSnapshot {
     return {
       limits: this.limits,
@@ -242,7 +260,7 @@ export class BudgetLedger {
       return err(createExhausted(attemptExhaustion));
     }
 
-    const usageExhaustion = this.checkUsageBudget(estimate);
+    const usageExhaustion = this.checkReviewClock() ?? this.checkUsageBudget(estimate);
     if (usageExhaustion) {
       this.exhaustedLimit = usageExhaustion;
       return err(createExhausted(usageExhaustion));
@@ -356,6 +374,16 @@ export class BudgetLedger {
     };
   }
 
+  /** Reserve-time wall refusal against the attached elapsed clock. */
+  private checkReviewClock(): BudgetLimitKey | null {
+    if (!this.reviewClock) return null;
+    const { clock, minimumDispatchMs } = this.reviewClock;
+    if (clock.expired() || clock.remainingMs() < minimumDispatchMs) {
+      return "wallTimeMs";
+    }
+    return null;
+  }
+
   private checkUsageBudget(delta: AttemptEstimate): BudgetLimitKey | null {
     const projected = this.projectedUsage(delta);
     if (projected.inputTokens > this.limits.maxInputTokens) {
@@ -364,7 +392,9 @@ export class BudgetLedger {
     if (projected.responseBytes > this.limits.maxResponseBytes) {
       return "maxResponseBytes";
     }
-    if (projected.wallTimeMs > this.limits.wallTimeMs) {
+    // Once the elapsed clock is attached it owns the wall dimension; summed
+    // projections would double-count time the clock already measures.
+    if (this.reviewClock === null && projected.wallTimeMs > this.limits.wallTimeMs) {
       return "wallTimeMs";
     }
     // Dollars are the only fractional dimension, so drawing a settled cost out

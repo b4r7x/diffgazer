@@ -28,33 +28,33 @@ import {
 const checkedAt = "2026-07-31T12:00:00.000Z";
 const acknowledgement: Extract<ReadinessAcknowledgement, { status: "accepted" }> = {
   status: "accepted",
-  noticeId: "groq-hosted-api",
+  noticeId: "zai-general-payg",
   noticeVersion: 1,
   acceptedAt: checkedAt,
 };
-const groqNotice = {
-  id: "groq-hosted-api",
+const zaiNotice = {
+  id: "zai-general-payg",
   noticeVersion: 1,
   acknowledgement: "required",
   acknowledgeBefore: "first-context-send",
   renewAcknowledgementOn: "material-notice-change",
-  billing: ["Current account and model limits are verified during setup."],
-  privacy: ["Data handling follows the selected Groq API account and model terms."],
+  billing: ["This configuration uses general Open Platform pay-as-you-go billing."],
+  privacy: ["API no-training and data-handling claims apply only to the exact general PAYG route."],
 } as const;
 const input = {
   transportFamily: "hosted-api",
-  productId: "groq",
-  endpoint: "https://api.groq.com/openai/v1",
+  productId: "zai",
+  endpoint: "https://api.z.ai/api/paas/v4",
 } as const;
 const configuration = {
   status: "supported",
-  configurationId: "groq-primary",
+  configurationId: "zai-primary",
   revision: 7,
   transportFamily: "hosted-api",
-  productId: "groq",
-  endpoint: "https://api.groq.com/openai/v1",
-  selectedModelId: "openai/gpt-oss-120b",
-  notices: [groqNotice],
+  productId: "zai",
+  endpoint: "https://api.z.ai/api/paas/v4",
+  selectedModelId: "glm-4.7",
+  notices: [zaiNotice],
   availableActions: ["inspect", "select", "test", "update", "delete"],
 } as const;
 const readiness = {
@@ -92,12 +92,10 @@ function mockConfigurationModelsGet(client: ApiClient, body: unknown): void {
 
 const configurationModels = {
   status: "passed",
-  configurationId: "groq-primary",
-  productId: "groq",
+  configurationId: "zai-primary",
+  productId: "zai",
   transportFamily: "hosted-api",
-  models: [
-    { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", description: "128K context", tier: "free" },
-  ],
+  models: [{ id: "glm-4.7", name: "GLM-4.7", description: "128K context", tier: "free" }],
   checkedAt,
   source: "snapshot",
   cached: false,
@@ -128,11 +126,11 @@ describe("config API functions", () => {
     }
 
     const created = await createConfiguration(client, { input, acknowledgement });
-    await inspectConfiguration(client, "groq-primary");
-    await selectConfiguration(client, "groq-primary", "openai/gpt-oss-120b");
-    await testConfiguration(client, "groq-primary");
-    await updateConfiguration(client, "groq-primary", 7, input, acknowledgement);
-    await deleteConfiguration(client, "groq-primary", 7);
+    await inspectConfiguration(client, "zai-primary");
+    await selectConfiguration(client, "zai-primary", "glm-4.7");
+    await testConfiguration(client, "zai-primary");
+    await updateConfiguration(client, "zai-primary", 7, input, acknowledgement);
+    await deleteConfiguration(client, "zai-primary", 7);
 
     expect(client.post).toHaveBeenNthCalledWith(
       1,
@@ -143,7 +141,7 @@ describe("config API functions", () => {
     expect(client.post).toHaveBeenNthCalledWith(
       2,
       "/api/config/actions",
-      { action: "inspect", configurationId: "groq-primary" },
+      { action: "inspect", configurationId: "zai-primary" },
       { schema: expect.any(Function) },
     );
     expect(client.post).toHaveBeenNthCalledWith(
@@ -151,15 +149,15 @@ describe("config API functions", () => {
       "/api/config/actions",
       {
         action: "select",
-        configurationId: "groq-primary",
-        modelId: "openai/gpt-oss-120b",
+        configurationId: "zai-primary",
+        modelId: "glm-4.7",
       },
       { schema: expect.any(Function) },
     );
     expect(client.post).toHaveBeenNthCalledWith(
       4,
       "/api/config/actions",
-      { action: "test", configurationId: "groq-primary" },
+      { action: "test", configurationId: "zai-primary" },
       { schema: expect.any(Function) },
     );
     expect(client.post).toHaveBeenNthCalledWith(
@@ -167,7 +165,7 @@ describe("config API functions", () => {
       "/api/config/actions",
       {
         action: "update",
-        configurationId: "groq-primary",
+        configurationId: "zai-primary",
         expectedRevision: 7,
         input,
         acknowledgement,
@@ -177,11 +175,11 @@ describe("config API functions", () => {
     expect(client.post).toHaveBeenNthCalledWith(
       6,
       "/api/config/actions",
-      { action: "delete", configurationId: "groq-primary", expectedRevision: 7 },
+      { action: "delete", configurationId: "zai-primary", expectedRevision: 7 },
       { schema: expect.any(Function) },
     );
     expect(created.configuration).toMatchObject({
-      configurationId: "groq-primary",
+      configurationId: "zai-primary",
       revision: 7,
     });
   });
@@ -189,7 +187,7 @@ describe("config API functions", () => {
   it("rejects a response for a different action", async () => {
     mockConfigurationActionPost(client, { action: "delete", status: "succeeded" });
 
-    await expect(inspectConfiguration(client, "groq-primary")).rejects.toThrow(
+    await expect(inspectConfiguration(client, "zai-primary")).rejects.toThrow(
       "Configuration action response mismatch: expected inspect, received delete",
     );
   });
@@ -201,7 +199,7 @@ describe("config API functions", () => {
       configuration: { ...configuration, configurationId: "other-configuration" },
     });
 
-    await expect(inspectConfiguration(client, "groq-primary")).rejects.toThrow(
+    await expect(inspectConfiguration(client, "zai-primary")).rejects.toThrow(
       "Configuration action response belongs to a different configuration",
     );
   });
@@ -239,9 +237,9 @@ describe("config API functions", () => {
   it("fetches configuration-bound catalog models from the encoded models path", async () => {
     mockConfigurationModelsGet(client, configurationModels);
 
-    const response = await getConfigurationModels(client, "groq-primary");
+    const response = await getConfigurationModels(client, "zai-primary");
 
-    expect(client.get).toHaveBeenCalledWith("/api/config/providers/groq-primary/models", {
+    expect(client.get).toHaveBeenCalledWith("/api/config/providers/zai-primary/models", {
       schema: expect.any(Function),
     });
     expect(response).toEqual(configurationModels);
@@ -266,7 +264,7 @@ describe("config API functions", () => {
       configurationId: "other-configuration",
     });
 
-    await expect(getConfigurationModels(client, "groq-primary")).rejects.toThrow(
+    await expect(getConfigurationModels(client, "zai-primary")).rejects.toThrow(
       "Configuration models response belongs to a different configuration",
     );
   });
@@ -277,7 +275,7 @@ describe("config API functions", () => {
       cached: true,
     });
 
-    await expect(getConfigurationModels(client, "groq-primary")).rejects.toThrow();
+    await expect(getConfigurationModels(client, "zai-primary")).rejects.toThrow();
   });
 
   it("rejects cross-transport readiness at the list boundary as INVALID_RESPONSE", async () => {
@@ -296,7 +294,7 @@ describe("config API functions", () => {
           },
         },
       ],
-      selectedConfigurationId: "groq-primary",
+      selectedConfigurationId: "zai-primary",
     };
 
     const fetchMock = vi.fn().mockResolvedValue(Response.json(malformedList));
@@ -322,7 +320,7 @@ describe("config API functions", () => {
     const list = {
       schemaVersion: 2,
       configurations: [{ configuration, readiness }],
-      selectedConfigurationId: "groq-primary",
+      selectedConfigurationId: "zai-primary",
     } as const;
     const init = {
       ...list,
@@ -352,12 +350,12 @@ describe("config API functions", () => {
   it("revokes a wizard draft with a keepalive action request on page unload", () => {
     vi.mocked(client.request).mockResolvedValue(new Response());
 
-    revokeConfigurationOnPageHide(client, "groq-primary", 7);
+    revokeConfigurationOnPageHide(client, "zai-primary", 7);
 
     expect(client.request).toHaveBeenCalledWith("POST", "/api/config/actions", {
       body: {
         action: "delete",
-        configurationId: "groq-primary",
+        configurationId: "zai-primary",
         expectedRevision: 7,
       },
       keepalive: true,

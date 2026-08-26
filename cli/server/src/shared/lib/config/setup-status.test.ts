@@ -31,7 +31,9 @@ const DEFAULT_BUDGET = {
   outputTokens: 40_000,
   responseBytes: 8_000_000,
   wallTimeMs: 300_000,
-  retries: 0,
+  // Reads floor a persisted retries: 0 to the current default; the fixture
+  // matches so evidence keys derived from it stay coherent with decoded records.
+  retries: 1,
   concurrency: 1,
   perReview: 5,
 };

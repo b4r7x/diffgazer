@@ -85,18 +85,6 @@ describe("convertReviewEventsToLogEntries", () => {
       { type: "agent_error", agent: "optimizer", error: "failed", timestamp },
       "Optimizer",
     ],
-    [
-      "file_progress",
-      {
-        type: "file_progress",
-        agent: "detective",
-        file: "src/a.ts",
-        completed: 1,
-        total: 1,
-        timestamp,
-      },
-      undefined,
-    ],
     ["issue_found", { type: "issue_found", agent: "guardian", issue, timestamp }, "Guardian"],
     [
       "agent_complete",
@@ -117,6 +105,20 @@ describe("convertReviewEventsToLogEntries", () => {
   ])("keeps %s source indexing identical to its rendered entry", (_, event, source) => {
     expect(getReviewEventLogSource(event)).toBe(source);
     expect(convertReviewEventToLogEntry(event, 0).source).toBe(source);
+  });
+
+  it("gives file_progress its agent's source while the FILE row stays unlabeled", () => {
+    const event: AgentStreamEvent = {
+      type: "file_progress",
+      agent: "detective",
+      file: "src/a.ts",
+      completed: 1,
+      total: 1,
+      timestamp,
+    };
+
+    expect(getReviewEventLogSource(event)).toBe("Detective");
+    expect(convertReviewEventToLogEntry(event, 0).source).toBeUndefined();
   });
 
   it.each<
@@ -177,7 +179,43 @@ describe("convertReviewEventsToLogEntries", () => {
     [
       "orchestrator_start",
       { type: "orchestrator_start", agents: [detective], concurrency: 3, timestamp },
-      { tag: "ORCH", tagType: "system", messageIncludes: ["1 agent", "concurrency 3"] },
+      {
+        tag: "ORCH",
+        tagType: "system",
+        messageIncludes: ["1 agent", "concurrency 3"],
+        messageExcludes: ["provider limits parallel requests"],
+      },
+    ],
+    [
+      "orchestrator_start clamped concurrency",
+      {
+        type: "orchestrator_start",
+        agents: [detective],
+        concurrency: 1,
+        requestedConcurrency: 5,
+        timestamp,
+      },
+      {
+        tag: "ORCH",
+        tagType: "system",
+        messageIncludes: ["concurrency 1", "provider limits parallel requests", "5 requested"],
+      },
+    ],
+    [
+      "orchestrator_start unclamped requestedConcurrency",
+      {
+        type: "orchestrator_start",
+        agents: [detective],
+        concurrency: 3,
+        requestedConcurrency: 3,
+        timestamp,
+      },
+      {
+        tag: "ORCH",
+        tagType: "system",
+        messageIncludes: ["concurrency 3"],
+        messageExcludes: ["provider limits parallel requests"],
+      },
     ],
     [
       "agent_queued",

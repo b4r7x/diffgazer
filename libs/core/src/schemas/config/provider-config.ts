@@ -11,14 +11,6 @@ import {
   HostedApiEndpointSchema,
   HostedApiProductIdSchema,
   HostedApiTransportInputSchema,
-  LocalCliProductIdSchema,
-  LocalCliTransportInputSchema,
-  LocalHttpAuthenticationModeSchema,
-  LocalHttpProductIdSchema,
-  LocalHttpTransportInputSchema,
-  LocalOpenAIPresetIdSchema,
-  LoopbackHttpEndpointSchema,
-  matchesLocalHttpTransportTuple,
   type RunnableProductId,
 } from "./transports.js";
 
@@ -102,27 +94,7 @@ export const HostedApiConfigurationInputSchema = HostedApiTransportInputSchema.s
 });
 export type HostedApiConfigurationInput = z.infer<typeof HostedApiConfigurationInputSchema>;
 
-export const LocalHttpConfigurationInputSchema = LocalHttpTransportInputSchema.safeExtend({
-  bearerToken: WriteOnlySecretInputSchema.optional(),
-}).superRefine((input, context) => {
-  if (input.authentication === "none" && input.bearerToken !== undefined) {
-    context.addIssue({
-      code: "custom",
-      message: "Bearer input requires optional local bearer authentication",
-      path: ["bearerToken"],
-    });
-  }
-});
-export type LocalHttpConfigurationInput = z.infer<typeof LocalHttpConfigurationInputSchema>;
-
-export const LocalCliConfigurationInputSchema = LocalCliTransportInputSchema;
-export type LocalCliConfigurationInput = z.infer<typeof LocalCliConfigurationInputSchema>;
-
-export const ClientConfigurationInputSchema = z.discriminatedUnion("transportFamily", [
-  HostedApiConfigurationInputSchema,
-  LocalHttpConfigurationInputSchema,
-  LocalCliConfigurationInputSchema,
-]);
+export const ClientConfigurationInputSchema = HostedApiConfigurationInputSchema;
 export type ClientConfigurationInput = z.infer<typeof ClientConfigurationInputSchema>;
 
 // acknowledgement is optional so onboarding can create a draft before the notice step;
@@ -340,7 +312,7 @@ const ConfigurationSummaryBaseShape = {
   notices: z.array(ClientConfigurationNoticeSchema).max(16),
 } as const;
 
-const HostedApiConfigurationSummarySchema = z
+export const ClientConfigurationSummarySchema = z
   .strictObject({
     ...ConfigurationSummaryBaseShape,
     status: z.literal("supported"),
@@ -359,56 +331,6 @@ const HostedApiConfigurationSummarySchema = z
       });
     }
   });
-
-const LocalHttpConfigurationSummarySchema = z
-  .strictObject({
-    ...ConfigurationSummaryBaseShape,
-    status: z.literal("supported"),
-    transportFamily: z.literal("local-http"),
-    productId: LocalHttpProductIdSchema,
-    endpoint: LoopbackHttpEndpointSchema,
-    authentication: LocalHttpAuthenticationModeSchema,
-    presetId: LocalOpenAIPresetIdSchema.optional(),
-    availableActions: SupportedConfigurationActionsSchema,
-  })
-  .superRefine((summary, context) => {
-    validateSupportedSummaryBoundary(summary, context);
-    if (
-      !matchesLocalHttpTransportTuple({
-        productId: summary.productId,
-        endpoint: summary.endpoint,
-        presetId: summary.presetId,
-      })
-    ) {
-      context.addIssue({
-        code: "custom",
-        message:
-          summary.productId === "ollama"
-            ? "Local OpenAI presets do not apply to Ollama"
-            : "Preset endpoint does not match its fixed identity",
-        path: summary.productId === "ollama" ? ["presetId"] : ["endpoint"],
-      });
-    }
-  });
-
-const LocalCliConfigurationSummarySchema = z
-  .strictObject({
-    ...ConfigurationSummaryBaseShape,
-    status: z.literal("supported"),
-    transportFamily: z.literal("local-cli"),
-    productId: LocalCliProductIdSchema,
-    installationId: LocalCliTransportInputSchema.shape.installationId,
-    availableActions: SupportedConfigurationActionsSchema,
-  })
-  .superRefine((summary, context) => {
-    validateSupportedSummaryBoundary(summary, context);
-  });
-
-export const ClientConfigurationSummarySchema = z.union([
-  HostedApiConfigurationSummarySchema,
-  LocalHttpConfigurationSummarySchema,
-  LocalCliConfigurationSummarySchema,
-]);
 export type ClientConfigurationSummary = z.infer<typeof ClientConfigurationSummarySchema>;
 
 export const CONFIGURATION_OPERATION_STATUSES = ["succeeded", "failed"] as const;

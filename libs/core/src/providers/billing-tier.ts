@@ -6,17 +6,14 @@ import type { BillingMode } from "./model-policy.js";
 import { PRODUCT_REGISTRY } from "./product-registry.js";
 
 /**
- * What a product costs the person running it. Local transports are their own
- * tiers because "paid" is a claim about someone's bill: a model running on the
- * user's own machine bills nobody, and a CLI riding an existing subscription
- * bills whatever that subscription already does. `mixed` is the honest badge
+ * What a product costs the person running it. `mixed` is the honest badge
  * for a hosted product selling both zero-priced and priced
  * models — collapsing it to either one misstates the other half of the catalog.
  * `free-tier` is the account-level counterpart: the catalog prices none of the
  * offerable models at zero (they are priced or unpriced), but the product
  * publishes a no-cost quota to run them on.
  */
-export type BillingTier = "free" | "paid" | "mixed" | "local" | "ambient" | "free-tier";
+export type BillingTier = "free" | "paid" | "mixed" | "free-tier";
 
 export interface BillingTierBadge {
   readonly label: string;
@@ -27,8 +24,6 @@ export const BILLING_TIER_BADGES = {
   free: { label: "FREE", variant: "success" },
   paid: { label: "PAID", variant: "neutral" },
   mixed: { label: "FREE/PAID", variant: "info" },
-  local: { label: "LOCAL", variant: "info" },
-  ambient: { label: "AMBIENT", variant: "info" },
   "free-tier": { label: "FREE TIER", variant: "info" },
 } as const satisfies Record<BillingTier, BillingTierBadge>;
 
@@ -53,10 +48,6 @@ function declaresFreeTier(productId: RunnableProductId): boolean {
  * What it stops doing is understating a product's only free on-ramp as PAID.
  */
 export function getBillingTier(productId: RunnableProductId): BillingTier {
-  const product = PRODUCT_REGISTRY[productId];
-  if (product.transportFamily === "local-http") return "local";
-  if (product.transportFamily === "local-cli") return "ambient";
-
   const catalogBilling = PROVIDER_DERIVED[productId].billing;
   if (catalogBilling === "free" || catalogBilling === "mixed") return catalogBilling;
   return declaresFreeTier(productId) ? "free-tier" : "paid";

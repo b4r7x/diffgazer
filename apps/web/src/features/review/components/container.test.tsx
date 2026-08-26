@@ -15,7 +15,6 @@ import type { LensStat } from "@diffgazer/core/schemas/events";
 import {
   configurationStatus,
   GEMINI_CONFIGURATION,
-  LOCAL_OPENAI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeReadyInitResponse,
 } from "@diffgazer/core/testing/provider-fixtures";
@@ -83,9 +82,9 @@ function createTestApi(): BoundApi {
   } satisfies BoundApi;
 }
 
-function unreachableLocalInit() {
+function unreadyInit() {
   return makeConfigurationInitResponse([
-    configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
+    configurationStatus(GEMINI_CONFIGURATION, "conformance-failed"),
   ]);
 }
 
@@ -199,6 +198,39 @@ describe("ReviewContainer configuration gates", () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(
         expect.objectContaining({ to: "/settings/providers" }),
+      );
+    });
+  });
+
+  it("routes Change model straight into the model dialog on the providers screen", async () => {
+    const user = userEvent.setup();
+    mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeStreamFailure({
+        error: "Adapter response failed schema validation.",
+        errorCode: "MODEL_INCOMPATIBLE",
+      }),
+    );
+
+    renderReviewContainer();
+
+    expect(await screen.findByRole("heading", { name: "Model Incompatible" })).toBeInTheDocument();
+    // The static screen copy no longer promises the fail-fast memo; that
+    // sentence travels only on memo-class failures from the server.
+    expect(
+      screen.getByText(
+        "This model could not produce Diffgazer's structured review output. Change the model or update the configuration.",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Change model" }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "/settings/providers",
+          search: expect.objectContaining({ intent: "select-model" }),
+        }),
       );
     });
   });
@@ -343,14 +375,12 @@ describe("ReviewContainer configuration gates", () => {
   });
 
   it("names the readiness gate action for where it goes, beside the product's real name", async () => {
-    mockLoadConfigurationInit.mockResolvedValue(unreachableLocalInit());
+    mockLoadConfigurationInit.mockResolvedValue(unreadyInit());
 
     renderReviewContainer();
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Configuration Not Ready \(Local OpenAI-compatible\)/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Configuration Not Ready \(Google Gemini\)/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL })).toBeInTheDocument();
     });
     expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
@@ -412,7 +442,7 @@ describe("ReviewContainer configuration gates", () => {
   });
 
   it("hands selected readiness to the review lifecycle", async () => {
-    mockLoadConfigurationInit.mockResolvedValue(unreachableLocalInit());
+    mockLoadConfigurationInit.mockResolvedValue(unreadyInit());
     routeParams.reviewId = "review-1";
     let capturedOptions: UseReviewLifecycleBaseOptions | undefined;
     mockUseReviewLifecycleBase.mockImplementation((options) => {
@@ -425,13 +455,13 @@ describe("ReviewContainer configuration gates", () => {
     await waitFor(() => {
       expect(capturedOptions?.configLoading).toBe(false);
     });
-    expect(capturedOptions?.readiness?.status).toBe("local-conformance-failed");
+    expect(capturedOptions?.readiness?.status).toBe("conformance-failed");
     expect(capturedOptions?.allowResumeWithoutSetup).toBe(true);
     expect(capturedOptions?.reviewId).toBe("review-1");
   });
 
   it("wears the focused reticle while the configuration gate holds mount focus", async () => {
-    mockLoadConfigurationInit.mockResolvedValue(unreachableLocalInit());
+    mockLoadConfigurationInit.mockResolvedValue(unreadyInit());
 
     const { container } = renderReviewContainer();
 
@@ -464,7 +494,7 @@ describe("ReviewContainer configuration gates", () => {
   });
 
   it("exposes no secret values in the rendered gate DOM", async () => {
-    mockLoadConfigurationInit.mockResolvedValue(unreachableLocalInit());
+    mockLoadConfigurationInit.mockResolvedValue(unreadyInit());
 
     const { container } = renderReviewContainer();
 

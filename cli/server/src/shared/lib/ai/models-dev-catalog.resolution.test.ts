@@ -33,6 +33,7 @@ import { CANDIDATE_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { MODELS_DEV_SAMPLE } from "../testing/models-dev-sample.js";
 import { assertTempHome } from "../testing/temp-home.js";
+import { LIVE_LIST_SHAPE_VERSION } from "./live-model-lists.js";
 import * as modelsDevCatalog from "./models-dev-catalog.js";
 import {
   discoverConfigurationCatalog,
@@ -59,7 +60,10 @@ const readCache = (): { catalog: Record<string, unknown>; fetchedAt: string; eta
 const modelListPath = (key: string): string => path.join(testHome, "model-lists", `${key}.json`);
 const writeModelListCache = (key: string, models: unknown[]): void => {
   fs.mkdirSync(path.dirname(modelListPath(key)), { recursive: true });
-  fs.writeFileSync(modelListPath(key), JSON.stringify({ models, fetchedAt: fresh() }));
+  fs.writeFileSync(
+    modelListPath(key),
+    JSON.stringify({ models, fetchedAt: fresh(), shapeVersion: LIVE_LIST_SHAPE_VERSION }),
+  );
 };
 // Every inline model declares structured output: the picker only offers models
 // that do, so a fixture without it would be filtered out before the assertion.
@@ -123,7 +127,7 @@ describe("getProviderModels — three-tier fallback", () => {
         ? MODELS_DEV_SAMPLE.google
         : undefined;
 
-    const missingProviderRequest = getProviderModels("groq");
+    const missingProviderRequest = getProviderModels("openrouter");
     await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
     const presentProviderRequest = getProviderModels("gemini");
     response.resolve(okResponse({ google: requireValue(google, "sample google provider") }));
@@ -265,7 +269,7 @@ describe("getProviderModels — three-tier fallback", () => {
     // The shrunken live payload must NOT have overwritten the trusted cache.
     const persisted = readCache();
     expect(persisted.catalog.google).toBeDefined();
-    expect(persisted.catalog.groq).toBeDefined();
+    expect(persisted.catalog.openrouter).toBeDefined();
   });
 
   it("empty live payload with no usable cache: falls back to the snapshot", async () => {
@@ -375,22 +379,22 @@ describe("getProviderModels — three-tier fallback", () => {
   });
 
   it("fresh cache missing the requested provider: never serves a blank picker, falls through to the snapshot", async () => {
-    // A structurally-valid, fresh cache that simply lacks groq's source id. The
-    // fresh-cache tier yields nothing for groq, so resolution falls through; with
+    // A structurally-valid, fresh cache that simply lacks openrouter's source id. The
+    // fresh-cache tier yields nothing for openrouter, so resolution falls through; with
     // the live fetch unavailable it must land on the bundled snapshot.
-    const { groq, ...withoutGroq } = MODELS_DEV_SAMPLE as Record<string, unknown>;
-    writeCache(withoutGroq, fresh());
+    const { openrouter, ...withoutOpenrouter } = MODELS_DEV_SAMPLE as Record<string, unknown>;
+    writeCache(withoutOpenrouter, fresh());
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-    const result = await getProviderModels("groq");
+    const result = await getProviderModels("openrouter");
     expect(result.source).toBe("snapshot");
     expect(result.models.length).toBeGreaterThan(0);
   });
 
   it("stale cache missing the requested provider with offline fetch: falls back to the snapshot", async () => {
-    const { cerebras, ...withoutCerebras } = MODELS_DEV_SAMPLE as Record<string, unknown>;
-    writeCache(withoutCerebras, stale());
+    const { zai, ...withoutZai } = MODELS_DEV_SAMPLE as Record<string, unknown>;
+    writeCache(withoutZai, stale());
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-    const result = await getProviderModels("cerebras");
+    const result = await getProviderModels("zai");
     expect(result.source).toBe("snapshot");
     expect(result.models.length).toBeGreaterThan(0);
   });
@@ -398,26 +402,26 @@ describe("getProviderModels — three-tier fallback", () => {
   it("live fetch dropping one overlay-populated provider: serves that provider from the trusted cache and does not overwrite it", async () => {
     // Trusted (stale) cache holds every sample provider, so a fetch is attempted.
     writeCache(MODELS_DEV_SAMPLE, stale());
-    // Live payload is overall healthy but has dropped groq entirely.
-    const { groq, ...withoutGroq } = MODELS_DEV_SAMPLE as Record<string, unknown>;
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(withoutGroq));
+    // Live payload is overall healthy but has dropped openrouter entirely.
+    const { openrouter, ...withoutOpenrouter } = MODELS_DEV_SAMPLE as Record<string, unknown>;
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(withoutOpenrouter));
 
-    const result = await getProviderModels("groq");
-    // The picker for groq must not be blank: it is served from the trusted cache.
+    const result = await getProviderModels("openrouter");
+    // The picker for openrouter must not be blank: it is served from the trusted cache.
     expect(result.models.length).toBeGreaterThan(0);
     expect(result.source).toBe("cache");
 
     // The provider-dropping payload must NOT have poisoned the on-disk cache.
     const persisted = readCache();
-    expect(persisted.catalog.groq).toBeDefined();
+    expect(persisted.catalog.openrouter).toBeDefined();
   });
 
   it("live fetch dropping a provider while serving another: refuses to persist the poisoned catalog", async () => {
     // Trusted (stale) cache holds every sample provider; the requested provider
-    // (gemini) is still present in the live payload, but groq was dropped.
+    // (gemini) is still present in the live payload, but openrouter was dropped.
     writeCache(MODELS_DEV_SAMPLE, stale());
-    const { groq, ...withoutGroq } = MODELS_DEV_SAMPLE as Record<string, unknown>;
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(withoutGroq));
+    const { openrouter, ...withoutOpenrouter } = MODELS_DEV_SAMPLE as Record<string, unknown>;
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(withoutOpenrouter));
 
     const result = await getProviderModels("gemini");
     expect(result.source).toBe("live");
@@ -426,7 +430,7 @@ describe("getProviderModels — three-tier fallback", () => {
     // The dropped provider must survive in the on-disk cache: the trusted cache
     // is not overwritten by a catalog that loses an overlay-populated provider.
     const persisted = readCache();
-    expect(persisted.catalog.groq).toBeDefined();
+    expect(persisted.catalog.openrouter).toBeDefined();
   });
 
   it("disk-write failure on a live fetch: still serves the fetched models, never throws out of the request", async () => {
@@ -478,9 +482,12 @@ const OPENROUTER_CATALOG = {
         cost: { input: 0.04, output: 0.15 },
         limit: { context: 131072, output: 32768 },
         structured_output: true,
+        release_date: "2025-08-05",
       },
-      // Withheld by the catalog for this strict-schema product; the live list
-      // must not resurrect it.
+      // Declares no structured output. OpenRouter is a pinned-downstream-route
+      // product, so the declared refusal does not withhold the row: the gateway
+      // drops an unsupported response_format instead of rejecting the request,
+      // and local validation covers the rest.
       "google/gemma-3-27b-it": {
         id: "google/gemma-3-27b-it",
         name: "Google: Gemma 3 27B",
@@ -488,7 +495,7 @@ const OPENROUTER_CATALOG = {
         structured_output: false,
       },
       // The catalog believes it returns structured output; OpenRouter's own
-      // list says the route does not, and the route's provider is the authority.
+      // list says the route does not enforce it. The row is still offered.
       "mistralai/mistral-small": {
         id: "mistralai/mistral-small",
         name: "Mistral: Mistral Small",
@@ -592,6 +599,56 @@ const ZAI_CATALOG = {
   },
 };
 
+const ZEN_CATALOG = {
+  opencode: {
+    id: "opencode",
+    models: {
+      "deepseek-v4-pro": {
+        id: "deepseek-v4-pro",
+        name: "DeepSeek V4 Pro",
+        cost: { input: 1.74, output: 3.84 },
+        limit: { context: 131072 },
+        structured_output: true,
+        release_date: "2025-12-01",
+      },
+      "nemotron-3-ultra-free": {
+        id: "nemotron-3-ultra-free",
+        name: "Nemotron 3 Ultra (free)",
+        cost: { input: 0, output: 0 },
+        limit: { context: 262144 },
+        structured_output: true,
+      },
+    },
+  },
+  "opencode-go": {
+    id: "opencode-go",
+    models: {
+      "glm-5.3": {
+        id: "glm-5.3",
+        name: "GLM-5.3",
+        cost: { input: 0.6, output: 2.2 },
+        limit: { context: 200000 },
+        structured_output: true,
+      },
+    },
+  },
+};
+
+const MINIMAX_CATALOG = {
+  minimax: {
+    id: "minimax",
+    models: {
+      "MiniMax-M2.7": {
+        id: "MiniMax-M2.7",
+        name: "MiniMax M2.7",
+        cost: { input: 0.3, output: 1.2 },
+        limit: { context: 204800 },
+        structured_output: true,
+      },
+    },
+  },
+};
+
 const OLLAMA_CLOUD_MODEL_LIST = {
   object: "list",
   data: [
@@ -633,19 +690,44 @@ describe("live provider model lists", () => {
       }).success,
     ).toBe(true);
     expect(result.models).toEqual([
-      // Known to the catalog: its row, not the live metadata.
+      // Known to the catalog: its row (dated, so it sorts before the dateless
+      // live-only rows), not the live metadata.
       {
         id: "openai/gpt-oss-20b",
         name: "OpenAI: gpt-oss-20b (catalog)",
         description: "131K context",
         tier: "paid",
+        releaseDate: "2025-08-05",
       },
-      // Live-only: name, zero price, and context from the list.
+      // Live-only: name, zero price, and context from the list; no release
+      // date, so the provider's own list order is preserved.
       {
         id: "z-ai/glm-5.2:free",
         name: "Z.AI: GLM 5.2 (free)",
         description: "203K context",
         tier: "free",
+      },
+      // Declared structured-output refusals on this pinned-downstream-route
+      // product: the catalog rows are served, not withheld.
+      {
+        id: "google/gemma-3-27b-it",
+        name: "Google: Gemma 3 27B",
+        description: "",
+        tier: "paid",
+      },
+      {
+        id: "mistralai/mistral-small",
+        name: "Mistral: Mistral Small",
+        description: "",
+        tier: "paid",
+      },
+      // Live-only without structured_outputs in supported_parameters: offered
+      // with the list's own metadata.
+      {
+        id: "meta-llama/llama-guard-4-12b",
+        name: "Meta: Llama Guard 4 12B",
+        description: "164K context",
+        tier: "paid",
       },
       // Live-only without a price: the context stays, the row says the price is unknown.
       {
@@ -717,25 +799,33 @@ describe("live provider model lists", () => {
     ]);
   });
 
-  it("keeps a catalog-withheld id withheld on the snapshot tier, whatever the provider's list says", async () => {
+  it("offers a declared structured-output refusal on the snapshot tier: OpenRouter routes are not withheld", async () => {
     // models.dev is out of reach and no cache exists, so the bundled snapshot is
-    // the catalog. Groq's list names a TTS model models.dev knows but withholds
-    // (audio output); the snapshot carries that id, so the row must not resurface.
+    // the catalog. OpenRouter's list names a model the snapshot marks as
+    // declining structured output; on this pinned-downstream-route product the
+    // declared refusal does not withhold the row, so the catalog row is served
+    // with its own tier.
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-    writeModelListCache("configuration-cfg-groq", [
-      { id: "canopylabs/orpheus-v1-english", tier: "unknown" },
-      { id: "llama-3.3-70b-versatile", tier: "unknown" },
+    writeModelListCache("openrouter", [
+      { id: "meta-llama/llama-guard-4-12b", tier: "unknown" },
+      { id: "meta-llama/llama-4-scout", tier: "unknown" },
     ]);
 
     const result = await discoverConfigurationCatalog({
-      configurationId: "cfg-groq",
-      productId: "groq",
+      configurationId: "cfg-openrouter-withheld",
+      productId: "openrouter",
     });
 
     expect(result.status).toBe("passed");
     if (result.status !== "passed") return;
     expect(result.source).toBe("provider-cache");
-    expect(result.models.map((model) => model.id)).toEqual(["llama-3.3-70b-versatile"]);
+    // Newest release first; the declared-refusal row leads with the catalog's
+    // own paid tier, proving it is the catalog row and not a live-only stub.
+    expect(result.models.map((model) => model.id)).toEqual([
+      "meta-llama/llama-guard-4-12b",
+      "meta-llama/llama-4-scout",
+    ]);
+    expect(result.models[0]?.tier).toBe("paid");
   });
 
   it("merges Ollama Cloud's public list: live-only ids show as name=id with an unknown tier", async () => {
@@ -750,9 +840,10 @@ describe("live provider model lists", () => {
     expect(result.status).toBe("passed");
     if (result.status !== "passed") return;
     expect(result.source).toBe("provider-live");
+    // No row carries a release date, so the provider's list order stands.
     expect(result.models).toEqual([
-      { id: "glm-5.2", name: "glm-5.2", description: LIVE_ONLY_MODEL_DESCRIPTION, tier: "unknown" },
       { id: "gpt-oss:20b", name: "GPT-OSS 20B", description: "131K context", tier: "unknown" },
+      { id: "glm-5.2", name: "glm-5.2", description: LIVE_ONLY_MODEL_DESCRIPTION, tier: "unknown" },
     ]);
   });
 
@@ -768,10 +859,12 @@ describe("live provider model lists", () => {
     expect(result.status).toBe("passed");
     if (result.status !== "passed") return;
     expect(result.source).toBe("cache");
+    // The dated row leads; the dateless rows follow in catalog order.
     expect(result.models.map((model) => model.id)).toEqual([
-      "anthropic/claude-3-haiku",
-      "mistralai/mistral-small",
       "openai/gpt-oss-20b",
+      "anthropic/claude-3-haiku",
+      "google/gemma-3-27b-it",
+      "mistralai/mistral-small",
     ]);
   });
 
@@ -803,9 +896,10 @@ describe("live provider model lists", () => {
     if (result.status !== "passed") return;
     expect(result.source).toBe("cache");
     expect(result.models.map((model) => model.id)).toEqual([
-      "anthropic/claude-3-haiku",
-      "mistralai/mistral-small",
       "openai/gpt-oss-20b",
+      "anthropic/claude-3-haiku",
+      "google/gemma-3-27b-it",
+      "mistralai/mistral-small",
     ]);
   });
 
@@ -823,8 +917,179 @@ describe("live provider model lists", () => {
     expect(result.status === "passed" && result.source).toBe("cache");
   });
 
-  it("does not request a list for a catalog-only product", async () => {
-    writeCache(MODELS_DEV_SAMPLE, fresh());
+  it("merges OpenCode Zen's key-bearing list over the models.dev catalog: live ids, catalog pricing", async () => {
+    // Zen's live `/models` list carries ids only — no names, prices, or limits —
+    // so the models.dev `opencode`/`opencode-go` sources dress every id they
+    // know. The configuration-keyed cache stands in for a successful
+    // key-bearing fetch, as in the Z.AI test above. A stealth route the catalog
+    // has never seen stays an honest live-only row.
+    writeCache(ZEN_CATALOG, fresh());
+    writeModelListCache("configuration-cfg-zen", [
+      { id: "nemotron-3-ultra-free", tier: "unknown" },
+      { id: "deepseek-v4-pro", tier: "unknown" },
+      { id: "hy3-preview", tier: "unknown" },
+    ]);
+    const spy = vi.spyOn(globalThis, "fetch");
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-zen",
+      productId: "opencode-zen",
+    });
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("provider-cache");
+    expect(result.cached).toBe(true);
+    expect(result.models).toEqual([
+      // Known to the catalog: its row (dated, so it leads), with the real tier.
+      {
+        id: "deepseek-v4-pro",
+        name: "DeepSeek V4 Pro",
+        description: "131K context",
+        tier: "paid",
+        releaseDate: "2025-12-01",
+      },
+      // Zero-cost per the catalog: earns the FREE tier the bare list never could.
+      {
+        id: "nemotron-3-ultra-free",
+        name: "Nemotron 3 Ultra (free)",
+        description: "262K context",
+        tier: "free",
+      },
+      // Uncatalogued stealth route: live-only row, honest about the unknown price.
+      {
+        id: "hy3-preview",
+        name: "hy3-preview",
+        description: LIVE_ONLY_MODEL_DESCRIPTION,
+        tier: "unknown",
+      },
+    ]);
+  });
+
+  it("degrades OpenCode Zen to the catalog when no live list can be fetched", async () => {
+    // No cached list and no stored configuration credential: the live fetch
+    // cannot happen. The models.dev union (`opencode` + `opencode-go`) fills
+    // the picker instead of a skip — the zai idiom.
+    writeCache(ZEN_CATALOG, fresh());
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("zen down"));
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-zen",
+      productId: "opencode-zen",
+    });
+
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("cache");
+    // The dated row leads; the dateless union rows follow in catalog order,
+    // proving the Go source contributes to the fallback.
+    expect(result.models.map((model) => model.id)).toEqual([
+      "deepseek-v4-pro",
+      "glm-5.3",
+      "nemotron-3-ultra-free",
+    ]);
+  });
+
+  it("DIFFGAZER_OFFLINE: serves OpenCode Zen from the catalog, never fetches", async () => {
+    process.env.DIFFGAZER_OFFLINE = "1";
+    writeCache(ZEN_CATALOG, fresh());
+    const spy = vi.spyOn(globalThis, "fetch");
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-zen",
+      productId: "opencode-zen",
+    });
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(result.status === "passed" && result.source).toBe("cache");
+  });
+
+  it("merges MiniMax's key-bearing list over the models.dev catalog: live ids, catalog pricing", async () => {
+    // The configuration-keyed cache stands in for a successful key-bearing
+    // `{endpoint}/models` fetch, as in the Z.AI test above. Ids are
+    // case-preserved (`MiniMax-M2.7`); a live-only id the catalog has never
+    // seen stays an honest live-only row.
+    writeCache(MINIMAX_CATALOG, fresh());
+    writeModelListCache("configuration-cfg-minimax", [
+      { id: "MiniMax-M2.7", tier: "unknown" },
+      { id: "MiniMax-M3", tier: "unknown" },
+    ]);
+    const spy = vi.spyOn(globalThis, "fetch");
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-minimax",
+      productId: "minimax",
+    });
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("provider-cache");
+    expect(result.models).toEqual([
+      // Known to the catalog: its row, with models.dev pricing → paid tier.
+      { id: "MiniMax-M2.7", name: "MiniMax M2.7", description: "205K context", tier: "paid" },
+      // Uncatalogued live id: live-only row, honest about the unknown price.
+      {
+        id: "MiniMax-M3",
+        name: "MiniMax-M3",
+        description: LIVE_ONLY_MODEL_DESCRIPTION,
+        tier: "unknown",
+      },
+    ]);
+  });
+
+  it("degrades MiniMax to the catalog when no live list can be fetched", async () => {
+    // No cached list and no stored configuration credential: the live fetch
+    // cannot happen. The models.dev rows fill the picker instead of a skip —
+    // the zai idiom. A `/models` 404 lands on this same path.
+    writeCache(MINIMAX_CATALOG, fresh());
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("minimax down"));
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-minimax",
+      productId: "minimax",
+    });
+
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("cache");
+    expect(result.models.map((model) => model.id)).toEqual(["MiniMax-M2.7"]);
+  });
+
+  it("merges Gemini's key-bearing list: live ids prune the catalog, live-only ids are excluded", async () => {
+    // The configuration-keyed cache holds what the OpenAI-compat list parses to
+    // after the `models/` prefix strip (see live-model-lists.test.ts). Gemini's
+    // compat list also names embeddings/tts/imagen routes the catalog has never
+    // seen; those live-only ids must not surface as "pricing unknown" rows.
+    writeCache(
+      {
+        google: {
+          id: "google",
+          models: {
+            "gemini-2.5-flash": {
+              id: "gemini-2.5-flash",
+              name: "Gemini 2.5 Flash",
+              cost: { input: 0.3, output: 2.5 },
+              limit: { context: 1048576 },
+              structured_output: true,
+            },
+            "gemini-2.5-pro": {
+              id: "gemini-2.5-pro",
+              name: "Gemini 2.5 Pro",
+              cost: { input: 1.25, output: 10 },
+              limit: { context: 1048576 },
+              structured_output: true,
+            },
+          },
+        },
+      },
+      fresh(),
+    );
+    writeModelListCache("configuration-cfg-gemini", [
+      { id: "gemini-2.5-flash", tier: "unknown" },
+      { id: "text-embedding-004", tier: "unknown" },
+    ]);
     const spy = vi.spyOn(globalThis, "fetch");
 
     const result = await discoverConfigurationCatalog({
@@ -833,7 +1098,91 @@ describe("live provider model lists", () => {
     });
 
     expect(spy).not.toHaveBeenCalled();
-    expect(result.status === "passed" && result.source).toBe("cache");
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("provider-cache");
+    // The pro row the live list no longer names is pruned; the embedding route
+    // the catalog never knew is excluded rather than offered.
+    expect(result.models).toEqual([
+      {
+        id: "gemini-2.5-flash",
+        name: "Gemini 2.5 Flash",
+        description: "1M context",
+        tier: "paid",
+      },
+    ]);
+  });
+
+  it("degrades Gemini to the catalog when no live list can be fetched", async () => {
+    writeCache(MODELS_DEV_SAMPLE, fresh());
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("gemini down"));
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-gemini",
+      productId: "gemini",
+    });
+
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("cache");
+    expect(result.models.length).toBeGreaterThan(0);
+  });
+});
+
+describe("newest-first model ordering", () => {
+  it("orders picker rows by release date descending, ties by id, dateless rows last in catalog order", async () => {
+    writeCache(
+      {
+        google: {
+          id: "google",
+          models: {
+            older: {
+              id: "older",
+              name: "Older",
+              structured_output: true,
+              release_date: "2025-01-01",
+            },
+            "tie-b": {
+              id: "tie-b",
+              name: "Tie B",
+              structured_output: true,
+              release_date: "2026-03-01",
+            },
+            "tie-a": {
+              id: "tie-a",
+              name: "Tie A",
+              structured_output: true,
+              release_date: "2026-03-01",
+            },
+            "z-dateless": { id: "z-dateless", name: "Z Dateless", structured_output: true },
+            "a-dateless": { id: "a-dateless", name: "A Dateless", structured_output: true },
+          },
+        },
+      },
+      fresh(),
+    );
+
+    const result = await getProviderModels("gemini");
+    expect(result.models.map((model) => model.id)).toEqual([
+      "tie-a",
+      "tie-b",
+      "older",
+      "a-dateless",
+      "z-dateless",
+    ]);
+    // The wire row carries the date it sorted on — and only when one exists.
+    expect(result.models[0]?.releaseDate).toBe("2026-03-01");
+    expect(result.models[3]).not.toHaveProperty("releaseDate");
+  });
+
+  it("serves the sample gemini catalog newest-first", async () => {
+    writeCache(MODELS_DEV_SAMPLE, fresh());
+    const result = await getProviderModels("gemini");
+    // gemini-3-pro-preview (2025-11-18) is newer than gemini-2.5-flash (2025-03-20).
+    expect(result.models.map((model) => model.id)).toEqual([
+      "gemini-3-pro-preview",
+      "gemini-2.5-flash",
+    ]);
   });
 });
 
@@ -880,42 +1229,6 @@ describe("configuration-bound catalog observations", () => {
       expect(snapshot.source).toBe("snapshot");
       expect(snapshot.cached).toBe(false);
     }
-  });
-
-  it("returns skipped with empty models when catalog discovery does not apply to the product tuple", async () => {
-    const result = await discoverConfigurationCatalog({
-      configurationId: "cfg-ollama-loopback",
-      productId: "ollama",
-    });
-    expect(result).toMatchObject({
-      status: "skipped",
-      configurationId: "cfg-ollama-loopback",
-      productId: "ollama",
-      models: [],
-      reason: "Catalog observations are unavailable for this configuration product.",
-    });
-    expect(result.status).not.toBe("passed");
-  });
-
-  it("keeps skipped distinct from passed catalog observations", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
-    const passed = await discoverConfigurationCatalog({
-      configurationId: "cfg-gemini",
-      productId: "gemini",
-    });
-    const skipped = await discoverConfigurationCatalog({
-      configurationId: "cfg-codex",
-      productId: "codex-cli",
-    });
-
-    expect(passed.status).toBe("passed");
-    if (passed.status === "passed") expect(passed.models.length).toBeGreaterThan(0);
-    expect(skipped.status).toBe("skipped");
-    if (skipped.status === "skipped") {
-      expect(skipped.models).toEqual([]);
-      expect(skipped.reason).toBeTruthy();
-    }
-    expect(skipped.status).not.toBe(passed.status);
   });
 
   it("returns skipped when overlay product discovery yields no catalog models", async () => {

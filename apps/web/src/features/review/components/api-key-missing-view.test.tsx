@@ -1,10 +1,6 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import { CONFIGURATION_ERROR_COPY, CONFIGURE_PROVIDER_LABEL } from "@diffgazer/core/review";
-import {
-  CODEX_CLI_CONFIGURATION,
-  LOCAL_OPENAI_CONFIGURATION,
-  makeReadiness,
-} from "@diffgazer/core/testing/provider-fixtures";
+import { GEMINI_CONFIGURATION, makeReadiness } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -159,25 +155,16 @@ describe("ApiKeyMissingView", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it("renders transport-neutral local unreachable readiness without API-key copy", () => {
-    const readiness = makeReadiness("local-conformance-failed", "local-openai");
+  // A stored configuration whose product this build no longer supports decodes
+  // to unsupported readiness; the view explains it without inventing key copy.
+  it("renders unsupported readiness without API-key copy", () => {
+    const readiness = makeReadiness("unsupported", "gemini");
     renderView({
       readiness,
-      productLabel: LOCAL_OPENAI_CONFIGURATION.productId,
+      productLabel: GEMINI_CONFIGURATION.productId,
     });
 
-    expect(screen.getByText(/Configuration Not Ready \(local-openai\)/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL })).toBeInTheDocument();
-    expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
-  });
-
-  it("renders CLI unsupported readiness without API-key copy", () => {
-    const readiness = makeReadiness("unsupported", "codex-cli");
-    renderView({
-      readiness,
-      productLabel: CODEX_CLI_CONFIGURATION.productId,
-    });
-
+    expect(screen.getByText(/Configuration Not Ready \(gemini\)/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL })).toBeInTheDocument();
     expect(screen.getByText(/not supported in the current environment/i)).toBeInTheDocument();
     expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();

@@ -80,22 +80,6 @@ function hostedRecord(
   };
 }
 
-function localHttpBearerRecord(): SupportedProviderConfigurationRecord {
-  return hostedRecord({
-    configurationId: "ollama-local",
-    productId: "ollama",
-    transportFamily: "local-http",
-    input: {
-      transportFamily: "local-http",
-      productId: "ollama",
-      endpoint: "http://127.0.0.1:11434",
-      authentication: "optional-local-bearer",
-    },
-    selectedModelId: "llama3.2",
-    acknowledgement: { noticeId: "ollama-loopback", noticeVersion: 1, acceptedAt: CHECKED_AT },
-  });
-}
-
 function evidenceKeyFor(record = hostedRecord()): EvidenceKey {
   return buildExpectedEvidenceKey({
     record,
@@ -164,19 +148,19 @@ describe("buildExpectedEvidenceKey", () => {
       concurrency: 1,
       perReview: 5,
     };
-    const catalogLimit = CATALOG_SNAPSHOT.cerebras?.models["gpt-oss-120b"]?.limit;
+    const catalogLimit = CATALOG_SNAPSHOT.zai?.models["glm-4.6"]?.limit;
     if (catalogLimit?.context === undefined || catalogLimit.output === undefined) {
-      throw new Error("Bundled snapshot is missing cerebras/gpt-oss-120b limits");
+      throw new Error("Bundled snapshot is missing zai/glm-4.6 limits");
     }
     const record = hostedRecord({
-      productId: "cerebras",
+      productId: "zai",
       transportFamily: "hosted-api",
       input: {
         transportFamily: "hosted-api",
-        productId: "cerebras",
-        endpoint: "https://api.cerebras.ai/v1",
+        productId: "zai",
+        endpoint: "https://api.z.ai/api/paas/v4",
       },
-      selectedModelId: "gpt-oss-120b",
+      selectedModelId: "glm-4.6",
       budget: legacyBudget,
     });
     const key = buildExpectedEvidenceKey({
@@ -348,32 +332,27 @@ describe("authorizeReviewExecution", () => {
     result.value.release();
   });
 
-  it("refuses a local endpoint whose bearer token no longer resolves", async () => {
-    const record = localHttpBearerRecord();
+  it("refuses a configuration whose credential no longer resolves", async () => {
+    const record = hostedRecord();
     const binding: SecretBinding = {
       configurationId: record.configurationId,
       revision: record.revision,
-      kind: "optional-local-bearer",
-      storage: "keyring-reference",
-      reference: `${record.configurationId}/${record.revision}/credential`,
+      kind: "keyring-reference",
+      keyId: `${record.configurationId}/${record.revision}/credential`,
       status: "active",
     };
-    const runtime: RuntimeIdentity = { identity: "ollama", version: "0.6.0" };
     const evidenceKey = buildExpectedEvidenceKey({
       record,
       structuredOutputSchemaSha256: SCHEMA_SHA256,
-      runtime,
+      runtime: RUNTIME,
       credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
     });
-    const dependencies = createDependencies(
-      {
-        configuration: { status: "supported", record },
-        binding,
-        evidence: passedEvidence(evidenceKey),
-        credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-      },
-      { runtimeIdentity: runtime },
-    );
+    const dependencies = createDependencies({
+      configuration: { status: "supported", record },
+      binding,
+      evidence: passedEvidence(evidenceKey),
+      credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
+    });
 
     const result = await authorizeReviewExecution(record.configurationId, dependencies);
 
@@ -685,35 +664,5 @@ describe("admission spend and model gates", () => {
     if (result.ok) return;
     expect(result.error.code).toBe("readiness-not-ready");
     expect(result.error.safeMessage).toContain("no selected model");
-  });
-
-  it("denies admission when the runtime identity does not belong to the configured product", async () => {
-    const record = localHttpBearerRecord();
-    const binding: SecretBinding = {
-      configurationId: record.configurationId,
-      revision: record.revision,
-      kind: "optional-local-bearer",
-      storage: "keyring-reference",
-      reference: `${record.configurationId}/${record.revision}/credential`,
-      status: "active",
-    };
-    // An Ollama endpoint must be probed as Ollama; the server runtime identity
-    // is outside that closed vocabulary, so the evidence-key projection cannot
-    // be built for this record.
-    const dependencies = createDependencies({
-      configuration: { status: "supported", record },
-      binding,
-      evidence: null,
-      credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-    });
-
-    const result = await authorizeReviewExecution(record.configurationId, dependencies);
-
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error.code).toBe("readiness-not-ready");
-    expect(result.error.safeMessage).toBe(
-      "Configuration does not describe an admissible execution",
-    );
   });
 });

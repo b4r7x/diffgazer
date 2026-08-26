@@ -1,4 +1,4 @@
-import { PRODUCT_REGISTRY, resolveCredentialEnvironmentVariable } from "@diffgazer/core/providers";
+import { CREDENTIAL_ENV_VARS, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { HOSTED_API_PRODUCT_IDS, type HostedApiProductId } from "@diffgazer/core/schemas/config";
 import type { EvidenceKey, TerminalOutcome } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
@@ -46,7 +46,6 @@ export type HostedMockConformanceCase = Readonly<{
   expectedAttemptCount?: number;
   /** Findings the completed case must return; a non-completed outcome must return none. */
   expectedFindingsCount?: number;
-  expectedUsageAvailability?: string;
   /** Endpoint the case requires the adapter to call; asserts product routing. */
   expectedEndpoint?: string;
 }>;
@@ -90,14 +89,16 @@ const LONG_DIFF_PROMPT = `Review this diff:\n${"@@ -1,1 +1,1 @@\n-old\n+new\n".r
 
 /**
  * The product's suggested model id, or null when it publishes none: a
- * `discovered-exact` product rotates its routes, so its live `/models` list is
- * the only admissible identity source and a pinned guess would name a dead route.
+ * `discovered-exact` product rotates its routes, so its ids come from discovery
+ * and a pinned guess would name a dead route.
  */
 function suggestedModelId(productId: HostedApiProductId): string | null {
   const policy = PRODUCT_REGISTRY[productId].modelPolicy;
   if ("suggestedModelId" in policy && policy.suggestedModelId) {
     return policy.suggestedModelId;
   }
+  // OpenRouter pins downstream provider/model routes instead of suggesting one.
+  if (productId === "openrouter") return "openai/gpt-4.1-mini";
   return null;
 }
 
@@ -252,8 +253,6 @@ export async function runHostedMockConformanceCase(
     findingsAsExpected &&
     (testCase.expectedAttemptCount === undefined ||
       result.receipt.attemptCount === testCase.expectedAttemptCount) &&
-    (testCase.expectedUsageAvailability === undefined ||
-      result.receipt.usageAvailability === testCase.expectedUsageAvailability) &&
     (testCase.expectedEndpoint === undefined ||
       requestedEndpoint === new URL(testCase.expectedEndpoint).origin);
 
@@ -296,7 +295,7 @@ export const HOSTED_REQ_084_CASES: readonly HostedMockConformanceCase[] = [
   {
     id: "REQ-084:invalid-credential",
     requirement: "REQ-084",
-    productId: "groq",
+    productId: "openrouter",
     fetch: (async () =>
       mockResponse({ error: "invalid_api_key" }, { status: 401 })) as typeof fetch,
     expectedOutcome: "transport-failed",
@@ -304,7 +303,7 @@ export const HOSTED_REQ_084_CASES: readonly HostedMockConformanceCase[] = [
   {
     id: "REQ-084:missing-model",
     requirement: "REQ-084",
-    productId: "groq",
+    productId: "openrouter",
     fetch: (async () =>
       mockResponse({ error: "model_not_found" }, { status: 404 })) as typeof fetch,
     expectedOutcome: "transport-failed",
@@ -312,14 +311,14 @@ export const HOSTED_REQ_084_CASES: readonly HostedMockConformanceCase[] = [
   {
     id: "REQ-084:rate-limit",
     requirement: "REQ-084",
-    productId: "groq",
+    productId: "openrouter",
     fetch: (async () => mockResponse({ error: "rate limited" }, { status: 429 })) as typeof fetch,
     expectedOutcome: "transport-failed",
   },
   {
     id: "REQ-084:malformed-response",
     requirement: "REQ-084",
-    productId: "groq",
+    productId: "openrouter",
     fetch: (async () =>
       mockResponse({
         choices: [{ message: { content: "not-json" }, finish_reason: "stop" }],
@@ -330,7 +329,7 @@ export const HOSTED_REQ_084_CASES: readonly HostedMockConformanceCase[] = [
   {
     id: "REQ-084:redirect",
     requirement: "REQ-084",
-    productId: "groq",
+    productId: "openrouter",
     fetch: (async () => {
       throw new TypeError("redirect mode is error");
     }) as typeof fetch,
@@ -339,7 +338,7 @@ export const HOSTED_REQ_084_CASES: readonly HostedMockConformanceCase[] = [
   {
     id: "REQ-084:oversized-response",
     requirement: "REQ-084",
-    productId: "groq",
+    productId: "openrouter",
     limitsPatch: { maxResponseBytes: 256 },
     fetch: (async () =>
       mockResponse(openAiBody({ issues: [], filler: "x".repeat(2_048) }))) as typeof fetch,
@@ -348,15 +347,15 @@ export const HOSTED_REQ_084_CASES: readonly HostedMockConformanceCase[] = [
   {
     id: "REQ-084:cancellation",
     requirement: "REQ-084",
-    productId: "groq",
+    productId: "openrouter",
     aborted: true,
-    fetch: successFetch("groq", { issues: [] }),
+    fetch: successFetch("openrouter", { issues: [] }),
     expectedOutcome: "cancelled",
   },
   {
     id: "REQ-084:provider-failure",
     requirement: "REQ-084",
-    productId: "groq",
+    productId: "openrouter",
     fetch: (async () =>
       mockResponse({ error: "upstream unavailable" }, { status: 503 })) as typeof fetch,
     expectedOutcome: "transport-failed",
@@ -364,7 +363,7 @@ export const HOSTED_REQ_084_CASES: readonly HostedMockConformanceCase[] = [
   {
     id: "REQ-084:valid-http-json-without-review-schema",
     requirement: "REQ-084",
-    productId: "groq",
+    productId: "openrouter",
     fetch: (async () => mockResponse({ ok: true, data: { status: "healthy" } })) as typeof fetch,
     expectedOutcome: "schema-failed",
   },
@@ -395,25 +394,6 @@ export const HOSTED_REQ_085_CASES: readonly HostedMockConformanceCase[] = [
     id: "REQ-085:zai-malformed-output-retry-limit",
     requirement: "REQ-085",
     productId: "zai",
-    fetch: malformedRetryFetch(),
-    expectedOutcome: "schema-failed",
-    expectedAttemptCount: 2,
-  },
-  {
-    id: "REQ-085:deepseek-required-usage",
-    requirement: "REQ-085",
-    productId: "deepseek",
-    fetch: (async () =>
-      mockResponse({
-        choices: [{ message: { content: JSON.stringify({ issues: [] }) }, finish_reason: "stop" }],
-      })) as typeof fetch,
-    expectedOutcome: "transport-failed",
-    expectedUsageAvailability: "required-missing",
-  },
-  {
-    id: "REQ-085:deepseek-malformed-output-retry-limit",
-    requirement: "REQ-085",
-    productId: "deepseek",
     fetch: malformedRetryFetch(),
     expectedOutcome: "schema-failed",
     expectedAttemptCount: 2,
@@ -456,7 +436,7 @@ type DepthBehaviour = Readonly<{
 const DEPTH_BEHAVIOURS: readonly DepthBehaviour[] = [
   {
     behaviour: "long-diff",
-    fetch: () => successFetch("cerebras", { issues: [] }),
+    fetch: () => successFetch("openrouter", { issues: [] }),
     expectedOutcome: "completed",
     expectedAttemptCount: 1,
     expectedFindingsCount: 0,
@@ -464,7 +444,7 @@ const DEPTH_BEHAVIOURS: readonly DepthBehaviour[] = [
   },
   {
     behaviour: "nullable-fields",
-    fetch: () => successFetch("cerebras", nullableFieldsReview),
+    fetch: () => successFetch("openrouter", nullableFieldsReview),
     expectedOutcome: "completed",
     expectedAttemptCount: 1,
     expectedFindingsCount: nullableFieldsReview.issues.length,
@@ -495,21 +475,22 @@ const DEPTH_BEHAVIOURS: readonly DepthBehaviour[] = [
     expectedAttemptCount: 1,
   },
   {
-    // Cerebras's profile forbids the malformed-output retry, so a repeated
-    // malformed body must still settle after exactly one attempt.
+    // OpenRouter routes without structured_outputs degrade to JSON mode with
+    // local validation, so the profile allows one malformed-output retry: a
+    // repeated malformed body settles after exactly two attempts, never more.
     behaviour: "bounded-retry",
     fetch: () => malformedRetryFetch(),
     expectedOutcome: "schema-failed",
-    expectedAttemptCount: 1,
+    expectedAttemptCount: 2,
   },
 ];
 
-/** Depth matrix for a strict-schema, no-retry hosted product (REQ-086). */
+/** Depth matrix for a strict-schema hosted product with a bounded retry (REQ-086). */
 export const HOSTED_REQ_086_CASES: readonly HostedMockConformanceCase[] = DEPTH_BEHAVIOURS.map(
   (behaviour) => ({
-    id: `REQ-086:cerebras-${behaviour.behaviour}`,
+    id: `REQ-086:openrouter-${behaviour.behaviour}`,
     requirement: "REQ-086" as const,
-    productId: "cerebras" as const,
+    productId: "openrouter" as const,
     ...(behaviour.prompt === undefined ? {} : { prompt: behaviour.prompt }),
     fetch: behaviour.fetch(),
     expectedOutcome: behaviour.expectedOutcome,
@@ -517,14 +498,14 @@ export const HOSTED_REQ_086_CASES: readonly HostedMockConformanceCase[] = DEPTH_
     ...(behaviour.expectedFindingsCount === undefined
       ? {}
       : { expectedFindingsCount: behaviour.expectedFindingsCount }),
-    expectedEndpoint: defaultEndpoint("cerebras"),
+    expectedEndpoint: defaultEndpoint("openrouter"),
   }),
 );
 
 export const HOSTED_LIVE_PROBE_DESCRIPTORS: readonly HostedLiveProbeDescriptor[] =
   HOSTED_API_PRODUCT_IDS.map((productId) => ({
     productId,
-    credentialEnv: resolveCredentialEnvironmentVariable(productId),
+    credentialEnv: CREDENTIAL_ENV_VARS[productId],
     modelId: suggestedModelId(productId),
     normalizedEndpoint: defaultEndpoint(productId),
   }));

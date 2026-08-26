@@ -3,6 +3,7 @@ import { err, ok, type Result } from "@diffgazer/core/result";
 import type { AgentStreamEvent, LensStat, StepEvent } from "@diffgazer/core/schemas/events";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE } from "../../../shared/lib/ai/diagnostics.js";
 import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
 import { runLensAnalysis, runSynthesisAnalysis } from "./analysis.js";
 import type { ParsedDiff } from "./diff/types.js";
@@ -14,20 +15,39 @@ import {
 import { getLenses } from "./lenses.js";
 import type {
   LensSelection,
+  OrchestrationError,
   OrchestrationOptions,
   OrchestrationOutcome,
   ReviewError,
 } from "./types.js";
 
 /**
- * The failure class that says the admitted tuple cannot produce structured
- * review output at all: the schema bridge rejecting the parsed response, or an
- * adapter dispatch whose own receipt reported `schema-failed`. Every other
- * failure (transport, timeout, budget, cancellation) is about this attempt.
+ * The diagnostic codes a `schema-failed` dispatch receipt surfaces on its
+ * stream error: the generic outcome code, plus the adapter's own cause-naming
+ * diagnostics from the hosted execute path (malformed content, a truncated
+ * answer, a completion budget burned on reasoning).
+ */
+const STRUCTURED_OUTPUT_DIAGNOSTIC_CODES = new Set([
+  "schema-failed",
+  "malformed-review-output",
+  MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE,
+  "output-truncated",
+  "reasoning-budget-consumed",
+]);
+
+/**
+ * The failure class that counts toward the structured-output verdict: the
+ * schema bridge rejecting the parsed response, or an adapter dispatch whose own
+ * receipt reported `schema-failed`. Every other failure (transport, timeout,
+ * budget, cancellation) is about this attempt, not the tuple.
  */
 function isStructuredOutputFailure(error: AIError): boolean {
   if (error.code === "PARSE_ERROR") return true;
-  return error.code === "STREAM_ERROR" && error.diagnostic?.code === "schema-failed";
+  return (
+    error.code === "STREAM_ERROR" &&
+    error.diagnostic !== undefined &&
+    STRUCTURED_OUTPUT_DIAGNOSTIC_CODES.has(error.diagnostic.code)
+  );
 }
 
 /** A dispatch the per-review budget ledger refused to settle. */
@@ -114,9 +134,9 @@ export async function orchestrateReview(
   selection: LensSelection,
   onEvent: (event: AgentStreamEvent | StepEvent) => void,
   orchestrationOptions: OrchestrationOptions,
-): Promise<Result<OrchestrationOutcome, ReviewError>> {
+): Promise<Result<OrchestrationOutcome, OrchestrationError>> {
   if (diff.files.length === 0) {
-    return err({ code: "NO_DIFF", message: "No files changed" });
+    return err({ code: "NO_DIFF", message: "No files changed", lensStats: [] });
   }
 
   const { filter } = selection;
@@ -128,6 +148,9 @@ export async function orchestrateReview(
     type: "orchestrator_start",
     agents: lenses.map((lens) => AGENT_METADATA[LENS_TO_AGENT[lens.id]]),
     concurrency,
+    ...(orchestrationOptions.requestedConcurrency !== undefined
+      ? { requestedConcurrency: orchestrationOptions.requestedConcurrency }
+      : {}),
     timestamp: new Date().toISOString(),
   });
 
@@ -146,21 +169,26 @@ export async function orchestrateReview(
     return { lens, agentId };
   });
 
-  // The first structured-output failure, before any lens has produced findings,
-  // proves the tuple itself cannot run reviews. Stop launching the remaining
-  // lenses and cancel the ones in flight instead of paying for every dispatch.
-  const structuredOutputAbort = new AbortController();
-  const signals = [orchestrationOptions.signal, structuredOutputAbort.signal].filter(
-    (candidate): candidate is AbortSignal => candidate !== undefined,
-  );
-  const signal = AbortSignal.any(signals);
+  // One lens schema failure proves nothing about the tuple: free-pool routes
+  // flake, and the same model class still delivers real findings on a partial
+  // run. Schema failures stay per-lens; the end-of-run fold decides
+  // whether every lens schema-failed (the review-level structured-output
+  // verdict) or the run is partial. The one bounded cost is that a truly
+  // incapable tuple spends every lens's dispatches once — capped by the
+  // budget ledger and review clock — before the conformance memo blocks it.
+  const signal = orchestrationOptions.signal;
   // The first dispatch to exhaust the review budget has spent the envelope the
   // remaining lenses would draw on: dispatching them costs money for output the
-  // ledger refuses. Stop launching new ones and let those in flight settle.
+  // ledger refuses. Stop launching new ones and abort those in flight — a dead
+  // review must not keep billing. The review clock joins for the same reason.
   const budgetAbort = new AbortController();
-  const dispatchSignal = AbortSignal.any([signal, budgetAbort.signal]);
+  const reviewClock = orchestrationOptions.reviewClock;
+  const dispatchSignal = AbortSignal.any([
+    ...(signal ? [signal] : []),
+    budgetAbort.signal,
+    ...(reviewClock ? [reviewClock.signal] : []),
+  ]);
   let anyLensSucceeded = false;
-  let structuredOutputError: ReviewError | null = null;
 
   const settledResults = await runWithConcurrency(
     tasks,
@@ -174,14 +202,11 @@ export async function orchestrateReview(
           allChangedFilePaths: diff.files.map((file) => file.filePath),
           onEvent,
           projectContext: orchestrationOptions.projectContext,
-          signal,
+          signal: dispatchSignal,
           severityFilter: filter,
         });
         if (result.ok) {
           anyLensSucceeded = true;
-        } else if (!anyLensSucceeded && isStructuredOutputFailure(result.error)) {
-          structuredOutputError ??= { code: result.error.code, message: result.error.message };
-          structuredOutputAbort.abort();
         } else if (isBudgetExhausted(result.error)) {
           budgetAbort.abort();
         }
@@ -202,13 +227,18 @@ export async function orchestrateReview(
   const allIssues: ReviewIssue[] = [];
   const lensStats: LensStat[] = [];
   let failedLensCount = 0;
+  let schemaFailedLensCount = 0;
   let lastError: ReviewError | null = null;
+  let firstStructuredOutputError: ReviewError | null = null;
+  let lastNonSchemaError: ReviewError | null = null;
   let droppedIncompleteProviderIssues = 0;
   let droppedOverLensCap = 0;
-  // The budget abort and a user cancellation reject an undispatched lens with
-  // the same synthetic reason, so only the controller that fired tells them
-  // apart — and a lens skipped for budget must not report a cancellation.
-  const skippedForBudget = budgetAbort.signal.aborted && !signal.aborted;
+  // Budget death and a user cancellation abort a lens the same way, so only the
+  // controller that fired tells them apart — and a lens stopped for budget,
+  // whether never dispatched or aborted in flight, must not report a
+  // cancellation the user never asked for.
+  const stoppedForBudget =
+    (budgetAbort.signal.aborted || reviewClock?.expired() === true) && signal?.aborted !== true;
 
   settledResults.forEach((settled, i) => {
     const lens = lenses[i];
@@ -218,13 +248,17 @@ export async function orchestrateReview(
       // A rejected task is either an abort (synthetic "Aborted" fill or a signal
       // abort) or an unexpected internal throw — never a classified network
       // failure, which travels the `result.ok === false` branch below.
-      const aborted = isAbortRejection(settled.reason, signal);
-      const notDispatched = settled.reason === UNDISPATCHED && skippedForBudget;
-      const abortCode = notDispatched ? "BUDGET_EXHAUSTED" : "CANCELLED";
+      const aborted = isAbortRejection(settled.reason, dispatchSignal);
+      const notDispatched = settled.reason === UNDISPATCHED && stoppedForBudget;
+      const budgetCollateral = aborted && stoppedForBudget;
+      const abortCode = budgetCollateral ? "BUDGET_EXHAUSTED" : "CANCELLED";
       const errorCode = aborted ? abortCode : "INTERNAL_ERROR";
-      const errorMsg = notDispatched
-        ? "Not dispatched — the review budget was exhausted."
-        : getErrorMessage(settled.reason);
+      let errorMsg = getErrorMessage(settled.reason);
+      if (notDispatched) {
+        errorMsg = "Not dispatched — the review budget was exhausted.";
+      } else if (budgetCollateral) {
+        errorMsg = "Cancelled — the review budget was exhausted.";
+      }
       if (notDispatched) {
         // The lens never reached `runLensAnalysis`, the only other emitter of a
         // terminal agent event, so without this its board row stays queued.
@@ -236,6 +270,7 @@ export async function orchestrateReview(
         });
       }
       lastError = { code: errorCode, message: errorMsg };
+      lastNonSchemaError = lastError;
       lensStats.push({
         lensId: lens.id,
         issueCount: 0,
@@ -249,13 +284,28 @@ export async function orchestrateReview(
 
     const result = settled.value;
     if (!result.ok) {
-      lastError = result.error;
+      // A dispatch whose receipt settled `cancelled` while the budget was dying
+      // was aborted as collateral: the receipt names the mechanism, the stats
+      // name the cause.
+      const budgetCollateral = stoppedForBudget && result.error.diagnostic?.code === "cancelled";
+      const errorCode = budgetCollateral ? "BUDGET_EXHAUSTED" : result.error.code;
+      const errorMessage = budgetCollateral
+        ? "Cancelled — the review budget was exhausted."
+        : result.error.message;
+      lastError = { code: errorCode, message: errorMessage };
+      if (!budgetCollateral && isStructuredOutputFailure(result.error)) {
+        schemaFailedLensCount += 1;
+        firstStructuredOutputError ??= lastError;
+      } else {
+        lastNonSchemaError = lastError;
+      }
       lensStats.push({
         lensId: lens.id,
         issueCount: 0,
         status: "failed",
-        errorCode: result.error.code,
-        errorMessage: result.error.message,
+        errorCode,
+        errorMessage,
+        dispatches: result.error.dispatches,
       });
       failedLensCount += 1;
       return;
@@ -274,14 +324,15 @@ export async function orchestrateReview(
       status: "success",
       errorCode: result.value.batchError?.code,
       errorMessage: result.value.batchError?.message,
+      dispatches: result.value.dispatches,
     });
   });
 
   // A batched review's per-lens calls never saw the whole diff at once, so one
   // synthesis pass reads the digest of everything they found and hunts for
   // cross-file problems. It is skipped when nothing decoded (the review is
-  // failing anyway) and when dispatching stopped (cancelled, budget spent,
-  // structured output disproven). Its failure is a failed lens, never a failed
+  // failing anyway) and when dispatching stopped (cancelled or budget
+  // spent). Its failure is a failed lens, never a failed
   // review: it stays out of `failedLensCount` and `lastError`, because the
   // per-batch findings are already paid for and cross-file coverage only adds.
   const batchCount = orchestrationOptions.batches?.length ?? 1;
@@ -302,6 +353,7 @@ export async function orchestrateReview(
         lensId: "synthesis",
         issueCount: filterIssuesByMinSeverity(synthesisResult.value.issues, filter).length,
         status: "success",
+        dispatches: synthesisResult.value.dispatches,
       });
     } else {
       lensStats.push({
@@ -310,6 +362,7 @@ export async function orchestrateReview(
         status: "failed",
         errorCode: synthesisResult.error.code,
         errorMessage: synthesisResult.error.message,
+        dispatches: synthesisResult.error.dispatches,
       });
     }
   }
@@ -333,18 +386,21 @@ export async function orchestrateReview(
     timestamp: new Date().toISOString(),
   });
 
-  // A structured-output failure is decisive only while nothing has decoded. A
-  // lens that came back with findings — even one already in flight when the
-  // abort fired — disproves the tuple's incapacity, so the review reports its
-  // findings and the aborted lenses as per-lens failures instead.
-  if (structuredOutputError !== null && !anyLensSucceeded) {
-    return err(structuredOutputError);
-  }
-
   const allLensesFailed = failedLensCount === lenses.length && lenses.length > 0;
 
-  if (allLensesFailed && lastError !== null) {
-    return err(lastError);
+  // Only a unanimous verdict indicts the tuple: every lens ran and every one
+  // schema-failed. A mixed all-failed run (some 429s, one schema flake) is a
+  // transport story, not a structured-output one, so the non-schema error
+  // names it and the failure never reads as model incapacity.
+  if (allLensesFailed) {
+    if (schemaFailedLensCount === lenses.length && firstStructuredOutputError !== null) {
+      const { code, message } = firstStructuredOutputError;
+      return err({ code, message, allLensesSchemaFailed: true, lensStats });
+    }
+    if (lastError !== null) {
+      const { code, message } = lastNonSchemaError ?? lastError;
+      return err({ code, message, lensStats });
+    }
   }
 
   return ok({

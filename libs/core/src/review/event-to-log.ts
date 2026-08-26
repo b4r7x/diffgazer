@@ -33,6 +33,7 @@ export function getReviewEventLogSource(event: AgentStreamEvent | StepEvent): st
     case "agent_thinking":
     case "agent_progress":
     case "agent_error":
+    case "file_progress":
     case "issue_found":
     case "agent_complete":
       return getAgent(event.agent).name;
@@ -93,14 +94,19 @@ export function convertReviewEventToLogEntry(
         message: `Review started: ${pluralize(event.filesTotal, "file")} to analyze`,
       };
 
-    case "orchestrator_start":
+    case "orchestrator_start": {
+      const clampNote =
+        event.requestedConcurrency !== undefined && event.requestedConcurrency > event.concurrency
+          ? ` — provider limits parallel requests; ${event.requestedConcurrency} requested`
+          : "";
       return {
         id,
         timestamp,
         tag: "ORCH",
         tagType: "system",
-        message: `Orchestrator started (${pluralize(event.agents.length, "agent")}, concurrency ${event.concurrency})`,
+        message: `Orchestrator started (${pluralize(event.agents.length, "agent")}, concurrency ${event.concurrency}${clampNote})`,
       };
+    }
 
     case "agent_queued":
       return {

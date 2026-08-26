@@ -33,6 +33,8 @@ export interface CatalogModelObservation {
   readonly sourceProviderId: string;
   /** models.dev `structured_output`; absent when upstream states nothing. */
   readonly structuredOutput?: boolean;
+  /** models.dev `release_date` (YYYY-MM-DD); absent when upstream states none. */
+  readonly releaseDate?: string;
   readonly billing: ModelBilling;
   readonly contextTokens?: number;
   readonly outputTokens?: number;
@@ -53,8 +55,9 @@ function usableTokenLimit(value: number | undefined): number | undefined {
 }
 
 /**
- * Audio/image/video-only models can never emit a review object, so they are not
- * observations at all — the same cut the snapshot trim makes offline.
+ * A model whose output modalities cannot carry a review object — audio/image/
+ * video-only, or multi-modal without a structured-output claim — is not an
+ * observation at all: the same cut the snapshot trim makes offline.
  */
 function toModelObservation(
   sourceProviderId: string,
@@ -73,6 +76,7 @@ function toModelObservation(
     modelName: modelName.data,
     sourceProviderId,
     ...(structuredOutput === undefined ? {} : { structuredOutput }),
+    ...(model.release_date === undefined ? {} : { releaseDate: model.release_date }),
     billing: getModelBilling(model),
     ...(contextTokens === undefined ? {} : { contextTokens }),
     ...(outputTokens === undefined ? {} : { outputTokens }),
@@ -82,11 +86,12 @@ function toModelObservation(
 /**
  * The picker contract: admitted by the product's model policy, and not
  * published as unable to run the product's structured-output mode. Only a
- * strict-json-schema product hides a model whose catalog row says
- * `structured_output: false`; json-object products validate locally, and a
- * catalog that states nothing hides nothing. Every table that claims to
- * describe the offered set must apply this one predicate — OpenRouter's
- * `openrouter/free` router is a routing selector its policy refuses to pin.
+ * product for which `withholdsDeclaredStructuredOutputRefusal` holds hides a
+ * model whose catalog row says `structured_output: false`; json-object
+ * products validate locally, and a catalog that states nothing hides nothing.
+ * Every table that claims to describe the offered set must apply this one
+ * predicate — OpenRouter's `openrouter/free` router is a routing selector its
+ * policy refuses to pin.
  */
 export function isOfferableObservation(
   productId: RunnableProductId,
@@ -94,11 +99,26 @@ export function isOfferableObservation(
 ): boolean {
   if (
     observation.structuredOutput === false &&
-    PRODUCT_REGISTRY[productId].admission.structuredOutput === "strict-json-schema"
+    withholdsDeclaredStructuredOutputRefusal(productId)
   ) {
     return false;
   }
   return isModelIdAllowedForProduct(productId, observation.modelId);
+}
+
+/**
+ * A declared structured-output refusal withholds a model only where the wire
+ * hard-requires provider-side enforcement. On a pinned-downstream-route
+ * aggregator the gateway accepts every pinned route and silently drops an
+ * unsupported response_format (probed live 2026-08-26: json_schema strict on
+ * declared-false OpenRouter routes → HTTP 200); local schema validation and
+ * the structured-output verify check remain the quality gate there.
+ */
+export function withholdsDeclaredStructuredOutputRefusal(productId: RunnableProductId): boolean {
+  return (
+    PRODUCT_REGISTRY[productId].admission.structuredOutput === "strict-json-schema" &&
+    PRODUCT_REGISTRY[productId].modelPolicy.kind !== "pinned-downstream-route"
+  );
 }
 
 function collectModelObservations(
@@ -106,6 +126,9 @@ function collectModelObservations(
   sourceIds: readonly string[],
 ): CatalogModelObservation[] {
   const models: CatalogModelObservation[] = [];
+  // First source wins when overlay sources publish the same model id, so the
+  // overlay's source order decides which price an overlapping id carries.
+  const observedIds = new Set<string>();
 
   for (const sourceProviderId of sourceIds) {
     const provider = catalog[sourceProviderId];
@@ -114,9 +137,13 @@ function collectModelObservations(
     for (const [modelKey, model] of Object.entries(provider.models)) {
       const modelId = CatalogSelectableModelIdSchema.safeParse(model.id);
       if (modelKey !== model.id || !modelId.success) continue;
+      if (observedIds.has(modelId.data)) continue;
 
       const observation = toModelObservation(sourceProviderId, modelId.data, model);
-      if (observation) models.push(observation);
+      if (observation) {
+        observedIds.add(observation.modelId);
+        models.push(observation);
+      }
     }
   }
 

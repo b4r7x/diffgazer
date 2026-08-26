@@ -15,6 +15,7 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
   useServerStatus: () => ({ state: serverState.current, retry: retryMock }),
 }));
 
+import { BASE_URL } from "@/lib/api";
 import { RootLayout } from "./__root";
 
 describe("RootLayout retry wiring", () => {
@@ -37,6 +38,12 @@ describe("RootLayout retry wiring", () => {
     render(<RootLayout />);
 
     expect(screen.getByRole("heading", { name: /server disconnected/i })).toBeInTheDocument();
+
+    // The detail rows tell only the truth: the polled health URL and the
+    // error the browser actually reported.
+    const connection = screen.getByRole("log", { name: "connection" });
+    expect(connection).toHaveTextContent(`target ${BASE_URL}/api/health`);
+    expect(connection).toHaveTextContent("error Could not connect");
 
     await user.click(screen.getByRole("button", { name: /retry connection/i }));
 
@@ -63,8 +70,8 @@ describe("RootLayout retry wiring", () => {
     );
 
     expect(screen.getByRole("button", { name: /retry connection/i })).toHaveFocus();
-    // The gate renders outside the shell, so the hint beside the button is the
-    // only place r is advertised.
+    // The gate renders outside the shell, so its own footer strip is the only
+    // place r is advertised.
     expect(screen.getByText("r")).toBeInTheDocument();
 
     await user.keyboard("r");

@@ -255,13 +255,17 @@ const assertV2Document = (document: ConfigDocumentV2): void => {
     }
   }
   if (document.selectedConfigurationId !== null) {
-    const selected = document.configurations.find(
-      (record) =>
-        isSupportedV2Record(record) &&
-        record.record.configurationId === document.selectedConfigurationId,
-    );
+    // The selection may name an unknown record — a retired product's bytes stay
+    // addressable so the user can inspect or remove it — but never a record the
+    // document does not carry at all.
+    const selected = document.configurations.find((record) => {
+      const id = isSupportedV2Record(record)
+        ? record.record.configurationId
+        : record.configurationId;
+      return id === document.selectedConfigurationId;
+    });
     if (!selected) {
-      throw new ProviderConfigurationConflictError("Selected configuration must be supported");
+      throw new ProviderConfigurationConflictError("Selected configuration must exist");
     }
   }
 };
@@ -462,6 +466,16 @@ export const selectConfigV2 = (
   document: ConfigDocumentV2,
   configurationId: ConfigDocumentV2["selectedConfigurationId"],
 ): ConfigDocumentV2 => {
+  // Decoding tolerates a selection left pointing at a record this build cannot
+  // describe, but a new selection must name a record it can.
+  if (
+    configurationId !== null &&
+    !document.configurations.some(
+      (record) => isSupportedV2Record(record) && record.record.configurationId === configurationId,
+    )
+  ) {
+    throw new ProviderConfigurationConflictError("Selected configuration must be supported");
+  }
   const next = { ...document, selectedConfigurationId: configurationId };
   assertV2Document(next);
   return next;

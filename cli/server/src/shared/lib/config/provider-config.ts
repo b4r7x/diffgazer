@@ -7,8 +7,6 @@ import {
   ConfigurationRevisionSchema,
   ExactModelIdSchema,
   HostedApiConfigurationInputSchema,
-  LocalCliConfigurationInputSchema,
-  LocalHttpConfigurationInputSchema,
 } from "@diffgazer/core/schemas/config";
 import { z } from "zod";
 
@@ -20,15 +18,12 @@ const RunnableProductIdSchema = z.enum([
   "gemini",
   "zai",
   "openrouter",
-  "groq",
-  "cerebras",
   "deepseek",
+  "qwen",
+  "moonshot",
+  "minimax",
   "ollama-cloud",
   "opencode-zen",
-  "ollama",
-  "local-openai",
-  "codex-cli",
-  "copilot-cli",
 ]);
 
 /**
@@ -36,39 +31,20 @@ const RunnableProductIdSchema = z.enum([
  * not contain `credential` or `bearerToken`: those are write-only inputs owned by
  * secret-bindings.ts and must never be part of a non-secret record.
  */
-export const NonSecretTransportInputSchema = z.discriminatedUnion("transportFamily", [
-  z
-    .strictObject({
-      transportFamily: HostedApiConfigurationInputSchema.shape.transportFamily,
-      productId: HostedApiConfigurationInputSchema.shape.productId,
-      endpoint: HostedApiConfigurationInputSchema.shape.endpoint,
-    })
-    .superRefine((input, context) => {
-      const result = HostedApiConfigurationInputSchema.safeParse(input);
-      if (!result.success) {
-        for (const issue of result.error.issues) {
-          context.addIssue({ code: "custom", path: issue.path, message: issue.message });
-        }
+export const NonSecretTransportInputSchema = z
+  .strictObject({
+    transportFamily: HostedApiConfigurationInputSchema.shape.transportFamily,
+    productId: HostedApiConfigurationInputSchema.shape.productId,
+    endpoint: HostedApiConfigurationInputSchema.shape.endpoint,
+  })
+  .superRefine((input, context) => {
+    const result = HostedApiConfigurationInputSchema.safeParse(input);
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        context.addIssue({ code: "custom", path: issue.path, message: issue.message });
       }
-    }),
-  z
-    .strictObject({
-      transportFamily: LocalHttpConfigurationInputSchema.shape.transportFamily,
-      productId: LocalHttpConfigurationInputSchema.shape.productId,
-      endpoint: LocalHttpConfigurationInputSchema.shape.endpoint,
-      authentication: LocalHttpConfigurationInputSchema.shape.authentication,
-      presetId: LocalHttpConfigurationInputSchema.shape.presetId,
-    })
-    .superRefine((input, context) => {
-      const result = LocalHttpConfigurationInputSchema.safeParse(input);
-      if (!result.success) {
-        for (const issue of result.error.issues) {
-          context.addIssue({ code: "custom", path: issue.path, message: issue.message });
-        }
-      }
-    }),
-  LocalCliConfigurationInputSchema,
-]);
+    }
+  });
 export type NonSecretTransportInput = z.infer<typeof NonSecretTransportInputSchema>;
 
 const ConfigurationAcknowledgementSchema = z.strictObject({
@@ -99,7 +75,7 @@ const ProviderConfigurationRecordBaseShape = {
   schemaVersion: z.literal(PROVIDER_CONFIGURATION_SCHEMA_VERSION),
   configurationId: ConfigurationIdSchema,
   revision: ConfigurationRevisionSchema,
-  transportFamily: z.enum(["hosted-api", "local-http", "local-cli"]),
+  transportFamily: z.literal("hosted-api"),
   productId: RunnableProductIdSchema,
   input: NonSecretTransportInputSchema,
   selectedModelId: ExactModelIdSchema.nullable(),
@@ -243,6 +219,20 @@ function stripRetiredOutputTokensBudget(input: unknown): unknown {
   return { ...input, budget: remaining };
 }
 
+/**
+ * `retries: 0` was an old creation default, never a surface-exposed choice
+ * (the current default is 1). It silently disables the malformed-output retry
+ * the hosted profiles rely on, so reads floor it to the current default
+ * without rewriting the user's file.
+ */
+function floorRetiredZeroRetriesBudget(input: unknown): unknown {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return input;
+  const { budget } = input as Record<string, unknown>;
+  if (!budget || typeof budget !== "object") return input;
+  if ((budget as Record<string, unknown>).retries !== 0) return input;
+  return { ...input, budget: { ...(budget as Record<string, unknown>), retries: 1 } };
+}
+
 /** Decode one record, retaining the exact bytes for unknown/future records. */
 export function decodeProviderConfigurationRecord(
   inputBytes: Uint8Array,
@@ -261,7 +251,9 @@ export function decodeProviderConfigurationRecord(
     return { status: "unknown", rawBytes };
   }
   const supported = SupportedProviderConfigurationRecordSchema.safeParse(
-    stripRetiredOutputTokensBudget(backfillAcknowledgementNoticeId(input)),
+    floorRetiredZeroRetriesBudget(
+      stripRetiredOutputTokensBudget(backfillAcknowledgementNoticeId(input)),
+    ),
   );
   if (supported.success) return { status: "supported", record: supported.data, rawBytes };
 

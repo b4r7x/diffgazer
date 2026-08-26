@@ -83,7 +83,7 @@ function getReviewResultsFooter(
       { key: "Enter/Space", label: "Toggle Filter" },
     ];
     if (isFilterActive) shortcuts.push({ key: "r", label: "Reset" });
-    shortcuts.push({ key: "j", label: "Issue List" });
+    shortcuts.push({ key: "↓", label: "Issue List" });
     return {
       shortcuts,
       rightShortcuts: [backShortcut],
@@ -119,7 +119,7 @@ function getReviewResultsFooter(
   return {
     shortcuts: [
       SWITCH_PANE_SHORTCUT,
-      { key: "j/k", label: "Select Issue" },
+      { key: "↑/↓", label: "Select Issue" },
       { key: "→", label: "Issue Details" },
     ],
     rightShortcuts: [backShortcut],

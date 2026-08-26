@@ -16,8 +16,8 @@ import { describe, expect, it, vi } from "vitest";
 import { ModelSelectDialog } from "./dialog";
 
 const CHECKED_AT = "2026-08-02T12:00:00.000Z";
-const CATALOG_SKIPPED_REASON =
-  "Catalog observations are unavailable for this configuration product.";
+const CATALOG_EMPTY_MODELS_REASON =
+  "The catalog lists no model this product's model policy admits. Configure a different provider to run reviews.";
 
 function catalogModel(id: string, tier: ModelInfo["tier"] = "paid"): ModelInfo {
   return { id, name: id, description: "128K context", tier };
@@ -26,6 +26,7 @@ function catalogModel(id: string, tier: ModelInfo["tier"] = "paid"): ModelInfo {
 function catalogModelsResponse(
   configuration: ClientConfigurationSummary,
   models: ModelInfo[],
+  source: "snapshot" | "provider-live" = "snapshot",
 ): ConfigurationModelsResponse {
   return {
     status: "passed",
@@ -34,14 +35,14 @@ function catalogModelsResponse(
     transportFamily: configuration.transportFamily,
     models,
     checkedAt: CHECKED_AT,
-    source: "snapshot",
+    source,
     cached: false,
   };
 }
 
 function skippedModelsResponse(
   configuration: ClientConfigurationSummary,
-  reason: string = CATALOG_SKIPPED_REASON,
+  reason: string = CATALOG_EMPTY_MODELS_REASON,
 ): ConfigurationModelsResponse {
   return {
     status: "skipped",
@@ -94,11 +95,14 @@ function renderDialog(options: RenderOptions = {}) {
     options.currentModel === null ? undefined : (options.currentModel ?? "gemini-2.5-flash");
 
   let setSaving: ((saving: boolean) => void) | undefined;
+  let setConfiguration: ((configuration: ClientConfigurationSummary) => void) | undefined;
 
   function DialogHarness() {
     const [open, setOpen] = useState(true);
     const [isSaving, setIsSaving] = useState(options.isSaving ?? false);
+    const [liveConfiguration, setLiveConfiguration] = useState(configuration);
     setSaving = setIsSaving;
+    setConfiguration = setLiveConfiguration;
 
     const handleOpenChange = (nextOpen: boolean) => {
       setOpen(nextOpen);
@@ -114,7 +118,7 @@ function renderDialog(options: RenderOptions = {}) {
       <ModelSelectDialog
         open={open}
         onOpenChange={handleOpenChange}
-        configuration={configuration}
+        configuration={liveConfiguration}
         currentModel={currentModel}
         isSaving={isSaving}
         onSelect={handleSelect}
@@ -123,7 +127,13 @@ function renderDialog(options: RenderOptions = {}) {
   }
 
   render(<DialogHarness />, { wrapper });
-  return { getConfigurationModels, onSelect, onOpenChange, finishSave: () => setSaving?.(false) };
+  return {
+    getConfigurationModels,
+    onSelect,
+    onOpenChange,
+    finishSave: () => setSaving?.(false),
+    updateConfiguration: (next: ClientConfigurationSummary) => setConfiguration?.(next),
+  };
 }
 
 describe("ModelSelectDialog configuration-bound discovery", () => {
@@ -134,6 +144,18 @@ describe("ModelSelectDialog configuration-bound discovery", () => {
     await within(dialog).findByRole("radio", { name: /gemini-2\.5-flash/ });
     expect(within(dialog).getByRole("button", { name: /cancel/i })).toBeEnabled();
     expect(within(dialog).getByRole("button", { name: /confirm/i })).toBeEnabled();
+  });
+
+  it("renders the model list as its own layout region inside the dialog", async () => {
+    renderDialog();
+
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByRole("radio", { name: /gemini-2\.5-flash/ });
+
+    // The list is the region that scrolls inside a fixed-height panel. Whether
+    // it actually scrolls is layout, not jsdom; the Dialog primitive's own test
+    // owns the stable-height class.
+    expect(dialog.querySelector('[data-layout-region="model-list"]')).toBeInstanceOf(HTMLElement);
   });
 
   it("renders a header strip with the title and exactly one close control", async () => {
@@ -166,7 +188,7 @@ describe("ModelSelectDialog configuration-bound discovery", () => {
     expect(hints.queryByText("Esc")).not.toBeInTheDocument();
   });
 
-  it("lists every catalog candidate model with the count and checked time", async () => {
+  it("lists every catalog candidate model with the count and the bundled-catalog label", async () => {
     renderDialog();
 
     await waitFor(() =>
@@ -175,10 +197,29 @@ describe("ModelSelectDialog configuration-bound discovery", () => {
     const modelList = screen.getByRole("radiogroup", { name: /available models/i });
     expect(within(modelList).getAllByRole("radio")).toHaveLength(2);
     expect(screen.getByText(/2 models/)).toBeInTheDocument();
-    expect(screen.getByText(/checked/i)).toBeInTheDocument();
+    // The snapshot tier's fetchedAt is stamped at read time, so a checked date
+    // over bundled data would be fabricated; the label names the data instead.
+    expect(screen.getByText(/bundled catalog/i)).toBeInTheDocument();
+    expect(screen.queryByText(/checked/i)).not.toBeInTheDocument();
     // No amber discovery strip on a passed catalog response.
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
     expect(screen.queryByText(/using cached catalog data/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps the checked date for a live provider list", async () => {
+    renderDialog({
+      getConfigurationModels: vi
+        .fn<BoundApi["getConfigurationModels"]>()
+        .mockResolvedValue(
+          catalogModelsResponse(GEMINI_CONFIGURATION, GEMINI_CATALOG_MODELS, "provider-live"),
+        ),
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("radio", { name: /gemini-2\.5-flash/ })).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/checked/i)).toBeInTheDocument();
+    expect(screen.queryByText(/bundled catalog/i)).not.toBeInTheDocument();
   });
 
   it("narrows to an empty list when the tier filter excludes every model", async () => {
@@ -239,7 +280,7 @@ describe("ModelSelectDialog configuration-bound discovery", () => {
     expect(dialog).toBeInTheDocument();
   });
 
-  it("keeps DOM focus inside the open dialog for the whole saving window", async () => {
+  it("keeps the loaded list rendered with the selection while a save is in flight", async () => {
     const user = userEvent.setup();
     renderDialog({ currentModel: "gemini-2.5-flash", saveOnSelect: true });
 
@@ -248,23 +289,18 @@ describe("ModelSelectDialog configuration-bound discovery", () => {
     await waitFor(() => expect(currentRow).toHaveFocus());
 
     await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(within(dialog).getByRole("button", { name: /^saving/i })).toBeDisabled(),
+    );
 
-    // The focused radio unmounts the moment saving starts and every footer
-    // control is disabled; focus must not fall to document.body.
-    await waitFor(() => expect(within(dialog).getByRole("status")).toHaveTextContent("Saving..."));
-    expect(
-      within(dialog).queryByRole("radio", { name: /gemini-2\.5-flash/ }),
-    ).not.toBeInTheDocument();
-    // Not the dialog root either: that is only jsdom's focus-trap recapture
-    // fallback (real browsers fire no focus events when the focused row is
-    // removed and drop to body), so the save window must park focus on a
-    // stable element inside the dialog.
-    await waitFor(() => {
-      const active = document.activeElement;
-      expect(dialog.contains(active)).toBe(true);
-      expect(active).not.toBe(dialog);
-      expect(active).not.toBe(document.body);
-    });
+    // Progress lives on the [Confirm] button; the discovered list never blanks
+    // to a spinner, the checked selection stays visible, and the focused row
+    // keeps DOM focus for the whole saving window.
+    const modelList = within(dialog).getByRole("radiogroup", { name: /available models/i });
+    expect(within(modelList).getAllByRole("radio")).toHaveLength(2);
+    expect(currentRow).toBeChecked();
+    expect(currentRow).toHaveFocus();
+    expect(within(dialog).queryByText(/loading models/i)).not.toBeInTheDocument();
   });
 
   it("keeps keys quiet while saving and returns focus to the model row when saving fails", async () => {
@@ -276,12 +312,17 @@ describe("ModelSelectDialog configuration-bound discovery", () => {
     await waitFor(() => expect(currentRow).toHaveFocus());
 
     await user.keyboard("{Enter}");
-    await waitFor(() => expect(within(dialog).getByRole("status")).toHaveTextContent("Saving..."));
+    await waitFor(() =>
+      expect(within(dialog).getByRole("button", { name: /^saving/i })).toBeDisabled(),
+    );
 
-    // f must not cycle the tier filter and / must not move the zone into the
-    // disabled search box while the save window is open.
+    // f must not cycle the tier filter, / must not move the zone into the
+    // disabled search box, and j must not move the disabled list's highlight
+    // while the save window is open.
     await user.keyboard("f");
     await user.keyboard("/");
+    await user.keyboard("j");
+    expect(within(dialog).getByRole("radio", { name: /gemini-2\.5-flash/ })).toHaveFocus();
 
     act(() => finishSave());
 
@@ -296,6 +337,37 @@ describe("ModelSelectDialog configuration-bound discovery", () => {
     // The list zone is live again after the failed save: j moves down a row.
     await user.keyboard("j");
     expect(within(dialog).getByRole("radio", { name: /gemini-2\.5-pro/ })).toHaveFocus();
+  });
+
+  it("keeps the loaded list rendered while a configuration revision bump refetches discovery", async () => {
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValueOnce(catalogModelsResponse(GEMINI_CONFIGURATION, GEMINI_CATALOG_MODELS))
+      // The refetch under the bumped fingerprint never settles: the list must
+      // stay up from the previous discovery, not blank to the spinner.
+      .mockReturnValue(new Promise<ConfigurationModelsResponse>(() => {}));
+    const { updateConfiguration } = renderDialog({
+      currentModel: "gemini-2.5-flash",
+      getConfigurationModels,
+    });
+
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByRole("radio", { name: /gemini-2\.5-flash/ });
+
+    // A saved selection bumps the row's revision/selectedModelId, which rotates
+    // the discovery query key while the dialog is still open.
+    act(() =>
+      updateConfiguration({
+        ...GEMINI_CONFIGURATION,
+        revision: GEMINI_CONFIGURATION.revision + 1,
+        selectedModelId: "gemini-2.5-pro",
+      }),
+    );
+
+    await waitFor(() => expect(getConfigurationModels).toHaveBeenCalledTimes(2));
+    const modelList = within(dialog).getByRole("radiogroup", { name: /available models/i });
+    expect(within(modelList).getAllByRole("radio")).toHaveLength(2);
+    expect(within(dialog).queryByText(/loading models/i)).not.toBeInTheDocument();
   });
 });
 
@@ -341,11 +413,11 @@ describe("ModelSelectDialog discovery states", () => {
 
     // The alert row is the single discovery surface: the message renders once and
     // exactly one live region announces it, while the list keeps generic copy.
-    expect(await screen.findAllByText(CATALOG_SKIPPED_REASON)).toHaveLength(1);
+    expect(await screen.findAllByText(CATALOG_EMPTY_MODELS_REASON)).toHaveLength(1);
     expect(
       screen
         .getAllByRole("status")
-        .filter((region) => region.textContent?.includes(CATALOG_SKIPPED_REASON)),
+        .filter((region) => region.textContent?.includes(CATALOG_EMPTY_MODELS_REASON)),
     ).toHaveLength(1);
     expect(screen.getByText("No models available")).toBeInTheDocument();
     expect(screen.getByText(/checked/i)).toBeInTheDocument();
@@ -354,16 +426,54 @@ describe("ModelSelectDialog discovery states", () => {
     await waitFor(() => expect(getConfigurationModels).toHaveBeenCalledTimes(2));
   });
 
-  it("retries discovery from r outside the search box and teaches the key in the footer", async () => {
+  it("keeps the Retry button in the vertical navigation chain while the warning is shown", async () => {
     const user = userEvent.setup();
     const getConfigurationModels = vi
       .fn<BoundApi["getConfigurationModels"]>()
       .mockResolvedValue(skippedModelsResponse(GEMINI_CONFIGURATION));
     renderDialog({ getConfigurationModels });
 
-    await screen.findByRole("button", { name: "Retry" });
+    const retryButton = await screen.findByRole("button", { name: "Retry" });
+
+    await user.keyboard("/");
+    const search = screen.getByRole("searchbox", { name: "Search models" });
+    await waitFor(() => expect(search).toHaveFocus());
+
+    // Down from search stops on Retry before falling through to the footer.
+    await user.keyboard("{ArrowDown}");
+    expect(retryButton).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+
+    // Up from the footer takes the same path back through Retry to search.
+    await user.keyboard("{ArrowUp}");
+    expect(retryButton).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(search).toHaveFocus();
+
+    // Enter on the focused Retry runs discovery again.
+    await user.keyboard("{ArrowDown}");
+    expect(retryButton).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(getConfigurationModels).toHaveBeenCalledTimes(2));
+  });
+
+  it("retries discovery from r outside the search box and teaches the key on the Retry button", async () => {
+    const user = userEvent.setup();
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(skippedModelsResponse(GEMINI_CONFIGURATION));
+    renderDialog({ getConfigurationModels });
+
+    // The visible Retry button teaches r (aria-keyshortcuts), the same rule that
+    // keeps Enter/Esc out of the legend — so the footer legend stays the list
+    // keys only and shares one row with the actions.
+    const retryButton = await screen.findByRole("button", { name: "Retry" });
+    expect(retryButton).toHaveAttribute("aria-keyshortcuts", "r");
     const legend = screen.getByText("Navigate").closest('[data-slot="overlay-hints"]');
-    expect(within(legend as HTMLElement).getByText("Retry")).toBeInTheDocument();
+    expect(within(legend as HTMLElement).queryByText("Retry")).not.toBeInTheDocument();
 
     await user.keyboard("r");
     await waitFor(() => expect(getConfigurationModels).toHaveBeenCalledTimes(2));
@@ -457,8 +567,8 @@ describe("ModelSelectDialog discovery states", () => {
     act(() => cancel.focus());
     expect(cancel).toHaveFocus();
 
-    // The footer advertises "j/k Navigate"; pressing them while the list does
-    // not exist yet must not consume the initial-focus window.
+    // j/k stay bound as the Help table's vim aliases; pressing them while the
+    // list does not exist yet must not consume the initial-focus window.
     await user.keyboard("k");
     await user.keyboard("j");
 
@@ -503,36 +613,5 @@ describe("ModelSelectDialog discovery states", () => {
 
     await screen.findByRole("radio", { name: /gemini-2\.5-flash/ });
     expect(screen.queryByText(/stays configured/)).not.toBeInTheDocument();
-  });
-});
-
-describe("ModelSelectDialog transport model policies", () => {
-  it("shows the honest catalog-unavailable reason for local transports", async () => {
-    const localConfiguration: ClientConfigurationSummary = {
-      configurationId: "ollama-loopback",
-      revision: 2,
-      status: "supported",
-      transportFamily: "local-http",
-      productId: "ollama",
-      endpoint: "http://127.0.0.1:11434",
-      authentication: "none",
-      selectedModelId: "qwen2.5-coder:7b",
-      notices: [],
-      availableActions: ["inspect", "select", "test", "update", "delete"],
-    };
-    const getConfigurationModels = vi
-      .fn<BoundApi["getConfigurationModels"]>()
-      .mockResolvedValue(skippedModelsResponse(localConfiguration));
-    renderDialog({
-      configuration: localConfiguration,
-      getConfigurationModels,
-      currentModel: "qwen2.5-coder:7b",
-    });
-
-    expect(await screen.findByText(CATALOG_SKIPPED_REASON)).toBeInTheDocument();
-    expect(screen.getByText(/ollama/i)).toBeInTheDocument();
-    expect(screen.getByText("No models available")).toBeInTheDocument();
-    expect(screen.queryByRole("radio", { name: /qwen2\.5-coder/ })).not.toBeInTheDocument();
-    expect(getConfigurationModels).toHaveBeenCalledWith("ollama-loopback", expect.any(AbortSignal));
   });
 });

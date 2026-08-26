@@ -13,7 +13,6 @@ const TEST_ONLY_FIXTURES = [
   "src/shared/lib/config/store.test-support.ts",
   "src/shared/lib/config/persistence/persistence.test-support.ts",
   "src/shared/lib/ai/providers/hosted/fixtures.ts",
-  "src/shared/lib/ai/providers/local-http/fixtures.ts",
 ] as const;
 
 function parseTsConfig(configName: string): ts.ParsedCommandLine {

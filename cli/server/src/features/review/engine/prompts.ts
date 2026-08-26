@@ -234,7 +234,7 @@ const ISSUE_OUTPUT_CONTRACT = `For each issue found, provide:
 - line_end: ending line number (null if not applicable)
 - rationale: detailed explanation of why this is an issue
 - recommendation: specific action to fix the issue
-- suggested_patch: unified diff patch to fix (null if complex)
+- suggested_patch: a minimal unified diff ("--- a/<file>", "+++ b/<file>", numbered hunk headers like "@@ -2,3 +2,8 @@", "+"/"-" line prefixes), with a real newline character between every line (JSON "\\n" escapes) — never flattened onto one line; null if a correct diff is impractical
 - confidence: 0.0-1.0 confidence in the issue
 - symptom: what observable behavior or code pattern indicates the problem
 - whyItMatters: business/technical impact explaining why this needs attention
@@ -325,13 +325,16 @@ ${ISSUE_OUTPUT_CONTRACT}`;
  */
 export const SYNTHESIS_DIGEST_MAX_CHARS = 40_000;
 
+function lineRef(issue: ReviewIssue): string {
+  if (issue.line_start === null) return "";
+  if (issue.line_end === null || issue.line_end === issue.line_start) {
+    return `:${issue.line_start}`;
+  }
+  return `:${issue.line_start}-${issue.line_end}`;
+}
+
 function digestEntry(issue: ReviewIssue, fileIdsByPath: ReadonlyMap<string, string>): string {
-  const lines =
-    issue.line_start === null
-      ? ""
-      : issue.line_end === null || issue.line_end === issue.line_start
-        ? `:${issue.line_start}`
-        : `:${issue.line_start}-${issue.line_end}`;
+  const lines = lineRef(issue);
   const fileId = fileIdsByPath.get(issue.file);
   const fileRef = `${fileId === undefined ? "" : `${fileId} `}${sanitizePromptText(issue.file)}${lines}`;
   return `- [${issue.severity}] ${issue.category} ${fileRef} — ${sanitizePromptText(issue.title)} (issue ${sanitizePromptText(issue.id)})`;

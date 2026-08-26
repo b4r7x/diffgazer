@@ -7,13 +7,12 @@ import type {
 } from "@diffgazer/core/schemas/config";
 import { READINESS_PRESENTATION } from "@diffgazer/core/schemas/config";
 import {
-  CODEX_CLI_CONFIGURATION,
   configurationStatus,
   GEMINI_CONFIGURATION,
-  LOCAL_OPENAI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeConfigurationListResponse,
   makeReadiness,
+  ZAI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -47,8 +46,7 @@ function makeInitResponse(
   return {
     ...makeConfigurationInitResponse([
       configurationStatus(GEMINI_CONFIGURATION, "ready"),
-      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
-      configurationStatus(CODEX_CLI_CONFIGURATION, "unsupported"),
+      configurationStatus(ZAI_CONFIGURATION, "conformance-failed"),
     ]),
     ...overrides,
   };
@@ -86,7 +84,7 @@ describe("useProvidersPageState", () => {
 
   it("selects a ready configuration through the primary action instead of inspecting it", async () => {
     // Another configuration is active, so the ready row still offers selection.
-    const init = makeInitResponse({ selectedConfigurationId: "local-openai-1" });
+    const init = makeInitResponse({ selectedConfigurationId: "zai-primary" });
     mockApi.loadConfigurationInit.mockResolvedValue(init);
     mockApi.listConfigurations.mockResolvedValue(makeConfigurationListResponse(init));
     const { result } = renderPageHook();
@@ -112,6 +110,27 @@ describe("useProvidersPageState", () => {
       );
     });
     expect(mockApi.inspectConfiguration).not.toHaveBeenCalled();
+  });
+
+  it("opens the model dialog for the linked product on a select-model deep link, once", async () => {
+    // "Change model" on the review error screen lands in the dialog itself.
+    routeSearch.current = { product: "gemini", intent: "select-model" };
+    const { result } = renderPageHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await waitFor(() => {
+      expect(result.current.dialogs.current).toMatchObject({ kind: "model" });
+    });
+    expect(result.current.dialogs.current?.row.configuration?.configurationId).toBe(
+      "gemini-primary",
+    );
+
+    // Closing it stays closed: the intent is one-shot, not a sticky reopen.
+    const owner = result.current.dialogs.current?.owner;
+    act(() => {
+      if (owner) result.current.dialogs.close(owner);
+    });
+    await waitFor(() => expect(result.current.dialogs.current).toBeNull());
   });
 
   it("selects an unverified configuration first and runs Verify from its own action", async () => {
@@ -158,12 +177,12 @@ describe("useProvidersPageState", () => {
     const { result } = renderPageHook();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    const localRow = result.current.filteredProviders.find(
-      (row) => getProviderRowId(row) === "local-openai-1",
+    const pendingRow = result.current.filteredProviders.find(
+      (row) => getProviderRowId(row) === "zai-primary",
     );
-    expect(localRow?.readiness.action).toBe("test");
+    expect(pendingRow?.readiness.action).toBe("test");
 
-    act(() => result.current.selection.setSelectedId("local-openai-1"));
+    act(() => result.current.selection.setSelectedId("zai-primary"));
     const primary = result.current.actionLayout.primary;
     expect(primary).toMatchObject({ id: "dispatch", task: "test" });
     await act(async () => {
@@ -171,7 +190,7 @@ describe("useProvidersPageState", () => {
     });
 
     await waitFor(() => {
-      expect(mockApi.testConfiguration).toHaveBeenCalledWith("local-openai-1");
+      expect(mockApi.testConfiguration).toHaveBeenCalledWith("zai-primary");
     });
   });
 
@@ -342,7 +361,7 @@ describe("useProvidersPageState", () => {
         configurations: [
           {
             configuration: {
-              ...LOCAL_OPENAI_CONFIGURATION,
+              ...ZAI_CONFIGURATION,
               revision: 2,
             },
             readiness: {
@@ -361,7 +380,7 @@ describe("useProvidersPageState", () => {
     const { result } = renderPageHook();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    act(() => result.current.selection.setSelectedId("local-openai-1"));
+    act(() => result.current.selection.setSelectedId("zai-primary"));
     const primary = result.current.actionLayout.primary;
     expect(primary).toMatchObject({ id: "dispatch", task: "update" });
 
@@ -370,7 +389,7 @@ describe("useProvidersPageState", () => {
     });
 
     expect(result.current.dialogs.current?.kind).toBe("setup");
-    expect(result.current.dialogs.current?.row.product.transportFamily).toBe("local-http");
+    expect(result.current.dialogs.current?.row.product.transportFamily).toBe("hosted-api");
   });
 
   // The layout table itself is pinned in libs/core; this proves the page feeds
@@ -413,12 +432,12 @@ describe("useProvidersPageState", () => {
   });
 
   it("seeds the selection from the reconnect deep-link's product param", async () => {
-    routeSearch.current = { product: "local-openai" };
+    routeSearch.current = { product: "openrouter" };
 
     const { result } = renderPageHook();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(result.current.selectedRow?.product.productId).toBe("local-openai");
+    expect(result.current.selectedRow?.product.productId).toBe("openrouter");
 
     // The link seeds, the user decides: a later selection wins over the param.
     act(() => result.current.selection.setSelectedId("gemini"));

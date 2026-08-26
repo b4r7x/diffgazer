@@ -13,11 +13,7 @@ import {
   type ReadinessAcknowledgement,
   ReadinessSchema,
 } from "../schemas/config/readiness.js";
-import {
-  type RunnableProductId,
-  RunnableProductIdSchema,
-  TransportFamilySchema,
-} from "../schemas/config/transports.js";
+import { type RunnableProductId, RunnableProductIdSchema } from "../schemas/config/transports.js";
 import { BILLING_MODES, CONFIGURATION_FIELDS, type ModelPolicy } from "./model-policy.js";
 import { PRODUCT_REGISTRY, type ProductNotice } from "./product-registry.js";
 
@@ -42,13 +38,6 @@ const ClientModelPolicySchema = z.discriminatedUnion("kind", [
     aliases: z.literal("forbidden"),
   }),
   z.strictObject({
-    kind: z.literal("discovered-allowlist"),
-    modelIds: z.array(z.string().min(1)),
-    suggestedModelId: z.string().min(1).optional(),
-    higherCostModelIds: z.array(z.string().min(1)).optional(),
-    aliases: z.literal("forbidden"),
-  }),
-  z.strictObject({
     kind: z.literal("pinned-downstream-route"),
     routePolicy: z.literal("pinned"),
     automaticRouting: z.literal("forbidden"),
@@ -60,13 +49,12 @@ export const ClientProductMetadataSchema = z.strictObject({
   productId: RunnableProductIdSchema,
   status: z.literal("supported"),
   selectable: z.literal(true),
-  transportFamily: TransportFamilySchema,
+  transportFamily: z.literal("hosted-api"),
   name: z.string().min(1),
   description: z.string().min(1),
   setupLabel: z.string().min(1),
   setupFields: z.array(ConfigurationFieldSchema),
   endpoints: z.array(ClientEndpointProfileSchema),
-  customLoopbackEndpoint: z.literal(true).optional(),
   modelPolicy: ClientModelPolicySchema,
   billing: z.strictObject({
     modes: z.array(BillingModeSchema),
@@ -244,16 +232,6 @@ function toClientModelPolicy(modelPolicy: ModelPolicy): ClientProductMetadata["m
         suggestedModelId: modelPolicy.suggestedModelId,
         aliases: modelPolicy.aliases,
       };
-    case "discovered-allowlist":
-      return {
-        kind: modelPolicy.kind,
-        modelIds: [...modelPolicy.modelIds],
-        suggestedModelId: modelPolicy.suggestedModelId,
-        higherCostModelIds: modelPolicy.higherCostModelIds
-          ? [...modelPolicy.higherCostModelIds]
-          : undefined,
-        aliases: modelPolicy.aliases,
-      };
     case "pinned-downstream-route":
       return {
         kind: modelPolicy.kind,
@@ -281,10 +259,6 @@ function buildClientProduct(productId: RunnableProductId): ClientProductMetadata
       label: endpoint.label,
       endpoint: endpoint.endpoint,
     })),
-    customLoopbackEndpoint:
-      "customLoopbackEndpoint" in product.configuration
-        ? product.configuration.customLoopbackEndpoint
-        : undefined,
     modelPolicy: toClientModelPolicy(product.modelPolicy),
     billing: {
       modes: [...product.billing.modes],
@@ -303,41 +277,13 @@ function toClientConfiguration(
 ): ClientConfigurationSummary | null {
   if (!configuration) return null;
 
-  if (configuration.transportFamily === "hosted-api") {
-    return {
-      configurationId: configuration.configurationId,
-      revision: configuration.revision,
-      status: configuration.status,
-      transportFamily: configuration.transportFamily,
-      productId: configuration.productId,
-      endpoint: configuration.endpoint,
-      selectedModelId: configuration.selectedModelId,
-      notices: configuration.notices.map(toClientNotice),
-      availableActions: [...configuration.availableActions],
-    };
-  }
-  if (configuration.transportFamily === "local-http") {
-    return {
-      configurationId: configuration.configurationId,
-      revision: configuration.revision,
-      status: configuration.status,
-      transportFamily: configuration.transportFamily,
-      productId: configuration.productId,
-      endpoint: configuration.endpoint,
-      authentication: configuration.authentication,
-      presetId: configuration.presetId,
-      selectedModelId: configuration.selectedModelId,
-      notices: configuration.notices.map(toClientNotice),
-      availableActions: [...configuration.availableActions],
-    };
-  }
   return {
     configurationId: configuration.configurationId,
     revision: configuration.revision,
     status: configuration.status,
     transportFamily: configuration.transportFamily,
     productId: configuration.productId,
-    installationId: configuration.installationId,
+    endpoint: configuration.endpoint,
     selectedModelId: configuration.selectedModelId,
     notices: configuration.notices.map(toClientNotice),
     availableActions: [...configuration.availableActions],

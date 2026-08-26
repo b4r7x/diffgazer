@@ -1,10 +1,6 @@
 import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import { err, ok, type Result } from "@diffgazer/core/result";
-import {
-  canAttemptReview,
-  type RunnableProductId,
-  type TransportFamily,
-} from "@diffgazer/core/schemas/config";
+import { canAttemptReview, type RunnableProductId } from "@diffgazer/core/schemas/config";
 import {
   type EvidenceKey,
   ExecutionFingerprintInputSchema,
@@ -69,7 +65,7 @@ export type AdmittedExecutionPlan = Readonly<{
   executionFingerprint: string;
   evidenceKey: EvidenceKey;
   productId: RunnableProductId;
-  transportFamily: TransportFamily;
+  transportFamily: "hosted-api";
   limits: ExecutionLimits;
 }>;
 
@@ -523,14 +519,7 @@ export async function authorizeReviewExecution(
     );
   }
 
-  // Every transport whose request carries a credential: a local endpoint that
-  // wants a bearer token fails with a bare 401 if the token is gone, which the
-  // user only ever sees as an undiagnosed transport failure.
-  const carriesCredential =
-    record.input.transportFamily === "hosted-api" ||
-    (record.input.transportFamily === "local-http" &&
-      record.input.authentication === "optional-local-bearer");
-  if (carriesCredential && snapshot.binding && snapshot.binding.kind !== "none") {
+  if (snapshot.binding && snapshot.binding.kind !== "none") {
     if (!bindingCredentialAvailable(snapshot.binding)) {
       return err(
         admissionFailure("readiness-not-ready", "Configuration credential is unavailable", false),

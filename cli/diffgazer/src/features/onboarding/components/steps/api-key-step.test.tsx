@@ -14,7 +14,6 @@ describe("ApiKeyStep (TUI)", () => {
       <CliThemeProvider initialTheme="dark">
         <ApiKeyStep
           productId="gemini"
-          transportFamily="hosted-api"
           method="env"
           onMethodChange={vi.fn()}
           apiKey=""

@@ -6,6 +6,7 @@ import {
   type NormalizedUsage,
   NormalizedUsageSchema,
   type ProfileId,
+  REVIEW_WALL_CEILING_SLACK,
   ReviewErrorCode,
   ReviewErrorSchema,
   type ReviewMode,
@@ -18,16 +19,19 @@ import {
   terminalOutcomeKeepsFindings,
   type UsageAvailability,
 } from "@diffgazer/core/schemas/review";
-import {
-  type AuthorizedReviewExecution,
-  STRUCTURED_OUTPUT_FAILURE_GUIDANCE,
-} from "../../shared/lib/ai/admission/service.js";
+import type { AuthorizedReviewExecution } from "../../shared/lib/ai/admission/service.js";
 import { estimateWorstCaseCostUsd } from "../../shared/lib/ai/budget/cost.js";
 import {
+  budgetExhaustedMessage,
   buildExecutionResult,
   normalizeBuildExecutionUsageInput,
 } from "../../shared/lib/ai/client/generate.js";
-import { PROVIDER_REJECTED_DIAGNOSTIC_CODE } from "../../shared/lib/ai/diagnostics.js";
+import { composeExecutionDeadline } from "../../shared/lib/ai/deadline.js";
+import {
+  PROVIDER_REJECTED_DIAGNOSTIC_CODE,
+  serializeFailureDiagnostic,
+} from "../../shared/lib/ai/diagnostics.js";
+import { resolveDispatchPacing } from "../../shared/lib/ai/providers/hosted/profiles.js";
 import type { AIClient, AIErrorDiagnostic } from "../../shared/lib/ai/types.js";
 import { log } from "../../shared/lib/log.js";
 import { type ReviewAbort, reviewAbort } from "./abort.js";
@@ -163,21 +167,29 @@ function mapOrchestrationErrorToTerminalOutcome(error: { code: string }): Termin
 }
 
 /**
- * The receipt whose outcome a failed review reports. A structured-output failure
- * is what decided the review — it aborts the lenses still in flight — so it wins
- * over a dispatch that merely failed first, and when the schema bridge rejected
- * the response itself the review reports no dispatch receipt at all.
+ * The receipt whose outcome a failed review reports. A schema-failed receipt is
+ * decisive only when the orchestration's own verdict was structured output —
+ * every lens schema-failed, or the schema bridge rejected the response itself
+ * (then the review reports no dispatch receipt at all). A mixed all-failed run
+ * reports the non-schema dispatch that names its real cause, so one schema
+ * flake among transport failures never reads as model incapacity.
  */
 function failedDispatch(
   executions: readonly ExecutionResult[],
-  error: { code: string },
+  error: { code: string; allLensesSchemaFailed?: true },
 ): ExecutionResult["receipt"] | undefined {
-  const schemaFailed = executions.find(
-    (execution) => execution.receipt.outcome === "schema-failed",
+  if (
+    error.allLensesSchemaFailed === true ||
+    mapOrchestrationErrorToTerminalOutcome(error) === "schema-failed"
+  ) {
+    return executions.find((execution) => execution.receipt.outcome === "schema-failed")?.receipt;
+  }
+  return (
+    executions.find(
+      (execution) =>
+        execution.receipt.outcome !== "completed" && execution.receipt.outcome !== "schema-failed",
+    )?.receipt ?? executions.find((execution) => execution.receipt.outcome !== "completed")?.receipt
   );
-  if (schemaFailed) return schemaFailed.receipt;
-  if (mapOrchestrationErrorToTerminalOutcome(error) === "schema-failed") return undefined;
-  return executions.find((execution) => execution.receipt.outcome !== "completed")?.receipt;
 }
 
 function terminalDiagnosticForDispatch(
@@ -196,24 +208,6 @@ function terminalDiagnosticForDispatch(
     if (executions[index]?.receipt.outcome !== "completed") failedDispatchCount += 1;
   }
   return diagnostics[failedDispatchCount - 1];
-}
-
-/**
- * With no dispatch receipt to measure, the only span available is the pipeline's
- * own wall clock, which includes orchestration overhead the per-dispatch limit
- * does not cover. Report it bounded by that limit rather than a duration the
- * receipt contract forbids.
- */
-function clampToDispatchWallTime(
-  span: { startedAt: string; finishedAt: string },
-  wallTimeMs: number,
-): { startedAt: string; finishedAt: string } {
-  const startMs = Date.parse(span.startedAt);
-  const finishMs = Date.parse(span.finishedAt);
-  if (!Number.isFinite(startMs) || !Number.isFinite(finishMs)) return span;
-  return finishMs - startMs > wallTimeMs
-    ? { startedAt: span.startedAt, finishedAt: new Date(startMs + wallTimeMs).toISOString() }
-    : span;
 }
 
 const USAGE_FIELDS = [
@@ -288,76 +282,30 @@ function aggregateUsageState(
   return { usageAvailability: "unavailable" };
 }
 
-/**
- * A review-level receipt keeps timing and attempts from one dispatch because
- * the execution receipt retry limit is per dispatch. Usage is the only part
- * that aggregates across the dispatches represented by the review outcome.
- */
-function aggregateDispatches(
-  executions: readonly ExecutionResult[],
-  fallback: { startedAt: string; finishedAt: string },
-  wallTimeMs: number,
-  outcome: AggregatedDispatchOutcome,
-  decisiveReceipt?: ExecutionResult["receipt"],
-): {
-  startedAt: string;
-  finishedAt: string;
-  attemptCount?: number;
-  usageAvailability: UsageAvailability;
-  usage?: NormalizedUsage;
-} {
-  const completed = executions.filter((execution) => execution.receipt.outcome === "completed");
-  const last = decisiveReceipt ?? completed.at(-1)?.receipt;
-  const timing = last
-    ? {
-        startedAt: last.startedAt,
-        finishedAt: last.finishedAt,
-        attemptCount: last.attemptCount,
-      }
-    : { ...clampToDispatchWallTime(fallback, wallTimeMs), attemptCount: undefined };
-
-  return {
-    ...timing,
-    ...aggregateUsageState(executions, outcome),
-  };
-}
-
-function dispatchReceiptTiming(
-  receipt: ExecutionResult["receipt"] | undefined,
-  fallback: { startedAt: string; finishedAt?: string },
-): {
-  startedAt: string;
-  finishedAt?: string;
-  attemptCount?: number;
-  usageAvailability?: ExecutionResult["receipt"]["usageAvailability"];
-  usage?: ExecutionResult["receipt"]["usage"];
-} {
-  if (!receipt) {
-    return fallback;
-  }
-  return {
-    startedAt: receipt.startedAt,
-    finishedAt: receipt.finishedAt,
-    attemptCount: receipt.attemptCount,
-    usageAvailability: receipt.usageAvailability,
-    usage: receipt.usage,
-  };
+function totalAttemptCount(executions: readonly ExecutionResult[]): number {
+  if (executions.length === 0) return 1;
+  return executions.reduce((sum, execution) => sum + execution.receipt.attemptCount, 0);
 }
 
 /**
  * Headroom over the plan's estimate. The estimate prices the diff the prompts
  * carry, not the retries a lens may take, the answers the review bills for on
- * top of them, or the one synthesis pass a batched review closes with.
+ * top of them, or the one synthesis pass a batched review closes with. Bound to
+ * the receipt schema's review wall-ceiling slack so a raised envelope — the
+ * wall clock included — can never outgrow what a review-scope receipt accepts.
  */
-const BATCHED_ENVELOPE_HEADROOM = 1.2;
+const BATCHED_ENVELOPE_HEADROOM = REVIEW_WALL_CEILING_SLACK;
 
 /**
- * Opens the review's ledger reservation at what a batched review actually
- * spends. Admission projected the envelope for one call per lens; a plan the
- * size gate split into batches costs a multiple of it, and admitting the review
- * only to exhaust it two lenses in would turn "too large for one call" into
- * "budget exhausted mid-review". A single-batch plan spends what it always did
- * and leaves the configured base alone.
+ * Opens the review's ledger reservation at what the review actually spends.
+ * Admission projected the envelope for one call on the configured base; a plan
+ * the size gate split into batches costs a multiple of it, and admitting the
+ * review only to exhaust it two lenses in would turn "too large for one call"
+ * into "budget exhausted mid-review". The wall dimension is raised for every
+ * review: it is an elapsed clock sized to the sequential worst case of the
+ * calls the plan dispatches, so a wrong concurrency guess or provider-side
+ * queueing can never expire it into a false budget-exhausted death; parallel
+ * runs just finish with clock to spare.
  *
  * The size axes are raised; the per-review spend cap is not. It is the user's
  * money, so a batched plan whose worst case runs past it is refused here,
@@ -365,41 +313,48 @@ const BATCHED_ENVELOPE_HEADROOM = 1.2;
  */
 function scaleBudgetEnvelope(
   executionContext: ReviewExecutionContext,
-  capacity: ReviewCapacityPlan,
-  callCount: number,
+  capacity: ReviewCapacityPlan | undefined,
+  reviewCallCount: number,
 ): ReviewAbort | null {
-  if (capacity.batches.length <= 1) return null;
-
   const { budgetLedger, budgetReservation, plan } = executionContext.authorization;
   const configuredBase = budgetLedger.limits;
-  const scaledInputTokens = Math.max(
-    configuredBase.maxInputTokens,
-    Math.ceil(capacity.estimatedTotalInputTokens * BATCHED_ENVELOPE_HEADROOM),
-  );
-  const scaleFactor = scaledInputTokens / configuredBase.maxInputTokens;
-  const scaledWallTimeMs = Math.ceil(configuredBase.wallTimeMs * scaleFactor);
-  const scaledResponseBytes = Math.ceil(configuredBase.maxResponseBytes * scaleFactor);
+  const batched = capacity !== undefined && capacity.batches.length > 1;
 
-  const worstCaseCostUsd = estimateWorstCaseCostUsd(
-    plan.productId,
-    plan.evidenceKey.modelId,
-    { maxInputTokens: scaledInputTokens },
-    callCount,
-  );
-  if (worstCaseCostUsd !== null && worstCaseCostUsd > configuredBase.maxCostUsd) {
-    return reviewAbort(
-      `This review needs ${capacity.batches.length} batches per lens, which can bill up to ` +
-        `$${worstCaseCostUsd.toFixed(2)} against your $${configuredBase.maxCostUsd.toFixed(2)} ` +
-        `per-review spend cap. Review fewer files at a time, or raise the cap.`,
-      ReviewErrorCode.DIFF_TOO_LARGE,
-      "diff",
+  let scaledInputTokens = configuredBase.maxInputTokens;
+  let scaledResponseBytes = configuredBase.maxResponseBytes;
+  if (batched) {
+    scaledInputTokens = Math.max(
+      configuredBase.maxInputTokens,
+      Math.ceil(capacity.estimatedTotalInputTokens * BATCHED_ENVELOPE_HEADROOM),
     );
+    const scaleFactor = scaledInputTokens / configuredBase.maxInputTokens;
+    scaledResponseBytes = Math.ceil(configuredBase.maxResponseBytes * scaleFactor);
+
+    const worstCaseCostUsd = estimateWorstCaseCostUsd(
+      plan.productId,
+      plan.evidenceKey.modelId,
+      { maxInputTokens: scaledInputTokens },
+      reviewCallCount,
+    );
+    if (worstCaseCostUsd !== null && worstCaseCostUsd > configuredBase.maxCostUsd) {
+      return reviewAbort(
+        `This review needs ${capacity.batches.length} batches per lens, which can bill up to ` +
+          `$${worstCaseCostUsd.toFixed(2)} against your $${configuredBase.maxCostUsd.toFixed(2)} ` +
+          `per-review spend cap. Review fewer files at a time, or raise the cap.`,
+        ReviewErrorCode.DIFF_TOO_LARGE,
+        "diff",
+      );
+    }
   }
+
+  const reviewWallTimeMs = Math.ceil(
+    plan.limits.wallTimeMs * reviewCallCount * BATCHED_ENVELOPE_HEADROOM,
+  );
 
   budgetLedger.raiseReviewEnvelope(budgetReservation, {
     inputTokens: scaledInputTokens,
     responseBytes: scaledResponseBytes,
-    wallTimeMs: scaledWallTimeMs,
+    wallTimeMs: reviewWallTimeMs,
   });
   return null;
 }
@@ -430,30 +385,61 @@ export async function executeReview(params: {
     return ok({ issues: [], execution });
   }
 
-  if (capacity && executionContext) {
-    // Every lens reads every batch, and a batched run closes with one synthesis.
-    const callCount = capacity.batches.length * config.activeLenses.length + 1;
-    const abort = scaleBudgetEnvelope(executionContext, capacity, callCount);
+  const plan = executionContext?.authorization.plan;
+  const pacing = plan ? resolveDispatchPacing(plan.productId, plan.evidenceKey.modelId) : {};
+  const effectiveConcurrency = Math.min(
+    config.concurrency,
+    pacing.maxParallelDispatches ?? Number.POSITIVE_INFINITY,
+  );
+
+  let reviewClock: ReturnType<typeof composeExecutionDeadline> | undefined;
+  if (executionContext) {
+    // Every lens reads every batch, and a multi-batch run closes with one
+    // synthesis; a single-batch review is one call per lens.
+    const batchCount = capacity?.batches.length ?? 1;
+    const reviewCallCount =
+      batchCount > 1 ? batchCount * config.activeLenses.length + 1 : config.activeLenses.length;
+    const abort = scaleBudgetEnvelope(executionContext, capacity, reviewCallCount);
     if (abort) return err(abort);
+
+    // The review's elapsed wall clock, started on the raised envelope. The
+    // ledger refuses any dispatch the remaining clock cannot fit, and the
+    // clock's signal aborts the ones in flight when it runs out.
+    reviewClock = composeExecutionDeadline(
+      executionContext.authorization.budgetLedger.limits.wallTimeMs,
+    );
+    executionContext.authorization.budgetLedger.attachReviewClock(
+      reviewClock,
+      executionContext.authorization.plan.limits.wallTimeMs,
+    );
   }
 
-  const result = await orchestrateReview(
-    aiClient,
-    parsed,
-    {
-      lenses: config.activeLenses,
-      filter: config.severityFilter,
-    },
-    async (event) => {
-      await emit(event);
-    },
-    {
-      concurrency: config.concurrency,
-      ...(capacity ? { batches: capacity.batches } : {}),
-      projectContext: config.projectContext,
-      signal,
-    },
-  );
+  let result: Awaited<ReturnType<typeof orchestrateReview>>;
+  try {
+    result = await orchestrateReview(
+      aiClient,
+      parsed,
+      {
+        lenses: config.activeLenses,
+        filter: config.severityFilter,
+      },
+      async (event) => {
+        await emit(event);
+      },
+      {
+        concurrency: effectiveConcurrency,
+        ...(effectiveConcurrency < config.concurrency
+          ? { requestedConcurrency: config.concurrency }
+          : {}),
+        ...(reviewClock ? { reviewClock } : {}),
+        ...(capacity ? { batches: capacity.batches } : {}),
+        projectContext: config.projectContext,
+        signal,
+      },
+    );
+  } finally {
+    reviewClock?.dispose();
+  }
 
   const finishedAt = new Date().toISOString();
   const dispatched = aiClient.terminalExecutions ?? [];
@@ -467,22 +453,39 @@ export async function executeReview(params: {
         (execution) => execution.receipt.outcome === "budget-exhausted",
       );
       const failed = budgetDispatch?.receipt ?? failedDispatch(dispatched, result.error);
-      const timing = dispatchReceiptTiming(failed, { startedAt, finishedAt });
-      const terminalOutcome =
-        failed?.outcome ?? mapOrchestrationErrorToTerminalOutcome(result.error);
-      const usage = aggregateUsageState(dispatched, terminalOutcome, timing.usageAvailability);
+      // An expired review clock is decisive even when every dispatch receipt
+      // says `cancelled`: the clock is why they were cancelled.
+      const wallClockExpired = reviewClock?.expired() === true;
+      const terminalOutcome = wallClockExpired
+        ? "budget-exhausted"
+        : (failed?.outcome ?? mapOrchestrationErrorToTerminalOutcome(result.error));
+      const usage = aggregateUsageState(dispatched, terminalOutcome, failed?.usageAvailability);
       const execution = buildExecutionResult(executionContext.authorization.plan, terminalOutcome, {
-        startedAt: timing.startedAt,
-        finishedAt: timing.finishedAt,
-        attemptCount: timing.attemptCount ?? failed?.attemptCount ?? 1,
+        startedAt,
+        finishedAt,
+        attemptCount: totalAttemptCount(dispatched),
+        scope: "review",
+        dispatchCount: Math.max(1, dispatched.length),
         ...normalizeBuildExecutionUsageInput(usage),
       });
-      const terminalDiagnostic = terminalDiagnosticForDispatch(
-        dispatched,
-        aiClient.terminalDiagnostics,
-        failed,
-      );
-      return ok({ issues: [], execution, terminalDiagnostic });
+      const operativeLimits = executionContext.authorization.budgetLedger.limits;
+      const terminalDiagnostic = wallClockExpired
+        ? serializeFailureDiagnostic({
+            code: "budget-exhausted",
+            message: budgetExhaustedMessage(
+              "wallTimeMs",
+              operativeLimits.wallTimeMs,
+              Date.parse(finishedAt) - Date.parse(startedAt),
+            ),
+            remediation: "Reduce review scope or increase configured limits.",
+          })
+        : terminalDiagnosticForDispatch(dispatched, aiClient.terminalDiagnostics, failed);
+      return ok({
+        issues: [],
+        execution,
+        terminalDiagnostic,
+        ...(result.error.lensStats.length > 0 ? { lensStats: result.error.lensStats } : {}),
+      });
     }
     return err(
       reviewAbort(
@@ -510,22 +513,14 @@ export async function executeReview(params: {
     const reviewOutcome: AggregatedDispatchOutcome = budgetDispatch
       ? "budget-exhausted"
       : "completed";
-    const timing = aggregateDispatches(
-      dispatched,
-      { startedAt, finishedAt },
-      executionContext.authorization.plan.limits.wallTimeMs,
-      reviewOutcome,
-      budgetDispatch?.receipt,
-    );
     outcome.execution = buildExecutionResult(executionContext.authorization.plan, reviewOutcome, {
-      startedAt: timing.startedAt,
-      finishedAt: timing.finishedAt,
-      attemptCount: timing.attemptCount,
+      startedAt,
+      finishedAt,
+      attemptCount: totalAttemptCount(dispatched),
+      scope: "review",
+      dispatchCount: Math.max(1, dispatched.length),
       issues: result.value.issues,
-      ...normalizeBuildExecutionUsageInput({
-        usageAvailability: timing.usageAvailability,
-        usage: timing.usage,
-      }),
+      ...normalizeBuildExecutionUsageInput(aggregateUsageState(dispatched, reviewOutcome)),
     });
     if (budgetDispatch) {
       const terminalDiagnostic = aiClient.terminalDiagnostics?.findLast(
@@ -624,18 +619,27 @@ export async function finalizeReview(params: {
         retryable: outcome.terminalDiagnostic.retryable,
       });
     }
-    // A schema failure carries the actionable guidance even when the decisive
-    // dispatch produced no diagnostic (the bridge's own PARSE_ERROR path), so
-    // the user is never told only that the outcome was `schema-failed`.
+    // A schema failure still names the failure and the way out when the
+    // decisive dispatch produced no diagnostic (the bridge's own PARSE_ERROR
+    // path) — but not the memo's "fail immediately" sentence, because a
+    // diagnosticless schema failure never arms the fail-fast memo.
     const fallbackMessage =
       terminalOutcome === "schema-failed"
-        ? STRUCTURED_OUTPUT_FAILURE_GUIDANCE
+        ? "This model could not produce Diffgazer's structured review output. Change the model or update the configuration."
         : `Review ended with outcome ${terminalOutcome}.`;
     // The step the abort names is the one the surfaces resolve: without it the
     // report step stays painted as running behind the error.
+    // The diagnostic's remediation is part of the user-facing message: the
+    // screen-level guidance is generic per error code, and "what to do now"
+    // (wait, switch Agent Execution to Sequential, fix the key) lives here.
+    const diagnosticMessage = outcome.terminalDiagnostic
+      ? [outcome.terminalDiagnostic.safeMessage, outcome.terminalDiagnostic.remediation]
+          .filter((part) => part && part !== "none")
+          .join(" ")
+      : fallbackMessage;
     return err(
       reviewAbort(
-        outcome.terminalDiagnostic?.safeMessage ?? fallbackMessage,
+        diagnosticMessage,
         terminalErrorCode(terminalOutcome, outcome.terminalDiagnostic),
         "report",
       ),

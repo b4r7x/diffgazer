@@ -54,7 +54,7 @@ interface ReadinessPresentation {
  * provider surfaces.
  */
 export const CONFORMANCE_TEST_COST_DISCLOSURE =
-  "Verify makes one small billed API call to the provider (typically under $0.02; free for local endpoints; codex and copilot use your CLI subscription quota).";
+  "Verify makes one small billed API call to the provider (typically under $0.02).";
 
 /**
  * The statuses a review may still be attempted under. Structured-output

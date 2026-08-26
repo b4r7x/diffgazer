@@ -41,13 +41,15 @@ export const SECRETS_STORAGE_OPTIONS = [
 export const AGENT_EXECUTION_OPTIONS = [
   {
     value: "sequential",
-    label: "Sequential",
-    description: "Agents run one after another. Works with all providers and tiers.",
+    label: "Sequential (recommended)",
+    description:
+      "Agents run one after another. Works with all providers and tiers — free tiers often allow only one request at a time.",
   },
   {
     value: "parallel",
     label: "Parallel",
-    description: "All agents run at once. Faster, but may hit rate limits on free tiers.",
+    description:
+      "All agents run at once when the provider allows it. Some providers and tiers limit parallel requests — the review then runs sequentially.",
   },
 ] as const satisfies ReadonlyArray<SettingsOption<AgentExecution>>;
 

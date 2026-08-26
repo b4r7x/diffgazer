@@ -5,35 +5,25 @@ description: First-run setup, step by step, before your first review.
 
 The first time you open Diffgazer in web mode it has no configuration to work with, so it shows a setup wizard instead of the Home screen. You only see this once: it walks you through the setup plan for the product you pick and saves a working configuration at the end. After that, Diffgazer returns to Home, where you choose **Review Unstaged** or **Review Staged** to start your first review. You can change any setup choice later from [Settings](/app/web/settings). This page covers each step in order. For the bigger picture of what web mode looks like once setup is done, see the [web overview](/app/web).
 
-The wizard does not run a fixed list of screens. It runs the **setup plan of the product you selected**: Product, then Endpoint, Authentication, Model, and Consent. A product that binds no endpoint — the local CLI products — has no Endpoint step, so its plan is four steps instead of five. A stepper across the top shows the plan, and a line under it reads out where you are, for example `Step 2 of 5: Endpoint`. Use Next to move forward and Back to revisit a step; the Next button stays disabled until the current step is satisfied.
+The wizard does not run a fixed list of screens. It runs the **setup plan of the product you selected**: Product, then Endpoint, Authentication, Model, and Consent. A stepper across the top shows the plan, and a line under it reads out where you are, for example `Step 2 of 5: Endpoint`. Use Next to move forward and Back to revisit a step; the Next button stays disabled until the current step is satisfied.
 
 ## Select a product
 
-The first step lists the twelve selectable products, each with its description and a billing-tier badge derived from how the product bills you. Hosted APIs read FREE when every model the catalog lets them offer is zero-priced, FREE/PAID when they sell both, FREE TIER when the catalog prices none of the offerable models at zero (priced or unpriced) but the product publishes a no-cost quota to run them on, and PAID otherwise. LOCAL marks products you run yourself over loopback HTTP, and AMBIENT marks vendor CLIs that ride a subscription you already pay for. FREE is only ever a claim about a published price; FREE TIER is a claim about an account's quota, so it comes with the limits the product's own notice describes. Diffgazer does not ship a model of its own, so you bring a product you already have access to: a hosted API, a local HTTP server on loopback, or a vendor CLI you already signed in to. Selecting a product builds the rest of the plan around it and resets any draft you had started for a different product. For the full list and what each one implies, see [providers and models](/app/concepts/providers-and-models) and the [providers reference](/app/reference/providers).
+The first step lists the nine selectable products, each with its description and a billing-tier badge derived from how the product bills you. Products read FREE when every model the catalog lets them offer is zero-priced, FREE/PAID when they sell both, FREE TIER when the catalog prices none of the offerable models at zero (priced or unpriced) but the product publishes a no-cost quota to run them on, and PAID otherwise. FREE is only ever a claim about a published price; FREE TIER is a claim about an account's quota, so it comes with the limits the product's own notice describes. Diffgazer does not ship a model of its own, so you bring a hosted API product you already have access to. Selecting a product builds the rest of the plan around it and resets any draft you had started for a different product. For the full list and what each one implies, see [providers and models](/app/concepts/providers-and-models) and the [providers reference](/app/reference/providers).
 
 ## Configure the endpoint
 
-Hosted products ask you to choose the endpoint tuple: a list of allowed endpoint profiles, each showing its label and the exact URL it binds.
-
-Local HTTP products ask for the loopback preset instead — `http://127.0.0.1:11434` for Ollama, and either LM Studio (`http://127.0.0.1:1234/v1`) or llama.cpp (`http://127.0.0.1:8080/v1`) for the Local OpenAI-compatible product. Diffgazer verifies that the first network hop is loopback; anything downstream of your local server is the server operator's responsibility.
-
-Local CLI products bind no endpoint, so the plan skips this step entirely.
+Choose the endpoint tuple: a list of allowed endpoint profiles, each showing its label and the exact URL it binds.
 
 ## Configure authentication
 
-What this step asks for depends on the transport:
-
-- **Hosted API.** Pick how the credential is supplied. **Enter credential now** takes the key in a masked, write-only field. **Use environment reference** binds the product's environment variable instead, so nothing secret is stored — the server resolves the value at run time. See [Environment variables](/app/reference/environment-variables) for the name each product reads.
-- **Local HTTP.** No hosted credential is stored. If your server expects one, tick **This server requires a bearer token** and supply the token in the write-only field.
-- **Local CLI.** Diffgazer uses vendor-managed local auth: install and sign in with the vendor's own CLI, then identify that installation here. Diffgazer never asks for CLI tokens or auth file paths and does not import or proxy them.
+Pick how the credential is supplied. **Enter credential now** takes the key in a masked, write-only field. **Use environment reference** binds the product's environment variable instead, so nothing secret is stored — the server resolves the value at run time. See [Environment variables](/app/reference/environment-variables) for the name each product reads.
 
 ## Select a model
 
-For hosted products, the wizard discovers models for the configuration tuple you just built and the selection is exact — aliases are rejected. To discover models against a real record, the wizard first persists the draft configuration server-side, then reads the model list back through `GET /api/config/providers/:configurationId/models`. That draft is revoked again when you change the tuple or leave the wizard, so an abandoned setup does not leave a configuration behind.
+The wizard discovers models for the configuration tuple you just built and the selection is exact — aliases are rejected. To discover models against a real record, the wizard first persists the draft configuration server-side, then reads the model list back through `GET /api/config/providers/:configurationId/models`. That draft is revoked again when you change the tuple or leave the wizard, so an abandoned setup does not leave a configuration behind.
 
-Local HTTP and local CLI products are different: the **Model** step shows **Catalog observations are unavailable for this configuration product.** with **Retry** only. There is no model list, **Next** stays disabled, and an external `select` through the [local API](/app/reference/api) does not update the wizard draft. You cannot complete setup for these products inside the wizard today. Finish model selection and notice acceptance through the [local-product API sequences](/app/reference/configuration) or **Configure Provider** in Settings instead. See [providers and models](/app/concepts/providers-and-models#local-http-and-local-cli-products).
-
-If discovery fails or returns nothing for a hosted product, the step says so and offers **Retry**. Products whose model policy already pins the acceptable IDs show that list directly instead.
+If discovery fails or returns nothing, the step says so and offers **Retry**. Products whose model policy already pins the acceptable IDs show that list directly instead.
 
 There is no verification step. Saving runs no billed probe: your first review verifies structured review support for the exact tuple and model and records the result. If you want to check sooner, the optional **Verify** action on the [Providers page](/app/web/settings) (under **More**, or the `v` key) runs one small probe and shows the last result beside the configuration.
 

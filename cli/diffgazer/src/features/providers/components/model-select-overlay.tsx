@@ -292,10 +292,16 @@ export function ModelSelectOverlay({
   );
 
   const contentWidth = Math.max(getDialogWidth(columns) - 6, 1);
+  // The bundled snapshot's data age is unknowable at runtime, so its tier
+  // names the data instead of claiming a checked date.
   const checkedAtLabel = source.checkedAt != null ? getDateLabel(source.checkedAt) : null;
+  const freshnessLabel =
+    source.source === "snapshot"
+      ? "bundled catalog"
+      : checkedAtLabel && `checked ${checkedAtLabel}`;
   const retainedModelNotice = saving ? null : getRetainedModelNotice(selectedId, source.models);
   const conditionalRows = [
-    checkedAtLabel ? 1 : 0,
+    freshnessLabel ? 1 : 0,
     skippedReason ? wrappedRowCount(`${skippedReason} Press r to retry.`, contentWidth) : 0,
     sourceError ? 1 : 0,
     retainedModelNotice ? wrappedRowCount(retainedModelNotice, contentWidth) : 0,
@@ -317,7 +323,7 @@ export function ModelSelectOverlay({
           <Dialog.Title>Select Model</Dialog.Title>
           <Dialog.Subtitle>
             {`${configuration.productId} · ${modelCountLabel}${
-              checkedAtLabel ? ` · checked ${checkedAtLabel}` : ""
+              freshnessLabel ? ` · ${freshnessLabel}` : ""
             }`}
           </Dialog.Subtitle>
         </Dialog.Header>

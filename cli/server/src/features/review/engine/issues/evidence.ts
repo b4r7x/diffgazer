@@ -1,4 +1,8 @@
-import { EVIDENCE_GAP_MARKER, type EvidenceRef, type ReviewIssue } from "@diffgazer/core/schemas/review";
+import {
+  EVIDENCE_GAP_MARKER,
+  type EvidenceRef,
+  type ReviewIssue,
+} from "@diffgazer/core/schemas/review";
 import type { DiffHunk, ParsedDiff } from "../diff/types.js";
 import { isCompleteEvidenceReference, normalizeIssueLineFields } from "./normalization.js";
 

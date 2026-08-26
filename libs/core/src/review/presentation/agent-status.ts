@@ -113,6 +113,24 @@ export function buildLensFailureNotice(
 }
 
 /**
+ * Whether a completed run left failed lenses behind. The headline and the
+ * summary panel's tone both read it, so "Partially Complete" and the frame's
+ * colour can never drift apart.
+ */
+export function hasFailedLenses(lensStats: readonly LensStat[] | undefined): boolean {
+  return (lensStats ?? []).some((stat) => stat.status === "failed");
+}
+
+/**
+ * The summary headline for a run that reached its results: "Review Complete"
+ * only when every tracked lens reported. A run that finished with failed
+ * lenses must not headline as a pass — the partial coverage IS the headline.
+ */
+export function buildCompletionHeadline(lensStats: readonly LensStat[] | undefined): string {
+  return hasFailedLenses(lensStats) ? "Review Partially Complete" : "Review Complete";
+}
+
+/**
  * The half of the notice that carries new information when the screen already
  * states how far the run got: which lenses produced nothing. Kept separate so a
  * surface that renders a coverage line never prints the same ratio twice.

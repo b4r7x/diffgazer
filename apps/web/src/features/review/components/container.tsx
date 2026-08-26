@@ -94,6 +94,7 @@ function ReviewStreamContainer({
     handleViewRun,
     handleRetry,
     handleSetupProvider,
+    handleChangeModel,
     handleSwitchMode,
   } = useReviewLifecycle({ mode, allowResumeWithoutSetup, onComplete, onStreamNotFound });
 
@@ -252,7 +253,13 @@ function ReviewStreamContainer({
         error={settledFailure.error}
         guidance={settledFailure.guidance}
         onBack={handleBack}
-        onConfigureProvider={handleSetupProvider}
+        // "Change model" opens the model dialog on arrival; the other provider
+        // recoveries land on the page itself.
+        onConfigureProvider={
+          settledFailure.guidance.kind === "model-incompatible"
+            ? handleChangeModel
+            : handleSetupProvider
+        }
         actionsDisabled={isTransitionPending}
       />
     );

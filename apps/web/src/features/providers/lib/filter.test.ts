@@ -33,8 +33,6 @@ function copyNotice(productId: RunnableProductId) {
 
 const NON_READY_EVIDENCE = {
   "conformance-pending": { evidenceStatus: "pending", checkedAt: "2026-07-31T12:00:00.000Z" },
-  unsupported: { evidenceStatus: "not-checked", checkedAt: null },
-  "local-conformance-failed": { evidenceStatus: "failed", checkedAt: "2026-07-31T12:00:00.000Z" },
 } as const;
 
 function configurationStatus(
@@ -85,65 +83,28 @@ const READY_GEMINI = configurationStatus(
 
 // The audited regression: key stored and model selected, but the structured
 // review conformance check has not run yet, so readiness.ready is false.
-const PENDING_DEEPSEEK = configurationStatus(
+const PENDING_ZEN = configurationStatus(
   {
-    configurationId: "deepseek-pending",
+    configurationId: "zen-pending",
     revision: 1,
     status: "supported",
     transportFamily: "hosted-api",
-    productId: "deepseek",
-    endpoint: "https://api.deepseek.com/v1",
-    selectedModelId: "deepseek-v4-flash",
-    notices: [copyNotice("deepseek")],
+    productId: "opencode-zen",
+    endpoint: "https://opencode.ai/zen/v1",
+    selectedModelId: "grok-code",
+    notices: [copyNotice("opencode-zen")],
     availableActions: ["inspect", "select", "test", "update", "delete"],
   },
   "conformance-pending",
 );
 
-const LOCAL_UNREACHABLE = configurationStatus(
-  {
-    configurationId: "local-openai-1",
-    revision: 1,
-    status: "supported",
-    transportFamily: "local-http",
-    productId: "local-openai",
-    endpoint: "http://127.0.0.1:1234/v1",
-    authentication: "none",
-    presetId: "lm-studio",
-    selectedModelId: null,
-    notices: [copyNotice("local-openai")],
-    availableActions: ["inspect", "select", "test", "update", "delete"],
-  },
-  "local-conformance-failed",
-);
-
-const CLI_UNSUPPORTED = configurationStatus(
-  {
-    configurationId: "codex-cli-1",
-    revision: 1,
-    status: "supported",
-    transportFamily: "local-cli",
-    productId: "codex-cli",
-    installationId: "codex-installation",
-    selectedModelId: null,
-    notices: [copyNotice("codex-cli")],
-    availableActions: ["inspect", "select", "test", "update", "delete"],
-  },
-  "unsupported",
-);
-
-const ALL_ROWS = mapProviderList([
-  READY_GEMINI,
-  PENDING_DEEPSEEK,
-  LOCAL_UNREACHABLE,
-  CLI_UNSUPPORTED,
-]);
+const ALL_ROWS = mapProviderList([READY_GEMINI, PENDING_ZEN]);
 
 const rowIds = (rows: ProviderListRow[]) => rows.map(getProviderRowId);
 
 describe("filterProviders", () => {
   it("returns all selectable products", () => {
-    expect(ALL_ROWS.filter(({ product }) => product.selectable)).toHaveLength(12);
+    expect(ALL_ROWS.filter(({ product }) => product.selectable)).toHaveLength(9);
   });
 
   it("returns every provider when filter is 'all'", () => {
@@ -153,34 +114,28 @@ describe("filterProviders", () => {
   it("keeps every stored configuration under 'configured' in list order", () => {
     expect(rowIds(filterProviders(ALL_ROWS, "configured"))).toEqual([
       "gemini-primary",
-      "deepseek-pending",
-      "local-openai-1",
-      "codex-cli-1",
+      "zen-pending",
     ]);
   });
 
   it("keeps a configured provider awaiting conformance under 'configured'", () => {
-    const pending = findProviderById(ALL_ROWS, "deepseek-pending");
+    const pending = findProviderById(ALL_ROWS, "zen-pending");
     expect(pending?.readiness.status).toBe("conformance-pending");
     expect(pending?.readiness.ready).toBe(false);
 
-    expect(
-      findProviderById(filterProviders(ALL_ROWS, "configured"), "deepseek-pending"),
-    ).not.toBeNull();
+    expect(findProviderById(filterProviders(ALL_ROWS, "configured"), "zen-pending")).not.toBeNull();
   });
 
   it("leaves the 'configured' list non-empty when the only configuration is pending, so ArrowDown from the filters has a list target", () => {
-    const rows = mapProviderList([PENDING_DEEPSEEK]);
-    expect(rowIds(filterProviders(rows, "configured"))).toEqual(["deepseek-pending"]);
+    const rows = mapProviderList([PENDING_ZEN]);
+    expect(rowIds(filterProviders(rows, "configured"))).toEqual(["zen-pending"]);
   });
 
   it("filters 'needs-key' to products without a stored configuration", () => {
     const ids = rowIds(filterProviders(ALL_ROWS, "needs-key"));
     expect(ids).toContain("zai");
     expect(ids).not.toContain("gemini-primary");
-    expect(ids).not.toContain("deepseek-pending");
-    expect(ids).not.toContain("local-openai-1");
-    expect(ids).not.toContain("codex-cli-1");
+    expect(ids).not.toContain("zen-pending");
   });
 
   it("partitions 'all' into 'configured' and 'needs-key'", () => {
@@ -204,8 +159,8 @@ describe("filterProviders", () => {
     expect(paidIds).toContain("gemini-primary");
 
     expect(getBillingTier("deepseek")).toBe("paid");
-    expect(freeIds).not.toContain("deepseek-pending");
-    expect(paidIds).toContain("deepseek-pending");
+    expect(freeIds).not.toContain("deepseek");
+    expect(paidIds).toContain("deepseek");
   });
 
   // OpenRouter's zero-priced `:free` entries are pinned catalog identities its
@@ -214,6 +169,12 @@ describe("filterProviders", () => {
     expect(getBillingTier("openrouter")).toBe("mixed");
     expect(rowIds(filterProviders(ALL_ROWS, "free"))).toContain("openrouter");
     expect(rowIds(filterProviders(ALL_ROWS, "paid"))).toContain("openrouter");
+
+    // Zen earns the same mix from its zero-priced catalog models, so its
+    // stored configuration surfaces under both tabs too.
+    expect(getBillingTier("opencode-zen")).toBe("mixed");
+    expect(rowIds(filterProviders(ALL_ROWS, "free"))).toContain("zen-pending");
+    expect(rowIds(filterProviders(ALL_ROWS, "paid"))).toContain("zen-pending");
 
     expect(offersFreeModels("mixed")).toBe(true);
     expect(offersFreeModels("free")).toBe(true);
@@ -243,16 +204,6 @@ describe("filterProviders", () => {
     // the wrong chip.
     expect(PROVIDER_FILTER_LABELS.map(({ value }) => value)).toEqual([...PROVIDER_FILTERS]);
     expect(PROVIDER_FILTER_LABELS.every(({ label }) => label.length > 0)).toBe(true);
-  });
-
-  it("distinguishes local conformance failure and CLI unsupported readiness", () => {
-    const local = findProviderById(ALL_ROWS, "local-openai-1");
-    const cli = findProviderById(ALL_ROWS, "codex-cli-1");
-
-    expect(local?.readiness.status).toBe("local-conformance-failed");
-    expect(cli?.readiness.status).toBe("unsupported");
-    expect(local?.product.transportFamily).toBe("local-http");
-    expect(cli?.product.transportFamily).toBe("local-cli");
   });
 
   it("resolves a dialog owner from the canonical list after filtering removes it", () => {

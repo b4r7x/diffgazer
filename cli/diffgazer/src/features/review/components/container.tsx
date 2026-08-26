@@ -403,8 +403,19 @@ function ReviewStreamContainer({
       state.errorCode,
       state.transportFamily ?? undefined,
     );
+    // "Change model" opens the model dialog on arrival; the other provider
+    // recoveries land on the page itself.
     const recovery = isProviderRecoveryError(guidance.kind)
-      ? { label: guidance.ctaLabel, open: goToProviderSettings }
+      ? {
+          label: guidance.ctaLabel,
+          open:
+            guidance.kind === "model-incompatible"
+              ? () => {
+                  reset();
+                  navigate({ screen: "settings/providers", intent: "select-model" });
+                }
+              : goToProviderSettings,
+        }
       : undefined;
     // The failure text is what sent the user here — the model, the numbers, and
     // the ceiling it broke — so the picker repeats it instead of paraphrasing.

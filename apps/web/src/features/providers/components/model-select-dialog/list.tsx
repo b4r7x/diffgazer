@@ -22,23 +22,7 @@ interface ModelListProps {
   ref?: React.Ref<HTMLDivElement>;
 }
 
-function StatusMessage({
-  loading,
-  isSaving,
-  emptyLabel,
-}: {
-  loading: boolean;
-  isSaving: boolean;
-  emptyLabel?: string;
-}) {
-  if (isSaving) {
-    return (
-      <>
-        <Spinner variant="braille" size="sm" aria-hidden="true" />
-        <EmptyState.Message>Saving...</EmptyState.Message>
-      </>
-    );
-  }
+function StatusMessage({ loading, emptyLabel }: { loading: boolean; emptyLabel?: string }) {
   if (loading) {
     return (
       <>
@@ -64,7 +48,9 @@ export function ModelList({
   emptyLabel,
   ref,
 }: ModelListProps) {
-  const showList = !isSaving && !loading && models.length > 0;
+  // The save window keeps the loaded list on screen (disabled); only a load
+  // with nothing to show yet may replace it with the spinner.
+  const showList = !loading && models.length > 0;
 
   return (
     // The dialog owns arrow-key navigation through the RadioGroup, so the scroll
@@ -72,18 +58,19 @@ export function ModelList({
     <ScrollArea
       ref={ref}
       keyboardScrollable={false}
-      // The saving window unmounts the radios and disables every other dialog
-      // control, so the container itself parks programmatic focus beside the
-      // Saving status instead of letting it fall to document.body.
+      // The saving window disables every dialog control; focus leaving a
+      // now-disabled button parks here instead of falling to document.body.
       tabIndex={isSaving ? -1 : undefined}
-      // scroll-py mirrors py: navigation scrolls rows flush with the clipped
-      // padding-box edge, which cuts the 1px focus ring painted outside the row.
-      className="max-h-[50dvh] overscroll-contain px-5 py-3 scroll-py-3"
+      // scroll-py mirrors py: without scroll-padding, navigation parks rows
+      // flush with the clipped padding-box edge, which cuts the 1px focus ring
+      // painted outside the row.
+      className="min-h-0 flex-1 overscroll-contain px-5 py-3 scroll-py-3"
       data-layout-region="model-list"
     >
       {showList ? (
         <RadioGroup
           aria-label="Available models"
+          disabled={isSaving}
           value={currentModelId}
           highlighted={isFocused ? focusedModelId : null}
           onChange={onSelect}
@@ -102,10 +89,10 @@ export function ModelList({
           ))}
         </RadioGroup>
       ) : null}
-      <EmptyState size="sm" live className={showList ? "sr-only p-0" : undefined}>
-        {showList ? null : (
-          <StatusMessage loading={loading} isSaving={isSaving} emptyLabel={emptyLabel} />
-        )}
+      {/* The dialog height is fixed, so filling the viewport centers the
+          loading/empty message without moving anything when the list arrives. */}
+      <EmptyState size="sm" live className={showList ? "sr-only p-0" : "h-full"}>
+        {showList ? null : <StatusMessage loading={loading} emptyLabel={emptyLabel} />}
       </EmptyState>
     </ScrollArea>
   );

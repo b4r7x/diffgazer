@@ -31,4 +31,5 @@ export {
   isOfferableObservation,
   type ProductCatalogObservation,
   transformCatalogObservation,
+  withholdsDeclaredStructuredOutputRefusal,
 } from "./transform.js";

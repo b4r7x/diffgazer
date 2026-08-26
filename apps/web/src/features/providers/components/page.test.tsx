@@ -9,12 +9,11 @@ import {
   type SettingsConfig,
 } from "@diffgazer/core/schemas/config";
 import {
-  CODEX_CLI_CONFIGURATION,
   configurationStatus,
   GEMINI_CONFIGURATION,
-  LOCAL_OPENAI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeConfigurationListResponse,
+  OPENROUTER_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { KeyboardProvider } from "@diffgazer/keys";
@@ -49,8 +48,7 @@ function makeInitResponse(): ConfigurationInitResponse {
   return makeConfigurationInitResponse(
     [
       configurationStatus(GEMINI_CONFIGURATION, "ready"),
-      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
-      configurationStatus(CODEX_CLI_CONFIGURATION, "unsupported"),
+      configurationStatus(OPENROUTER_CONFIGURATION, "model-missing"),
     ],
     null,
   );
@@ -76,7 +74,7 @@ function createMockApi() {
     ClientConfigurationActionResponseSchema.parse({
       action: "create",
       status: "succeeded",
-      configuration: LOCAL_OPENAI_CONFIGURATION,
+      configuration: OPENROUTER_CONFIGURATION,
     }) as Awaited<ReturnType<BoundApi["createConfiguration"]>>,
   );
   return {
@@ -288,7 +286,7 @@ describe("ProvidersPage", () => {
   it("opens the model picker from a model-missing primary without asking for consent", async () => {
     const user = userEvent.setup();
     const init = makeConfigurationInitResponse(
-      [configurationStatus(LOCAL_OPENAI_CONFIGURATION, "model-missing")],
+      [configurationStatus(OPENROUTER_CONFIGURATION, "model-missing")],
       null,
     );
     init.settings.providerConsent = null;
@@ -297,7 +295,7 @@ describe("ProvidersPage", () => {
     renderProvidersPage();
 
     await screen.findByRole("listbox", { name: "Providers" });
-    await user.click(screen.getByRole("option", { name: /Local OpenAI-compatible/i }));
+    await user.click(screen.getByRole("option", { name: /OpenRouter/i }));
     await user.click(await screen.findByRole("button", { name: "Select model" }));
 
     expect(await screen.findByRole("dialog", { name: "Select Model" })).toBeInTheDocument();
@@ -314,28 +312,6 @@ describe("ProvidersPage", () => {
 
     await waitFor(() => expect(mockApi.selectConfiguration).toHaveBeenCalledOnce());
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
-  });
-
-  it("completes local setup routing without exposing credential inputs", async () => {
-    const user = userEvent.setup();
-    renderProvidersPage();
-
-    await waitFor(() =>
-      expect(screen.getByRole("option", { name: "Google Gemini" })).toBeInTheDocument(),
-    );
-    await user.click(screen.getByRole("option", { name: /Local OpenAI-compatible/i }));
-    // A failed local check leads with Verify; setup lives behind More.
-    await user.click(screen.getByRole("button", { name: "More actions" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Update configuration" }));
-
-    expect(screen.queryByLabelText(/api key/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/sk-/)).not.toBeInTheDocument();
-  });
-
-  it("shows CLI unsupported evidence in the provider list", async () => {
-    renderProvidersPage();
-
-    await waitFor(() => expect(screen.getByLabelText(/CLI unsupported/i)).toBeInTheDocument());
   });
 
   it("preserves keyboard flow into enabled actions", async () => {
@@ -596,23 +572,19 @@ describe("ProvidersPage", () => {
 
   it("keeps a bound letter the state cannot run from moving the list", async () => {
     // An unconfigured provider has nothing to delete, so `d` runs nothing there;
-    // it must not fall through to typeahead and jump to DeepSeek either.
+    // it must not fall through to typeahead and move the selection either.
     const user = userEvent.setup();
     renderProvidersPage();
 
     const listbox = await screen.findByRole("listbox", { name: "Providers" });
     await waitFor(() => expect(listbox).toHaveFocus());
-    const cerebras = screen.getByRole("option", { name: "Cerebras" });
-    await user.click(cerebras);
-    expect(cerebras).toHaveAttribute("aria-selected", "true");
+    const ollamaCloud = screen.getByRole("option", { name: "Ollama Cloud" });
+    await user.click(ollamaCloud);
+    expect(ollamaCloud).toHaveAttribute("aria-selected", "true");
 
     await user.keyboard("d");
 
-    expect(cerebras).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("option", { name: "DeepSeek" })).toHaveAttribute(
-      "aria-selected",
-      "false",
-    );
+    expect(ollamaCloud).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
@@ -716,10 +688,24 @@ describe("ProvidersPage", () => {
 
     await user.click(within(actions).getByRole("button", { name: "More actions" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete configuration" }));
+
+    // A successful delete invalidates the config caches, so the refetched list
+    // no longer carries the record and its row leaves the listbox.
+    const afterDelete = makeConfigurationInitResponse(
+      [configurationStatus(GEMINI_CONFIGURATION, "ready")],
+      GEMINI_CONFIGURATION.configurationId,
+    );
+    mockApi.loadConfigurationInit.mockResolvedValue(afterDelete);
+    mockApi.listConfigurations.mockResolvedValue(makeConfigurationListResponse(afterDelete));
     await user.click(within(getDeleteConfirm()).getByRole("button", { name: "Delete" }));
 
     await waitFor(() =>
       expect(mockApi.deleteConfiguration).toHaveBeenCalledWith("cfg-retired", undefined),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("option", { name: UNRECOGNIZED_CONFIGURATION_COPY.label }),
+      ).not.toBeInTheDocument(),
     );
   });
 

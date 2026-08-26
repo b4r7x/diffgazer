@@ -123,6 +123,7 @@ const OrchestratorStartEventSchema = z.object({
   type: z.literal("orchestrator_start"),
   agents: z.array(AgentMetaSchema),
   concurrency: PositiveCountSchema,
+  requestedConcurrency: PositiveCountSchema.optional(),
   timestamp: z.string(),
 });
 
@@ -199,6 +200,16 @@ export const LensStatSchema = z.object({
   status: z.enum(["success", "failed"]),
   errorCode: z.string().optional(),
   errorMessage: z.string().optional(),
+  dispatches: z
+    .array(
+      z.object({
+        batchIndex: CountSchema,
+        startedAt: z.iso.datetime(),
+        finishedAt: z.iso.datetime(),
+        outcome: z.string(),
+      }),
+    )
+    .optional(),
 });
 export type LensStat = z.infer<typeof LensStatSchema>;
 

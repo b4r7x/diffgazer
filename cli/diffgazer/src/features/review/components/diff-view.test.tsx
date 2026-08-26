@@ -30,10 +30,11 @@ describe("DiffView (TUI) terminal-escape sanitization", () => {
   });
 
   test("truncates a 200-column diff line to one row with its marker intact", async () => {
+    const patch = ["--- a/src/app.ts", `+${"x".repeat(200)}`].join("\n");
     const { lastFrame } = render(
       <CliThemeProvider initialTheme="dark">
         <Box width={80}>
-          <DiffView patch={`+${"x".repeat(200)}`} />
+          <DiffView patch={patch} />
         </Box>
       </CliThemeProvider>,
     );
@@ -44,5 +45,22 @@ describe("DiffView (TUI) terminal-escape sanitization", () => {
     expect(diffRows).toHaveLength(1);
     expect(diffRows[0]).toMatch(/^│\+x+/);
     expect(diffRows[0]?.length).toBeLessThanOrEqual(80);
+  });
+
+  test("wraps a single-line flattened patch across rows instead of truncating it", async () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <Box width={80}>
+          <DiffView patch={`+${"x".repeat(200)}END`} />
+        </Box>
+      </CliThemeProvider>,
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+    const frame = lastFrame() ?? "";
+    const diffRows = frame.split("\n").filter((row) => /x/.test(row));
+
+    expect(diffRows.length).toBeGreaterThan(1);
+    expect(frame).toContain("END");
   });
 });

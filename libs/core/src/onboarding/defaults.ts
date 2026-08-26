@@ -2,33 +2,14 @@ import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "../providers/product-r
 import type {
   AgentExecution,
   HostedApiConfigurationInput,
-  LocalCliInstallationId,
-  LocalCliProductId,
-  LocalHttpConfigurationInput,
   RunnableProductId,
 } from "../schemas/config/index.js";
-import {
-  HostedApiEndpointSchema,
-  HostedApiProductIdSchema,
-  LocalCliProductIdSchema,
-  LocalHttpProductIdSchema,
-  LocalOpenAIPresetIdSchema,
-  LoopbackHttpEndpointSchema,
-} from "../schemas/config/index.js";
+import { HostedApiEndpointSchema } from "../schemas/config/index.js";
 import { SELECTABLE_LENS_IDS, type SelectableLensId } from "../schemas/review/index.js";
 import { buildSetupPlan, type RunnableSetupPlan } from "./setup-plan.js";
 import type { OnboardingAcknowledgement } from "./types.js";
 
-export interface LocalCliConfigurationDraft {
-  readonly transportFamily: "local-cli";
-  readonly productId: LocalCliProductId;
-  readonly installationId?: LocalCliInstallationId;
-}
-
-export type OnboardingConfigurationDraft =
-  | HostedApiConfigurationInput
-  | LocalHttpConfigurationInput
-  | LocalCliConfigurationDraft;
+export type OnboardingConfigurationDraft = HostedApiConfigurationInput;
 
 export interface OnboardingDraft {
   readonly kind: "runnable";
@@ -47,33 +28,11 @@ function firstEndpoint(productId: RunnableProductId) {
 }
 
 function buildConfigurationDraft(productId: RunnableProductId): OnboardingConfigurationDraft {
-  const product = PRODUCT_REGISTRY[productId];
-
-  if (product.transportFamily === "hosted-api") {
-    const endpoint = firstEndpoint(productId);
-    return {
-      transportFamily: "hosted-api",
-      productId: HostedApiProductIdSchema.parse(productId),
-      endpoint: HostedApiEndpointSchema.parse(endpoint.endpoint),
-    };
-  }
-
-  if (product.transportFamily === "local-http") {
-    const endpoint = firstEndpoint(productId);
-    return {
-      transportFamily: "local-http",
-      productId: LocalHttpProductIdSchema.parse(productId),
-      endpoint: LoopbackHttpEndpointSchema.parse(endpoint.endpoint),
-      authentication: "none",
-      ...(productId === "local-openai"
-        ? { presetId: LocalOpenAIPresetIdSchema.parse(endpoint.id) }
-        : {}),
-    };
-  }
-
+  const endpoint = firstEndpoint(productId);
   return {
-    transportFamily: "local-cli",
-    productId: LocalCliProductIdSchema.parse(productId),
+    transportFamily: "hosted-api",
+    productId,
+    endpoint: HostedApiEndpointSchema.parse(endpoint.endpoint),
   };
 }
 

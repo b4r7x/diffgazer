@@ -33,16 +33,16 @@ function readyDraft(
   };
 }
 
-const deepseek = () =>
+const zaiDraft = () =>
   readyDraft(
-    "deepseek",
+    "zai",
     {
       transportFamily: "hosted-api",
-      productId: "deepseek",
-      endpoint: "https://api.deepseek.com/v1",
+      productId: "zai",
+      endpoint: "https://api.z.ai/api/paas/v4",
       credential: { kind: "literal", value: "write-only-credential" },
     },
-    "deepseek-v4-flash",
+    "glm-4.7",
   );
 
 function configurationSummary(
@@ -81,7 +81,7 @@ function configurationSummary(
 
 describe("wizard payloads", () => {
   it("serializes a hosted credential only in a V2 create action", () => {
-    const data = deepseek();
+    const data = zaiDraft();
 
     expect(buildConfigPayload(data)).toEqual({
       action: "create",
@@ -91,10 +91,7 @@ describe("wizard payloads", () => {
   });
 
   it("serializes an environment credential without an environment name or legacy key", () => {
-    const base = deepseek();
-    if (base.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("DeepSeek fixture must use hosted API transport");
-    }
+    const base = zaiDraft();
     const data = {
       ...base,
       configurationInput: {
@@ -110,64 +107,13 @@ describe("wizard payloads", () => {
     expect(JSON.stringify(buildConfigPayload(data))).not.toMatch(/apiKey|varName|environmentName/);
   });
 
-  it("never invents a credential for local HTTP or local CLI", () => {
-    const localHttp = readyDraft(
-      "local-openai",
-      {
-        transportFamily: "local-http",
-        productId: "local-openai",
-        endpoint: "http://127.0.0.1:1234/v1",
-        authentication: "none",
-        presetId: "lm-studio",
-      },
-      "local-model",
-    );
-    const localCli = readyDraft(
-      "codex-cli",
-      {
-        transportFamily: "local-cli",
-        productId: "codex-cli",
-        installationId: "codex-installation",
-      },
-      "gpt-5-codex",
-    );
-
-    for (const data of [localHttp, localCli]) {
-      const serialized = JSON.stringify(buildConfigPayload(data));
-      expect(serialized).not.toMatch(/apiKey|credential|bearerToken/);
-    }
-  });
-
-  it("allows only the explicit write-only local bearer input", () => {
-    const data = readyDraft(
-      "local-openai",
-      {
-        transportFamily: "local-http",
-        productId: "local-openai",
-        endpoint: "http://127.0.0.1:8080/v1",
-        authentication: "optional-local-bearer",
-        presetId: "llama-cpp",
-        bearerToken: { kind: "literal", value: "write-only-bearer" },
-      },
-      "local-model",
-    );
-
-    expect(buildConfigPayload(data)).toMatchObject({
-      action: "create",
-      input: {
-        authentication: "optional-local-bearer",
-        bearerToken: { kind: "literal", value: "write-only-bearer" },
-      },
-    });
-  });
-
   it("emits an exact selected model before notice acknowledgement is persisted", () => {
-    const data = deepseek();
+    const data = zaiDraft();
 
     expect(buildSelectPayload(data, "configuration-1")).toEqual({
       action: "select",
       configurationId: "configuration-1",
-      modelId: "deepseek-v4-flash",
+      modelId: "glm-4.7",
     });
     expect(
       buildSelectPayload(
@@ -180,10 +126,10 @@ describe("wizard payloads", () => {
     ).toEqual({
       action: "select",
       configurationId: "configuration-1",
-      modelId: "deepseek-v4-flash",
+      modelId: "glm-4.7",
     });
     expect(() =>
-      buildSelectPayload({ ...data, selectedModelId: "deepseek-latest" }, "configuration-1"),
+      buildSelectPayload({ ...data, selectedModelId: "glm-latest" }, "configuration-1"),
     ).toThrow("configured transport and exact model");
 
     expect(buildUpdatePayload(data, "configuration-1", 3)).toEqual({
@@ -197,7 +143,7 @@ describe("wizard payloads", () => {
 
   it("serializes review preferences and the provider consent the notice step recorded", () => {
     const data = {
-      ...deepseek(),
+      ...zaiDraft(),
       defaultLenses: ["security"],
       agentExecution: "parallel",
     } satisfies OnboardingDraft;
@@ -215,7 +161,7 @@ describe("wizard payloads", () => {
 
 describe("saveWizard", () => {
   it("persists settings, the exact model, and the explicit notice without a paid conformance test", async () => {
-    const data = deepseek();
+    const data = zaiDraft();
     const actions: ClientConfigurationAction[] = [];
     const saveSettings = vi.fn(async () => {});
     const runConfigurationAction = vi.fn(async (action: ClientConfigurationAction) => {
@@ -261,7 +207,7 @@ describe("saveWizard", () => {
       {
         action: "select",
         configurationId: "configuration-1",
-        modelId: "deepseek-v4-flash",
+        modelId: "glm-4.7",
       },
       {
         action: "update",
@@ -277,7 +223,7 @@ describe("saveWizard", () => {
   });
 
   it("completes with store-aligned readiness projection without a pre-select test", async () => {
-    const data = deepseek();
+    const data = zaiDraft();
     const productId = data.plan.productId;
     const actions: ClientConfigurationAction[] = [];
     let revision = 1;
@@ -332,7 +278,7 @@ describe("saveWizard", () => {
   });
 
   it("rejects a select response that does not match the explicit selected tuple", async () => {
-    const data = deepseek();
+    const data = zaiDraft();
     const runConfigurationAction = vi.fn(async (action: ClientConfigurationAction) => {
       if (action.action === "create") {
         return { action: "create", status: "succeeded", configuration: configurationSummary(data) };
@@ -341,7 +287,7 @@ describe("saveWizard", () => {
         return {
           action: "select",
           status: "succeeded",
-          configuration: configurationSummary(data, action.configurationId, "deepseek-latest", 2),
+          configuration: configurationSummary(data, action.configurationId, "glm-other", 2),
         };
       }
       throw new Error(`Unexpected action ${action.action}`);
@@ -362,7 +308,7 @@ describe("saveWizard", () => {
     const runConfigurationAction = vi.fn();
 
     await expect(
-      saveWizard(deepseek(), { saveSettings, runConfigurationAction }),
+      saveWizard(zaiDraft(), { saveSettings, runConfigurationAction }),
     ).resolves.toMatchObject({
       status: "partial",
       completedSteps: [],
@@ -371,7 +317,7 @@ describe("saveWizard", () => {
   });
 
   it("reports a created configuration when model selection fails", async () => {
-    const data = deepseek();
+    const data = zaiDraft();
     const actions: ClientConfigurationAction[] = [];
     const runConfigurationAction = vi.fn(async (action: ClientConfigurationAction) => {
       actions.push(action);

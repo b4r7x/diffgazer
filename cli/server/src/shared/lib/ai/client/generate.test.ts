@@ -16,13 +16,20 @@ import {
 } from "../../testing/ai-client-fixtures.js";
 import { STRUCTURED_OUTPUT_FAILURE_GUIDANCE } from "../admission/service.js";
 import { createBudgetLedger } from "../budget/ledger.js";
-import { serializeFailureDiagnostic } from "../diagnostics.js";
+import {
+  MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE,
+  serializeFailureDiagnostic,
+} from "../diagnostics.js";
 import {
   estimatePromptTokens,
   estimateReviewInputTokens,
   promptAttemptEstimate,
 } from "../providers/execution-receipt.js";
-import { executeReviewGeneration } from "./generate.js";
+import {
+  budgetExhaustedMessage,
+  buildExecutionResult,
+  executeReviewGeneration,
+} from "./generate.js";
 import { toInitializedAIClient } from "./initialize.js";
 
 const GENERATE_TEST_LIMITS: ExecutionLimits = Object.freeze({
@@ -34,7 +41,7 @@ const GENERATE_TEST_LIMITS: ExecutionLimits = Object.freeze({
   maxCostUsd: 0.01,
 });
 
-const OUTER_ADMISSION_PRODUCTS = ["gemini", "ollama", "codex-cli", "zai"] as const;
+const OUTER_ADMISSION_PRODUCTS = ["gemini", "openrouter", "opencode-zen", "zai"] as const;
 
 const OUTER_ADMISSION_OVER_LIMIT_CASES = [
   {
@@ -381,7 +388,7 @@ describe("review generation hard limits", () => {
     expect(ledger.snapshot().committed.responseBytes).toBe(0);
   });
 
-  it("returns budget-exhausted with zero findings when wallTimeMs would be exceeded on settlement", async () => {
+  it("settles no wall time when a dispatch runs past the review wall budget", async () => {
     const tightLimits = { ...GENERATE_TEST_LIMITS, wallTimeMs: 100 };
     const plan = admittedPlan("gemini", tightLimits);
     const adapter = clientTestCreateMockAdapter("gemini", async () =>
@@ -398,8 +405,10 @@ describe("review generation hard limits", () => {
       prompt: "short",
     });
 
-    expect(result.execution.receipt.outcome).toBe("budget-exhausted");
-    expect(result.execution.result.issues).toEqual([]);
+    // The review wall dimension is an elapsed clock, so a 60s dispatch does not
+    // drain its sibling lenses' wall budget.
+    expect(result.execution.receipt.outcome).toBe("transport-failed");
+    expect(ledger.snapshot().committed.wallTimeMs).toBe(0);
   });
 
   it("charges every retry against maxRetries through the budget ledger", async () => {
@@ -494,8 +503,11 @@ describe("review generation hard limits", () => {
   });
 
   it("settles no cost for a model the bundled catalog does not price", async () => {
-    const plan = admittedPlan("ollama", { ...GENERATE_TEST_LIMITS, maxCostUsd: 0 });
-    const adapter = clientTestCreateMockAdapter("ollama", async () =>
+    const plan = clientTestAdmittedPlan("zai", {
+      limits: { ...GENERATE_TEST_LIMITS, maxCostUsd: 0 },
+      modelId: "model-the-catalog-does-not-price",
+    });
+    const adapter = clientTestCreateMockAdapter("zai", async () =>
       clientTestExecutionResult(plan, "completed", {
         usageAvailability: "reported",
         usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
@@ -510,6 +522,73 @@ describe("review generation hard limits", () => {
 
     expect(result.execution.receipt.outcome).toBe("completed");
     expect(ledger.snapshot().committed.costUsd).toBe(0);
+  });
+});
+
+describe("review-scope receipt passthrough", () => {
+  beforeEach(setupClientTestHome);
+  afterEach(teardownClientTestHome);
+
+  it("carries the scope fields without changing the execution fingerprint", () => {
+    const plan = admittedPlan("gemini");
+    const timing = {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:01.000Z",
+    };
+    const dispatch = buildExecutionResult(plan, "completed", timing);
+    const review = buildExecutionResult(plan, "completed", {
+      ...timing,
+      attemptCount: 3,
+      scope: "review",
+      dispatchCount: 3,
+    });
+
+    expect(review.receipt.scope).toBe("review");
+    expect(review.receipt.dispatchCount).toBe(3);
+    expect(review.receipt.executionFingerprint).toBe(dispatch.receipt.executionFingerprint);
+  });
+
+  it("keeps settle-failure per-dispatch receipts free of the scope fields", async () => {
+    const plan = admittedPlan("gemini", { ...GENERATE_TEST_LIMITS, maxCostUsd: 1 });
+    const adapter = clientTestCreateMockAdapter("gemini", async () =>
+      clientTestExecutionResult(plan, "completed", {
+        usageAvailability: "reported",
+        usage: { inputTokens: 21, outputTokens: 6, totalTokens: 27 },
+      }),
+    );
+    const { authorization } = authorize(plan, adapter);
+
+    const first = await executeReviewGeneration({ authorization, prompt: "short" });
+    expect(first.execution.receipt.outcome).toBe("completed");
+    const second = await executeReviewGeneration({ authorization, prompt: "short" });
+
+    expect(second.execution.receipt.outcome).toBe("budget-exhausted");
+    expect("scope" in second.execution.receipt).toBe(false);
+    expect("dispatchCount" in second.execution.receipt).toBe(false);
+  });
+
+  it("prints the raised operative limit when settlement exhausts the envelope", async () => {
+    const plan = admittedPlan("gemini", { ...GENERATE_TEST_LIMITS, maxCostUsd: 1 });
+    const adapter = clientTestCreateMockAdapter("gemini", async () =>
+      clientTestExecutionResult(plan, "completed", {
+        usageAvailability: "reported",
+        usage: { inputTokens: 35, outputTokens: 2, totalTokens: 37 },
+      }),
+    );
+    const { authorization, ledger } = authorize(plan, adapter);
+    ledger.raiseReviewEnvelope(authorization.budgetReservation, {
+      inputTokens: 60,
+      responseBytes: plan.limits.maxResponseBytes,
+      wallTimeMs: plan.limits.wallTimeMs,
+    });
+
+    const first = await executeReviewGeneration({ authorization, prompt: "short" });
+    expect(first.execution.receipt.outcome).toBe("completed");
+
+    // 35 + 35 input tokens passes the raised envelope of 60, not the plan's 40.
+    const second = await executeReviewGeneration({ authorization, prompt: "short" });
+    expect(second.execution.receipt.outcome).toBe("budget-exhausted");
+    expect(second.diagnostic.safeMessage).toContain("maxInputTokens (60)");
   });
 });
 
@@ -708,13 +787,35 @@ describe("review budget across lenses", () => {
   });
 });
 
+describe("budget exhaustion messages", () => {
+  it("renders the wall dimension with operative limit and elapsed seconds, not the configured base", () => {
+    // Operative limit 1_200_000 ms — the raised envelope, not the 300_000 ms configured base.
+    const message = budgetExhaustedMessage("wallTimeMs", 1_200_000, 1_263_000);
+
+    expect(message).toBe("Review wall-clock budget exhausted: 1263s elapsed of 1200s allowed.");
+    expect(message).not.toContain("300s");
+  });
+
+  it("keeps the operative-limit form for the wall dimension without a measured elapsed", () => {
+    expect(budgetExhaustedMessage("wallTimeMs", 1_200_000)).toBe(
+      "Review budget exhausted at wallTimeMs (1200000).",
+    );
+  });
+
+  it("keeps the operative-limit form for non-wall dimensions", () => {
+    expect(budgetExhaustedMessage("maxInputTokens", 60, 5_000)).toBe(
+      "Review budget exhausted at maxInputTokens (60).",
+    );
+  });
+});
+
 describe("review generation usage rules", () => {
   beforeEach(setupClientTestHome);
   afterEach(teardownClientTestHome);
 
   it("preserves reported usage on completed adapter receipts", async () => {
-    const plan = admittedPlan("groq");
-    const adapter = clientTestCreateMockAdapter("groq", async () =>
+    const plan = admittedPlan("openrouter");
+    const adapter = clientTestCreateMockAdapter("openrouter", async () =>
       clientTestExecutionResult(plan, "completed", {
         usageAvailability: "reported",
         usage: { inputTokens: 12, outputTokens: 4, totalTokens: 16, cachedTokens: 2 },
@@ -737,8 +838,8 @@ describe("review generation usage rules", () => {
   });
 
   it("keeps required-missing usage as a transport failure with zero findings", async () => {
-    const plan = admittedPlan("deepseek");
-    const adapter = clientTestCreateMockAdapter("deepseek", async () =>
+    const plan = admittedPlan("zai");
+    const adapter = clientTestCreateMockAdapter("zai", async () =>
       clientTestExecutionResult(plan, "transport-failed", {
         usageAvailability: "required-missing",
       }),
@@ -794,12 +895,68 @@ describe("review generation terminal failures", () => {
     expect(result.execution.receipt.outcome).toBe("schema-failed");
     expect(result.execution.result.issues).toEqual([]);
     expect(result.diagnostic.code).toBe("schema-failed");
-    expect(result.diagnostic.remediation).toBe(STRUCTURED_OUTPUT_FAILURE_GUIDANCE);
+    // A diagnosticless schema failure never arms the fail-fast memo, so it must
+    // not carry the memo's "fail immediately" guidance.
+    expect(result.diagnostic.remediation).not.toBe(STRUCTURED_OUTPUT_FAILURE_GUIDANCE);
+  });
+
+  it("attaches the fail-fast guidance only to malformed output the corrective retry could not fix", async () => {
+    const plan = admittedPlan("gemini");
+    const memoClassAdapter = clientTestCreateMockAdapter("gemini", async (request) => {
+      request.reportDiagnostic?.(
+        serializeFailureDiagnostic({
+          code: MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE,
+          message: 'The model\'s answer failed review schema validation (finish reason "stop").',
+        }),
+      );
+      return clientTestExecutionResult(plan, "schema-failed", { attemptCount: 2 });
+    });
+    const memoClass = await executeReviewGeneration({
+      authorization: authorize(plan, memoClassAdapter).authorization,
+      prompt: "short",
+    });
+    expect(memoClass.diagnostic.code).toBe(MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE);
+    expect(memoClass.diagnostic.remediation).toBe(STRUCTURED_OUTPUT_FAILURE_GUIDANCE);
+
+    // The plain code means no corrective re-ask faced this answer, whatever the
+    // attempt count says — a blind retry spends the budget without correcting —
+    // so the memo does not arm and the sentence stays off.
+    const blindRetryAdapter = clientTestCreateMockAdapter("gemini", async (request) => {
+      request.reportDiagnostic?.(
+        serializeFailureDiagnostic({
+          code: "malformed-review-output",
+          message: 'The model\'s answer failed review schema validation (finish reason "stop").',
+        }),
+      );
+      return clientTestExecutionResult(plan, "schema-failed", { attemptCount: 2 });
+    });
+    const blindRetry = await executeReviewGeneration({
+      authorization: authorize(plan, blindRetryAdapter).authorization,
+      prompt: "short",
+    });
+    expect(blindRetry.diagnostic.remediation).not.toBe(STRUCTURED_OUTPUT_FAILURE_GUIDANCE);
+
+    // Geometry failures carry their own remediation, never the memo sentence.
+    const truncatedAdapter = clientTestCreateMockAdapter("gemini", async (request) => {
+      request.reportDiagnostic?.(
+        serializeFailureDiagnostic({
+          code: "output-truncated",
+          message: "The model ran out of completion budget mid-answer.",
+          remediation: "Reduce the review scope.",
+        }),
+      );
+      return clientTestExecutionResult(plan, "schema-failed", { attemptCount: 2 });
+    });
+    const truncated = await executeReviewGeneration({
+      authorization: authorize(plan, truncatedAdapter).authorization,
+      prompt: "short",
+    });
+    expect(truncated.diagnostic.remediation).toBe("Reduce the review scope.");
   });
 
   it("returns zero findings for provider refusal transport failures", async () => {
-    const plan = admittedPlan("deepseek");
-    const adapter = clientTestCreateMockAdapter("deepseek", async () =>
+    const plan = admittedPlan("zai");
+    const adapter = clientTestCreateMockAdapter("zai", async () =>
       clientTestExecutionResult(plan, "transport-failed"),
     );
     const { authorization } = authorize(plan, adapter);
@@ -814,12 +971,12 @@ describe("review generation terminal failures", () => {
   });
 
   it("reports the adapter's own reason for a refused request instead of the generic transport message", async () => {
-    const plan = admittedPlan("deepseek");
-    const adapter = clientTestCreateMockAdapter("deepseek", async (request) => {
+    const plan = admittedPlan("zai");
+    const adapter = clientTestCreateMockAdapter("zai", async (request) => {
       request.reportDiagnostic?.(
         serializeFailureDiagnostic({
           code: "provider-rejected",
-          message: "DeepSeek rejected the credential (HTTP 401).",
+          message: "Z.AI rejected the credential (HTTP 401).",
           remediation: "Update the configuration with a valid API key.",
         }),
       );
@@ -835,7 +992,7 @@ describe("review generation terminal failures", () => {
     expect(result.execution.receipt.outcome).toBe("transport-failed");
     expect(result.diagnostic).toMatchObject({
       code: "provider-rejected",
-      safeMessage: "DeepSeek rejected the credential (HTTP 401).",
+      safeMessage: "Z.AI rejected the credential (HTTP 401).",
     });
   });
 
@@ -898,8 +1055,8 @@ describe("review generation terminal failures", () => {
   });
 
   it("returns zero findings for generic provider transport failures", async () => {
-    const plan = admittedPlan("cerebras");
-    const adapter = clientTestCreateMockAdapter("cerebras", async () =>
+    const plan = admittedPlan("opencode-zen");
+    const adapter = clientTestCreateMockAdapter("opencode-zen", async () =>
       clientTestExecutionResult(plan, "transport-failed"),
     );
     const { authorization } = authorize(plan, adapter);

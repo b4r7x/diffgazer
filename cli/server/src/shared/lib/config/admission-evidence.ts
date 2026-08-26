@@ -7,6 +7,7 @@ import {
   Sha256HexSchema,
 } from "@diffgazer/core/schemas/review";
 import { z } from "zod";
+import { resolveDispatchPacing } from "../ai/providers/hosted/profiles.js";
 import { effectiveBudgetForRecord, executionLimitsFromBudget } from "./budget-ceiling.js";
 import type { SupportedProviderConfigurationRecord } from "./provider-config.js";
 
@@ -83,28 +84,27 @@ export function buildExpectedEvidenceKey(input: {
 }): EvidenceKey {
   const { record } = input;
   const product = PRODUCT_REGISTRY[record.productId];
-  const expectedEndpoint =
-    record.input.transportFamily === "local-cli" ? null : record.input.endpoint;
 
-  const authentication =
-    record.input.transportFamily === "local-http" ? record.input.authentication : null;
-  const installationId =
-    record.input.transportFamily === "local-cli" ? record.input.installationId : null;
+  const budgetLimits = executionLimitsFromBudget(effectiveBudgetForRecord(record));
+  const pacing = resolveDispatchPacing(record.productId, record.selectedModelId ?? "");
 
   return EvidenceKeySchema.parse({
-    authentication,
+    authentication: null,
     credentialReferenceIdentity: input.credentialReferenceIdentity,
-    installationId,
+    installationId: null,
     productId: record.productId,
     transportFamily: record.transportFamily,
-    normalizedEndpoint: expectedEndpoint,
+    normalizedEndpoint: record.input.endpoint,
     region: null,
     workspaceAccountReference: null,
     modelId: record.selectedModelId,
     runtime: input.runtime,
     structuredOutputSchemaSha256: input.structuredOutputSchemaSha256,
     noticeVersion: product.notice.noticeVersion,
-    limits: executionLimitsFromBudget(effectiveBudgetForRecord(record)),
+    limits: {
+      ...budgetLimits,
+      wallTimeMs: pacing.perDispatchWallTimeMs ?? budgetLimits.wallTimeMs,
+    },
   });
 }
 

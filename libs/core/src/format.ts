@@ -91,8 +91,8 @@ export function getTimestamp(dateStr: string): string {
 export function formatDuration(durationMs: number | null | undefined): string {
   if (durationMs == null) return "--";
   const seconds = Math.floor(durationMs / 1000);
-  if (seconds === 0) return `${durationMs}ms`;
-  if (seconds < 60) return `${seconds}.${Math.floor((durationMs % 1000) / 100)}s`;
+  if (seconds === 0) return "<1s";
+  if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
   return `${minutes}m ${seconds % 60}s`;
 }

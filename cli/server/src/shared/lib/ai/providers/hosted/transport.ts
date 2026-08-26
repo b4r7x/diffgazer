@@ -1,11 +1,12 @@
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { HOSTED_API_PRODUCT_IDS, type HostedApiProductId } from "@diffgazer/core/schemas/config";
 import { type EvidenceKey, LensReviewResultSchema } from "@diffgazer/core/schemas/review";
-import type { Adapter } from "../../types.js";
+import { readCachedLiveModelList } from "../../live-model-lists.js";
+import type { Adapter, AdapterExecuteRequest } from "../../types.js";
 import { createFailedExecutionResult } from "../execution-receipt.js";
 import { executeHostedReview } from "./execute.js";
 import { hostedStructuredOutputSchema } from "./profiles.js";
-import type { HostedAdapterDependencies } from "./types.js";
+import type { HostedAdapterDependencies, HostedExecutionContext } from "./types.js";
 
 export {
   boundedFetchInit,
@@ -25,6 +26,38 @@ function isHostedProductId(productId: EvidenceKey["productId"]): productId is Ho
   return HOSTED_API_PRODUCT_IDS.some((candidate) => candidate === productId);
 }
 
+/**
+ * OpenRouter routes a request across downstream endpoints, and its strict
+ * json_schema dispatch demands `structured_outputs` from every candidate
+ * endpoint — a route that never declared it hard-404s instead of degrading.
+ * The cached live model list already parses that per-route capability, so
+ * dispatch keeps the strict schema only for routes that affirmatively declare
+ * it and degrades every other route (declared refusal, unknown route, or a
+ * cold cache) to JSON mode with local validation — degradation still reviews,
+ * while a wrong strict demand cannot.
+ */
+function resolveOpenrouterDispatchOverrides(
+  request: AdapterExecuteRequest,
+): Pick<HostedExecutionContext, "structuredOutputMode" | "boundReasoning"> {
+  if (request.evidenceKey.productId !== "openrouter") return {};
+  const list = readCachedLiveModelList({
+    configurationId: request.configurationId,
+    productId: "openrouter",
+  });
+  const model = list?.models.find((candidate) => candidate.id === request.evidenceKey.modelId);
+  return {
+    ...(model?.structuredOutput === true
+      ? {}
+      : { structuredOutputMode: "json-object-local-validation" }),
+    // A route that declares OpenRouter's `reasoning` control gets a bounded
+    // reasoning budget on the wire, so a reasoning-default model cannot spend
+    // its whole completion budget on thought and return no content. Routes
+    // that never declared the control are left alone: sending it anyway would
+    // narrow strict routing (require_parameters demands every parameter).
+    ...(model?.reasoning === true ? { boundReasoning: true } : {}),
+  };
+}
+
 const AUTHORIZED_HOSTED_DEPENDENCIES: HostedAdapterDependencies = {
   async resolveContext(request) {
     const credential = await request.resolveCredential?.();
@@ -34,6 +67,7 @@ const AUTHORIZED_HOSTED_DEPENDENCIES: HostedAdapterDependencies = {
       credential,
       reviewSchema: DEFAULT_HOSTED_REVIEW_SCHEMA,
       structuredOutputSchema: hostedStructuredOutputSchema(request.evidenceKey.productId),
+      ...resolveOpenrouterDispatchOverrides(request),
     };
   },
 };

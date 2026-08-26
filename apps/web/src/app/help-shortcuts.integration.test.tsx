@@ -1,3 +1,5 @@
+import { createApi } from "@diffgazer/core/api";
+import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import {
   getProviderActionLayout,
@@ -10,6 +12,7 @@ import {
   type ReviewEvent,
   reviewReducer,
 } from "@diffgazer/core/review";
+import type { GitStatus } from "@diffgazer/core/schemas/git";
 import type { HomeContextInfo } from "@diffgazer/core/schemas/presentation";
 import {
   groupShortcutsByContext,
@@ -25,6 +28,7 @@ import {
   NavigationListItem,
   NavigationListTitle,
 } from "@diffgazer/ui/components/navigation-list";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
@@ -338,6 +342,43 @@ function renderGlobalHome(overrides: Partial<HomePagePresentationProps> = {}) {
   return props;
 }
 
+// The f key opens the file picker, which reads the working tree, so this home
+// render is the one that needs a real ApiProvider around it.
+function renderGlobalHomeWithGitStatus() {
+  const status: GitStatus = {
+    isGitRepo: true,
+    branch: "main",
+    remoteBranch: null,
+    ahead: 0,
+    behind: 0,
+    hasChanges: true,
+    conflicted: [],
+    files: {
+      staged: [],
+      unstaged: [{ path: "src/a.ts", indexStatus: " ", workTreeStatus: "M" }],
+      untracked: [],
+    },
+  };
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const api = {
+    ...createApi({ baseUrl: "http://localhost" }),
+    getGitStatus: vi.fn(async () => status),
+  };
+  const props = buildHomeProps({ navigate: mockNavigate, shutdown: mockShutdown });
+  render(
+    <FooterProvider>
+      <KeyboardProvider>
+        <QueryClientProvider client={queryClient}>
+          <ApiProvider value={api}>
+            <GlobalShortcuts />
+            <HomePagePresentation {...props} />
+          </ApiProvider>
+        </QueryClientProvider>
+      </KeyboardProvider>
+    </FooterProvider>,
+  );
+}
+
 function renderActivityLog() {
   const state = createLogState(Array.from({ length: 401 }, (_, index) => makeLogEvent(index)));
   render(<ActivityLog events={state.events} />);
@@ -505,6 +546,15 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
     const { createReview } = renderGlobalHome();
     await user.keyboard("{Shift>}R{/Shift}");
     await waitFor(() => expect(createReview).toHaveBeenCalledWith({ mode: "staged" }));
+  },
+
+  "f → Review Specific Files": async () => {
+    const user = userEvent.setup();
+    renderGlobalHomeWithGitStatus();
+    await user.keyboard("f");
+    expect(
+      await screen.findByRole("dialog", { name: "Review Specific Files" }),
+    ).toBeInTheDocument();
   },
 
   "l → Resume Last Review": async () => {

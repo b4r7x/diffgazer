@@ -19,6 +19,7 @@ export function isMenuActionDisabled(id: MenuAction, context: MenuDisablingConte
   switch (id) {
     case "review-unstaged":
     case "review-staged":
+    case "review-files":
       return !context.isTrusted;
     case "resume-review":
       return !context.isTrusted || !context.hasResumableSession;

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "../api/hooks/context.js";
 import { configurationModelsQuery } from "../api/hooks/queries/config.js";
-import type { ModelInfo } from "../schemas/config/models.js";
+import type { ConfigurationModelsResponse, ModelInfo } from "../schemas/config/models.js";
 import type { ClientConfigurationSummary } from "../schemas/config/provider-config.js";
 import {
   MODEL_DISCOVERY_ERROR_FALLBACK,
@@ -20,17 +20,21 @@ interface ModelSourceBase extends ModelSourceIdentity {
   retry: () => void;
 }
 
+type CatalogDiscoverySource = Extract<ConfigurationModelsResponse, { status: "passed" }>["source"];
+
 export type ModelSourceState =
   | (ModelSourceBase & {
       status: "idle" | "loading";
       models: [];
       checkedAt: null;
+      source: null;
       reason: null;
       error: null;
     })
   | (ModelSourceBase & {
       status: "passed";
       checkedAt: string;
+      source: CatalogDiscoverySource;
       reason: null;
       error: null;
     })
@@ -38,6 +42,7 @@ export type ModelSourceState =
       status: "skipped";
       models: [];
       checkedAt: string;
+      source: null;
       reason: string;
       error: null;
     })
@@ -45,6 +50,7 @@ export type ModelSourceState =
       status: "error";
       models: [];
       checkedAt: string | null;
+      source: null;
       reason: null;
       error: string;
     });
@@ -67,6 +73,7 @@ function emptyState(
     status,
     models: [],
     checkedAt: null,
+    source: null,
     reason: null,
     error: null,
     retry,
@@ -81,6 +88,12 @@ export function useModelSource(
   const query = useQuery({
     ...configurationModelsQuery(api, configuration),
     enabled: open,
+    // Saving a selection bumps the configuration fingerprint (revision,
+    // selectedModelId), which rotates the query key. Keep the discovered list
+    // rendered while the same configuration refetches; a different
+    // configuration must never inherit another one's models.
+    placeholderData: (previousData) =>
+      previousData?.configurationId === configuration.configurationId ? previousData : undefined,
   });
   const retry = () => {
     if (open) void query.refetch();
@@ -93,6 +106,7 @@ export function useModelSource(
       status: "error",
       models: [],
       checkedAt: null,
+      source: null,
       reason: null,
       error: toClientSafeMessage(
         query.error instanceof Error ? query.error.message : undefined,
@@ -115,6 +129,7 @@ export function useModelSource(
       status: "error",
       models: [],
       checkedAt: response.checkedAt,
+      source: null,
       reason: null,
       error: toClientSafeMessage(
         "Model discovery returned a different configuration tuple.",
@@ -130,6 +145,7 @@ export function useModelSource(
       status: "skipped",
       models: [],
       checkedAt: response.checkedAt,
+      source: null,
       reason: toClientSafeMessage(response.reason, MODEL_DISCOVERY_SKIPPED_FALLBACK),
       error: null,
       retry,
@@ -141,6 +157,7 @@ export function useModelSource(
     status: "passed",
     models: response.models,
     checkedAt: response.checkedAt,
+    source: response.source,
     reason: null,
     error: null,
     retry,

@@ -82,6 +82,9 @@ const ReviewSearchSchema = z.object({
 // product on the providers screen.
 const SettingsProvidersSearchSchema = z.object({
   product: z.string().optional().catch(undefined),
+  // "Change model" on the review error screen lands in the model dialog itself,
+  // not just on the page it lives in.
+  intent: z.literal("select-model").optional().catch(undefined),
 });
 
 const rootRoute = createRootRoute({

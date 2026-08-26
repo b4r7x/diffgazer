@@ -21,7 +21,6 @@ type FocusZone = "close" | "radios" | "input" | "acknowledgement" | "footer";
 
 interface ApiKeyDialogKeyboardOptions {
   open: boolean;
-  isHosted: boolean;
   /** Whether the dialog renders an acceptance control between the credential controls and the footer. */
   hasAcknowledgement: boolean;
   method: InputMethod;
@@ -64,24 +63,18 @@ interface ApiKeyDialogKeyboardReturn {
   handleMethodCommit: (method: InputMethod) => void;
 }
 
-function getZoneForElement(element: ApiKeyFocusTarget, isHosted: boolean): FocusZone {
+function getZoneForElement(element: ApiKeyFocusTarget): FocusZone {
   if (element === "close") return "close";
-  if (isHosted && (element === "paste" || element === "env")) return "radios";
-  if (isHosted && element === "input") return "input";
+  if (element === "paste" || element === "env") return "radios";
+  if (element === "input") return "input";
   if (element === "acknowledgement") return "acknowledgement";
   return "footer";
 }
 
-function getZones(
-  isHosted: boolean,
-  hasAcknowledgement: boolean,
-): readonly [FocusZone, ...FocusZone[]] {
-  if (isHosted) {
-    return hasAcknowledgement
-      ? ["radios", "input", "acknowledgement", "footer", "close"]
-      : ["radios", "input", "footer", "close"];
-  }
-  return hasAcknowledgement ? ["acknowledgement", "footer", "close"] : ["footer", "close"];
+function getZones(hasAcknowledgement: boolean): readonly [FocusZone, ...FocusZone[]] {
+  return hasAcknowledgement
+    ? ["radios", "input", "acknowledgement", "footer", "close"]
+    : ["radios", "input", "footer", "close"];
 }
 
 function getEffectiveFocused({
@@ -106,7 +99,6 @@ function getEffectiveFocused({
 
 export function useApiKeyDialogKeyboard({
   open,
-  isHosted,
   hasAcknowledgement,
   method,
   setMethod,
@@ -119,11 +111,8 @@ export function useApiKeyDialogKeyboard({
 }: ApiKeyDialogKeyboardOptions): ApiKeyDialogKeyboardReturn {
   const methodOptionRefs = useRef(new Map<InputMethod, HTMLDivElement>());
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const zones = getZones(isHosted, hasAcknowledgement);
-  const [focused, setFocusedInternal] = useState<ApiKeyFocusTarget>(() => {
-    if (isHosted) return "paste";
-    return hasAcknowledgement ? "acknowledgement" : "cancel";
-  });
+  const zones = getZones(hasAcknowledgement);
+  const [focused, setFocusedInternal] = useState<ApiKeyFocusTarget>("paste");
 
   useDialogScope("api-key-dialog", { enabled: open });
 
@@ -161,7 +150,7 @@ export function useApiKeyDialogKeyboard({
       return;
     }
     setFocusedInternal(element);
-    setZone(getZoneForElement(element, isHosted));
+    setZone(getZoneForElement(element));
   };
 
   const focusMethodOption = (nextMethod: InputMethod) => {
@@ -181,8 +170,7 @@ export function useApiKeyDialogKeyboard({
 
   const focusAboveFooter = () => {
     if (hasAcknowledgement) focusAcknowledgement();
-    else if (isHosted) focusMethodOption("env");
-    else focusCloseButton();
+    else focusMethodOption("env");
   };
 
   const getMethodOptionProps = (nextMethod: InputMethod) => ({
@@ -234,8 +222,7 @@ export function useApiKeyDialogKeyboard({
   };
 
   const resetDialogFocus = useEffectEvent(() => {
-    if (isHosted) focusMethodOption("paste");
-    else focusAcknowledgement();
+    focusMethodOption("paste");
   });
 
   useEffect(() => {
@@ -257,8 +244,7 @@ export function useApiKeyDialogKeyboard({
     () => {
       if (effectiveFocused === "env") focusMethodOption("paste");
       else if (effectiveFocused === "paste") focusCloseButton();
-      else if (effectiveFocused === "acknowledgement" && isHosted) focusMethodOption("env");
-      else if (effectiveFocused === "acknowledgement") focusCloseButton();
+      else if (effectiveFocused === "acknowledgement") focusMethodOption("env");
     },
     { enabled: open && (isZone("radios") || isZone("acknowledgement")) },
   );
@@ -266,8 +252,7 @@ export function useApiKeyDialogKeyboard({
   useKey(
     "ArrowDown",
     () => {
-      if (isHosted) focusMethodOption("paste");
-      else focusAcknowledgement();
+      focusMethodOption("paste");
     },
     { enabled: open && isZone("close") },
   );

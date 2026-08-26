@@ -109,6 +109,10 @@ describe("FailureView", () => {
 
     await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("button", { name: "Back to Home" })).toHaveFocus();
+
+    // Index 2 is the row's boundary: one more step must not wrap or eject.
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "Back to Home" })).toHaveFocus();
   });
 
   it("activates only the recovery action and keeps it off the Escape path", async () => {
@@ -164,8 +168,8 @@ describe("FailureView", () => {
     expect(panel).toHaveAttribute("data-tone", "error");
     expect(panel).not.toHaveAttribute("data-frame", "viewfinder");
 
-    // A dead end centres in the content area between two equal spacers that
-    // collapse once the panel outgrows the viewport. jsdom has no layout, so the
+    // A boxed dead end dead-centres between two equal spacers that collapse
+    // once the panel outgrows the viewport. jsdom has no layout, so the
     // placement itself is pinned in desktop-contracts.e2e.ts; what it needs from
     // the markup is the pair of spacers.
     expect(panel?.previousElementSibling).toHaveAttribute("aria-hidden");

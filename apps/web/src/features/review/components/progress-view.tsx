@@ -319,7 +319,9 @@ function StreamLivenessNotice({
       <output
         aria-live="polite"
         className={cn(
-          "font-mono text-xs",
+          // <output> is display:inline by default, which puts the Reconnect
+          // button on the sentence's own line and defeats the space-y-2 stack.
+          "block font-mono text-xs",
           state === "stalled" ? "text-error-text" : "text-warning-text",
         )}
       >

@@ -69,35 +69,14 @@ type CrudActionDependencies = Readonly<{
 
 const createConfigurationId = (): ConfigurationId => `cfg-${randomUUID()}`;
 
-const toNonSecretInput = (input: ClientConfigurationInput): NonSecretTransportInput => {
-  if (input.transportFamily === "hosted-api") {
-    return NonSecretTransportInputSchema.parse({
-      transportFamily: input.transportFamily,
-      productId: input.productId,
-      endpoint: input.endpoint,
-    });
-  }
-  if (input.transportFamily === "local-http") {
-    return NonSecretTransportInputSchema.parse({
-      transportFamily: input.transportFamily,
-      productId: input.productId,
-      endpoint: input.endpoint,
-      authentication: input.authentication,
-      ...(input.presetId !== undefined ? { presetId: input.presetId } : {}),
-    });
-  }
-  return NonSecretTransportInputSchema.parse(input);
-};
+const toNonSecretInput = (input: ClientConfigurationInput): NonSecretTransportInput =>
+  NonSecretTransportInputSchema.parse({
+    transportFamily: input.transportFamily,
+    productId: input.productId,
+    endpoint: input.endpoint,
+  });
 
-const secretInputFor = (input: ClientConfigurationInput) => {
-  if (input.transportFamily === "hosted-api") return input.credential;
-  if (input.transportFamily === "local-http") return input.bearerToken;
-  return undefined;
-};
-
-const bindingIsAbsentFor = (input: ClientConfigurationInput): boolean =>
-  input.transportFamily === "local-cli" ||
-  (input.transportFamily === "local-http" && input.authentication === "none");
+const secretInputFor = (input: ClientConfigurationInput) => input.credential;
 
 const replaceRecordInDocument = (
   document: ConfigDocumentV2,
@@ -334,18 +313,6 @@ export function createCrudActions(deps: CrudActionDependencies) {
     });
     if (newBinding !== undefined) {
       nextBindings = [...nextBindings, deps.encodeDecodedBinding(newBinding)];
-    } else if (bindingIsAbsentFor(action.input)) {
-      nextBindings = [
-        ...nextBindings,
-        deps.encodeDecodedBinding(createNoneSecretBinding(configurationId, nextRecord.revision)),
-      ];
-    } else if (action.input.transportFamily === "local-http") {
-      return err(
-        configurationActionFailure(
-          "SECRET_BINDING_FAILED",
-          "Bearer credential is required for optional local bearer authentication",
-        ),
-      );
     } else if (previousBinding) {
       const carried = SecretBindingSchema.parse({
         ...previousBinding,

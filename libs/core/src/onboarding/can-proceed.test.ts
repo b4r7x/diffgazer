@@ -4,50 +4,6 @@ import { canProceed } from "./can-proceed.js";
 import { getInitialWizardData, type OnboardingDraft } from "./defaults.js";
 
 describe("setup-plan progression", () => {
-  it("lets local HTTP skip credentials while retaining endpoint and compatibility gates", () => {
-    const local = getInitialWizardData("local-openai");
-
-    expect(local.plan.requiredFields).not.toContain("credential");
-    expect(canProceed("endpoint-binding", local)).toBe(true);
-    expect(canProceed("authentication", local)).toBe(true);
-    expect(canProceed("model", local)).toBe(false);
-    expect(
-      canProceed("model", {
-        ...local,
-        selectedModelId: "local-model",
-      }),
-    ).toBe(true);
-  });
-
-  it("requires a selected CLI installation before the model step", () => {
-    const initial = getInitialWizardData("codex-cli");
-    if (initial.configurationInput.transportFamily !== "local-cli") {
-      throw new Error("Expected local CLI configuration");
-    }
-    const withInstallation = {
-      ...initial,
-      configurationInput: {
-        ...initial.configurationInput,
-        installationId: "codex-installation",
-      },
-    } satisfies OnboardingDraft;
-    const withModel = {
-      ...withInstallation,
-      selectedModelId: "gpt-5-codex",
-    } satisfies OnboardingDraft;
-
-    expect(initial.plan.steps.map((step) => step.id)).toEqual([
-      "product",
-      "authentication",
-      "model",
-      "acknowledgement",
-    ]);
-    expect(canProceed("authentication", initial)).toBe(false);
-    expect(canProceed("authentication", withInstallation)).toBe(true);
-    expect(canProceed("model", withInstallation)).toBe(false);
-    expect(canProceed("model", withModel)).toBe(true);
-  });
-
   it("never infers acknowledgement from save, test, or HTTP success", () => {
     const notice = PRODUCT_REGISTRY.zai.notice;
     const initial = getInitialWizardData("zai");
@@ -252,7 +208,7 @@ describe("setup-plan progression", () => {
   });
 
   it("does not let a selected model bypass a changed endpoint or missing authentication", () => {
-    const initial = getInitialWizardData("deepseek");
+    const initial = getInitialWizardData("zai");
     if (initial.configurationInput.transportFamily !== "hosted-api") {
       throw new Error("Expected hosted API configuration");
     }
@@ -262,7 +218,7 @@ describe("setup-plan progression", () => {
         ...initial.configurationInput,
         credential: { kind: "environment" as const },
       },
-      selectedModelId: "deepseek-v4-flash",
+      selectedModelId: "glm-4.7",
     } satisfies OnboardingDraft;
 
     expect(canProceed("model", configured)).toBe(true);
@@ -271,7 +227,7 @@ describe("setup-plan progression", () => {
         ...configured,
         configurationInput: {
           ...configured.configurationInput,
-          endpoint: "https://api.deepseek.com/beta",
+          endpoint: "https://api.z.ai/api/paas/beta",
         },
       }),
     ).toBe(false);
@@ -283,8 +239,8 @@ describe("setup-plan progression", () => {
     ).toBe(false);
   });
 
-  it("requires only the selected family's configuration fields", () => {
-    const hosted = getInitialWizardData("deepseek");
+  it("requires the hosted configuration fields", () => {
+    const hosted = getInitialWizardData("zai");
     if (hosted.configurationInput.transportFamily !== "hosted-api") {
       throw new Error("Expected hosted API configuration");
     }
@@ -299,33 +255,28 @@ describe("setup-plan progression", () => {
         },
       }),
     ).toBe(true);
-
-    const localCli = getInitialWizardData("codex-cli");
-    expect(canProceed("endpoint-binding", localCli)).toBe(false);
   });
 
   it("blocks model progression until the exact admitted policy holds", () => {
-    const initial = getInitialWizardData("deepseek");
+    const initial = getInitialWizardData("zai");
     if (initial.configurationInput.transportFamily !== "hosted-api") {
       throw new Error("Expected hosted API configuration");
     }
-    const deepseek = {
+    const zai = {
       ...initial,
       configurationInput: {
         ...initial.configurationInput,
         credential: { kind: "environment" },
       },
     } satisfies OnboardingDraft;
-    expect(canProceed("model", deepseek)).toBe(false);
-    expect(canProceed("model", { ...deepseek, selectedModelId: "deepseek-latest" })).toBe(false);
-    expect(canProceed("model", { ...deepseek, selectedModelId: "deepseek-v4-flash" })).toBe(true);
-    expect(
-      canProceed("acknowledgement", { ...deepseek, selectedModelId: "deepseek-v4-flash" }),
-    ).toBe(false);
+    expect(canProceed("model", zai)).toBe(false);
+    expect(canProceed("model", { ...zai, selectedModelId: "glm-latest" })).toBe(false);
+    expect(canProceed("model", { ...zai, selectedModelId: "glm-4.7" })).toBe(true);
+    expect(canProceed("acknowledgement", { ...zai, selectedModelId: "glm-4.7" })).toBe(false);
   });
 
   it("rechecks the configured transport before accepting the notice", () => {
-    const initial = getInitialWizardData("deepseek");
+    const initial = getInitialWizardData("zai");
     if (initial.configurationInput.transportFamily !== "hosted-api") {
       throw new Error("Expected hosted API configuration");
     }
@@ -335,11 +286,11 @@ describe("setup-plan progression", () => {
         ...initial.configurationInput,
         credential: { kind: "environment" },
       },
-      selectedModelId: "deepseek-v4-flash",
+      selectedModelId: "glm-4.7",
       acknowledgement: {
         status: "accepted",
-        noticeId: PRODUCT_REGISTRY.deepseek.notice.id,
-        noticeVersion: PRODUCT_REGISTRY.deepseek.notice.noticeVersion,
+        noticeId: PRODUCT_REGISTRY.zai.notice.id,
+        noticeVersion: PRODUCT_REGISTRY.zai.notice.noticeVersion,
         acceptedAt: "2026-07-31T12:00:00.000Z",
       },
     } satisfies OnboardingDraft;
@@ -350,7 +301,7 @@ describe("setup-plan progression", () => {
         ...configured,
         configurationInput: {
           ...configured.configurationInput,
-          endpoint: "https://api.groq.com/openai/v1",
+          endpoint: "https://generativelanguage.googleapis.com/v1beta",
         },
       }),
     ).toBe(false);

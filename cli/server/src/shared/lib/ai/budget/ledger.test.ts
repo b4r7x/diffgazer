@@ -49,7 +49,7 @@ const measuredOverrunCases = [
       wallTimeMs: 0,
       costUsd: 0,
     }),
-    actual: { inputTokens: 6, wallTimeMs: 0 },
+    actual: { inputTokens: 6 },
     committed: estimate({
       inputTokens: 6,
       responseBytes: 0,
@@ -67,7 +67,7 @@ const measuredOverrunCases = [
       wallTimeMs: 0,
       costUsd: 0,
     }),
-    actual: { inputTokens: 0, responseBytes: 6, wallTimeMs: 0 },
+    actual: { inputTokens: 0, responseBytes: 6 },
     committed: estimate({
       inputTokens: 0,
       responseBytes: 6,
@@ -85,7 +85,7 @@ const measuredOverrunCases = [
       wallTimeMs: 0,
       costUsd: 0.03,
     }),
-    actual: { inputTokens: 0, wallTimeMs: 0, costUsd: 0.06 },
+    actual: { inputTokens: 0, costUsd: 0.06 },
     committed: estimate({
       inputTokens: 0,
       responseBytes: 0,
@@ -269,7 +269,7 @@ describe("BudgetLedger exhaustion", () => {
 });
 
 describe("BudgetLedger settlement", () => {
-  it("commits only the dimensions the provider reported", () => {
+  it("commits only the dimensions the provider reported and never wall time", () => {
     const ledger = createBudgetLedger(sampleLimits());
     const reservation = ledger.reserveAttempt(estimate());
     expect(reservation.ok).toBe(true);
@@ -277,14 +277,13 @@ describe("BudgetLedger settlement", () => {
 
     const settled = ledger.settleAttempt(reservation.value, {
       inputTokens: 120,
-      wallTimeMs: 900,
     });
 
     expect(settled.ok).toBe(true);
     expect(ledger.snapshot().committed).toEqual({
       inputTokens: 120,
       responseBytes: 0,
-      wallTimeMs: 900,
+      wallTimeMs: 0,
       costUsd: 0,
     });
   });
@@ -297,7 +296,6 @@ describe("BudgetLedger settlement", () => {
 
     const settled = ledger.settleAttempt(reservation.value, {
       inputTokens: 1,
-      wallTimeMs: 1,
       responseBytes: 1_024,
     });
 
@@ -371,7 +369,6 @@ describe("raiseReviewEnvelope", () => {
     });
     const committed = ledger.commitAttemptUsage(reserved.value, {
       inputTokens: 25_000,
-      wallTimeMs: 0,
     });
     expect(committed).toMatchObject({ ok: true });
     expect(ledger.snapshot().exhaustedLimit).toBeNull();
@@ -386,6 +383,84 @@ describe("raiseReviewEnvelope", () => {
     ledger.raiseReviewEnvelope(reserved.value, { inputTokens: 1, responseBytes: 1, wallTimeMs: 1 });
 
     expect(ledger.snapshot()).toEqual(before);
+  });
+});
+
+describe("BudgetLedger review clock", () => {
+  function fakeClock(remainingMs: number, expired = false) {
+    return { remainingMs: () => remainingMs, expired: () => expired };
+  }
+
+  it("refuses reserve at wallTimeMs when the attached clock is expired", () => {
+    const ledger = createBudgetLedger(sampleLimits());
+    ledger.attachReviewClock(fakeClock(0, true), 1_000);
+
+    const reserved = ledger.reserveAttempt(estimate());
+
+    expect(reserved.ok).toBe(false);
+    if (!reserved.ok) {
+      expect(reserved.error).toEqual({
+        outcome: "budget-exhausted",
+        limit: "wallTimeMs",
+        result: ZERO_FINDINGS,
+      });
+    }
+  });
+
+  it("refuses reserve when the clock cannot fit one more dispatch", () => {
+    const ledger = createBudgetLedger(sampleLimits());
+    ledger.attachReviewClock(fakeClock(999), 1_000);
+
+    const reserved = ledger.reserveAttempt(estimate());
+
+    expect(reserved.ok).toBe(false);
+    if (!reserved.ok && reserved.error.outcome === "budget-exhausted") {
+      expect(reserved.error.limit).toBe("wallTimeMs");
+    }
+  });
+
+  it("reserves while the clock has room regardless of settled dispatch durations", () => {
+    const ledger = createBudgetLedger(sampleLimits({ wallTimeMs: 60_000, maxRetries: 10 }));
+    ledger.attachReviewClock(fakeClock(1_000), 1_000);
+
+    const first = ledger.reserveAttempt(estimate({ wallTimeMs: 50_000 }));
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(ledger.settleAttempt(first.value, { inputTokens: 10 })).toMatchObject({ ok: true });
+
+    const second = ledger.reserveAttempt(estimate({ wallTimeMs: 50_000 }));
+    expect(second.ok).toBe(true);
+  });
+
+  it("never trips the wall dimension on commit or settle", () => {
+    const ledger = createBudgetLedger(sampleLimits({ maxConcurrency: 2, maxRetries: 10 }));
+    ledger.attachReviewClock(fakeClock(5_000), 1_000);
+
+    const first = ledger.reserveAttempt(estimate());
+    const second = ledger.reserveAttempt(estimate());
+    expect(first.ok && second.ok).toBe(true);
+    if (!first.ok || !second.ok) return;
+
+    // The clock drains below the minimum after both dispatches launched: the
+    // in-flight ones still settle cleanly, only the next reserve is refused.
+    ledger.attachReviewClock(fakeClock(0, true), 1_000);
+
+    expect(ledger.commitAttemptUsage(first.value, { inputTokens: 100 })).toMatchObject({
+      ok: true,
+    });
+    expect(ledger.settleAttempt(second.value, { inputTokens: 100 })).toMatchObject({ ok: true });
+    expect(ledger.snapshot().exhaustedLimit).toBeNull();
+  });
+
+  it("keeps the legacy summed-projection wall check while no clock is attached", () => {
+    const ledger = createBudgetLedger(sampleLimits({ wallTimeMs: 1_000 }));
+
+    const reserved = ledger.reserveAttempt(estimate({ wallTimeMs: 2_000 }));
+
+    expect(reserved.ok).toBe(false);
+    if (!reserved.ok && reserved.error.outcome === "budget-exhausted") {
+      expect(reserved.error.limit).toBe("wallTimeMs");
+    }
   });
 });
 

@@ -1,7 +1,6 @@
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { expect, test } from "@playwright/test";
 import {
-  assertClientSafeDom,
   assertClientSafePayload,
   mockProtectedProviderApi,
   PROVIDER_E2E_INIT,
@@ -11,35 +10,14 @@ test.beforeEach(() => {
   assertClientSafePayload(PROVIDER_E2E_INIT);
 });
 
-test("local setup never exposes credential input", async ({ page }) => {
-  await mockProtectedProviderApi(page);
-  await page.goto("/settings/providers");
-
-  const localName = PRODUCT_REGISTRY["local-openai"].presentation.name;
-  const localOption = page.getByRole("option", { name: localName });
-  await expect(localOption).toBeVisible();
-  await localOption.click();
-  // A failed local check leads with Verify; setup lives behind More.
-  await page.getByRole("button", { name: "More actions" }).click();
-  const updateItem = page.getByRole("menuitem", { name: /Update configuration/i });
-  await expect(updateItem).toBeVisible();
-  await updateItem.click();
-
-  await expect(page.getByLabel(/api key/i)).toHaveCount(0);
-  await expect(page.getByRole("textbox", { name: /api key/i })).toHaveCount(0);
-  await expect(page.getByText(/^sk-/)).toHaveCount(0);
-
-  await assertClientSafeDom(await page.locator("main").innerHTML());
-});
-
 test("provider actions render as one primary, one secondary and a More menu with Delete last", async ({
   page,
 }) => {
   await mockProtectedProviderApi(page);
   await page.goto("/settings/providers");
 
-  const localName = PRODUCT_REGISTRY["local-openai"].presentation.name;
-  await page.getByRole("option", { name: localName }).click();
+  const failedName = PRODUCT_REGISTRY.zai.presentation.name;
+  await page.getByRole("option", { name: failedName }).click();
 
   const actionRow = page.getByRole("group", { name: "Provider actions" });
   await expect(actionRow).toHaveCount(1);
@@ -81,10 +59,10 @@ test("provider readiness remediation is keyboard reachable", async ({ page }) =>
   await mockProtectedProviderApi(page);
   await page.goto("/settings/providers");
 
-  const localName = PRODUCT_REGISTRY["local-openai"].presentation.name;
+  const failedName = PRODUCT_REGISTRY.zai.presentation.name;
   const listbox = page.getByRole("listbox", { name: "Providers" });
   await expect(listbox).toBeVisible();
-  await page.getByRole("option", { name: localName }).click();
+  await page.getByRole("option", { name: failedName }).click();
   await listbox.focus();
 
   await page.keyboard.press("ArrowRight");
@@ -95,7 +73,7 @@ test("provider readiness remediation is keyboard reachable", async ({ page }) =>
   await expect(
     page
       .getByRole("main")
-      .getByLabel(/Local conformance failed/i)
+      .getByLabel(/Compatibility check failed/i)
       .first(),
   ).toBeVisible();
 });

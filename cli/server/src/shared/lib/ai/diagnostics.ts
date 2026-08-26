@@ -25,12 +25,22 @@ export const CAPTURE_MAX_BYTES = 64 * 1024;
  */
 export const PROVIDER_REJECTED_DIAGNOSTIC_CODE = "provider-rejected";
 
+/**
+ * Diagnostic code for malformed review content that survived the corrective
+ * retry — the re-ask replayed the failed answer, named what was wrong, and the
+ * model still could not conform. That is the only class that proves tuple
+ * incapacity, so it is the only one that arms the fail-fast memo. Malformed
+ * content the corrective retry never faced keeps the plain
+ * `malformed-review-output` code.
+ */
+export const MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE =
+  "malformed-review-output-after-correction";
+
 const CLI_ACCOUNT_ID_PATTERN = /\b(?:acct_[A-Za-z0-9_-]{6,}|account[-_][A-Za-z0-9_-]{6,})\b/gi;
 const PROMPT_PATTERN =
   /\b(?:prompt|user[-_ ]?message|system[-_ ]?prompt)\s*[:=]\s*["'`]?[^\n"'`]{1,}/gi;
 const ARGV_EXECUTABLE_PATTERN =
-  /\b(?:codex|copilot|node|python(?:\d*)?|bash|sh)\s+(?:exec\s+)?(?:(?:--[^\s]+(?:\s+[^\s]+)*)|(?:-[a-zA-Z]\s+\S+))/gi;
-const CLI_SHORT_FLAG_SECRET_PATTERN = /\b(?:codex|copilot)\s+(?:exec\s+)?-[a-zA-Z]\s+\S+/gi;
+  /\b(?:node|python(?:\d*)?|bash|sh)\s+(?:exec\s+)?(?:(?:--[^\s]+(?:\s+[^\s]+)*)|(?:-[a-zA-Z]\s+\S+))/gi;
 const REPO_DIFF_PATTERN = /\bdiff --git\b[^\n]*(?:\n[^\n]*){0,8}/gi;
 
 /**
@@ -42,7 +52,6 @@ const CLI_DIAGNOSTIC_RULES: readonly RedactionRule[] = [
   { pattern: CLI_ACCOUNT_ID_PATTERN },
   { pattern: PROMPT_PATTERN },
   { pattern: ARGV_EXECUTABLE_PATTERN },
-  { pattern: CLI_SHORT_FLAG_SECRET_PATTERN },
   { pattern: REPO_DIFF_PATTERN },
 ];
 

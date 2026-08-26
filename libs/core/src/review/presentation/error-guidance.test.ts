@@ -16,13 +16,13 @@ import {
   isCredentialReconnectReadiness,
   isCredentialSetupError,
   isProviderRecoveryError,
+  looksLikeSerializedDiagnostic,
   sanitizePresentationText,
   USAGE_AVAILABILITY_PRESENTATION,
 } from "./error-guidance.js";
 
 function makeReadiness(status: ReadinessStatus) {
-  const product = status.startsWith("local-") ? PRODUCT_REGISTRY.ollama : PRODUCT_REGISTRY.gemini;
-  const notice = product.notice;
+  const notice = PRODUCT_REGISTRY.gemini.notice;
 
   let acknowledgement: {
     status: "not-applicable" | "accepted" | "required";
@@ -280,7 +280,7 @@ describe("review error-guidance presentation", () => {
       kind: "model-incompatible",
       title: "Model Incompatible",
       guidance:
-        "This model could not produce Diffgazer's structured review output. Change the model or update the configuration; reviews with this exact setup fail immediately until it changes.",
+        "This model could not produce Diffgazer's structured review output. Change the model or update the configuration.",
       ctaLabel: "Change model",
     });
     expect(
@@ -357,6 +357,52 @@ describe("review error-guidance presentation", () => {
     },
   ])("sanitizePresentationText handles $label", ({ input, expected }) => {
     expect(sanitizePresentationText(input)).toBe(expected ?? SAFE_PRESENTATION_FALLBACK);
+  });
+
+  it.each([
+    { label: "a JSON object", input: '{"code":"invalid_type","path":["usage"]}', fires: true },
+    { label: "a JSON array", input: '[{"code":"too_big","message":"Too big"}]', fires: true },
+    { label: "an empty JSON array", input: "[]", fires: true },
+    { label: "leading-whitespace JSON", input: '  \n {"issues":[]}', fires: true },
+    { label: "the JSON literal null", input: "null", fires: false },
+    {
+      label: "prose containing a brace mid-sentence",
+      input: "expected { at position 3",
+      fires: false,
+    },
+    { label: "an unparseable brace-led string", input: "{not json", fires: false },
+    { label: "plain prose", input: "The provider dropped the connection.", fires: false },
+  ])("looksLikeSerializedDiagnostic fires on $label: $fires", ({ input, fires }) => {
+    expect(looksLikeSerializedDiagnostic(input)).toBe(fires);
+  });
+
+  it("replaces a serialized zod-issues string instead of presenting it", () => {
+    const serialized = JSON.stringify(
+      [{ code: "too_big", path: ["usage", "inputTokens"], message: "Too big" }],
+      null,
+      2,
+    );
+    expect(sanitizePresentationText(serialized)).toBe(SAFE_PRESENTATION_FALLBACK);
+  });
+
+  it("keeps the provider-400 prose and other emitted prose intact", () => {
+    for (const prose of [
+      "Z.AI rejected the request as invalid (HTTP 400). Often the diff is too large for the model's context window. Reduce the review scope, or choose a model with a larger context.",
+      "The review exceeded the configured wall-time limit.",
+      "model returned no candidates",
+    ]) {
+      expect(sanitizePresentationText(prose)).toBe(prose);
+    }
+  });
+
+  it("names the internal error as a Diffgazer bug", () => {
+    expect(classifyReviewStreamError("internal failure", "INTERNAL_ERROR")).toEqual({
+      kind: "other",
+      title: "Internal Error",
+      guidance:
+        "This is a bug in Diffgazer, not a problem with your provider or configuration. Retry the review.",
+      ctaLabel: "Back to Home",
+    });
   });
 
   it("keeps transport guidance generic when stream errors include raw diagnostics", () => {

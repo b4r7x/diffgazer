@@ -535,6 +535,29 @@ describe("session bounds and subscriber failures", () => {
     // Cap still bounds growth: 10k real events + one notice overflow slot.
     expect(receivedEvents(session.reviewId)).toHaveLength(10_001);
   });
+
+  it("keeps delivering non-terminal events to live subscribers past the cap", () => {
+    const received: FullReviewStreamEvent[] = [];
+    const session = createTrackedSession("event-cap-live-delivery");
+    subscribe(session.reviewId, (event) => received.push(event));
+
+    for (let index = 0; index < 10_000; index += 1) {
+      addEvent(session.reviewId, stepEvent("review"));
+    }
+    for (let index = 0; index < 50; index += 1) {
+      addEvent(session.reviewId, stepEvent("review"));
+    }
+
+    // Live delivery is never silenced by the cap: 10k pre-cap + 1 notice + 50 post-cap.
+    expect(received).toHaveLength(10_051);
+    expect(received.filter((event) => event.type === "chunk")).toHaveLength(1);
+
+    // The buffer stays bounded: 10k events + the one notice slot.
+    expect(receivedEvents(session.reviewId)).toHaveLength(10_001);
+
+    addEvent(session.reviewId, completeEvent(session.reviewId));
+    expect(received.at(-1)).toMatchObject({ type: "complete", reviewId: session.reviewId });
+  });
 });
 
 describe("onSessionComplete", () => {

@@ -4,8 +4,6 @@ import {
   CANDIDATE_PRODUCT_IDS,
   DEFERRED_PRODUCT_IDS,
   EXPERIMENTAL_PRODUCT_IDS,
-  HostedApiProductIdSchema,
-  LOCAL_OPENAI_PRESET_ENDPOINTS,
   REJECTED_PRODUCT_IDS,
 } from "../schemas/config/transports.js";
 import { CANDIDATE_VERDICTS } from "./candidate-verdicts.js";
@@ -25,26 +23,6 @@ const HOSTED_CHECKS = [
   "usage",
   "acknowledgement",
 ];
-const LOCAL_HTTP_CHECKS = [
-  "endpoint",
-  "loopback",
-  "model-discovery",
-  "server-version",
-  "structured-output",
-  "cancellation",
-  "acknowledgement",
-];
-const LOCAL_CLI_CHECKS = [
-  "installation",
-  "runtime-version",
-  "account-plan",
-  "model-discovery",
-  "negative-capabilities",
-  "structured-output",
-  "cancellation",
-  "acknowledgement",
-];
-
 function notice(id: string, billing: string[], privacy: string[]) {
   return {
     id,
@@ -99,20 +77,17 @@ describe("product registry authority", () => {
     expect(PRODUCT_REGISTRY.gemini.configuration.endpoints).toBe(PRODUCT_ENDPOINT_TUPLES.gemini);
   });
 
-  it("enumerates exactly the 12 selectable products with add-now notices and gates", () => {
+  it("enumerates exactly the 9 selectable products with add-now notices and gates", () => {
     expect(SELECTABLE_PRODUCT_IDS).toEqual([
       "gemini",
       "zai",
       "openrouter",
-      "groq",
-      "cerebras",
       "deepseek",
+      "qwen",
+      "moonshot",
+      "minimax",
       "ollama-cloud",
       "opencode-zen",
-      "ollama",
-      "local-openai",
-      "codex-cli",
-      "copilot-cli",
     ]);
 
     const selectableEntries = Object.values(PRODUCT_REGISTRY).filter(
@@ -142,8 +117,6 @@ describe("product registry authority", () => {
     }
 
     for (const productId of SELECTABLE_PRODUCT_IDS) {
-      if (!HostedApiProductIdSchema.safeParse(productId).success) continue;
-
       for (const endpoint of PRODUCT_ENDPOINT_TUPLES[productId]) {
         const input = {
           transportFamily: "hosted-api" as const,
@@ -153,12 +126,6 @@ describe("product registry authority", () => {
 
         expect(ClientConfigurationInputSchema.parse(input)).toEqual(input);
       }
-    }
-
-    for (const endpoint of PRODUCT_ENDPOINT_TUPLES["local-openai"]) {
-      expect(LOCAL_OPENAI_PRESET_ENDPOINTS[endpoint.id as "lm-studio" | "llama-cpp"]).toBe(
-        endpoint.endpoint,
-      );
     }
   });
 
@@ -171,7 +138,6 @@ describe("product registry authority", () => {
         modelPolicy: product.modelPolicy,
         checks: product.admission.requiredChecks,
         structuredOutput: product.admission.structuredOutput,
-        usage: product.admission.usage,
         notice: product.notice,
       };
     });
@@ -193,7 +159,6 @@ describe("product registry authority", () => {
         },
         checks: HOSTED_CHECKS,
         structuredOutput: "strict-json-schema",
-        usage: "optional",
         notice: notice(
           "gemini-hosted-api",
           ["Free and paid availability depends on the selected account and exact model."],
@@ -216,7 +181,6 @@ describe("product registry authority", () => {
         },
         checks: HOSTED_CHECKS,
         structuredOutput: "json-object-local-validation",
-        usage: "optional",
         notice: notice(
           "zai-general-payg",
           ["This configuration uses general Open Platform pay-as-you-go billing."],
@@ -236,7 +200,6 @@ describe("product registry authority", () => {
         },
         checks: [...HOSTED_CHECKS, "downstream-route"],
         structuredOutput: "strict-json-schema",
-        usage: "optional",
         notice: notice(
           "openrouter-pinned-route",
           ["Billing and availability are disclosed for the exact pinned downstream route."],
@@ -246,58 +209,17 @@ describe("product registry authority", () => {
         ),
       },
       {
-        id: "groq",
-        endpoints: [{ id: "global", label: "Global", endpoint: "https://api.groq.com/openai/v1" }],
-        modelPolicy: {
-          kind: "discovered-exact",
-          suggestedModelId: "openai/gpt-oss-120b",
-          aliases: "forbidden",
-        },
-        checks: HOSTED_CHECKS,
-        structuredOutput: "strict-json-schema",
-        usage: "optional",
-        notice: notice(
-          "groq-hosted-api",
-          ["Current account and model limits are verified during setup."],
-          ["Data handling follows the selected Groq API account and model terms."],
-        ),
-      },
-      {
-        id: "cerebras",
-        endpoints: [{ id: "global", label: "Global", endpoint: "https://api.cerebras.ai/v1" }],
-        modelPolicy: {
-          kind: "discovered-exact",
-          suggestedModelId: "gpt-oss-120b",
-          aliases: "forbidden",
-        },
-        checks: HOSTED_CHECKS,
-        structuredOutput: "strict-json-schema",
-        usage: "optional",
-        notice: notice(
-          "cerebras-hosted-api",
-          ["Current account and model limits are verified during setup."],
-          ["Data handling follows the selected Cerebras API account and model terms."],
-        ),
-      },
-      {
         id: "deepseek",
         endpoints: [
-          {
-            id: "payg",
-            label: "Open Platform PAYG",
-            endpoint: "https://api.deepseek.com/v1",
-          },
+          { id: "payg", label: "Open Platform PAYG", endpoint: "https://api.deepseek.com/v1" },
         ],
         modelPolicy: {
-          kind: "discovered-allowlist",
-          modelIds: ["deepseek-v4-flash", "deepseek-v4-pro"],
+          kind: "discovered-exact",
           suggestedModelId: "deepseek-v4-flash",
-          higherCostModelIds: ["deepseek-v4-pro"],
           aliases: "forbidden",
         },
         checks: HOSTED_CHECKS,
         structuredOutput: "json-object-local-validation",
-        usage: "required-terminal",
         notice: notice(
           "deepseek-payg-prc",
           ["This is opt-in pay-as-you-go usage with account-specific limits."],
@@ -305,6 +227,89 @@ describe("product registry authority", () => {
             "Inputs and outputs may be processed and stored in the PRC.",
             "Retention duration is uncertain and the service-improvement setting provides an opt-out.",
             "DeepSeek is not presented as zero retention.",
+          ],
+        ),
+      },
+      {
+        id: "qwen",
+        endpoints: [
+          {
+            id: "international",
+            label: "International",
+            endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+          },
+        ],
+        modelPolicy: {
+          kind: "discovered-exact",
+          suggestedModelId: "qwen3-coder-flash",
+          aliases: "forbidden",
+        },
+        checks: HOSTED_CHECKS,
+        structuredOutput: "json-object-local-validation",
+        // Version 2: the v1 notice made region/workspace claims the simplified
+        // configuration dropped, so a stale v1 acknowledgement must not carry.
+        notice: {
+          ...notice(
+            "qwen-international-payg",
+            [
+              "The international endpoint and the owning account determine billing and availability.",
+              "No international free quota is promised.",
+              "Subscription plan credentials are excluded.",
+            ],
+            [
+              "Requests go only to the international endpoint; mainland accounts and keys are separate.",
+              "Provider material permits retention where required by law and gives no fixed retention period.",
+            ],
+          ),
+          noticeVersion: 2,
+        },
+      },
+      {
+        id: "moonshot",
+        // International first: quick setup defaults to `endpoints[0]`.
+        endpoints: [
+          { id: "international", label: "International", endpoint: "https://api.moonshot.ai/v1" },
+          { id: "mainland", label: "Mainland China", endpoint: "https://api.moonshot.cn/v1" },
+        ],
+        modelPolicy: {
+          kind: "discovered-exact",
+          suggestedModelId: "kimi-k2.6",
+          aliases: "forbidden",
+        },
+        checks: HOSTED_CHECKS,
+        structuredOutput: "strict-json-schema",
+        notice: notice(
+          "moonshot-open-platform-payg",
+          ["Mainland and international accounts, balances, and endpoints are isolated."],
+          [
+            "API no-training claims apply only to the selected Open Platform PAYG route.",
+            "Consumer and Kimi Code products have different terms and are not substituted.",
+          ],
+        ),
+      },
+      {
+        id: "minimax",
+        endpoints: [
+          { id: "international", label: "International", endpoint: "https://api.minimax.io/v1" },
+        ],
+        modelPolicy: {
+          kind: "discovered-exact",
+          suggestedModelId: "MiniMax-M2.7",
+          aliases: "forbidden",
+        },
+        checks: HOSTED_CHECKS,
+        structuredOutput: "json-object-local-validation",
+        notice: notice(
+          "minimax-international-payg",
+          [
+            "The international endpoint and the owning account determine billing and availability.",
+            "No free quota is promised.",
+            "Token Plan and subscription keys draw on separate account resources and are excluded.",
+          ],
+          [
+            "Requests go only to the international endpoint; mainland accounts and keys are separate.",
+            "Provider material permits retention as long as necessary or permitted by law and gives no fixed retention period.",
+            "MiniMax is not presented as zero retention.",
           ],
         ),
       },
@@ -318,7 +323,6 @@ describe("product registry authority", () => {
         },
         checks: HOSTED_CHECKS,
         structuredOutput: "json-object-local-validation",
-        usage: "optional",
         notice: notice(
           "ollama-cloud-hosted-api",
           [
@@ -332,113 +336,39 @@ describe("product registry authority", () => {
       },
       {
         id: "opencode-zen",
-        endpoints: [{ id: "zen", label: "OpenCode Zen", endpoint: "https://opencode.ai/zen/v1" }],
+        // Zen first: quick setup defaults to `endpoints[0]`, and pay-as-you-go
+        // credits are the tier every key can bill.
+        endpoints: [
+          { id: "zen", label: "OpenCode Zen", endpoint: "https://opencode.ai/zen/v1" },
+          { id: "go", label: "OpenCode Go", endpoint: "https://opencode.ai/zen/go/v1" },
+        ],
         // No suggested model: Zen rotates stealth routes, so a pinned guess
         // would outlive the model it names.
         modelPolicy: { kind: "discovered-exact", aliases: "forbidden" },
         checks: HOSTED_CHECKS,
         structuredOutput: "json-object-local-validation",
-        usage: "optional",
-        notice: notice(
-          "opencode-zen-hosted-api",
-          [
-            "Zen pay-as-you-go credits: each request is charged per token against the account's Zen credit balance.",
-            "OpenCode Go subscription: the same key and endpoint draw on the subscription's included usage instead of credits.",
-          ],
-          [
-            "Free and stealth Zen models may retain prompts and train on them.",
-            "Paid routes are mostly zero-retention; OpenAI- and Anthropic-backed models retain data for 30 days.",
-          ],
-        ),
-      },
-      {
-        id: "ollama",
-        endpoints: [
-          { id: "default", label: "Default loopback", endpoint: "http://127.0.0.1:11434" },
-        ],
-        modelPolicy: { kind: "discovered-exact", aliases: "forbidden" },
-        checks: LOCAL_HTTP_CHECKS,
-        structuredOutput: "strict-json-schema",
-        usage: "optional",
-        notice: notice(
-          "ollama-loopback",
-          ["No zero-cost or adequate-hardware claim is inferred from local operation."],
-          [
-            "Diffgazer verifies only that the first network hop is loopback.",
-            "Any downstream routing, data residency, storage, or telemetry is the selected server operator's responsibility.",
-            "Ollama Cloud is not this transport; the separate Ollama Cloud product reaches ollama.com.",
-          ],
-        ),
-      },
-      {
-        id: "local-openai",
-        endpoints: [
-          {
-            id: "lm-studio",
-            label: "LM Studio",
-            endpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["lm-studio"],
-          },
-          {
-            id: "llama-cpp",
-            label: "llama.cpp",
-            endpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["llama-cpp"],
-          },
-        ],
-        modelPolicy: { kind: "discovered-exact", aliases: "forbidden" },
-        checks: LOCAL_HTTP_CHECKS,
-        structuredOutput: "strict-json-schema",
-        usage: "optional",
-        notice: notice(
-          "local-openai-loopback",
-          ["No zero-cost or adequate-hardware claim is inferred from local operation."],
-          [
-            "Diffgazer verifies only that the first network hop is loopback.",
-            "Any downstream routing, data residency, storage, or telemetry is the selected server operator's responsibility.",
-          ],
-        ),
-      },
-      {
-        id: "codex-cli",
-        endpoints: [],
-        modelPolicy: { kind: "discovered-exact", aliases: "forbidden" },
-        checks: LOCAL_CLI_CHECKS,
-        structuredOutput: "pinned-cli-terminal-schema",
-        usage: "optional",
-        notice: notice(
-          "codex-cli-account",
-          ["The active account and plan class determine credits, rate limits, or API billing."],
-          [
-            "Consumer and business/API data handling differ and must match the active account posture.",
-            "Diffgazer uses existing vendor-managed local auth and does not import or proxy credentials.",
-          ],
-        ),
-      },
-      {
-        id: "copilot-cli",
-        endpoints: [],
-        modelPolicy: { kind: "discovered-exact", aliases: "forbidden" },
-        checks: LOCAL_CLI_CHECKS,
-        structuredOutput: "pinned-cli-terminal-schema",
-        usage: "optional",
-        notice: notice(
-          "copilot-cli-account",
-          ["The active plan and policy determine model entitlement, credits, and rate limits."],
-          [
-            "Individual and business/enterprise data protections differ and must match the active plan.",
-            "Diffgazer uses existing vendor-managed local auth and does not import or proxy credentials.",
-          ],
-        ),
+        // Version 2: the v1 notice claimed one endpoint served both purchases;
+        // Go now has its own endpoint, so a stale v1 acknowledgement must not
+        // carry over the corrected billing wording.
+        notice: {
+          ...notice(
+            "opencode-zen-hosted-api",
+            [
+              "Zen pay-as-you-go credits: each request on the Zen endpoint is charged per token against the account's Zen credit balance.",
+              "OpenCode Go subscription: the same key on the Go endpoint draws on the subscription's included usage instead of credits.",
+            ],
+            [
+              "Free and stealth Zen models may retain prompts and train on them.",
+              "Paid routes are mostly zero-retention; OpenAI- and Anthropic-backed models retain data for 30 days.",
+            ],
+          ),
+          noticeVersion: 2,
+        },
       },
     ]);
   });
 
   it("keeps setup and rejected-candidate copy scoped to verified products", () => {
-    expect(PRODUCT_REGISTRY["codex-cli"].presentation.description).toBe(
-      "A user-owned Codex CLI installation with vendor-managed local auth; support requires matching exact compatibility evidence.",
-    );
-    expect(PRODUCT_REGISTRY["copilot-cli"].presentation.description).toBe(
-      "A user-owned Copilot CLI installation with vendor-managed local auth; support requires matching exact compatibility evidence.",
-    );
     expect(CANDIDATE_VERDICTS["byteplus-coding-plan"].name).toBe("BytePlus Coding / Token Plan");
     expect(CANDIDATE_VERDICTS["nvidia-api-catalog"].name).toBe(
       "NVIDIA hosted API Catalog/build API",
@@ -535,8 +465,6 @@ describe("the registry-owned model policy predicate", () => {
   it.each([
     { productId: "zai", modelId: "glm-4.7", allowed: true },
     { productId: "zai", modelId: "glm-4.7-flash", allowed: true },
-    { productId: "deepseek", modelId: "deepseek-v4-flash", allowed: true },
-    { productId: "deepseek", modelId: "deepseek-v5-flash", allowed: false },
     { productId: "openrouter", modelId: "openai/gpt-4.1-mini", allowed: true },
     { productId: "openrouter", modelId: "openrouter/auto", allowed: false },
     { productId: "gemini", modelId: "gemini-2.5-flash", allowed: true },
@@ -553,8 +481,6 @@ describe("the registry-owned model policy predicate", () => {
       SELECTABLE_PRODUCT_IDS.map((productId) => PRODUCT_REGISTRY[productId].modelPolicy.kind),
     );
 
-    expect(coveredKinds).toEqual(
-      new Set(["discovered-exact", "discovered-allowlist", "pinned-downstream-route"]),
-    );
+    expect(coveredKinds).toEqual(new Set(["discovered-exact", "pinned-downstream-route"]));
   });
 });

@@ -13,14 +13,7 @@ const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 describe("parseModelsDevCatalog", () => {
   it("parses the exact upstream observations without product admission fields", () => {
     const catalog = parseModelsDevCatalog(RAW_CATALOG);
-    expect(Object.keys(catalog)).toEqual([
-      "google",
-      "zai",
-      "groq",
-      "cerebras",
-      "openrouter",
-      "deepseek",
-    ]);
+    expect(Object.keys(catalog)).toEqual(["google", "zai", "openrouter"]);
     for (const provider of Object.values(catalog)) {
       expect(provider).not.toHaveProperty("enabled");
       expect(provider).not.toHaveProperty("selectable");
@@ -65,6 +58,24 @@ describe("parseModelsDevCatalog", () => {
     const model = requireValue(catalog.google?.models["gemini-2.5-flash"], "Gemini flash model");
 
     expect(model.structured_output).toBeNull();
+  });
+
+  // A typo'd upstream date must read as "no date" (sorted last, honestly),
+  // never drop the whole model at parse.
+  it("keeps a model whose release_date is malformed, reading the date as absent", () => {
+    const catalog = parseModelsDevCatalog({
+      google: {
+        id: "google",
+        models: {
+          dated: { id: "dated", name: "Dated", release_date: "2026-03-01" },
+          mangled: { id: "mangled", name: "Mangled", release_date: "March 2026" },
+        },
+      },
+    });
+
+    expect(catalog.google?.models.dated?.release_date).toBe("2026-03-01");
+    expect(catalog.google?.models.mangled).toBeDefined();
+    expect(catalog.google?.models.mangled?.release_date).toBeUndefined();
   });
 
   it("skips one malformed model but keeps its siblings (per-model safeParse)", () => {

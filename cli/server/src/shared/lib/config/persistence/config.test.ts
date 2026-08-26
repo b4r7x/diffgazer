@@ -101,12 +101,12 @@ describe("V2 configuration persistence", () => {
   it("decodes a pre-noticeId document as supported and round-trips it byte-identically", () => {
     const legacyRecord = {
       ...supportedRecord,
-      configurationId: "cfg-v1-groq",
-      productId: "groq",
+      configurationId: "cfg-v1-zai",
+      productId: "zai",
       input: {
         transportFamily: "hosted-api",
-        productId: "groq",
-        endpoint: "https://api.groq.com/openai/v1",
+        productId: "zai",
+        endpoint: "https://api.z.ai/api/paas/v4",
       },
       selectedModelId: null,
       acknowledgement: { noticeVersion: 1, acceptedAt: "2026-08-10T09:00:00.000Z" },
@@ -115,19 +115,19 @@ describe("V2 configuration persistence", () => {
     const removedRecord =
       '{"schemaVersion":2,"status":"removed","configurationId":"cfg-v1-retired"}';
     const input = encoder.encode(
-      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":"cfg-v1-groq","configurations":[${JSON.stringify(legacyRecord)},${removedRecord}]}\n`,
+      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":"cfg-v1-zai","configurations":[${JSON.stringify(legacyRecord)},${removedRecord}]}\n`,
     );
 
     const decoded = decodeConfigFile(input);
     expect(decoded.schemaVersion).toBe(2);
     if (decoded.schemaVersion !== 2) return;
-    expect(decoded.selectedConfigurationId).toBe("cfg-v1-groq");
+    expect(decoded.selectedConfigurationId).toBe("cfg-v1-zai");
     expect(decoded.configurations[0]).toMatchObject({
       status: "supported",
       record: {
-        configurationId: "cfg-v1-groq",
+        configurationId: "cfg-v1-zai",
         acknowledgement: {
-          noticeId: "groq-hosted-api",
+          noticeId: "zai-general-payg",
           noticeVersion: 1,
           acceptedAt: "2026-08-10T09:00:00.000Z",
         },

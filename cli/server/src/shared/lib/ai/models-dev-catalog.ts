@@ -8,14 +8,13 @@ import {
   PROVIDER_OVERLAY,
   parseModelsDevCatalog,
   transformCatalogObservation,
+  withholdsDeclaredStructuredOutputRefusal,
 } from "@diffgazer/core/catalog";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import {
   CATALOG_EMPTY_MODELS_REASON,
-  CATALOG_SKIPPED_REASON,
   isModelIdAllowedForProduct,
   LIVE_ONLY_MODEL_DESCRIPTION,
-  PRODUCT_REGISTRY,
 } from "@diffgazer/core/providers";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type {
@@ -186,10 +185,25 @@ const describeObservation = (contextTokens?: number): string => {
 };
 
 /**
+ * Newest first: dated rows by release date descending, tied dates by id
+ * ascending; rows without a date sort after every dated row, keeping their
+ * incoming (catalog or provider-list) order — a missing date is never guessed.
+ */
+const compareModelsNewestFirst = (left: ModelInfo, right: ModelInfo): number => {
+  if (left.releaseDate === undefined && right.releaseDate === undefined) return 0;
+  if (left.releaseDate === undefined) return 1;
+  if (right.releaseDate === undefined) return -1;
+  if (left.releaseDate !== right.releaseDate) return left.releaseDate < right.releaseDate ? 1 : -1;
+  if (left.id < right.id) return -1;
+  if (left.id > right.id) return 1;
+  return 0;
+};
+
+/**
  * Map bounded product observations to picker rows without conferring admission
- * or billing. Only models the product's model policy admits — and, for
- * strict-JSON-schema products, not published as unable to return structured
- * output — are offered, and the tier repeats the catalog's own per-model price
+ * or billing. Only models the product's model policy admits — and, where
+ * `withholdsDeclaredStructuredOutputRefusal` holds, not published as unable to
+ * return structured output — are offered, and the tier repeats the catalog's own per-model price
  * rather than a curated free-quota guess. Applying the policy here — not only
  * at the API boundary — is what lets
  * a product whose whole offering is filtered away report an honest empty
@@ -218,7 +232,9 @@ export const modelInfoFromBoundedObservation = (
       name: model.modelName,
       description: describeObservation(model.contextTokens),
       tier: model.billing,
-    }));
+      ...(model.releaseDate === undefined ? {} : { releaseDate: model.releaseDate }),
+    }))
+    .sort(compareModelsNewestFirst);
 };
 
 const isOffline = (): boolean => {
@@ -437,10 +453,7 @@ const resolveCatalogTier = async (productId: CatalogObservableProductId): Promis
 };
 
 /** Every model key the catalog carries for the product's overlay sources, offered or withheld. */
-const catalogModelIds = (
-  catalog: ModelsDevCatalog,
-  productId: CatalogObservableProductId,
-): Set<string> => {
+const catalogModelIds = (catalog: ModelsDevCatalog, productId: RunnableProductId): Set<string> => {
   const ids = new Set<string>();
   for (const sourceId of PROVIDER_OVERLAY[productId]?.modelsDevIds ?? []) {
     for (const modelKey of Object.keys(catalog[sourceId]?.models ?? {})) ids.add(modelKey);
@@ -451,7 +464,7 @@ const catalogModelIds = (
 /** The display name a same-vendor models.dev source carries for the identical key, if any. */
 const borrowedCatalogName = (
   catalog: ModelsDevCatalog,
-  productId: CatalogObservableProductId,
+  productId: RunnableProductId,
   modelId: string,
 ): string | undefined => {
   for (const sourceId of PROVIDER_OVERLAY[productId]?.nameSourceIds ?? []) {
@@ -468,34 +481,46 @@ const describeLiveOnly = (model: LiveModel): string => {
 };
 
 /**
+ * Gemini's OpenAI-compat list names every generativelanguage route — embeddings,
+ * tts, imagen — with no field that tells a review model apart, so live-only ids
+ * are excluded there: the catalog stays authoritative for which gemini rows
+ * exist, and the live list only prunes rows the provider no longer serves.
+ */
+const LIVE_ONLY_ROW_EXCLUDED_PRODUCTS = new Set<RunnableProductId>(["gemini"]);
+
+/**
  * The provider's live list is the id set; models.dev supplies the row where it
  * knows the id. A model the catalog knows but withheld (non-text output, or a
- * declared structured-output refusal on a strict-schema product) stays
- * withheld — the live list only adds ids the catalog has never seen, and those
- * still pass the product's model policy. On a strict-schema product the live
- * list's own capability declaration withholds a route too, whether or not the
- * catalog knows it: the provider is the authority on what its routes accept.
+ * declared structured-output refusal where `withholdsDeclaredStructuredOutputRefusal`
+ * holds) stays withheld — the live list only adds ids the catalog has never
+ * seen, and those still pass the product's model policy. Where that predicate
+ * holds, the live list's own capability declaration withholds a route too,
+ * whether or not the catalog knows it; pinned-downstream-route aggregators are
+ * exempt, because their gateway drops an unsupported response_format instead
+ * of rejecting the request, and local validation covers the rest.
  * A live-only row may borrow a display name from a same-vendor source, never
- * its price: the tier stays unknown and the row says so.
+ * its price: the tier stays unknown and the row says so. The merged rows sort
+ * newest first; live-only rows carry no release date, so they follow the dated
+ * catalog rows in the provider's own list order.
  */
 const mergeLiveModelList = (
   catalog: ModelsDevCatalog,
-  productId: CatalogObservableProductId,
+  productId: RunnableProductId,
   offered: readonly ModelInfo[],
   live: readonly LiveModel[],
 ): ModelInfo[] => {
   const offeredById = new Map(offered.map((model) => [model.id, model]));
   const known = catalogModelIds(catalog, productId);
-  const strictSchema =
-    PRODUCT_REGISTRY[productId].admission.structuredOutput === "strict-json-schema";
+  const withholds = withholdsDeclaredStructuredOutputRefusal(productId);
   const merged: ModelInfo[] = [];
   for (const model of live) {
-    if (strictSchema && model.structuredOutput === false) continue;
+    if (withholds && model.structuredOutput === false) continue;
     const offeredModel = offeredById.get(model.id);
     if (offeredModel) {
       merged.push(offeredModel);
       continue;
     }
+    if (LIVE_ONLY_ROW_EXCLUDED_PRODUCTS.has(productId)) continue;
     if (known.has(model.id) || !isModelIdAllowedForProduct(productId, model.id)) continue;
     merged.push({
       id: model.id,
@@ -504,11 +529,7 @@ const mergeLiveModelList = (
       tier: model.tier,
     });
   }
-  return merged.sort((left, right) => {
-    if (left.id < right.id) return -1;
-    if (left.id > right.id) return 1;
-    return 0;
-  });
+  return merged.sort(compareModelsNewestFirst);
 };
 
 const providerModelsResponse = (
@@ -535,8 +556,8 @@ const providerModelsFromTier = (
   const merged = mergeLiveModelList(tier.catalog, productId, offered, liveList.models);
   if (merged.length === 0) {
     // A list naming only ids the product policy rejects (a provider that lists
-    // aliases such as `deepseek-chat` instead of exact ids) must not blank a
-    // picker the catalog can still fill.
+    // aliases instead of exact ids) must not blank a picker the catalog can
+    // still fill.
     log("info", "live_model_list_ignored", { productId });
     return providerModelsResponse(offered, tier.fetchedAt, tier.source);
   }
@@ -580,29 +601,19 @@ export const discoverConfigurationCatalog = async (
   tuple: CatalogDiscoveryTuple,
 ): Promise<ConfigurationCatalogDiscovery> => {
   const checkedAt = new Date().toISOString();
-  if (!isCatalogObservableProduct(tuple.productId)) {
-    return {
-      ...tuple,
-      status: "skipped",
-      models: [],
-      reason: CATALOG_SKIPPED_REASON,
-      checkedAt,
-    };
-  }
+  const skipped = (reason: string): ConfigurationCatalogDiscovery => ({
+    ...tuple,
+    status: "skipped",
+    models: [],
+    reason,
+    checkedAt,
+  });
 
   const response = await catalogProviderModels.get(
     tuple.productId,
     isOffline() ? null : resolveLiveModelList(tuple),
   );
-  if (response.models.length === 0) {
-    return {
-      ...tuple,
-      status: "skipped",
-      models: [],
-      reason: CATALOG_EMPTY_MODELS_REASON,
-      checkedAt,
-    };
-  }
+  if (response.models.length === 0) return skipped(CATALOG_EMPTY_MODELS_REASON);
   return {
     ...tuple,
     status: "passed",

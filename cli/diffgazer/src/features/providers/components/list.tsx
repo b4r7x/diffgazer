@@ -29,7 +29,6 @@ interface ProviderListProps {
   onHighlightChange?: (id: string) => void;
   isActive?: boolean;
   contentWidth: number;
-  compact?: boolean;
 }
 
 const PROVIDER_LIST_ROW_CHROME = 4;
@@ -40,14 +39,17 @@ function fitsListRow(name: string, subtitle: string, contentWidth: number): bool
   );
 }
 
+/**
+ * A subtitle rides along only when the whole row fits: truncating it would
+ * trade legible words for an ellipsis, and the details pane always carries the
+ * full text.
+ */
 function canShowListSubtitle(
   name: string,
   subtitle: string | undefined,
   contentWidth: number,
-  compact: boolean,
 ): subtitle is string {
   if (!subtitle) return false;
-  if (!compact) return true;
   return fitsListRow(name, subtitle, contentWidth);
 }
 
@@ -63,9 +65,6 @@ function getModelSubtitle(row: ProviderListRow, contentWidth: number): string | 
     const label = formatModelLabel(row.product.productId, modelId);
     if (fitsListRow(row.product.name, label, contentWidth)) return label;
     return getCatalogModelName(row.product.productId, modelId);
-  }
-  if (row.readiness.status === "unsupported" && row.product.transportFamily === "local-cli") {
-    return "CLI unsupported";
   }
   return row.readiness.remediation.message;
 }
@@ -90,7 +89,7 @@ function getStatusColor(
       ? tokens.success
       : tokens.muted;
   }
-  const badge = getProviderDisplayStatus(row.readiness, row.product.transportFamily);
+  const badge = getProviderDisplayStatus(row.readiness);
   if (badge.variant === "error") return tokens.error;
   if (badge.variant === "warning") return tokens.warning;
   return tokens.muted;
@@ -106,7 +105,6 @@ export function ProviderList({
   onHighlightChange,
   isActive = true,
   contentWidth,
-  compact = false,
 }: ProviderListProps): ReactElement {
   const { tokens } = useTheme();
 
@@ -121,7 +119,7 @@ export function ProviderList({
       {providers.map((row) => {
         const rowId = getProviderRowId(row);
         const subtitle = getModelSubtitle(row, contentWidth);
-        const showSubtitle = canShowListSubtitle(row.product.name, subtitle, contentWidth, compact);
+        const showSubtitle = canShowListSubtitle(row.product.name, subtitle, contentWidth);
 
         return (
           <NavigationList.Item key={rowId} id={rowId}>
@@ -175,7 +173,6 @@ export function ProviderList({
                 UNRECOGNIZED_CONFIGURATION_COPY.label,
                 configurationId,
                 contentWidth,
-                compact,
               ) ? (
                 <Box flexShrink={1} overflow="hidden">
                   <Text color={tone.secondary} wrap="truncate-end">

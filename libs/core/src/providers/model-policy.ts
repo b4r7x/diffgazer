@@ -76,34 +76,15 @@ export type AdmissionCheck =
   | "downstream-route"
   | "structured-output"
   | "usage"
-  | "loopback"
-  | "server-version"
-  | "installation"
-  | "runtime-version"
-  | "account-plan"
-  | "negative-capabilities"
-  | "cancellation"
   | "acknowledgement";
 
-export const CONFIGURATION_FIELDS = [
-  "credential",
-  "endpoint",
-  "local-authentication",
-  "installation",
-] as const;
+export const CONFIGURATION_FIELDS = ["credential", "endpoint"] as const;
 export type ConfigurationField = (typeof CONFIGURATION_FIELDS)[number];
 
 export type ModelPolicy =
   | {
       readonly kind: "discovered-exact";
       readonly suggestedModelId?: string;
-      readonly aliases: "forbidden";
-    }
-  | {
-      readonly kind: "discovered-allowlist";
-      readonly modelIds: readonly string[];
-      readonly suggestedModelId?: string;
-      readonly higherCostModelIds?: readonly string[];
       readonly aliases: "forbidden";
     }
   | {
@@ -126,8 +107,6 @@ export function matchesModelPolicy(modelId: string, policy: ModelPolicy): boolea
   switch (policy.kind) {
     case "discovered-exact":
       return true;
-    case "discovered-allowlist":
-      return policy.modelIds.includes(modelId);
     case "pinned-downstream-route":
       return isPinnedDownstreamRouteModelId(modelId);
   }

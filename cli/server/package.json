@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "build": "tsc && node -e \"require('node:fs').cpSync('src/shared/lib/ai/providers/fixtures', 'dist/shared/lib/ai/providers/fixtures', { recursive: true, force: true, filter: (src) => !src.endsWith('.test.ts') })\"",
+    "build": "tsc",
     "dev": "tsx src/serve.ts",
     "start": "node dist/serve.js",
     "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",

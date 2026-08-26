@@ -4,17 +4,17 @@ import { READINESS_PRESENTATION, type Readiness } from "../schemas/config/readin
 import { CANDIDATE_PRODUCT_IDS, type RunnableProductId } from "../schemas/config/transports.js";
 import { buildSetupPlan } from "./setup-plan.js";
 
-const LOCAL_CONFORMANCE_FAILED_READINESS = {
-  status: "local-conformance-failed",
+const CONFORMANCE_FAILED_READINESS = {
+  status: "conformance-failed",
   ready: false,
   evidenceStatus: "failed",
   checkedAt: "2026-07-31T12:00:00.000Z",
   acknowledgement: {
     status: "required",
-    noticeId: PRODUCT_REGISTRY["local-openai"].notice.id,
-    noticeVersion: PRODUCT_REGISTRY["local-openai"].notice.noticeVersion,
+    noticeId: PRODUCT_REGISTRY.zai.notice.id,
+    noticeVersion: PRODUCT_REGISTRY.zai.notice.noticeVersion,
   },
-  ...READINESS_PRESENTATION["local-conformance-failed"],
+  ...READINESS_PRESENTATION["conformance-failed"],
 } satisfies Readiness;
 
 function runnablePlan(productId: RunnableProductId) {
@@ -26,7 +26,7 @@ function runnablePlan(productId: RunnableProductId) {
 
 describe("setup plan", () => {
   it("asks hosted products for their endpoint tuple and credential", () => {
-    const plan = runnablePlan("deepseek");
+    const plan = runnablePlan("zai");
 
     expect(plan.transportFamily).toBe("hosted-api");
     expect(plan.requiredFields).toEqual(["credential"]);
@@ -56,44 +56,6 @@ describe("setup plan", () => {
     ]);
   });
 
-  it("asks local HTTP products for loopback and local authentication without a credential", () => {
-    const plan = runnablePlan("local-openai");
-
-    expect(plan.transportFamily).toBe("local-http");
-    expect(plan.requiredFields).toEqual(["endpoint", "local-authentication"]);
-    expect(plan.steps).toMatchObject([
-      { id: "product" },
-      { id: "endpoint-binding", requiredFields: ["endpoint"] },
-      {
-        id: "authentication",
-        credentialKind: "none-or-optional-local-bearer",
-        requiredFields: ["local-authentication"],
-      },
-      { id: "model" },
-      { id: "acknowledgement" },
-    ]);
-    expect(plan.requiredFields).not.toContain("credential");
-  });
-
-  it("asks local CLI products only for a selected installation before model checks", () => {
-    const plan = runnablePlan("codex-cli");
-
-    expect(plan.transportFamily).toBe("local-cli");
-    expect(plan.requiredFields).toEqual(["installation"]);
-    expect(plan.steps).toMatchObject([
-      { id: "product" },
-      {
-        id: "authentication",
-        credentialKind: "vendor-managed-local-auth",
-        requiredFields: ["installation"],
-      },
-      { id: "model" },
-      { id: "acknowledgement" },
-    ]);
-    expect(plan.steps.some((step) => step.id === "endpoint-binding")).toBe(false);
-    expect(plan.requiredFields).not.toContain("credential");
-  });
-
   it("requires exact discovered model selection and explicit notice acceptance", () => {
     for (const productId of SELECTABLE_PRODUCT_IDS) {
       const plan = runnablePlan(productId);
@@ -113,16 +75,15 @@ describe("setup plan", () => {
   });
 
   it("projects the current safe readiness remediation into a runnable plan", () => {
-    const plan = buildSetupPlan("local-openai", LOCAL_CONFORMANCE_FAILED_READINESS);
+    const plan = buildSetupPlan("zai", CONFORMANCE_FAILED_READINESS);
 
     expect(plan).toMatchObject({
       kind: "runnable",
       remediation: {
-        status: "local-conformance-failed",
+        status: "conformance-failed",
         action: "test",
         code: "rerun-conformance",
-        message:
-          "Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Verify can re-check it.",
+        message: READINESS_PRESENTATION["conformance-failed"].remediation.message,
       },
     });
   });

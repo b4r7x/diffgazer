@@ -1,7 +1,6 @@
 export { canProceed } from "./can-proceed.js";
 export {
   getInitialWizardData,
-  type LocalCliConfigurationDraft,
   type OnboardingConfigurationDraft,
   type OnboardingDraft,
   resetWizardProduct,

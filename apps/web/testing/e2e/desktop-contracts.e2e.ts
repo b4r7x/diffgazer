@@ -106,6 +106,8 @@ interface ClippedViewportGeometry {
   /** The clipped viewport takes the overflow, so the page never scrolls. */
   scrolls: boolean;
   panelWidth: number;
+  /** The clipped viewport's content-box width — what a full-bleed band spans. */
+  viewportContentWidth: number;
 }
 
 /**
@@ -152,6 +154,10 @@ async function measureInClippedViewport(panel: Locator): Promise<ClippedViewport
       spare,
       scrolls: scroller.scrollHeight > scroller.clientHeight,
       panelWidth: panelRect.width,
+      viewportContentWidth:
+        scroller.clientWidth -
+        Number.parseFloat(style.paddingLeft) -
+        Number.parseFloat(style.paddingRight),
     };
   });
 }
@@ -184,19 +190,14 @@ const SINGLE_PANEL_SCREENS = [
     vertical: "centre",
     spareHeight: "real",
   },
-  // The two dead ends, both with hundreds of pixels of spare at this size: their
-  // centre is the gate rule itself, not a band that collapsed into one.
+  // A boxed dead-end gate with hundreds of pixels of spare at this size:
+  // boxed gates dead-centre (the two-species rule below), so this row pins
+  // the live centre, not the band. The other dead end — the 404 — is a
+  // full-bleed interruption band with its own test below.
   {
     path: `/review/${GATE_REVIEW_ID}?live=true&mode=unstaged`,
     panel: "No Unstaged Changes",
     contentWidth: 448,
-    vertical: "centre",
-    spareHeight: "real",
-  },
-  {
-    path: "/this-route-does-not-exist",
-    panel: "Page Not Found",
-    contentWidth: 512,
     vertical: "centre",
     spareHeight: "real",
   },
@@ -219,13 +220,14 @@ test("single-panel screens centre and hold the hero band inside their clipped vi
     expect(Math.abs(geometry.centerXDelta), `${screen.path} horizontal centre`).toBeLessThanOrEqual(
       1,
     );
-    // Vertical: two rules share this table. The page-card screens split their
-    // spare height 1:2 around the card (the optical band); a dead-end gate centres
-    // in the content area instead, the composition the TUI's GateShell draws. A
-    // row marked "collapsed" has no room to place — its card fills the box the
-    // helper measures — while a "real" row keeps leftover height, so its
-    // placement assertion is live (help's 64px is the padding of its own wrapper
-    // one level below main; its band is collapsed, so centre and band coincide).
+    // Vertical: two species own this table. Sparse page cards and loading sit
+    // in the app-wide 1:2 band; boxed dead-end gates dead-centre; the 404
+    // interruption band is full-bleed in the 1:2 band with its own test.
+    // A row marked "collapsed" has no room to place — its card fills the box
+    // the helper measures — while a "real" row keeps leftover height, so its
+    // placement assertion is live (help's 64px is the padding of its own
+    // wrapper one level below main; its band is collapsed, so centre and band
+    // coincide, which is what its "centre" row pins).
     if (screen.spareHeight === "real") {
       expect(geometry.spare, `${screen.path} spare height`).toBeGreaterThan(0);
     } else {
@@ -244,6 +246,27 @@ test("single-panel screens centre and hold the hero band inside their clipped vi
   }
 });
 
+test("the 404 interruption band spans the frame and holds the hero band", async ({ page }) => {
+  await mockAppApi(page);
+  await page.goto("/this-route-does-not-exist");
+
+  const band = page.getByRole("region", { name: "Page Not Found", exact: true });
+  await expect(band).toBeVisible();
+
+  // The band is a strip, not a box: full bleed makes centerXDelta trivially 0,
+  // so the width contract compares the section against the clipped viewport's
+  // own content box instead of pinning a panel width.
+  const geometry = await measureInClippedViewport(band);
+  expect(
+    Math.abs(geometry.panelWidth - geometry.viewportContentWidth),
+    "full-bleed width",
+  ).toBeLessThanOrEqual(1);
+  // The 404 keeps the app-wide 1:2 band (boxed gates dead-centre instead), so
+  // loading → 404 lands without a jump; a live placement needs real spare.
+  expect(geometry.spare, "spare height").toBeGreaterThan(0);
+  expect(Math.abs(geometry.bandTopDelta), "hero band").toBeLessThanOrEqual(1);
+});
+
 test.describe("a viewport too short for the dead-end panel", () => {
   test.use({ viewport: { width: 1280, height: 360 } });
 
@@ -256,7 +279,17 @@ test.describe("a viewport too short for the dead-end panel", () => {
     const panel = page.getByRole("region", { name: "Page Not Found", exact: true });
     await expect(panel).toBeVisible();
 
-    // Centring only distributes leftover height. With none left the spacers
+    // Mount focus lands on the lone action at the band's bottom edge, and the
+    // app's keyboard-first reveal scrolls it into view — so the content area
+    // starts scrolled down here. The spacer-collapse contract is about the
+    // band's geometry, not the reveal: read it with the area back at the top.
+    await expect(page.getByRole("button", { name: "Go to Home" })).toBeFocused();
+    await panel.evaluate((element) => {
+      const scroller = element.parentElement;
+      if (scroller) scroller.scrollTop = 0;
+    });
+
+    // Banding only distributes leftover height. With none left the spacers
     // collapse, the panel starts at the top of the content box, and the overflow
     // belongs to the clipped viewport — never to the page, whose shell is h-dvh.
     const geometry = await measureInClippedViewport(panel);

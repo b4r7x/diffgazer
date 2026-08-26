@@ -2,10 +2,9 @@ import { describe, expect, it } from "vitest";
 import { HELP_SHORTCUTS, REVIEW_CONSENT_SHORTCUT } from "../schemas/presentation/shortcuts.js";
 import {
   buildProviderRows,
-  CODEX_CLI_CONFIGURATION,
   configurationStatus,
   GEMINI_CONFIGURATION,
-  LOCAL_OPENAI_CONFIGURATION,
+  OPENROUTER_CONFIGURATION,
   unconfiguredRow,
   ZAI_CONFIGURATION,
 } from "../testing/provider-fixtures.js";
@@ -26,8 +25,7 @@ import type { ProviderListRow } from "./list.js";
 const ROWS: ProviderListRow[] = buildProviderRows([
   configurationStatus(GEMINI_CONFIGURATION, "ready"),
   configurationStatus(ZAI_CONFIGURATION, "model-missing"),
-  configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
-  configurationStatus(CODEX_CLI_CONFIGURATION, "unsupported"),
+  configurationStatus(OPENROUTER_CONFIGURATION, "unsupported"),
 ]);
 
 function findRow(configurationId: string): ProviderListRow {
@@ -138,11 +136,7 @@ describe("getProviderActionLayout", () => {
   });
 
   it("leads a failed verification with Verify and never lists Verify twice", () => {
-    const rows = [
-      rowWithStatus("conformance-failed"),
-      rowWithStatus("skipped"),
-      findRow("local-openai-1"),
-    ];
+    const rows = [rowWithStatus("conformance-failed"), rowWithStatus("skipped")];
     for (const row of rows) {
       const status = row.readiness.status;
       const layout = getProviderActionLayout(row, null);
@@ -160,8 +154,8 @@ describe("getProviderActionLayout", () => {
     }
   });
 
-  it("routes an unsupported CLI configuration to inspection first", () => {
-    const layout = getProviderActionLayout(findRow("codex-cli-1"), null);
+  it("routes an unsupported configuration to inspection first", () => {
+    const layout = getProviderActionLayout(findRow("openrouter-1"), null);
 
     expect(layout.primary).toMatchObject({ task: "inspect", label: "Inspect configuration" });
     expect(layout.overflow.find((action) => action.id === "verify")).toMatchObject({

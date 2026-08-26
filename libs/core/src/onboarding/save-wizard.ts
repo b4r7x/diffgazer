@@ -175,21 +175,7 @@ function matchesDraftTuple(
     return false;
   }
 
-  if (summary.transportFamily === "hosted-api" && input.transportFamily === "hosted-api") {
-    return summary.endpoint === input.endpoint;
-  }
-  if (summary.transportFamily === "local-http" && input.transportFamily === "local-http") {
-    return (
-      summary.endpoint === input.endpoint &&
-      summary.authentication === input.authentication &&
-      summary.presetId === input.presetId
-    );
-  }
-  return (
-    summary.transportFamily === "local-cli" &&
-    input.transportFamily === "local-cli" &&
-    summary.installationId === input.installationId
-  );
+  return summary.endpoint === input.endpoint;
 }
 
 export async function saveWizard(

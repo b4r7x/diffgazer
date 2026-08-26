@@ -19,7 +19,7 @@ import { Panel, type PanelProps } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { cn } from "@diffgazer/ui/lib/utils";
-import type { ReactNode, RefCallback, RefObject } from "react";
+import { Fragment, type ReactNode, type RefCallback, type RefObject } from "react";
 import { PROVIDER_STATUS_TONE } from "../lib/status-tone";
 import { ProviderOverflowMenu, type ProviderOverflowMenuState } from "./overflow-menu";
 
@@ -230,7 +230,7 @@ export function ProviderDetails({
     );
   }
 
-  const displayStatus = getProviderDisplayStatus(row.readiness, row.product.transportFamily);
+  const displayStatus = getProviderDisplayStatus(row.readiness);
   // Readiness already has two renderings on this screen (the header readout and the
   // status rail below the actions), so it is the single row this view drops. Every
   // other row — including any added to the builder later — renders by its kind.
@@ -299,30 +299,33 @@ export function ProviderDetails({
             Configuration
           </SectionHeader>
           <Panel density="compact">
-            {/* The bordered rows bring their own top padding, so the box drops its
-                own and repays it at the bottom to stay optically even. */}
-            <Panel.Content spacing="none" className="pt-0 pb-4">
+            <Panel.Content spacing="none">
               {/* A description list, so the facts are announced as paired terms and
-                  definitions rather than a run of text. label -> value -> description:
-                  the description qualifies the value, so the label slot must not hold
-                  it — that seats a whole sentence between a label and the value
-                  answering it. It stays left-aligned inside the right-aligned value. */}
-              <KeyValue bordered>
+                  definitions rather than a run of text. Rows separate by spacing, not
+                  rules — the section underline and the panel border already frame the
+                  block, matching the prose sections below. label -> value ->
+                  description: the description qualifies the value, so it renders as a
+                  second definition of the same term — a full-width muted line under
+                  the pair, aligned with the label column — never inside the label
+                  slot, which would seat a whole sentence between a label and the
+                  value answering it. */}
+              <KeyValue>
                 {factRows.map((fact) => (
-                  <KeyValue.Item
-                    key={fact.id}
-                    label={fact.label}
-                    value={
-                      <>
-                        {fact.value}
-                        {fact.description ? (
-                          <span className="mt-2 block text-left font-normal text-2xs leading-relaxed text-muted-foreground">
-                            {fact.description}
-                          </span>
-                        ) : null}
-                      </>
-                    }
-                  />
+                  <Fragment key={fact.id}>
+                    <KeyValue.Item
+                      label={fact.label}
+                      value={fact.value}
+                      className="text-xs"
+                      valueClassName="text-xs"
+                    />
+                    {fact.description ? (
+                      /* -mt-1 pulls the description toward its own row so the gap
+                         within a fact stays tighter than the gap between facts. */
+                      <dd className="col-span-2 -mt-1 text-2xs leading-relaxed text-muted-foreground">
+                        {fact.description}
+                      </dd>
+                    ) : null}
+                  </Fragment>
                 ))}
               </KeyValue>
             </Panel.Content>

@@ -190,22 +190,35 @@ describe("bundled catalog observations", () => {
 
   // Owner evidence: the picker's Free tab reads `tier === "free"`, so it can only
   // be filled by a route the model policy admits. Pinned `:free` variants are
-  // separately priced catalog identities and belong there; `openrouter/free` is
-  // a router that names no downstream model and does not.
+  // separately priced catalog identities and belong there — including routes
+  // that declare no structured output, which OpenRouter's pinned-downstream-route
+  // policy exempts from the withhold; `openrouter/free` is a router that names
+  // no downstream model and does not.
   it("fills the OpenRouter picker's free tab with pinned variants and no routers", async () => {
     const { models } = await getProviderModels("openrouter");
     const modelIds = models.map(({ id }) => id);
 
+    // Newest release first, per the bundled catalog's own dates.
     expect(models.filter(({ tier }) => tier === "free").map(({ id }) => id)).toEqual([
+      "stealth/ox-alpha",
       "dots-studio/dots-3-note-preview:free",
-      "google/gemma-4-26b-a4b-it:free",
       "liquid/lfm-2.5-2.6b:free",
-      "nvidia/nemotron-3-super-120b-a12b:free",
-      "nvidia/nemotron-nano-9b-v2:free",
-      "openai/gpt-oss-20b:free",
+      "nvidia/nemotron-3.5-lightning:free",
+      "thinkingmachines/inkling-small:free",
+      "poolside/laguna-s-2.1:free",
+      "thinkingmachines/inkling:free",
+      "poolside/laguna-xs-2.1:free",
+      "cohere/north-mini-code:free",
       "z-ai/glm-5.2:free",
+      "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "nvidia/nemotron-3.5-content-safety:free",
+      "minimax/minimax-m3:free",
+      "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "google/gemma-4-26b-a4b-it:free",
+      "google/gemma-4-31b-it:free",
+      "minimax/minimax-m2.7:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
     ]);
-    expect(modelIds).toContain("qwen/qwen-plus-2025-07-28:thinking");
     expect(modelIds).not.toContain("openrouter/auto");
     expect(modelIds).not.toContain("openrouter/free");
   });
@@ -222,6 +235,27 @@ describe("bundled catalog observations", () => {
         { id: "glm-5-turbo", tier: "paid" },
       ]),
     );
+  });
+
+  // The bundled catalog's own release dates must put Gemini's newer families
+  // above the older ones in the picker — the newest-first contract on real data.
+  it("orders the Gemini picker newest-first by release date", async () => {
+    const { models } = await getProviderModels("gemini");
+    const position = (id: string): number => {
+      const index = models.findIndex((model) => model.id === id);
+      expect(index, `${id} must be offered`).toBeGreaterThanOrEqual(0);
+      return index;
+    };
+
+    expect(position("gemini-3.5-flash")).toBeLessThan(position("gemini-3.1-flash-lite"));
+    expect(position("gemini-3.1-flash-lite")).toBeLessThan(position("gemini-2.5-flash"));
+    // Every dated row precedes every dateless row.
+    const firstDateless = models.findIndex((model) => model.releaseDate === undefined);
+    if (firstDateless !== -1) {
+      for (const model of models.slice(firstDateless)) {
+        expect(model.releaseDate, model.id).toBeUndefined();
+      }
+    }
   });
 
   // Ollama Cloud is quota-billed, so models.dev prices none of its models: the

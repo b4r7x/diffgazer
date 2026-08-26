@@ -25,7 +25,7 @@ describe("fetchModelsDevCatalog", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.catalog.google).toBeDefined();
-      expect(result.value.catalog.groq).toBeDefined();
+      expect(result.value.catalog.openrouter).toBeDefined();
       expect(result.value.revalidated).toBe(false);
     }
     expect(spy).toHaveBeenCalledWith(
@@ -72,7 +72,7 @@ describe("fetchModelsDevCatalog", () => {
     if (result.ok) {
       expect(result.value.revalidated).toBe(false);
       expect(result.value.etag).toBe('"catalog-v2"');
-      expect(result.value.catalog.groq).toBeDefined();
+      expect(result.value.catalog.openrouter).toBeDefined();
     }
   });
 
@@ -192,19 +192,23 @@ describe("modelInfoFromBoundedObservation", () => {
     const catalog = parseModelsDevCatalog(MODELS_DEV_SAMPLE);
     const zai = modelInfoFromBoundedObservation(catalog, "zai", "models.dev-live", fresh());
     const gemini = modelInfoFromBoundedObservation(catalog, "gemini", "models.dev-live", fresh());
-    const cerebras = modelInfoFromBoundedObservation(
+    const openrouter = modelInfoFromBoundedObservation(
       catalog,
-      "cerebras",
+      "openrouter",
       "models.dev-live",
       fresh(),
     );
 
     // glm-4.7 declares it cannot, but Z.AI validates JSON mode locally;
-    // cerebras/gpt-oss-120b declares nothing at all and is listed as-is.
-    expect(zai.map((model) => model.id)).toEqual(["glm-4.7", "glm-4.7-flash", "glm-5-turbo"]);
-    expect(cerebras.map((model) => model.id)).toEqual(["gpt-oss-120b"]);
+    // openrouter's openai/gpt-oss-120b declares nothing at all and is listed
+    // as-is. Rows come newest release first.
+    expect(zai.map((model) => model.id)).toEqual(["glm-5-turbo", "glm-4.7-flash", "glm-4.7"]);
+    expect(openrouter.map((model) => model.id)).toEqual([
+      "openai/gpt-oss-120b",
+      "meta-llama/llama-4-scout-17b-16e-instruct",
+    ]);
     // Gemini runs strict JSON schema, so its declared refusal stays hidden.
-    expect(gemini.map((model) => model.id)).toEqual(["gemini-2.5-flash", "gemini-3-pro-preview"]);
+    expect(gemini.map((model) => model.id)).toEqual(["gemini-3-pro-preview", "gemini-2.5-flash"]);
   });
 
   it("carries the catalog display name so pickers need not fall back to the id", () => {

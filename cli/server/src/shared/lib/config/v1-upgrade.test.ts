@@ -315,6 +315,59 @@ describe("upgradeV1Documents", () => {
     expect(JSON.stringify(result)).not.toContain(model);
   });
 
+  it("drops a retired provider entry and its secret while upgrading supported siblings", async () => {
+    const result = await upgradeV1Documents(
+      v1Config([v1Gemini(), v1Gemini({ provider: "groq", isActive: false, model: undefined })]),
+      secretsState({ gemini: "sk-v1-file-literal", groq: "sk-v1-groq-literal" }),
+      { budget },
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        configDocument: {
+          selectedConfigurationId: "cfg-v1-gemini",
+          configurations: [{ record: { productId: "gemini" } }],
+        },
+      },
+    });
+    if (!result.ok) throw new Error("upgrade must succeed");
+    expect(result.value.configDocument.configurations).toHaveLength(1);
+    expect(bindingsOf(result)).toEqual([
+      {
+        configurationId: "cfg-v1-gemini",
+        revision: 1,
+        status: "active",
+        kind: "file-0600",
+        filePath: literalCredentialFilePath("cfg-v1-gemini", 1),
+      },
+    ]);
+    expect(JSON.stringify(result)).not.toContain("groq");
+    expect(JSON.stringify(result)).not.toContain("sk-v1-groq-literal");
+  });
+
+  it("upgrades an all-retired document to an empty V2 document without credential I/O", async () => {
+    const result = await upgradeV1Documents(
+      v1Config([
+        v1Gemini({ provider: "groq", model: undefined }),
+        v1Gemini({ provider: "cerebras", isActive: false, model: undefined }),
+      ]),
+      secretsState({ groq: "sk-v1-groq-literal", cerebras: "sk-v1-cerebras-literal" }),
+      { budget },
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        configDocument: { schemaVersion: 2, selectedConfigurationId: null, configurations: [] },
+        secretsDocument: { schemaVersion: 2, bindings: [] },
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("sk-v1-groq-literal");
+    expect(keyring.readKeyringSecret).not.toHaveBeenCalled();
+    expect(keyring.writeKeyringSecret).not.toHaveBeenCalled();
+  });
+
   it("fails a keyring install closed when its legacy source is gone", async () => {
     const result = await upgradeV1Documents(
       v1Config([v1Gemini()], { secretsStorage: "keyring" }),

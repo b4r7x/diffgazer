@@ -30,12 +30,13 @@ import {
 } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useContentZone } from "../../../components/layout/global";
 import { ProviderConsentOverlay } from "../../../components/shared/provider-consent-overlay";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
+import { useNavigation } from "../../../hooks/use-navigation";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { paneBorder } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
@@ -46,19 +47,6 @@ import { DeleteConfirmOverlay } from "./delete-confirm-overlay";
 import { COMFORTABLE_DETAILS_ROWS, ProviderDetails } from "./details";
 import { ProviderList } from "./list";
 import { ModelSelectOverlay } from "./model-select-overlay";
-
-const PROVIDER_LIST_ROW_CHROME = 4;
-const PROVIDER_LIST_SUBTITLE_MIN_COLUMNS = 18;
-
-function shouldCompactProviderList(contentWidth: number, providers: ProviderListRow[]): boolean {
-  if (providers.length === 0) return true;
-
-  const longestName = providers.reduce((max, row) => Math.max(max, row.product.name.length), 0);
-
-  return (
-    contentWidth <= longestName + PROVIDER_LIST_ROW_CHROME + PROVIDER_LIST_SUBTITLE_MIN_COLUMNS
-  );
-}
 
 // Back, then the primary Enter runs from the list and the accelerators the
 // highlighted row can run right now: the footer teaches only live keys, `?`
@@ -115,6 +103,25 @@ export function ProvidersScreen(): ReactElement {
     unrecognized.find(({ configurationId }) => configurationId === effectiveSelectedId) ?? null;
   const dialogRow = findProviderDialogRow(providers, management.dialogOwner);
 
+  // "Change model" on the review error screen deep-links into the model dialog
+  // for the configuration the review ran with. An effect because the rows
+  // arrive async; the ref makes the intent one-shot so closing the dialog does
+  // not reopen it.
+  const { route } = useNavigation();
+  const modelIntent = route.screen === "settings/providers" && route.intent === "select-model";
+  const modelIntentConsumedRef = useRef(false);
+  useEffect(() => {
+    if (!modelIntent || modelIntentConsumedRef.current || !configurationsQuery.data) return;
+    modelIntentConsumedRef.current = true;
+    const activeRow = providers.find(
+      (row) => row.configuration?.configurationId === selectedConfigurationId,
+    );
+    if (!activeRow?.configuration) return;
+    const rowId = getProviderRowId(activeRow);
+    setSelectedId(rowId);
+    management.openModelDialog(rowId);
+  });
+
   const setupDialog =
     management.dialogOwner?.kind === "setup" && dialogRow
       ? { owner: management.dialogOwner, row: dialogRow }
@@ -134,7 +141,6 @@ export function ProvidersScreen(): ReactElement {
   const isDetailsActive = !isOverlayOpen && activeZone === "details";
   const detailsRows = contentRows - 3 - 2;
   const listContentWidth = Math.max((listWidth ?? columns) - 4, 1);
-  const compactList = shouldCompactProviderList(listContentWidth, providers);
 
   const layout = selectedUnrecognized
     ? getUnrecognizedConfigurationActionLayout()
@@ -363,7 +369,6 @@ export function ProvidersScreen(): ReactElement {
             onHighlightChange={setSelectedId}
             isActive={isListActive}
             contentWidth={listContentWidth}
-            compact={compactList}
           />
         </Box>
         <Box

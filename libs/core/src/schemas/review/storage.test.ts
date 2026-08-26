@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { requireValue } from "../../testing/assertions.js";
 import { SAVED_REVIEW_EXECUTION_SCHEMA_VERSION } from "./enums.js";
 import {
+  ExecutionReceiptSchema,
   type ExecutionResult,
   hashExecutionReceiptFingerprintSync,
   TERMINAL_OUTCOMES,
@@ -544,6 +545,36 @@ describe("SavedReview durable execution wire format", () => {
         gitContext: baseGitContext,
       }).success,
     ).toBe(false);
+  });
+
+  it("parses a pre-scope receipt fixture unchanged and round-trips it through the snapshot", () => {
+    const fixture = JSON.parse(JSON.stringify(makeReceipt("completed")));
+
+    const parsed = ExecutionReceiptSchema.parse(fixture);
+    expect(parsed).toEqual(fixture);
+    expect(parsed).not.toHaveProperty("scope");
+    expect(parsed).not.toHaveProperty("dispatchCount");
+
+    const snapshot = SavedReviewExecutionSnapshotSchema.parse({
+      schemaVersion: SAVED_REVIEW_EXECUTION_SCHEMA_VERSION,
+      executionFingerprint: fixture.executionFingerprint,
+      receipt: fixture,
+    });
+    expect(snapshot.receipt).toEqual(fixture);
+  });
+
+  it("round-trips a review-scope receipt through the snapshot with the fingerprint intact", () => {
+    const receipt = { ...makeReceipt("completed"), scope: "review" as const, dispatchCount: 6 };
+
+    expect(ExecutionReceiptSchema.parse(receipt)).toEqual(receipt);
+
+    const snapshot = SavedReviewExecutionSnapshotSchema.parse({
+      schemaVersion: SAVED_REVIEW_EXECUTION_SCHEMA_VERSION,
+      executionFingerprint: receipt.executionFingerprint,
+      receipt,
+    });
+    expect(snapshot.receipt).toEqual(receipt);
+    expect(snapshot.executionFingerprint).toBe(makeReceipt("completed").executionFingerprint);
   });
 
   it("preserves legacy reviews without execution metadata", () => {

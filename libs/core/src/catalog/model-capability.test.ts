@@ -6,9 +6,8 @@ const model = (overrides: Record<string, unknown>) =>
   ModelsDevModelSchema.parse({ id: "m", name: "M", ...overrides });
 
 describe("producesTextOutput", () => {
-  it("keeps text, mixed-output, and undeclared-modality models", () => {
+  it("keeps text-only and undeclared-modality models", () => {
     expect(producesTextOutput(model({ modalities: { output: ["text"] } }))).toBe(true);
-    expect(producesTextOutput(model({ modalities: { output: ["text", "image"] } }))).toBe(true);
     expect(producesTextOutput(model({}))).toBe(true);
   });
 
@@ -16,6 +15,20 @@ describe("producesTextOutput", () => {
     expect(producesTextOutput(model({ modalities: { output: ["audio"] } }))).toBe(false);
     expect(producesTextOutput(model({ modalities: { output: ["image"] } }))).toBe(false);
     expect(producesTextOutput(model({ modalities: { output: ["video"] } }))).toBe(false);
+  });
+
+  it("rejects a mixed-output model unless it explicitly claims structured output", () => {
+    expect(producesTextOutput(model({ modalities: { output: ["text", "image"] } }))).toBe(false);
+    expect(
+      producesTextOutput(
+        model({ modalities: { output: ["text", "image"] }, structured_output: false }),
+      ),
+    ).toBe(false);
+    expect(
+      producesTextOutput(
+        model({ modalities: { output: ["text", "image"] }, structured_output: true }),
+      ),
+    ).toBe(true);
   });
 });
 

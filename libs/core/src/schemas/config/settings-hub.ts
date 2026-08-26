@@ -39,12 +39,6 @@ export interface ProviderSettingsRow {
   readonly description?: string;
 }
 
-const TRANSPORT_LABELS = {
-  "hosted-api": "Hosted API",
-  "local-http": "Local HTTP",
-  "local-cli": "Local CLI",
-} as const;
-
 const BILLING_MODE_LABELS = {
   "free-tier": "Evaluation/free quota",
   "pay-as-you-go": "Pay as you go (PAYG)",
@@ -97,7 +91,7 @@ export function buildProviderSettingsRows(
       id: "transport",
       kind: "fact",
       label: "Transport",
-      value: TRANSPORT_LABELS[product.transportFamily],
+      value: "Hosted API",
     },
     {
       id: "billing",
@@ -116,7 +110,7 @@ export function buildProviderSettingsRows(
       id: "readiness",
       kind: "fact",
       label: "Readiness",
-      value: getProviderDisplayStatus(readiness, product.transportFamily).label,
+      value: getProviderDisplayStatus(readiness).label,
       description: `${readiness.explanation} ${readiness.remediation.message}`,
     },
     {

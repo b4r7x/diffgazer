@@ -119,7 +119,7 @@ export function ProviderDetails({
     );
   }
 
-  const displayStatus = getProviderDisplayStatus(row.readiness, row.product.transportFamily);
+  const displayStatus = getProviderDisplayStatus(row.readiness);
   const settingsRows = buildProviderSettingsRows(row);
   const modelId = row.configuration?.selectedModelId;
 

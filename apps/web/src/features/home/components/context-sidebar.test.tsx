@@ -96,6 +96,31 @@ describe("ContextSidebar last run", () => {
     expect(screen.queryByText("None")).not.toBeInTheDocument();
   });
 
+  it("names the review scope for what a run can read, never 'all changes'", () => {
+    const { rerender } = render(
+      <ContextSidebar
+        context={lastRunContext}
+        navigate={createNavigateMock().navigate}
+        isTrusted
+        onChooseFiles={vi.fn()}
+      />,
+    );
+
+    // The server reviews one diff at a time (unstaged or staged); there is no
+    // combined mode for this row to promise.
+    expect(screen.getByText("Unstaged or staged — choose files")).toBeVisible();
+
+    rerender(
+      <ContextSidebar
+        context={lastRunContext}
+        navigate={createNavigateMock().navigate}
+        isTrusted
+      />,
+    );
+    expect(screen.getByText("Unstaged or staged")).toBeVisible();
+    expect(screen.queryByText(/All changes/)).not.toBeInTheDocument();
+  });
+
   it("advertises the trust and provider jump keys on their rows", () => {
     render(
       <ContextSidebar

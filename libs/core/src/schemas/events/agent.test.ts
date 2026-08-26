@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LENS_IDS } from "../review/lens.js";
-import { AGENT_METADATA, AgentStreamEventSchema, LENS_TO_AGENT } from "./agent.js";
+import { AGENT_METADATA, AgentStreamEventSchema, LENS_TO_AGENT, LensStatSchema } from "./agent.js";
 
 describe("AgentStreamEventSchema", () => {
   it.each([
@@ -19,6 +19,16 @@ describe("AgentStreamEventSchema", () => {
         type: "orchestrator_start",
         agents: [AGENT_METADATA.detective],
         concurrency: 1.5,
+        timestamp: "now",
+      },
+    },
+    {
+      label: "orchestrator_start.requestedConcurrency",
+      event: {
+        type: "orchestrator_start",
+        agents: [AGENT_METADATA.detective],
+        concurrency: 1,
+        requestedConcurrency: 1.5,
         timestamp: "now",
       },
     },
@@ -201,6 +211,15 @@ describe("AgentStreamEventSchema", () => {
     ).toBe(true);
     expect(
       AgentStreamEventSchema.safeParse({
+        type: "orchestrator_start",
+        agents: [AGENT_METADATA.detective],
+        concurrency: 1,
+        requestedConcurrency: 5,
+        timestamp: "now",
+      }).success,
+    ).toBe(true);
+    expect(
+      AgentStreamEventSchema.safeParse({
         type: "agent_complete",
         agent: "detective",
         issueCount: 0,
@@ -269,6 +288,24 @@ describe("AgentStreamEventSchema", () => {
     );
     expect(
       AgentStreamEventSchema.safeParse({ ...event, droppedIncompleteProviderIssues: -1 }).success,
+    ).toBe(false);
+  });
+
+  it("accepts lens stats with and without per-batch dispatch timing", () => {
+    const legacyStat = { lensId: "correctness", issueCount: 1, status: "success" };
+    const dispatch = {
+      batchIndex: 0,
+      startedAt: "2026-08-25T10:00:00.000Z",
+      finishedAt: "2026-08-25T10:00:05.000Z",
+      outcome: "completed",
+    };
+    expect(LensStatSchema.safeParse(legacyStat).success).toBe(true);
+    expect(LensStatSchema.safeParse({ ...legacyStat, dispatches: [dispatch] }).success).toBe(true);
+    expect(
+      LensStatSchema.safeParse({
+        ...legacyStat,
+        dispatches: [{ ...dispatch, finishedAt: "not-a-datetime" }],
+      }).success,
     ).toBe(false);
   });
 

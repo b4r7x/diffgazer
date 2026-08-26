@@ -98,92 +98,19 @@ function readyDraft(productId: "zai" | "gemini" = "zai"): OnboardingDraft {
   };
 }
 
-function readyLocalDraft(): OnboardingDraft {
-  const draft = getInitialWizardData("local-openai");
-  const notice = PRODUCT_REGISTRY["local-openai"].notice;
-  if (draft.configurationInput.transportFamily !== "local-http") {
-    throw new Error("Expected local HTTP draft");
-  }
-  return {
-    ...draft,
-    configurationInput: {
-      ...draft.configurationInput,
-      authentication: "optional-local-bearer",
-      bearerToken: { kind: "literal", value: "write-only-local-bearer" },
-    },
-    selectedModelId: "local-model",
-    acknowledgement: {
-      status: "accepted",
-      noticeId: notice.id,
-      noticeVersion: notice.noticeVersion,
-      acceptedAt: "2026-07-31T12:00:00.000Z",
-    },
-  };
-}
-
 function configurationSummary(
   data: OnboardingDraft,
   selectedModelId: string | null = null,
   revision = 3,
 ) {
   const input = data.configurationInput;
-  if (input.transportFamily === "hosted-api") {
-    return {
-      configurationId: "created-configuration",
-      revision,
-      status: "supported" as const,
-      transportFamily: "hosted-api" as const,
-      productId: input.productId,
-      endpoint: input.endpoint,
-      selectedModelId,
-      notices: [
-        {
-          id: PRODUCT_REGISTRY[data.plan.productId].notice.id,
-          noticeVersion: PRODUCT_REGISTRY[data.plan.productId].notice.noticeVersion,
-          acknowledgement: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgement,
-          acknowledgeBefore: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgeBefore,
-          renewAcknowledgementOn:
-            PRODUCT_REGISTRY[data.plan.productId].notice.renewAcknowledgementOn,
-          billing: [...PRODUCT_REGISTRY[data.plan.productId].notice.billing],
-          privacy: [...PRODUCT_REGISTRY[data.plan.productId].notice.privacy],
-        },
-      ],
-      availableActions: ["inspect", "select", "test", "update", "delete"] as const,
-    };
-  }
-  if (input.transportFamily === "local-http") {
-    return {
-      configurationId: "created-configuration",
-      revision,
-      status: "supported" as const,
-      transportFamily: "local-http" as const,
-      productId: input.productId,
-      endpoint: input.endpoint,
-      authentication: input.authentication,
-      presetId: input.presetId,
-      selectedModelId,
-      notices: [
-        {
-          id: PRODUCT_REGISTRY[data.plan.productId].notice.id,
-          noticeVersion: PRODUCT_REGISTRY[data.plan.productId].notice.noticeVersion,
-          acknowledgement: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgement,
-          acknowledgeBefore: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgeBefore,
-          renewAcknowledgementOn:
-            PRODUCT_REGISTRY[data.plan.productId].notice.renewAcknowledgementOn,
-          billing: [...PRODUCT_REGISTRY[data.plan.productId].notice.billing],
-          privacy: [...PRODUCT_REGISTRY[data.plan.productId].notice.privacy],
-        },
-      ],
-      availableActions: ["inspect", "select", "test", "update", "delete"] as const,
-    };
-  }
   return {
     configurationId: "created-configuration",
     revision,
     status: "supported" as const,
-    transportFamily: "local-cli" as const,
+    transportFamily: "hosted-api" as const,
     productId: input.productId,
-    installationId: input.installationId,
+    endpoint: input.endpoint,
     selectedModelId,
     notices: [
       {
@@ -199,7 +126,6 @@ function configurationSummary(
     availableActions: ["inspect", "select", "test", "update", "delete"] as const,
   };
 }
-
 function readyReadiness(data: OnboardingDraft) {
   if (data.acknowledgement.status !== "accepted") {
     throw new Error("Test fixture requires an accepted acknowledgement");
@@ -356,34 +282,6 @@ describe("useOnboarding", () => {
     });
   });
 
-  it("skips hosted credential requirements for local HTTP and local CLI plans", () => {
-    const wrapper = createWrapper();
-    const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
-
-    act(() => onboardingHook.result.current.setProduct("local-openai"));
-    expect(onboardingHook.result.current.steps).not.toContain("api-key");
-    if (onboardingHook.result.current.wizardData.kind !== "runnable") {
-      throw new Error("Expected runnable wizard data");
-    }
-    expect(onboardingHook.result.current.wizardData.configurationInput).not.toHaveProperty(
-      "credential",
-    );
-
-    act(() => onboardingHook.result.current.setProduct("codex-cli"));
-    expect(onboardingHook.result.current.steps).toEqual([
-      "product",
-      "authentication",
-      "model",
-      "acknowledgement",
-    ]);
-    if (onboardingHook.result.current.wizardData.kind !== "runnable") {
-      throw new Error("Expected runnable wizard data");
-    }
-    expect(onboardingHook.result.current.wizardData.configurationInput).not.toHaveProperty(
-      "credential",
-    );
-  });
-
   it("requires explicit acknowledgement and resets invalid fields when the plan changes", () => {
     const wrapper = createWrapper();
     const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
@@ -402,7 +300,7 @@ describe("useOnboarding", () => {
       status: "required",
     });
 
-    act(() => onboardingHook.result.current.setProduct("local-openai"));
+    act(() => onboardingHook.result.current.setProduct("zai"));
     if (onboardingHook.result.current.wizardData.kind !== "runnable") {
       throw new Error("Expected runnable wizard data");
     }
@@ -445,63 +343,26 @@ describe("useOnboarding", () => {
     expect(JSON.stringify(onboardingHook.result.current.wizardData)).not.toContain(secret);
   });
 
-  it("scrubs literal bearer tokens from client state after submit", async () => {
-    const secret = "literal-local-value-9a";
-    const localDraft = readyLocalDraft();
-    if (localDraft.configurationInput.transportFamily !== "local-http") {
-      throw new Error("Expected local HTTP draft");
-    }
+  it("redacts literal credentials from completion errors", async () => {
+    const secret = "literal-hosted-value-9a";
+    const geminiDraft = readyDraft("gemini");
     const literalDraft: OnboardingDraft = {
-      ...localDraft,
+      ...geminiDraft,
       configurationInput: {
-        ...localDraft.configurationInput,
-        bearerToken: { kind: "literal", value: secret },
-      },
-    };
-    mockExecuteConfigurationAction.mockImplementation(makeActionHandler(literalDraft));
-
-    const wrapper = createWrapper();
-    const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
-
-    act(() => {
-      onboardingHook.result.current.setProduct("local-openai");
-      applyDraft(onboardingHook.result.current, literalDraft);
-      for (let index = 0; index < literalDraft.plan.steps.length - 1; index += 1) {
-        onboardingHook.result.current.next();
-      }
-    });
-
-    await act(async () => {
-      expect(await onboardingHook.result.current.complete()).toBe(true);
-    });
-
-    expect(JSON.stringify(onboardingHook.result.current.wizardData)).not.toContain(secret);
-    expect(onboardingHook.result.current.error).toBeNull();
-  });
-
-  it("redacts literal bearer tokens from completion errors", async () => {
-    const secret = "literal-local-value-9a";
-    const localDraft = readyLocalDraft();
-    if (localDraft.configurationInput.transportFamily !== "local-http") {
-      throw new Error("Expected local HTTP draft");
-    }
-    const literalDraft: OnboardingDraft = {
-      ...localDraft,
-      configurationInput: {
-        ...localDraft.configurationInput,
-        bearerToken: { kind: "literal", value: secret },
+        ...geminiDraft.configurationInput,
+        credential: { kind: "literal", value: secret },
       },
     };
     mockExecuteConfigurationAction.mockImplementation(makeActionHandler(literalDraft));
     mockSaveSettings.mockRejectedValue(
-      new Error(`Cannot persist ${secret} from /Users/voitz/.config/local-openai`),
+      new Error(`Cannot persist ${secret} from /Users/voitz/.config/gemini`),
     );
 
     const wrapper = createWrapper();
     const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
 
     act(() => {
-      onboardingHook.result.current.setProduct("local-openai");
+      onboardingHook.result.current.setProduct("gemini");
       applyDraft(onboardingHook.result.current, literalDraft);
       for (let index = 0; index < literalDraft.plan.steps.length - 1; index += 1) {
         onboardingHook.result.current.next();

@@ -60,10 +60,9 @@ export function NoChangesView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
-      {/* Gates centre in the content area — the composition the TUI's GateShell
-          draws for the same dead ends (cli/diffgazer/src/components/layout/error-gate.tsx);
-          the page-card screens keep the 1:2 optical band (card.tsx, hub, help,
-          diagnostics, home, summary). Equal spacers collapse once the panel
+      {/* Boxed dead-end panels dead-centre, like failure-view.tsx. Sparse page
+          cards and loading keep the app-wide 1:2 band (card.tsx,
+          centered-status.tsx). The spacers collapse once the panel
           outgrows the viewport, so a short window scrolls from the top. */}
       <div aria-hidden className="grow" />
       <Panel

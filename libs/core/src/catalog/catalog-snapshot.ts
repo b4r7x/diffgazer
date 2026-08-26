@@ -4,38 +4,770 @@
 import type { ModelsDevCatalog } from "./schema.js";
 
 export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
-  cerebras: {
-    id: "cerebras",
-    name: "Cerebras",
-    env: ["CEREBRAS_API_KEY"],
+  alibaba: {
+    id: "alibaba",
+    name: "Alibaba",
+    api: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    env: ["DASHSCOPE_API_KEY"],
     models: {
-      "gemma-4-31b": {
-        id: "gemma-4-31b",
-        name: "Gemma 4 31B IT",
-        family: "gemma",
+      "deepseek-v4-flash-0731": {
+        id: "deepseek-v4-flash-0731",
+        name: "DeepSeek V4 Flash 0731",
+        family: "deepseek-flash",
         cost: {
-          input: 0.99,
-          output: 1.49,
+          input: 0.2,
+          output: 0.4,
+        },
+        limit: {
+          context: 1000000,
+          output: 384000,
+        },
+        structured_output: true,
+        release_date: "2026-07-31",
+      },
+      "glm-5.2": {
+        id: "glm-5.2",
+        name: "GLM-5.2",
+        family: "glm",
+        cost: {
+          input: 1.4,
+          output: 4.4,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-06-13",
+      },
+      "qvq-max": {
+        id: "qvq-max",
+        name: "QVQ Max",
+        family: "qvq",
+        cost: {
+          input: 1.2,
+          output: 4.8,
         },
         limit: {
           context: 131072,
-          output: 40960,
+          output: 8192,
         },
-        structured_output: true,
+        release_date: "2025-03-25",
       },
-      "gpt-oss-120b": {
-        id: "gpt-oss-120b",
-        name: "GPT OSS 120B",
-        family: "gpt-oss",
+      "qwen-flash": {
+        id: "qwen-flash",
+        name: "Qwen Flash",
+        family: "qwen",
+        cost: {
+          input: 0.05,
+          output: 0.4,
+        },
+        limit: {
+          context: 1000000,
+          output: 32768,
+        },
+        release_date: "2025-07-28",
+      },
+      "qwen-max": {
+        id: "qwen-max",
+        name: "Qwen Max",
+        family: "qwen",
+        cost: {
+          input: 1.6,
+          output: 6.4,
+        },
+        limit: {
+          context: 32768,
+          output: 8192,
+        },
+        release_date: "2024-04-03",
+      },
+      "qwen-mt-plus": {
+        id: "qwen-mt-plus",
+        name: "Qwen-MT Plus",
+        family: "qwen",
+        cost: {
+          input: 2.46,
+          output: 7.37,
+        },
+        limit: {
+          context: 16384,
+          output: 8192,
+        },
+      },
+      "qwen-mt-turbo": {
+        id: "qwen-mt-turbo",
+        name: "Qwen-MT Turbo",
+        family: "qwen",
+        cost: {
+          input: 0.16,
+          output: 0.49,
+        },
+        limit: {
+          context: 16384,
+          output: 8192,
+        },
+      },
+      "qwen-omni-turbo": {
+        id: "qwen-omni-turbo",
+        name: "Qwen-Omni Turbo",
+        family: "qwen",
+        cost: {
+          input: 0.07,
+          output: 0.27,
+        },
+        limit: {
+          context: 32768,
+          output: 2048,
+        },
+        modalities: {
+          output: ["text", "audio"],
+        },
+      },
+      "qwen-omni-turbo-realtime": {
+        id: "qwen-omni-turbo-realtime",
+        name: "Qwen-Omni Turbo Realtime",
+        family: "qwen",
+        cost: {
+          input: 0.27,
+          output: 1.07,
+        },
+        limit: {
+          context: 32768,
+          output: 2048,
+        },
+        modalities: {
+          output: ["text", "audio"],
+        },
+      },
+      "qwen-plus": {
+        id: "qwen-plus",
+        name: "Qwen Plus",
+        family: "qwen",
+        cost: {
+          input: 0.4,
+          output: 1.2,
+        },
+        limit: {
+          context: 1000000,
+          output: 32768,
+        },
+        release_date: "2024-01-25",
+      },
+      "qwen-plus-character-ja": {
+        id: "qwen-plus-character-ja",
+        name: "Qwen Plus Character (Japanese)",
+        family: "qwen",
+        cost: {
+          input: 0.5,
+          output: 1.4,
+        },
+        limit: {
+          context: 8192,
+          output: 512,
+        },
+      },
+      "qwen-turbo": {
+        id: "qwen-turbo",
+        name: "Qwen Turbo",
+        family: "qwen",
+        cost: {
+          input: 0.05,
+          output: 0.2,
+        },
+        limit: {
+          context: 1000000,
+          output: 16384,
+        },
+        release_date: "2024-11-01",
+      },
+      "qwen-vl-max": {
+        id: "qwen-vl-max",
+        name: "Qwen-VL Max",
+        family: "qwen",
+        cost: {
+          input: 0.8,
+          output: 3.2,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+        release_date: "2024-04-08",
+      },
+      "qwen-vl-ocr": {
+        id: "qwen-vl-ocr",
+        name: "Qwen-VL OCR",
+        family: "qwen",
+        cost: {
+          input: 0.72,
+          output: 0.72,
+        },
+        limit: {
+          context: 34096,
+          output: 4096,
+        },
+        release_date: "2024-10-28",
+      },
+      "qwen-vl-plus": {
+        id: "qwen-vl-plus",
+        name: "Qwen-VL Plus",
+        family: "qwen",
+        cost: {
+          input: 0.21,
+          output: 0.63,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+        release_date: "2024-01-25",
+      },
+      "qwen2-5-14b-instruct": {
+        id: "qwen2-5-14b-instruct",
+        name: "Qwen2.5 14B Instruct",
+        family: "qwen",
         cost: {
           input: 0.35,
-          output: 0.75,
+          output: 1.4,
         },
         limit: {
           context: 131072,
-          output: 40960,
+          output: 8192,
+        },
+      },
+      "qwen2-5-32b-instruct": {
+        id: "qwen2-5-32b-instruct",
+        name: "Qwen2.5 32B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.7,
+          output: 2.8,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen2-5-72b-instruct": {
+        id: "qwen2-5-72b-instruct",
+        name: "Qwen2.5 72B Instruct",
+        family: "qwen",
+        cost: {
+          input: 1.4,
+          output: 5.6,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen2-5-7b-instruct": {
+        id: "qwen2-5-7b-instruct",
+        name: "Qwen2.5 7B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.175,
+          output: 0.7,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen2-5-omni-7b": {
+        id: "qwen2-5-omni-7b",
+        name: "Qwen2.5-Omni 7B",
+        family: "qwen",
+        cost: {
+          input: 0.1,
+          output: 0.4,
+        },
+        limit: {
+          context: 32768,
+          output: 2048,
+        },
+        modalities: {
+          output: ["text", "audio"],
+        },
+      },
+      "qwen2-5-vl-72b-instruct": {
+        id: "qwen2-5-vl-72b-instruct",
+        name: "Qwen2.5-VL 72B Instruct",
+        family: "qwen",
+        cost: {
+          input: 2.8,
+          output: 8.4,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen2-5-vl-7b-instruct": {
+        id: "qwen2-5-vl-7b-instruct",
+        name: "Qwen2.5-VL 7B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.35,
+          output: 1.05,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen3-14b": {
+        id: "qwen3-14b",
+        name: "Qwen3 14B",
+        family: "qwen",
+        cost: {
+          input: 0.35,
+          output: 1.4,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen3-235b-a22b": {
+        id: "qwen3-235b-a22b",
+        name: "Qwen3 235B-A22B",
+        family: "qwen",
+        cost: {
+          input: 0.7,
+          output: 2.8,
+        },
+        limit: {
+          context: 131072,
+          output: 16384,
+        },
+      },
+      "qwen3-32b": {
+        id: "qwen3-32b",
+        name: "Qwen3 32B",
+        family: "qwen",
+        cost: {
+          input: 0.7,
+          output: 2.8,
+        },
+        limit: {
+          context: 131072,
+          output: 16384,
+        },
+      },
+      "qwen3-8b": {
+        id: "qwen3-8b",
+        name: "Qwen3 8B",
+        family: "qwen",
+        cost: {
+          input: 0.18,
+          output: 0.7,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen3-asr-flash": {
+        id: "qwen3-asr-flash",
+        name: "Qwen3-ASR Flash",
+        family: "qwen",
+        cost: {
+          input: 0.035,
+          output: 0.035,
+        },
+        limit: {
+          context: 53248,
+          output: 4096,
+        },
+        release_date: "2025-09-08",
+      },
+      "qwen3-coder-30b-a3b-instruct": {
+        id: "qwen3-coder-30b-a3b-instruct",
+        name: "Qwen3-Coder 30B-A3B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.45,
+          output: 2.25,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+      },
+      "qwen3-coder-480b-a35b-instruct": {
+        id: "qwen3-coder-480b-a35b-instruct",
+        name: "Qwen3-Coder 480B-A35B Instruct",
+        family: "qwen",
+        cost: {
+          input: 1.5,
+          output: 7.5,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+      },
+      "qwen3-coder-flash": {
+        id: "qwen3-coder-flash",
+        name: "Qwen3 Coder Flash",
+        family: "qwen",
+        cost: {
+          input: 0.3,
+          output: 1.5,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+        release_date: "2025-07-28",
+      },
+      "qwen3-coder-plus": {
+        id: "qwen3-coder-plus",
+        name: "Qwen3 Coder Plus",
+        family: "qwen",
+        cost: {
+          input: 1,
+          output: 5,
+        },
+        limit: {
+          context: 1048576,
+          output: 65536,
+        },
+        release_date: "2025-07-23",
+      },
+      "qwen3-livetranslate-flash-realtime": {
+        id: "qwen3-livetranslate-flash-realtime",
+        name: "Qwen3-LiveTranslate Flash Realtime",
+        family: "qwen",
+        cost: {
+          input: 10,
+          output: 10,
+        },
+        limit: {
+          context: 53248,
+          output: 4096,
+        },
+        modalities: {
+          output: ["text", "audio"],
+        },
+      },
+      "qwen3-max": {
+        id: "qwen3-max",
+        name: "Qwen3 Max",
+        family: "qwen",
+        cost: {
+          input: 1.2,
+          output: 6,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        release_date: "2025-09-23",
+      },
+      "qwen3-next-80b-a3b-instruct": {
+        id: "qwen3-next-80b-a3b-instruct",
+        name: "Qwen3-Next 80B-A3B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.5,
+          output: 2,
+        },
+        limit: {
+          context: 131072,
+          output: 32768,
+        },
+      },
+      "qwen3-next-80b-a3b-thinking": {
+        id: "qwen3-next-80b-a3b-thinking",
+        name: "Qwen3-Next 80B-A3B (Thinking)",
+        family: "qwen",
+        cost: {
+          input: 0.5,
+          output: 6,
+        },
+        limit: {
+          context: 131072,
+          output: 32768,
+        },
+      },
+      "qwen3-omni-flash": {
+        id: "qwen3-omni-flash",
+        name: "Qwen3-Omni Flash",
+        family: "qwen",
+        cost: {
+          input: 0.43,
+          output: 1.66,
+        },
+        limit: {
+          context: 65536,
+          output: 16384,
+        },
+        modalities: {
+          output: ["text", "audio"],
+        },
+      },
+      "qwen3-omni-flash-realtime": {
+        id: "qwen3-omni-flash-realtime",
+        name: "Qwen3-Omni Flash Realtime",
+        family: "qwen",
+        cost: {
+          input: 0.52,
+          output: 1.99,
+        },
+        limit: {
+          context: 65536,
+          output: 16384,
+        },
+        modalities: {
+          output: ["text", "audio"],
+        },
+      },
+      "qwen3-vl-235b-a22b": {
+        id: "qwen3-vl-235b-a22b",
+        name: "Qwen3-VL 235B-A22B",
+        family: "qwen",
+        cost: {
+          input: 0.7,
+          output: 2.8,
+        },
+        limit: {
+          context: 131072,
+          output: 32768,
+        },
+      },
+      "qwen3-vl-30b-a3b": {
+        id: "qwen3-vl-30b-a3b",
+        name: "Qwen3-VL 30B-A3B",
+        family: "qwen",
+        cost: {
+          input: 0.2,
+          output: 0.8,
+        },
+        limit: {
+          context: 131072,
+          output: 32768,
+        },
+      },
+      "qwen3-vl-plus": {
+        id: "qwen3-vl-plus",
+        name: "Qwen3-VL Plus",
+        family: "qwen",
+        cost: {
+          input: 0.2,
+          output: 1.6,
+        },
+        limit: {
+          context: 262144,
+          output: 32768,
+        },
+        release_date: "2025-09-23",
+      },
+      "qwen3.5-122b-a10b": {
+        id: "qwen3.5-122b-a10b",
+        name: "Qwen3.5 122B-A10B",
+        family: "qwen",
+        cost: {
+          input: 0.4,
+          output: 3.2,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
         },
         structured_output: true,
+        release_date: "2026-02-23",
+      },
+      "qwen3.5-27b": {
+        id: "qwen3.5-27b",
+        name: "Qwen3.5 27B",
+        family: "qwen",
+        cost: {
+          input: 0.3,
+          output: 2.4,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-02-23",
+      },
+      "qwen3.5-35b-a3b": {
+        id: "qwen3.5-35b-a3b",
+        name: "Qwen3.5 35B-A3B",
+        family: "qwen",
+        cost: {
+          input: 0.25,
+          output: 2,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-02-23",
+      },
+      "qwen3.5-397b-a17b": {
+        id: "qwen3.5-397b-a17b",
+        name: "Qwen3.5 397B-A17B",
+        family: "qwen",
+        cost: {
+          input: 0.6,
+          output: 3.6,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-02-15",
+      },
+      "qwen3.5-plus": {
+        id: "qwen3.5-plus",
+        name: "Qwen3.5 Plus",
+        family: "qwen",
+        cost: {
+          input: 0.4,
+          output: 2.4,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+        release_date: "2026-02-16",
+      },
+      "qwen3.6-27b": {
+        id: "qwen3.6-27b",
+        name: "Qwen3.6 27B",
+        family: "qwen",
+        cost: {
+          input: 0.6,
+          output: 3.6,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-04-22",
+      },
+      "qwen3.6-35b-a3b": {
+        id: "qwen3.6-35b-a3b",
+        name: "Qwen3.6 35B-A3B",
+        family: "qwen",
+        cost: {
+          input: 0.248,
+          output: 1.485,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-04-17",
+      },
+      "qwen3.6-flash": {
+        id: "qwen3.6-flash",
+        name: "Qwen3.6 Flash",
+        family: "qwen3.6",
+        cost: {
+          input: 0.1875,
+          output: 1.125,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-04-27",
+      },
+      "qwen3.6-max-preview": {
+        id: "qwen3.6-max-preview",
+        name: "Qwen3.6 Max Preview",
+        family: "qwen",
+        cost: {
+          input: 1.3,
+          output: 7.8,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        release_date: "2026-04-20",
+      },
+      "qwen3.6-plus": {
+        id: "qwen3.6-plus",
+        name: "Qwen3.6 Plus",
+        family: "qwen",
+        cost: {
+          input: 0.5,
+          output: 3,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+        release_date: "2026-04-02",
+      },
+      "qwen3.7-max": {
+        id: "qwen3.7-max",
+        name: "Qwen3.7 Max",
+        family: "qwen",
+        cost: {
+          input: 2.5,
+          output: 7.5,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+        release_date: "2026-05-21",
+      },
+      "qwen3.7-plus": {
+        id: "qwen3.7-plus",
+        name: "Qwen3.7 Plus",
+        family: "qwen",
+        cost: {
+          input: 0.5,
+          output: 3,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+        release_date: "2026-06-02",
+      },
+      "qwen3.8-max": {
+        id: "qwen3.8-max",
+        name: "Qwen3.8 Max",
+        family: "qwen",
+        cost: {
+          input: 2,
+          output: 6,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-03",
+      },
+      "qwq-plus": {
+        id: "qwq-plus",
+        name: "QwQ Plus",
+        family: "qwen",
+        cost: {
+          input: 0.8,
+          output: 2.4,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+        release_date: "2025-03-05",
       },
     },
   },
@@ -45,32 +777,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
     api: "https://api.deepseek.com",
     env: ["DEEPSEEK_API_KEY"],
     models: {
-      "deepseek-chat": {
-        id: "deepseek-chat",
-        name: "DeepSeek Chat",
-        family: "deepseek",
-        cost: {
-          input: 0.14,
-          output: 0.28,
-        },
-        limit: {
-          context: 1000000,
-          output: 384000,
-        },
-      },
-      "deepseek-reasoner": {
-        id: "deepseek-reasoner",
-        name: "DeepSeek Reasoner",
-        family: "deepseek-thinking",
-        cost: {
-          input: 0.14,
-          output: 0.28,
-        },
-        limit: {
-          context: 1000000,
-          output: 384000,
-        },
-      },
       "deepseek-v4-flash": {
         id: "deepseek-v4-flash",
         name: "DeepSeek V4 Flash",
@@ -84,6 +790,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 384000,
         },
         structured_output: true,
+        release_date: "2026-07-31",
+      },
+      "deepseek-v4-flash-vision-exp": {
+        id: "deepseek-v4-flash-vision-exp",
+        name: "DeepSeek V4 Flash Vision Exp",
+        family: "deepseek-flash",
+        cost: {
+          input: 0.14,
+          output: 0.28,
+        },
+        limit: {
+          context: 1000000,
+          output: 384000,
+        },
+        structured_output: true,
+        release_date: "2026-08-21",
       },
       "deepseek-v4-pro": {
         id: "deepseek-v4-pro",
@@ -98,6 +820,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 384000,
         },
         structured_output: true,
+        release_date: "2026-08-12",
       },
     },
   },
@@ -118,6 +841,9 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 131072,
           output: 65536,
         },
+        modalities: {
+          output: ["text", "image"],
+        },
       },
       "deep-research-preview-04-2026": {
         id: "deep-research-preview-04-2026",
@@ -130,6 +856,9 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         limit: {
           context: 131072,
           output: 65536,
+        },
+        modalities: {
+          output: ["text", "image"],
         },
       },
       "gemini-2.5-computer-use-preview-10-2025": {
@@ -144,6 +873,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 131072,
           output: 65536,
         },
+        release_date: "2025-10-07",
       },
       "gemini-2.5-flash": {
         id: "gemini-2.5-flash",
@@ -158,6 +888,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2025-06-17",
       },
       "gemini-2.5-flash-image": {
         id: "gemini-2.5-flash-image",
@@ -170,6 +901,9 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         limit: {
           context: 32768,
           output: 32768,
+        },
+        modalities: {
+          output: ["text", "image"],
         },
       },
       "gemini-2.5-flash-lite": {
@@ -185,6 +919,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2025-06-17",
       },
       "gemini-2.5-flash-preview-tts": {
         id: "gemini-2.5-flash-preview-tts",
@@ -215,6 +950,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2025-06-17",
       },
       "gemini-2.5-pro-preview-tts": {
         id: "gemini-2.5-pro-preview-tts",
@@ -245,6 +981,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2025-12-17",
       },
       "gemini-3-pro-image": {
         id: "gemini-3-pro-image",
@@ -257,6 +994,9 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         limit: {
           context: 131072,
           output: 32768,
+        },
+        modalities: {
+          output: ["text", "image"],
         },
       },
       "gemini-3-pro-image-preview": {
@@ -271,6 +1011,9 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 131072,
           output: 32768,
         },
+        modalities: {
+          output: ["text", "image"],
+        },
       },
       "gemini-3.1-flash-image": {
         id: "gemini-3.1-flash-image",
@@ -284,6 +1027,9 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 65536,
           output: 65536,
         },
+        modalities: {
+          output: ["text", "image"],
+        },
       },
       "gemini-3.1-flash-image-preview": {
         id: "gemini-3.1-flash-image-preview",
@@ -296,6 +1042,9 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         limit: {
           context: 65536,
           output: 65536,
+        },
+        modalities: {
+          output: ["text", "image"],
         },
       },
       "gemini-3.1-flash-lite": {
@@ -311,6 +1060,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-05-07",
       },
       "gemini-3.1-flash-lite-image": {
         id: "gemini-3.1-flash-lite-image",
@@ -325,6 +1075,9 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: false,
+        modalities: {
+          output: ["text", "image"],
+        },
       },
       "gemini-3.1-flash-lite-preview": {
         id: "gemini-3.1-flash-lite-preview",
@@ -339,6 +1092,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-03-03",
       },
       "gemini-3.1-flash-live-preview": {
         id: "gemini-3.1-flash-live-preview",
@@ -353,6 +1107,9 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: false,
+        modalities: {
+          output: ["text", "audio"],
+        },
       },
       "gemini-3.1-flash-tts-preview": {
         id: "gemini-3.1-flash-tts-preview",
@@ -383,6 +1140,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-02-19",
       },
       "gemini-3.1-pro-preview-customtools": {
         id: "gemini-3.1-pro-preview-customtools",
@@ -397,6 +1155,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-02-19",
       },
       "gemini-3.5-flash": {
         id: "gemini-3.5-flash",
@@ -411,6 +1170,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-05-19",
       },
       "gemini-3.5-flash-lite": {
         id: "gemini-3.5-flash-lite",
@@ -425,6 +1185,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-07-21",
       },
       "gemini-3.5-live-translate-preview": {
         id: "gemini-3.5-live-translate-preview",
@@ -438,20 +1199,24 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 16384,
           output: 32768,
         },
+        modalities: {
+          output: ["audio", "text"],
+        },
       },
       "gemini-3.6-flash": {
         id: "gemini-3.6-flash",
         name: "Gemini 3.6 Flash",
         family: "gemini-flash",
         cost: {
-          input: 1.5,
-          output: 7.5,
+          input: 0.75,
+          output: 3.75,
         },
         limit: {
           context: 1048576,
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-07-21",
       },
       "gemini-3.7-flash": {
         id: "gemini-3.7-flash",
@@ -466,6 +1231,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-08-13",
       },
       "gemini-embedding-001": {
         id: "gemini-embedding-001",
@@ -479,6 +1245,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 2048,
           output: 1,
         },
+        release_date: "2025-05-20",
       },
       "gemini-embedding-2": {
         id: "gemini-embedding-2",
@@ -492,34 +1259,37 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 8192,
           output: 1,
         },
+        release_date: "2026-04-22",
       },
       "gemini-flash-latest": {
         id: "gemini-flash-latest",
         name: "Gemini Flash Latest",
         family: "gemini-flash",
         cost: {
-          input: 1.5,
-          output: 9,
+          input: 0.75,
+          output: 3.75,
         },
         limit: {
           context: 1048576,
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-08-13",
       },
       "gemini-flash-lite-latest": {
         id: "gemini-flash-lite-latest",
         name: "Gemini Flash-Lite Latest",
         family: "gemini-flash-lite",
         cost: {
-          input: 0.25,
-          output: 1.5,
+          input: 0.3,
+          output: 2.5,
         },
         limit: {
           context: 1048576,
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-07-21",
       },
       "gemini-omni-flash-preview": {
         id: "gemini-omni-flash-preview",
@@ -550,6 +1320,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-04-14",
       },
       "gemma-4-26b-a4b-it": {
         id: "gemma-4-26b-a4b-it",
@@ -560,6 +1331,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2026-04-02",
       },
       "gemma-4-31b-it": {
         id: "gemma-4-31b-it",
@@ -570,6 +1342,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2026-04-02",
       },
       "lyria-3-clip-preview": {
         id: "lyria-3-clip-preview",
@@ -584,6 +1357,9 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: false,
+        modalities: {
+          output: ["text", "audio"],
+        },
       },
       "lyria-3-pro-preview": {
         id: "lyria-3-pro-preview",
@@ -598,6 +1374,9 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: false,
+        modalities: {
+          output: ["text", "audio"],
+        },
       },
       "veo-3.1-fast-generate-preview": {
         id: "veo-3.1-fast-generate-preview",
@@ -637,190 +1416,261 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       },
     },
   },
-  groq: {
-    id: "groq",
-    name: "Groq",
-    env: ["GROQ_API_KEY"],
+  minimax: {
+    id: "minimax",
+    name: "MiniMax (minimax.io)",
+    api: "https://api.minimax.io/anthropic/v1",
+    env: ["MINIMAX_API_KEY"],
     models: {
-      "allam-2-7b": {
-        id: "allam-2-7b",
-        name: "ALLaM-2-7b",
+      "MiniMax-M2": {
+        id: "MiniMax-M2",
+        name: "MiniMax-M2",
+        family: "minimax",
         cost: {
-          input: 0,
-          output: 0,
+          input: 0.3,
+          output: 1.2,
         },
         limit: {
-          context: 4096,
-          output: 4096,
+          context: 196608,
+          output: 128000,
         },
+        release_date: "2025-10-27",
       },
-      "canopylabs/orpheus-arabic-saudi": {
-        id: "canopylabs/orpheus-arabic-saudi",
-        name: "Canopy Labs Orpheus Arabic Saudi",
-        family: "canopylabs",
-        limit: {
-          context: 4000,
-          output: 50000,
-        },
-        modalities: {
-          output: ["audio"],
-        },
-      },
-      "canopylabs/orpheus-v1-english": {
-        id: "canopylabs/orpheus-v1-english",
-        name: "Canopy Labs Orpheus V1 English",
-        family: "canopylabs",
-        limit: {
-          context: 4000,
-          output: 50000,
-        },
-        modalities: {
-          output: ["audio"],
-        },
-      },
-      "groq/compound": {
-        id: "groq/compound",
-        name: "Compound",
-        family: "groq",
-        limit: {
-          context: 131072,
-          output: 8192,
-        },
-      },
-      "groq/compound-mini": {
-        id: "groq/compound-mini",
-        name: "Compound Mini",
-        family: "groq",
-        limit: {
-          context: 131072,
-          output: 8192,
-        },
-      },
-      "llama-3.1-8b-instant": {
-        id: "llama-3.1-8b-instant",
-        name: "Llama 3.1 8B",
-        family: "llama",
+      "MiniMax-M2.1": {
+        id: "MiniMax-M2.1",
+        name: "MiniMax-M2.1",
+        family: "minimax",
         cost: {
-          input: 0.05,
-          output: 0.08,
+          input: 0.3,
+          output: 1.2,
         },
         limit: {
-          context: 131072,
+          context: 204800,
           output: 131072,
         },
+        release_date: "2025-12-23",
       },
-      "llama-3.3-70b-versatile": {
-        id: "llama-3.3-70b-versatile",
-        name: "Llama 3.3 70B",
-        family: "llama",
+      "MiniMax-M2.5": {
+        id: "MiniMax-M2.5",
+        name: "MiniMax-M2.5",
+        family: "minimax",
         cost: {
-          input: 0.59,
-          output: 0.79,
+          input: 0.3,
+          output: 1.2,
         },
         limit: {
-          context: 131072,
-          output: 32768,
+          context: 204800,
+          output: 131072,
         },
+        release_date: "2026-02-12",
       },
-      "meta-llama/llama-prompt-guard-2-22m": {
-        id: "meta-llama/llama-prompt-guard-2-22m",
-        name: "Llama Prompt Guard 2 22M",
-        family: "llama",
-        cost: {
-          input: 0.03,
-          output: 0.03,
-        },
-        limit: {
-          context: 512,
-          output: 512,
-        },
-      },
-      "meta-llama/llama-prompt-guard-2-86m": {
-        id: "meta-llama/llama-prompt-guard-2-86m",
-        name: "Prompt Guard 2 86M",
-        family: "llama",
-        cost: {
-          input: 0.04,
-          output: 0.04,
-        },
-        limit: {
-          context: 512,
-          output: 512,
-        },
-      },
-      "openai/gpt-oss-120b": {
-        id: "openai/gpt-oss-120b",
-        name: "GPT OSS 120B",
-        family: "gpt-oss",
-        cost: {
-          input: 0.15,
-          output: 0.6,
-        },
-        limit: {
-          context: 131072,
-          output: 65536,
-        },
-        structured_output: true,
-      },
-      "openai/gpt-oss-20b": {
-        id: "openai/gpt-oss-20b",
-        name: "GPT OSS 20B",
-        family: "gpt-oss",
-        cost: {
-          input: 0.075,
-          output: 0.3,
-        },
-        limit: {
-          context: 131072,
-          output: 65536,
-        },
-        structured_output: true,
-      },
-      "openai/gpt-oss-safeguard-20b": {
-        id: "openai/gpt-oss-safeguard-20b",
-        name: "Safety GPT OSS 20B",
-        family: "gpt-oss",
-        cost: {
-          input: 0.075,
-          output: 0.3,
-        },
-        limit: {
-          context: 131072,
-          output: 65536,
-        },
-        structured_output: true,
-      },
-      "qwen/qwen3.6-27b": {
-        id: "qwen/qwen3.6-27b",
-        name: "Qwen3.6 27B",
-        family: "qwen",
+      "MiniMax-M2.5-highspeed": {
+        id: "MiniMax-M2.5-highspeed",
+        name: "MiniMax-M2.5-highspeed",
+        family: "minimax",
         cost: {
           input: 0.6,
-          output: 3,
+          output: 2.4,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2026-02-13",
+      },
+      "MiniMax-M2.7": {
+        id: "MiniMax-M2.7",
+        name: "MiniMax-M2.7",
+        family: "minimax",
+        cost: {
+          input: 0.3,
+          output: 1.2,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2026-03-18",
+      },
+      "MiniMax-M2.7-highspeed": {
+        id: "MiniMax-M2.7-highspeed",
+        name: "MiniMax-M2.7-highspeed",
+        family: "minimax",
+        cost: {
+          input: 0.6,
+          output: 2.4,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2026-03-18",
+      },
+      "MiniMax-M3": {
+        id: "MiniMax-M3",
+        name: "MiniMax-M3",
+        family: "minimax",
+        cost: {
+          input: 0.3,
+          output: 1.2,
+        },
+        limit: {
+          context: 1000000,
+          output: 128000,
+        },
+        release_date: "2026-06-01",
+      },
+    },
+  },
+  moonshotai: {
+    id: "moonshotai",
+    name: "Moonshot AI",
+    api: "https://api.moonshot.ai/v1",
+    env: ["MOONSHOT_API_KEY"],
+    models: {
+      "kimi-k2-0711-preview": {
+        id: "kimi-k2-0711-preview",
+        name: "Kimi K2 0711",
+        family: "kimi-k2",
+        cost: {
+          input: 0.6,
+          output: 2.5,
         },
         limit: {
           context: 131072,
           output: 16384,
         },
+        release_date: "2025-07-14",
+      },
+      "kimi-k2-0905-preview": {
+        id: "kimi-k2-0905-preview",
+        name: "Kimi K2 0905",
+        family: "kimi-k2",
+        cost: {
+          input: 0.6,
+          output: 2.5,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        release_date: "2025-09-05",
+      },
+      "kimi-k2-thinking": {
+        id: "kimi-k2-thinking",
+        name: "Kimi K2 Thinking",
+        family: "kimi-thinking",
+        cost: {
+          input: 0.6,
+          output: 2.5,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        release_date: "2025-11-06",
+      },
+      "kimi-k2-thinking-turbo": {
+        id: "kimi-k2-thinking-turbo",
+        name: "Kimi K2 Thinking Turbo",
+        family: "kimi-thinking",
+        cost: {
+          input: 1.15,
+          output: 8,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        release_date: "2025-11-06",
+      },
+      "kimi-k2-turbo-preview": {
+        id: "kimi-k2-turbo-preview",
+        name: "Kimi K2 Turbo",
+        family: "kimi-k2",
+        cost: {
+          input: 2.4,
+          output: 10,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        release_date: "2025-09-05",
+      },
+      "kimi-k2.5": {
+        id: "kimi-k2.5",
+        name: "Kimi K2.5",
+        family: "kimi-k2",
+        cost: {
+          input: 0.6,
+          output: 3,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
         structured_output: true,
       },
-      "whisper-large-v3": {
-        id: "whisper-large-v3",
-        name: "Whisper",
-        family: "whisper",
-        limit: {
-          context: 0,
-          output: 0,
+      "kimi-k2.6": {
+        id: "kimi-k2.6",
+        name: "Kimi K2.6",
+        family: "kimi-k2",
+        cost: {
+          input: 0.95,
+          output: 4,
         },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        structured_output: true,
+        release_date: "2026-04-21",
       },
-      "whisper-large-v3-turbo": {
-        id: "whisper-large-v3-turbo",
-        name: "Whisper Large V3 Turbo",
-        family: "whisper",
-        limit: {
-          context: 0,
-          output: 0,
+      "kimi-k2.7-code": {
+        id: "kimi-k2.7-code",
+        name: "Kimi K2.7 Code",
+        family: "kimi-k2",
+        cost: {
+          input: 0.95,
+          output: 4,
         },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        structured_output: true,
+        release_date: "2026-06-12",
+      },
+      "kimi-k2.7-code-highspeed": {
+        id: "kimi-k2.7-code-highspeed",
+        name: "Kimi K2.7 Code HighSpeed",
+        family: "kimi-k2",
+        cost: {
+          input: 1.9,
+          output: 8,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        structured_output: true,
+        release_date: "2026-06-12",
+      },
+      "kimi-k3": {
+        id: "kimi-k3",
+        name: "Kimi K3",
+        family: "kimi-k3",
+        cost: {
+          input: 3,
+          output: 15,
+        },
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-07-16",
       },
     },
   },
@@ -838,6 +1688,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 1048576,
           output: 1048576,
         },
+        release_date: "2026-04-24",
       },
       "deepseek-v4-flash:0731": {
         id: "deepseek-v4-flash:0731",
@@ -848,6 +1699,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 1048576,
         },
         structured_output: true,
+        release_date: "2026-07-31",
       },
       "deepseek-v4-pro": {
         id: "deepseek-v4-pro",
@@ -857,6 +1709,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 1048576,
           output: 1048576,
         },
+        release_date: "2026-04-24",
       },
       "gemma4:31b": {
         id: "gemma4:31b",
@@ -866,6 +1719,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 262144,
           output: 262144,
         },
+        release_date: "2026-04-02",
       },
       "glm-5.1": {
         id: "glm-5.1",
@@ -875,6 +1729,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 202752,
           output: 131072,
         },
+        release_date: "2026-03-27",
       },
       "glm-5.2": {
         id: "glm-5.2",
@@ -885,6 +1740,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-06-13",
       },
       "gpt-oss:120b": {
         id: "gpt-oss:120b",
@@ -894,6 +1750,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 131072,
           output: 32768,
         },
+        release_date: "2025-08-05",
       },
       "gpt-oss:20b": {
         id: "gpt-oss:20b",
@@ -903,6 +1760,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 131072,
           output: 32768,
         },
+        release_date: "2025-08-05",
       },
       "kimi-k2.5": {
         id: "kimi-k2.5",
@@ -912,6 +1770,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 262144,
           output: 262144,
         },
+        release_date: "2026-01-27",
       },
       "kimi-k2.6": {
         id: "kimi-k2.6",
@@ -921,6 +1780,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 262144,
           output: 262144,
         },
+        release_date: "2026-04-20",
       },
       "kimi-k2.7-code": {
         id: "kimi-k2.7-code",
@@ -931,6 +1791,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 262144,
         },
         structured_output: true,
+        release_date: "2026-06-12",
       },
       "kimi-k3": {
         id: "kimi-k3",
@@ -941,6 +1802,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-07-16",
       },
       "minimax-m2.5": {
         id: "minimax-m2.5",
@@ -950,6 +1812,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 204800,
           output: 131072,
         },
+        release_date: "2026-02-12",
       },
       "minimax-m2.7": {
         id: "minimax-m2.7",
@@ -959,6 +1822,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 196608,
           output: 196608,
         },
+        release_date: "2026-03-18",
       },
       "minimax-m3": {
         id: "minimax-m3",
@@ -968,6 +1832,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 512000,
           output: 131072,
         },
+        release_date: "2026-05-31",
       },
       "mistral-large-3:675b": {
         id: "mistral-large-3:675b",
@@ -977,6 +1842,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 262144,
           output: 262144,
         },
+        release_date: "2025-12-02",
       },
       "nemotron-3-nano:30b": {
         id: "nemotron-3-nano:30b",
@@ -986,6 +1852,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 1048576,
           output: 131072,
         },
+        release_date: "2025-12-15",
       },
       "nemotron-3-super": {
         id: "nemotron-3-super",
@@ -995,6 +1862,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 262144,
           output: 65536,
         },
+        release_date: "2026-03-11",
       },
       "nemotron-3-ultra": {
         id: "nemotron-3-ultra",
@@ -1004,6 +1872,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 262144,
           output: 128000,
         },
+        release_date: "2026-06-04",
       },
       "qwen3.5:397b": {
         id: "qwen3.5:397b",
@@ -1013,6 +1882,1802 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 262144,
           output: 65536,
         },
+        release_date: "2026-02-15",
+      },
+    },
+  },
+  opencode: {
+    id: "opencode",
+    name: "OpenCode Zen",
+    api: "https://opencode.ai/zen/v1",
+    env: ["OPENCODE_API_KEY"],
+    models: {
+      "big-pickle": {
+        id: "big-pickle",
+        name: "Big Pickle",
+        family: "big-pickle",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 200000,
+          output: 32000,
+        },
+        structured_output: true,
+        release_date: "2025-10-17",
+      },
+      "claude-3-5-haiku": {
+        id: "claude-3-5-haiku",
+        name: "Claude Haiku 3.5",
+        family: "claude-haiku",
+        cost: {
+          input: 0.8,
+          output: 4,
+        },
+        limit: {
+          context: 200000,
+          output: 8192,
+        },
+        release_date: "2024-10-22",
+      },
+      "claude-fable-5": {
+        id: "claude-fable-5",
+        name: "Claude Fable 5",
+        family: "claude-fable",
+        cost: {
+          input: 10,
+          output: 50,
+        },
+        limit: {
+          context: 1000000,
+          output: 128000,
+        },
+        release_date: "2026-06-09",
+      },
+      "claude-haiku-4-5": {
+        id: "claude-haiku-4-5",
+        name: "Claude Haiku 4.5",
+        family: "claude-haiku",
+        cost: {
+          input: 1,
+          output: 5,
+        },
+        limit: {
+          context: 200000,
+          output: 64000,
+        },
+        release_date: "2025-10-15",
+      },
+      "claude-opus-4-1": {
+        id: "claude-opus-4-1",
+        name: "Claude Opus 4.1",
+        family: "claude-opus",
+        cost: {
+          input: 15,
+          output: 75,
+        },
+        limit: {
+          context: 200000,
+          output: 32000,
+        },
+        release_date: "2025-08-05",
+      },
+      "claude-opus-4-5": {
+        id: "claude-opus-4-5",
+        name: "Claude Opus 4.5",
+        family: "claude-opus",
+        cost: {
+          input: 5,
+          output: 25,
+        },
+        limit: {
+          context: 200000,
+          output: 64000,
+        },
+        release_date: "2025-11-24",
+      },
+      "claude-opus-4-6": {
+        id: "claude-opus-4-6",
+        name: "Claude Opus 4.6",
+        family: "claude-opus",
+        cost: {
+          input: 5,
+          output: 25,
+        },
+        limit: {
+          context: 1000000,
+          output: 128000,
+        },
+        release_date: "2026-02-05",
+      },
+      "claude-opus-4-7": {
+        id: "claude-opus-4-7",
+        name: "Claude Opus 4.7",
+        family: "claude-opus",
+        cost: {
+          input: 5,
+          output: 25,
+        },
+        limit: {
+          context: 1000000,
+          output: 128000,
+        },
+        release_date: "2026-04-16",
+      },
+      "claude-opus-4-8": {
+        id: "claude-opus-4-8",
+        name: "Claude Opus 4.8",
+        family: "claude-opus",
+        cost: {
+          input: 5,
+          output: 25,
+        },
+        limit: {
+          context: 1000000,
+          output: 128000,
+        },
+        release_date: "2026-05-28",
+      },
+      "claude-opus-5": {
+        id: "claude-opus-5",
+        name: "Claude Opus 5",
+        family: "claude-opus",
+        cost: {
+          input: 5,
+          output: 25,
+        },
+        limit: {
+          context: 1000000,
+          output: 128000,
+        },
+        release_date: "2026-07-24",
+      },
+      "claude-sonnet-4": {
+        id: "claude-sonnet-4",
+        name: "Claude Sonnet 4",
+        family: "claude-sonnet",
+        cost: {
+          input: 3,
+          output: 15,
+        },
+        limit: {
+          context: 1000000,
+          output: 64000,
+        },
+        release_date: "2025-05-22",
+      },
+      "claude-sonnet-4-5": {
+        id: "claude-sonnet-4-5",
+        name: "Claude Sonnet 4.5",
+        family: "claude-sonnet",
+        cost: {
+          input: 3,
+          output: 15,
+        },
+        limit: {
+          context: 1000000,
+          output: 64000,
+        },
+        release_date: "2025-09-29",
+      },
+      "claude-sonnet-4-6": {
+        id: "claude-sonnet-4-6",
+        name: "Claude Sonnet 4.6",
+        family: "claude-sonnet",
+        cost: {
+          input: 3,
+          output: 15,
+        },
+        limit: {
+          context: 1000000,
+          output: 64000,
+        },
+        release_date: "2026-02-17",
+      },
+      "claude-sonnet-5": {
+        id: "claude-sonnet-5",
+        name: "Claude Sonnet 5",
+        family: "claude-sonnet",
+        cost: {
+          input: 2,
+          output: 10,
+        },
+        limit: {
+          context: 1000000,
+          output: 128000,
+        },
+        release_date: "2026-06-30",
+      },
+      "deepseek-v4-flash": {
+        id: "deepseek-v4-flash",
+        name: "DeepSeek V4 Flash",
+        family: "deepseek-flash",
+        cost: {
+          input: 0.14,
+          output: 0.28,
+        },
+        limit: {
+          context: 1000000,
+          output: 384000,
+        },
+        structured_output: true,
+        release_date: "2026-07-31",
+      },
+      "deepseek-v4-flash-free": {
+        id: "deepseek-v4-flash-free",
+        name: "DeepSeek V4 Flash Free",
+        family: "deepseek-flash",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 200000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2026-07-31",
+      },
+      "deepseek-v4-pro": {
+        id: "deepseek-v4-pro",
+        name: "DeepSeek V4 Pro",
+        family: "deepseek-thinking",
+        cost: {
+          input: 1.74,
+          output: 3.84,
+        },
+        limit: {
+          context: 1000000,
+          output: 384000,
+        },
+        structured_output: true,
+        release_date: "2026-04-24",
+      },
+      "gemini-3-flash": {
+        id: "gemini-3-flash",
+        name: "Gemini 3 Flash",
+        family: "gemini-flash",
+        cost: {
+          input: 0.5,
+          output: 3,
+        },
+        limit: {
+          context: 1048576,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2025-12-17",
+      },
+      "gemini-3-pro": {
+        id: "gemini-3-pro",
+        name: "Gemini 3 Pro",
+        family: "gemini-pro",
+        cost: {
+          input: 2,
+          output: 12,
+        },
+        limit: {
+          context: 1048576,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2025-11-18",
+      },
+      "gemini-3.1-pro": {
+        id: "gemini-3.1-pro",
+        name: "Gemini 3.1 Pro Preview",
+        family: "gemini-pro",
+        cost: {
+          input: 2,
+          output: 12,
+        },
+        limit: {
+          context: 1048576,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-02-19",
+      },
+      "gemini-3.5-flash": {
+        id: "gemini-3.5-flash",
+        name: "Gemini 3.5 Flash",
+        family: "gemini-flash",
+        cost: {
+          input: 1.5,
+          output: 9,
+        },
+        limit: {
+          context: 1048576,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-05-19",
+      },
+      "gemini-3.5-flash-lite": {
+        id: "gemini-3.5-flash-lite",
+        name: "Gemini 3.5 Flash Lite",
+        family: "gemini-flash-lite",
+        cost: {
+          input: 0.3,
+          output: 2.5,
+        },
+        limit: {
+          context: 1048576,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-07-21",
+      },
+      "gemini-3.6-flash": {
+        id: "gemini-3.6-flash",
+        name: "Gemini 3.6 Flash",
+        family: "gemini-flash",
+        cost: {
+          input: 1.5,
+          output: 7.5,
+        },
+        limit: {
+          context: 1048576,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-07-21",
+      },
+      "gemini-3.7-flash": {
+        id: "gemini-3.7-flash",
+        name: "Gemini 3.7 Flash",
+        family: "gemini-flash",
+        cost: {
+          input: 1.5,
+          output: 7.5,
+        },
+        limit: {
+          context: 1048576,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-08-13",
+      },
+      "glm-4.6": {
+        id: "glm-4.6",
+        name: "GLM-4.6",
+        family: "glm",
+        cost: {
+          input: 0.6,
+          output: 2.2,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2025-09-30",
+      },
+      "glm-4.7": {
+        id: "glm-4.7",
+        name: "GLM-4.7",
+        family: "glm",
+        cost: {
+          input: 0.6,
+          output: 2.2,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2025-12-22",
+      },
+      "glm-4.7-free": {
+        id: "glm-4.7-free",
+        name: "GLM-4.7 Free",
+        family: "glm-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2025-12-22",
+      },
+      "glm-5": {
+        id: "glm-5",
+        name: "GLM-5",
+        family: "glm",
+        cost: {
+          input: 1,
+          output: 3.2,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2026-02-11",
+      },
+      "glm-5-free": {
+        id: "glm-5-free",
+        name: "GLM-5 Free",
+        family: "glm-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2026-02-11",
+      },
+      "glm-5.1": {
+        id: "glm-5.1",
+        name: "GLM-5.1",
+        family: "glm",
+        cost: {
+          input: 1.4,
+          output: 4.4,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2026-04-07",
+      },
+      "glm-5.2": {
+        id: "glm-5.2",
+        name: "GLM-5.2",
+        family: "glm",
+        cost: {
+          input: 1.4,
+          output: 4.4,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-06-13",
+      },
+      "gpt-5": {
+        id: "gpt-5",
+        name: "GPT-5",
+        family: "gpt",
+        cost: {
+          input: 1.07,
+          output: 8.5,
+        },
+        limit: {
+          context: 400000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2025-08-07",
+      },
+      "gpt-5-codex": {
+        id: "gpt-5-codex",
+        name: "GPT-5 Codex",
+        family: "gpt-codex",
+        cost: {
+          input: 1.07,
+          output: 8.5,
+        },
+        limit: {
+          context: 400000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2025-09-15",
+      },
+      "gpt-5-nano": {
+        id: "gpt-5-nano",
+        name: "GPT-5 Nano",
+        family: "gpt-nano",
+        cost: {
+          input: 0.05,
+          output: 0.4,
+        },
+        limit: {
+          context: 400000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2025-08-07",
+      },
+      "gpt-5.1": {
+        id: "gpt-5.1",
+        name: "GPT-5.1",
+        family: "gpt",
+        cost: {
+          input: 1.07,
+          output: 8.5,
+        },
+        limit: {
+          context: 400000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2025-11-13",
+      },
+      "gpt-5.1-codex": {
+        id: "gpt-5.1-codex",
+        name: "GPT-5.1 Codex",
+        family: "gpt-codex",
+        cost: {
+          input: 1.07,
+          output: 8.5,
+        },
+        limit: {
+          context: 400000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2025-11-13",
+      },
+      "gpt-5.1-codex-max": {
+        id: "gpt-5.1-codex-max",
+        name: "GPT-5.1 Codex Max",
+        family: "gpt-codex",
+        cost: {
+          input: 1.25,
+          output: 10,
+        },
+        limit: {
+          context: 400000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2025-11-13",
+      },
+      "gpt-5.1-codex-mini": {
+        id: "gpt-5.1-codex-mini",
+        name: "GPT-5.1 Codex Mini",
+        family: "gpt-codex",
+        cost: {
+          input: 0.25,
+          output: 2,
+        },
+        limit: {
+          context: 400000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2025-11-13",
+      },
+      "gpt-5.2": {
+        id: "gpt-5.2",
+        name: "GPT-5.2",
+        family: "gpt",
+        cost: {
+          input: 1.75,
+          output: 14,
+        },
+        limit: {
+          context: 400000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2025-12-11",
+      },
+      "gpt-5.2-codex": {
+        id: "gpt-5.2-codex",
+        name: "GPT-5.2 Codex",
+        family: "gpt-codex",
+        cost: {
+          input: 1.75,
+          output: 14,
+        },
+        limit: {
+          context: 400000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2026-01-14",
+      },
+      "gpt-5.3-codex": {
+        id: "gpt-5.3-codex",
+        name: "GPT-5.3 Codex",
+        family: "gpt-codex",
+        cost: {
+          input: 1.75,
+          output: 14,
+        },
+        limit: {
+          context: 400000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2026-02-24",
+      },
+      "gpt-5.3-codex-spark": {
+        id: "gpt-5.3-codex-spark",
+        name: "GPT-5.3 Codex Spark",
+        family: "gpt-codex-spark",
+        cost: {
+          input: 1.75,
+          output: 14,
+        },
+        limit: {
+          context: 128000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2026-02-12",
+      },
+      "gpt-5.4": {
+        id: "gpt-5.4",
+        name: "GPT-5.4",
+        family: "gpt",
+        cost: {
+          input: 2.5,
+          output: 15,
+        },
+        limit: {
+          context: 1050000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2026-03-05",
+      },
+      "gpt-5.4-mini": {
+        id: "gpt-5.4-mini",
+        name: "GPT-5.4 Mini",
+        family: "gpt-mini",
+        cost: {
+          input: 0.75,
+          output: 4.5,
+        },
+        limit: {
+          context: 400000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2026-03-17",
+      },
+      "gpt-5.4-nano": {
+        id: "gpt-5.4-nano",
+        name: "GPT-5.4 Nano",
+        family: "gpt-nano",
+        cost: {
+          input: 0.2,
+          output: 1.25,
+        },
+        limit: {
+          context: 400000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2026-03-17",
+      },
+      "gpt-5.4-pro": {
+        id: "gpt-5.4-pro",
+        name: "GPT-5.4 Pro",
+        family: "gpt-pro",
+        cost: {
+          input: 30,
+          output: 180,
+        },
+        limit: {
+          context: 1050000,
+          output: 128000,
+        },
+        structured_output: false,
+        release_date: "2026-03-05",
+      },
+      "gpt-5.5": {
+        id: "gpt-5.5",
+        name: "GPT-5.5",
+        family: "gpt",
+        cost: {
+          input: 5,
+          output: 30,
+        },
+        limit: {
+          context: 1050000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2026-04-23",
+      },
+      "gpt-5.5-pro": {
+        id: "gpt-5.5-pro",
+        name: "GPT-5.5 Pro",
+        family: "gpt-pro",
+        cost: {
+          input: 30,
+          output: 180,
+        },
+        limit: {
+          context: 1050000,
+          output: 128000,
+        },
+        structured_output: false,
+        release_date: "2026-04-24",
+      },
+      "gpt-5.6-luna": {
+        id: "gpt-5.6-luna",
+        name: "GPT-5.6 Luna",
+        family: "gpt-luna",
+        cost: {
+          input: 0.2,
+          output: 1.2,
+        },
+        limit: {
+          context: 1050000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2026-07-09",
+      },
+      "gpt-5.6-sol": {
+        id: "gpt-5.6-sol",
+        name: "GPT-5.6 Sol (50% Off)",
+        family: "gpt-sol",
+        cost: {
+          input: 2,
+          output: 10,
+        },
+        limit: {
+          context: 1050000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2026-07-09",
+      },
+      "gpt-5.6-terra": {
+        id: "gpt-5.6-terra",
+        name: "GPT-5.6 Terra",
+        family: "gpt-terra",
+        cost: {
+          input: 2.5,
+          output: 15,
+        },
+        limit: {
+          context: 1050000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2026-07-09",
+      },
+      "grok-4.5": {
+        id: "grok-4.5",
+        name: "Grok 4.5",
+        family: "grok",
+        cost: {
+          input: 2,
+          output: 6,
+        },
+        limit: {
+          context: 500000,
+          output: 500000,
+        },
+        structured_output: true,
+        release_date: "2026-07-08",
+      },
+      "grok-4.6": {
+        id: "grok-4.6",
+        name: "Grok 4.6",
+        family: "grok",
+        cost: {
+          input: 2,
+          output: 6,
+        },
+        limit: {
+          context: 500000,
+          output: 500000,
+        },
+        structured_output: true,
+        release_date: "2026-08-12",
+      },
+      "grok-build-0.1": {
+        id: "grok-build-0.1",
+        name: "Grok Build 0.1",
+        family: "grok-build",
+        cost: {
+          input: 1,
+          output: 2,
+        },
+        limit: {
+          context: 256000,
+          output: 256000,
+        },
+        structured_output: true,
+        release_date: "2026-04-16",
+      },
+      "grok-code": {
+        id: "grok-code",
+        name: "Grok Code Fast 1",
+        family: "grok",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 256000,
+          output: 256000,
+        },
+        release_date: "2025-08-20",
+      },
+      "hy3-free": {
+        id: "hy3-free",
+        name: "Hy3 Free",
+        family: "hy3-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 190000,
+          output: 64000,
+        },
+        structured_output: true,
+        release_date: "2026-07-06",
+      },
+      "hy3-preview-free": {
+        id: "hy3-preview-free",
+        name: "Hy3 preview Free",
+        family: "hy3-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 256000,
+          output: 64000,
+        },
+        release_date: "2026-04-20",
+      },
+      "kimi-k2": {
+        id: "kimi-k2",
+        name: "Kimi K2",
+        family: "kimi-k2",
+        cost: {
+          input: 0.4,
+          output: 2.5,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        release_date: "2025-09-05",
+      },
+      "kimi-k2-thinking": {
+        id: "kimi-k2-thinking",
+        name: "Kimi K2 Thinking",
+        family: "kimi-thinking",
+        cost: {
+          input: 0.4,
+          output: 2.5,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        release_date: "2025-09-05",
+      },
+      "kimi-k2.5": {
+        id: "kimi-k2.5",
+        name: "Kimi K2.5",
+        family: "kimi-k2",
+        cost: {
+          input: 0.6,
+          output: 3,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        release_date: "2026-01-27",
+      },
+      "kimi-k2.5-free": {
+        id: "kimi-k2.5-free",
+        name: "Kimi K2.5 Free",
+        family: "kimi-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        release_date: "2026-01-27",
+      },
+      "kimi-k2.6": {
+        id: "kimi-k2.6",
+        name: "Kimi K2.6",
+        family: "kimi-k2",
+        cost: {
+          input: 0.95,
+          output: 4,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        release_date: "2026-04-21",
+      },
+      "kimi-k2.7-code": {
+        id: "kimi-k2.7-code",
+        name: "Kimi K2.7 Code",
+        family: "kimi-k2",
+        cost: {
+          input: 0.95,
+          output: 4,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        structured_output: true,
+        release_date: "2026-06-12",
+      },
+      "kimi-k3": {
+        id: "kimi-k3",
+        name: "Kimi K3",
+        family: "kimi-k3",
+        cost: {
+          input: 3,
+          output: 15,
+        },
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-07-16",
+      },
+      "laguna-s-2.1-free": {
+        id: "laguna-s-2.1-free",
+        name: "Laguna S 2.1 Free",
+        family: "laguna",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 256000,
+          output: 32000,
+        },
+        structured_output: false,
+        release_date: "2026-07-21",
+      },
+      "ling-2.6-flash-free": {
+        id: "ling-2.6-flash-free",
+        name: "Ling 2.6 Flash Free",
+        family: "ling-flash-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 262100,
+          output: 32800,
+        },
+        release_date: "2026-04-21",
+      },
+      "ling-3.0-flash-free": {
+        id: "ling-3.0-flash-free",
+        name: "Ling-3.0-flash Free",
+        family: "ling",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 262144,
+          output: 32768,
+        },
+        structured_output: false,
+        release_date: "2026-07-23",
+      },
+      "ling-3.0-tiny-free": {
+        id: "ling-3.0-tiny-free",
+        name: "Ling-3.0-tiny Free",
+        family: "ling",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 262144,
+          output: 32768,
+        },
+        structured_output: false,
+        release_date: "2026-08-06",
+      },
+      "longcat-2.0-free": {
+        id: "longcat-2.0-free",
+        name: "LongCat-2.0 Free",
+        family: "longcat",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        release_date: "2026-06-30",
+      },
+      "mimo-v2-flash-free": {
+        id: "mimo-v2-flash-free",
+        name: "MiMo V2 Flash Free",
+        family: "mimo-flash-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        release_date: "2025-12-16",
+      },
+      "mimo-v2-omni-free": {
+        id: "mimo-v2-omni-free",
+        name: "MiMo V2 Omni Free",
+        family: "mimo-omni-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 262144,
+          output: 64000,
+        },
+        release_date: "2026-03-18",
+      },
+      "mimo-v2-pro-free": {
+        id: "mimo-v2-pro-free",
+        name: "MiMo V2 Pro Free",
+        family: "mimo-pro-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 1048576,
+          output: 64000,
+        },
+        release_date: "2026-03-18",
+      },
+      "mimo-v2.5-free": {
+        id: "mimo-v2.5-free",
+        name: "MiMo V2.5 Free",
+        family: "mimo-v2.5-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 200000,
+          output: 32000,
+        },
+        release_date: "2026-04-24",
+      },
+      "minimax-m2.1": {
+        id: "minimax-m2.1",
+        name: "MiniMax-M2.1",
+        family: "minimax",
+        cost: {
+          input: 0.3,
+          output: 1.2,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2025-12-23",
+      },
+      "minimax-m2.1-free": {
+        id: "minimax-m2.1-free",
+        name: "MiniMax-M2.1 Free",
+        family: "minimax-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2025-12-23",
+      },
+      "minimax-m2.5": {
+        id: "minimax-m2.5",
+        name: "MiniMax-M2.5",
+        family: "minimax",
+        cost: {
+          input: 0.3,
+          output: 1.2,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2026-02-12",
+      },
+      "minimax-m2.5-free": {
+        id: "minimax-m2.5-free",
+        name: "MiniMax-M2.5 Free",
+        family: "minimax-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2026-02-12",
+      },
+      "minimax-m2.7": {
+        id: "minimax-m2.7",
+        name: "MiniMax-M2.7",
+        family: "minimax",
+        cost: {
+          input: 0.3,
+          output: 1.2,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2026-03-18",
+      },
+      "minimax-m3": {
+        id: "minimax-m3",
+        name: "MiniMax-M3",
+        family: "minimax",
+        cost: {
+          input: 0.3,
+          output: 1.2,
+        },
+        limit: {
+          context: 512000,
+          output: 128000,
+        },
+        release_date: "2026-06-01",
+      },
+      "minimax-m3-free": {
+        id: "minimax-m3-free",
+        name: "MiniMax-M3 Free",
+        family: "minimax-m3-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 200000,
+          output: 32000,
+        },
+        release_date: "2026-05-31",
+      },
+      "muse-spark-1.2": {
+        id: "muse-spark-1.2",
+        name: "Muse Spark 1.2",
+        family: "muse",
+        cost: {
+          input: 1.25,
+          output: 4.25,
+        },
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-05",
+      },
+      "muse-spark-1.2-contributor-free": {
+        id: "muse-spark-1.2-contributor-free",
+        name: "Muse Spark 1.2 Free",
+        family: "muse-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-05",
+      },
+      "nemotron-3-super-free": {
+        id: "nemotron-3-super-free",
+        name: "Nemotron 3 Super Free",
+        family: "nemotron-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 204800,
+          output: 128000,
+        },
+        release_date: "2026-03-11",
+      },
+      "nemotron-3-ultra-free": {
+        id: "nemotron-3-ultra-free",
+        name: "Nemotron 3 Ultra Free",
+        family: "nemotron-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 1000000,
+          output: 128000,
+        },
+        release_date: "2026-06-04",
+      },
+      "nemotron-3.5-lightning-free": {
+        id: "nemotron-3.5-lightning-free",
+        name: "Nemotron 3.5 Lightning Free",
+        family: "nemotron-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        structured_output: true,
+        release_date: "2026-08-11",
+      },
+      "north-mini-code-free": {
+        id: "north-mini-code-free",
+        name: "North Mini Code Free",
+        family: "north-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 256000,
+          output: 64000,
+        },
+        structured_output: true,
+        release_date: "2026-06-09",
+      },
+      "qwen3-coder": {
+        id: "qwen3-coder",
+        name: "Qwen3 Coder",
+        family: "qwen",
+        cost: {
+          input: 0.45,
+          output: 1.8,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        release_date: "2025-07-23",
+      },
+      "qwen3.5-plus": {
+        id: "qwen3.5-plus",
+        name: "Qwen3.5 Plus",
+        family: "qwen3.5",
+        cost: {
+          input: 0.2,
+          output: 1.2,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        release_date: "2026-02-16",
+      },
+      "qwen3.6-plus": {
+        id: "qwen3.6-plus",
+        name: "Qwen3.6 Plus",
+        family: "qwen3.6",
+        cost: {
+          input: 0.5,
+          output: 3,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        release_date: "2026-04-02",
+      },
+      "qwen3.6-plus-free": {
+        id: "qwen3.6-plus-free",
+        name: "Qwen3.6 Plus Free",
+        family: "qwen-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        release_date: "2026-04-02",
+      },
+      "ring-2.6-1t-free": {
+        id: "ring-2.6-1t-free",
+        name: "Ring 2.6 1T Free",
+        family: "ring-1t-free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 262000,
+          output: 66000,
+        },
+        release_date: "2026-05-08",
+      },
+      "trinity-large-preview-free": {
+        id: "trinity-large-preview-free",
+        name: "Trinity Large Preview",
+        family: "trinity",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 131072,
+          output: 131072,
+        },
+        release_date: "2026-01-27",
+      },
+      "x-preview-f-free": {
+        id: "x-preview-f-free",
+        name: "Ox Alpha Free (Unlimited)",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-21",
+      },
+    },
+  },
+  "opencode-go": {
+    id: "opencode-go",
+    name: "OpenCode Go",
+    api: "https://opencode.ai/zen/go/v1",
+    env: ["OPENCODE_API_KEY"],
+    models: {
+      "deepseek-v4-flash": {
+        id: "deepseek-v4-flash",
+        name: "DeepSeek V4 Flash",
+        family: "deepseek-flash",
+        cost: {
+          input: 0.22,
+          output: 0.66,
+        },
+        limit: {
+          context: 1000000,
+          output: 384000,
+        },
+        structured_output: true,
+        release_date: "2026-07-31",
+      },
+      "deepseek-v4-flash-vision-exp": {
+        id: "deepseek-v4-flash-vision-exp",
+        name: "DeepSeek V4 Flash Vision Exp",
+        family: "deepseek-flash",
+        cost: {
+          input: 0.22,
+          output: 0.66,
+        },
+        limit: {
+          context: 1000000,
+          output: 384000,
+        },
+        structured_output: true,
+        release_date: "2026-08-21",
+      },
+      "deepseek-v4-pro": {
+        id: "deepseek-v4-pro",
+        name: "DeepSeek V4 Pro (New)",
+        family: "deepseek-thinking",
+        cost: {
+          input: 0.66,
+          output: 1.98,
+        },
+        limit: {
+          context: 1000000,
+          output: 384000,
+        },
+        structured_output: true,
+        release_date: "2026-04-24",
+      },
+      "glm-5": {
+        id: "glm-5",
+        name: "GLM-5",
+        family: "glm",
+        cost: {
+          input: 1,
+          output: 3.2,
+        },
+        limit: {
+          context: 202752,
+          output: 32768,
+        },
+        release_date: "2026-02-11",
+      },
+      "glm-5.1": {
+        id: "glm-5.1",
+        name: "GLM-5.1",
+        family: "glm",
+        cost: {
+          input: 1.4,
+          output: 4.4,
+        },
+        limit: {
+          context: 202752,
+          output: 32768,
+        },
+        release_date: "2026-04-07",
+      },
+      "glm-5.2": {
+        id: "glm-5.2",
+        name: "GLM-5.2",
+        family: "glm",
+        cost: {
+          input: 1.4,
+          output: 4.4,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-06-13",
+      },
+      "glm-5.3": {
+        id: "glm-5.3",
+        name: "GLM-5.3",
+        family: "glm",
+        cost: {
+          input: 1.4,
+          output: 4.4,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-14",
+      },
+      "gpt-5.6-luna": {
+        id: "gpt-5.6-luna",
+        name: "GPT-5.6 Luna",
+        family: "gpt-luna",
+        cost: {
+          input: 0.2,
+          output: 1.2,
+        },
+        limit: {
+          context: 1050000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2026-07-09",
+      },
+      "grok-4.5": {
+        id: "grok-4.5",
+        name: "Grok 4.5",
+        family: "grok",
+        cost: {
+          input: 2,
+          output: 6,
+        },
+        limit: {
+          context: 500000,
+          output: 500000,
+        },
+        structured_output: true,
+        release_date: "2026-07-08",
+      },
+      "grok-4.6": {
+        id: "grok-4.6",
+        name: "Grok 4.6",
+        family: "grok",
+        cost: {
+          input: 2,
+          output: 6,
+        },
+        limit: {
+          context: 500000,
+          output: 500000,
+        },
+        structured_output: true,
+        release_date: "2026-08-12",
+      },
+      hy3: {
+        id: "hy3",
+        name: "Hy3 (8x usage)",
+        family: "Hy",
+        cost: {
+          input: 0.0175,
+          output: 0.0725,
+        },
+        limit: {
+          context: 256000,
+          output: 64000,
+        },
+        release_date: "2026-07-06",
+      },
+      "kimi-k2.5": {
+        id: "kimi-k2.5",
+        name: "Kimi K2.5",
+        family: "kimi-k2",
+        cost: {
+          input: 0.6,
+          output: 3,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        release_date: "2026-01-27",
+      },
+      "kimi-k2.6": {
+        id: "kimi-k2.6",
+        name: "Kimi K2.6",
+        family: "kimi-k2",
+        cost: {
+          input: 0.95,
+          output: 4,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        release_date: "2026-04-21",
+      },
+      "kimi-k2.7-code": {
+        id: "kimi-k2.7-code",
+        name: "Kimi K2.7 Code",
+        family: "kimi-k2",
+        cost: {
+          input: 0.95,
+          output: 4,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        structured_output: true,
+        release_date: "2026-06-12",
+      },
+      "kimi-k3": {
+        id: "kimi-k3",
+        name: "Kimi K3",
+        family: "kimi-k3",
+        cost: {
+          input: 3,
+          output: 15,
+        },
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-07-16",
+      },
+      "longcat-2.0": {
+        id: "longcat-2.0",
+        name: "LongCat-2.0",
+        family: "longcat",
+        cost: {
+          input: 0.3,
+          output: 1.2,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        release_date: "2026-06-30",
+      },
+      "mimo-v2-omni": {
+        id: "mimo-v2-omni",
+        name: "MiMo V2 Omni",
+        family: "mimo-v2-omni",
+        cost: {
+          input: 0.4,
+          output: 2,
+        },
+        limit: {
+          context: 262144,
+          output: 128000,
+        },
+        release_date: "2026-03-18",
+      },
+      "mimo-v2-pro": {
+        id: "mimo-v2-pro",
+        name: "MiMo V2 Pro",
+        family: "mimo-v2-pro",
+        cost: {
+          input: 1,
+          output: 3,
+        },
+        limit: {
+          context: 1048576,
+          output: 128000,
+        },
+        release_date: "2026-03-18",
+      },
+      "mimo-v2.5": {
+        id: "mimo-v2.5",
+        name: "MiMo V2.5",
+        family: "mimo-v2.5",
+        cost: {
+          input: 0.14,
+          output: 0.28,
+        },
+        limit: {
+          context: 1000000,
+          output: 128000,
+        },
+        release_date: "2026-04-22",
+      },
+      "mimo-v2.5-pro": {
+        id: "mimo-v2.5-pro",
+        name: "MiMo V2.5 Pro",
+        family: "mimo-v2.5-pro",
+        cost: {
+          input: 0.435,
+          output: 0.87,
+        },
+        limit: {
+          context: 1048576,
+          output: 128000,
+        },
+        release_date: "2026-04-22",
+      },
+      "minimax-m2.5": {
+        id: "minimax-m2.5",
+        name: "MiniMax-M2.5",
+        family: "minimax-m2.5",
+        cost: {
+          input: 0.3,
+          output: 1.2,
+        },
+        limit: {
+          context: 204800,
+          output: 65536,
+        },
+        release_date: "2026-02-12",
+      },
+      "minimax-m2.7": {
+        id: "minimax-m2.7",
+        name: "MiniMax-M2.7",
+        family: "minimax-m2.7",
+        cost: {
+          input: 0.3,
+          output: 1.2,
+        },
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+        release_date: "2026-03-18",
+      },
+      "minimax-m3": {
+        id: "minimax-m3",
+        name: "MiniMax-M3",
+        family: "minimax-m3",
+        cost: {
+          input: 0.3,
+          output: 1.2,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        release_date: "2026-05-31",
+      },
+      "muse-spark-1.2-contributor": {
+        id: "muse-spark-1.2-contributor",
+        name: "Muse Spark 1.2 Contributor",
+        family: "muse",
+        cost: {
+          input: 0.1,
+          output: 0.2,
+        },
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-05",
+      },
+      "ox-alpha-free": {
+        id: "ox-alpha-free",
+        name: "Ox Alpha Free (Unlimited)",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-21",
+      },
+      "qwen3.5-plus": {
+        id: "qwen3.5-plus",
+        name: "Qwen3.5 Plus",
+        family: "qwen3.5",
+        cost: {
+          input: 0.2,
+          output: 1.2,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        release_date: "2026-02-16",
+      },
+      "qwen3.6-plus": {
+        id: "qwen3.6-plus",
+        name: "Qwen3.6 Plus",
+        family: "qwen3.6",
+        cost: {
+          input: 0.5,
+          output: 3,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+        release_date: "2026-04-02",
+      },
+      "qwen3.7-max": {
+        id: "qwen3.7-max",
+        name: "Qwen3.7 Max",
+        family: "qwen3.7-max",
+        cost: {
+          input: 2.5,
+          output: 7.5,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+        release_date: "2026-05-21",
+      },
+      "qwen3.7-plus": {
+        id: "qwen3.7-plus",
+        name: "Qwen3.7 Plus",
+        family: "qwen3.7-plus",
+        cost: {
+          input: 0.4,
+          output: 1.6,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+        release_date: "2026-06-02",
+      },
+      "qwen3.8-max": {
+        id: "qwen3.8-max",
+        name: "Qwen3.8 Max",
+        family: "qwen3.8-max",
+        cost: {
+          input: 2,
+          output: 6,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-03",
       },
     },
   },
@@ -1022,20 +3687,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
     api: "https://openrouter.ai/api/v1",
     env: ["OPENROUTER_API_KEY"],
     models: {
-      "ai21/jamba-large-1.7": {
-        id: "ai21/jamba-large-1.7",
-        name: "Jamba Large 1.7",
-        family: "jamba",
-        cost: {
-          input: 2,
-          output: 8,
-        },
-        limit: {
-          context: 256000,
-          output: 4096,
-        },
-        structured_output: false,
-      },
       "aion-labs/aion-2.0": {
         id: "aion-labs/aion-2.0",
         name: "Aion-2.0",
@@ -1048,6 +3699,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: false,
+        release_date: "2026-02-23",
       },
       "aion-labs/aion-3.0": {
         id: "aion-labs/aion-3.0",
@@ -1061,6 +3713,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: false,
+        release_date: "2026-07-07",
       },
       "aion-labs/aion-3.0-mini": {
         id: "aion-labs/aion-3.0-mini",
@@ -1074,6 +3727,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: false,
+        release_date: "2026-07-07",
       },
       "aion-labs/aion-rp-llama-3.1-8b": {
         id: "aion-labs/aion-rp-llama-3.1-8b",
@@ -1085,9 +3739,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 32768,
-          output: 32768,
+          output: 29491,
         },
         structured_output: false,
+        release_date: "2025-02-04",
       },
       "allenai/olmo-3-32b-think": {
         id: "allenai/olmo-3-32b-think",
@@ -1099,9 +3754,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 65536,
-          output: 65536,
+          output: 58982,
         },
         structured_output: true,
+        release_date: "2025-11-21",
       },
       "amazon/nova-2-lite-v1": {
         id: "amazon/nova-2-lite-v1",
@@ -1116,6 +3772,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65535,
         },
         structured_output: false,
+        release_date: "2025-12-02",
       },
       "amazon/nova-lite-v1": {
         id: "amazon/nova-lite-v1",
@@ -1130,6 +3787,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 5120,
         },
         structured_output: false,
+        release_date: "2024-12-05",
       },
       "amazon/nova-micro-v1": {
         id: "amazon/nova-micro-v1",
@@ -1144,6 +3802,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 5120,
         },
         structured_output: false,
+        release_date: "2024-12-05",
       },
       "amazon/nova-premier-v1": {
         id: "amazon/nova-premier-v1",
@@ -1158,6 +3817,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32000,
         },
         structured_output: false,
+        release_date: "2025-10-31",
       },
       "amazon/nova-pro-v1": {
         id: "amazon/nova-pro-v1",
@@ -1172,6 +3832,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 5120,
         },
         structured_output: false,
+        release_date: "2024-12-05",
       },
       "anthracite-org/magnum-v4-72b": {
         id: "anthracite-org/magnum-v4-72b",
@@ -1185,6 +3846,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 4096,
         },
         structured_output: true,
+        release_date: "2024-10-22",
       },
       "anthropic/claude-3-haiku": {
         id: "anthropic/claude-3-haiku",
@@ -1199,6 +3861,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 4096,
         },
         structured_output: false,
+        release_date: "2024-03-13",
       },
       "anthropic/claude-fable-5": {
         id: "anthropic/claude-fable-5",
@@ -1213,6 +3876,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-06-09",
       },
       "anthropic/claude-haiku-4.5": {
         id: "anthropic/claude-haiku-4.5",
@@ -1227,6 +3891,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 64000,
         },
         structured_output: true,
+        release_date: "2025-10-15",
       },
       "anthropic/claude-opus-4": {
         id: "anthropic/claude-opus-4",
@@ -1241,6 +3906,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32000,
         },
         structured_output: false,
+        release_date: "2025-05-22",
       },
       "anthropic/claude-opus-4.1": {
         id: "anthropic/claude-opus-4.1",
@@ -1255,6 +3921,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32000,
         },
         structured_output: false,
+        release_date: "2025-08-05",
       },
       "anthropic/claude-opus-4.5": {
         id: "anthropic/claude-opus-4.5",
@@ -1269,6 +3936,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 64000,
         },
         structured_output: true,
+        release_date: "2025-11-24",
       },
       "anthropic/claude-opus-4.6": {
         id: "anthropic/claude-opus-4.6",
@@ -1283,6 +3951,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-02-05",
       },
       "anthropic/claude-opus-4.7": {
         id: "anthropic/claude-opus-4.7",
@@ -1297,6 +3966,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-04-16",
       },
       "anthropic/claude-opus-4.7-fast": {
         id: "anthropic/claude-opus-4.7-fast",
@@ -1311,6 +3981,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-04-16",
       },
       "anthropic/claude-opus-4.8": {
         id: "anthropic/claude-opus-4.8",
@@ -1325,6 +3996,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-05-28",
       },
       "anthropic/claude-opus-4.8-fast": {
         id: "anthropic/claude-opus-4.8-fast",
@@ -1339,6 +4011,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-05-28",
       },
       "anthropic/claude-opus-5": {
         id: "anthropic/claude-opus-5",
@@ -1353,6 +4026,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-07-24",
       },
       "anthropic/claude-opus-5-fast": {
         id: "anthropic/claude-opus-5-fast",
@@ -1367,6 +4041,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-07-24",
       },
       "anthropic/claude-sonnet-4": {
         id: "anthropic/claude-sonnet-4",
@@ -1381,6 +4056,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 64000,
         },
         structured_output: false,
+        release_date: "2025-05-22",
       },
       "anthropic/claude-sonnet-4.5": {
         id: "anthropic/claude-sonnet-4.5",
@@ -1395,6 +4071,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 64000,
         },
         structured_output: true,
+        release_date: "2025-09-29",
       },
       "anthropic/claude-sonnet-4.6": {
         id: "anthropic/claude-sonnet-4.6",
@@ -1409,6 +4086,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-02-17",
       },
       "anthropic/claude-sonnet-5": {
         id: "anthropic/claude-sonnet-5",
@@ -1423,6 +4101,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-06-30",
       },
       "arcee-ai/trinity-large-thinking": {
         id: "arcee-ai/trinity-large-thinking",
@@ -1434,9 +4113,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: true,
+        release_date: "2026-04-01",
       },
       "arcee-ai/virtuoso-large": {
         id: "arcee-ai/virtuoso-large",
@@ -1450,6 +4130,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 64000,
         },
         structured_output: false,
+        release_date: "2025-05-05",
       },
       "baidu/ernie-4.5-vl-424b-a47b": {
         id: "baidu/ernie-4.5-vl-424b-a47b",
@@ -1464,6 +4145,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16000,
         },
         structured_output: false,
+        release_date: "2025-06-30",
       },
       "bytedance-seed/seed-1.6": {
         id: "bytedance-seed/seed-1.6",
@@ -1478,6 +4160,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-12-23",
       },
       "bytedance-seed/seed-1.6-flash": {
         id: "bytedance-seed/seed-1.6-flash",
@@ -1492,6 +4175,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-12-23",
       },
       "bytedance-seed/seed-2-1-turbo": {
         id: "bytedance-seed/seed-2-1-turbo",
@@ -1503,9 +4187,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: true,
+        release_date: "2026-08-12",
       },
       "bytedance-seed/seed-2.0-code": {
         id: "bytedance-seed/seed-2.0-code",
@@ -1520,6 +4205,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-02-14",
       },
       "bytedance-seed/seed-2.0-lite": {
         id: "bytedance-seed/seed-2.0-lite",
@@ -1534,6 +4220,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-02-14",
       },
       "bytedance-seed/seed-2.0-mini": {
         id: "bytedance-seed/seed-2.0-mini",
@@ -1548,6 +4235,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-02-14",
       },
       "bytedance/ui-tars-1.5-7b": {
         id: "bytedance/ui-tars-1.5-7b",
@@ -1561,6 +4249,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 2048,
         },
         structured_output: true,
+        release_date: "2025-07-22",
       },
       "cognitivecomputations/dolphin-mistral-24b-venice-edition": {
         id: "cognitivecomputations/dolphin-mistral-24b-venice-edition",
@@ -1575,6 +4264,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 8192,
         },
         structured_output: false,
+        release_date: "2025-07-09",
       },
       "cohere/command-a": {
         id: "cohere/command-a",
@@ -1589,6 +4279,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 8192,
         },
         structured_output: true,
+        release_date: "2025-03-13",
       },
       "cohere/command-r-08-2024": {
         id: "cohere/command-r-08-2024",
@@ -1603,6 +4294,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 4000,
         },
         structured_output: true,
+        release_date: "2024-08-30",
       },
       "cohere/command-r-plus-08-2024": {
         id: "cohere/command-r-plus-08-2024",
@@ -1617,6 +4309,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 4000,
         },
         structured_output: true,
+        release_date: "2024-08-30",
       },
       "cohere/command-r7b-12-2024": {
         id: "cohere/command-r7b-12-2024",
@@ -1631,6 +4324,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 4000,
         },
         structured_output: true,
+        release_date: "2024-12-02",
       },
       "cohere/north-mini-code:free": {
         id: "cohere/north-mini-code:free",
@@ -1645,20 +4339,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 64000,
         },
         structured_output: false,
-      },
-      "deepcogito/cogito-v2.1-671b": {
-        id: "deepcogito/cogito-v2.1-671b",
-        name: "Cogito v2.1 671B",
-        family: "cogito",
-        cost: {
-          input: 1.25,
-          output: 1.25,
-        },
-        limit: {
-          context: 128000,
-          output: 128000,
-        },
-        structured_output: true,
+        release_date: "2026-06-17",
       },
       "deepseek/deepseek-chat": {
         id: "deepseek/deepseek-chat",
@@ -1673,34 +4354,37 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16000,
         },
         structured_output: true,
+        release_date: "2025-12-01",
       },
       "deepseek/deepseek-chat-v3-0324": {
         id: "deepseek/deepseek-chat-v3-0324",
         name: "DeepSeek V3 0324",
         family: "deepseek",
         cost: {
-          input: 0.27,
-          output: 1.12,
+          input: 0.25,
+          output: 1,
         },
         limit: {
           context: 163840,
-          output: 65536,
+          output: 147456,
         },
         structured_output: true,
+        release_date: "2025-03-24",
       },
       "deepseek/deepseek-chat-v3.1": {
         id: "deepseek/deepseek-chat-v3.1",
         name: "DeepSeek V3.1",
         family: "deepseek",
         cost: {
-          input: 0.25,
-          output: 0.95,
+          input: 0.55,
+          output: 1.65,
         },
         limit: {
           context: 163840,
-          output: 32768,
+          output: 144900,
         },
         structured_output: true,
+        release_date: "2025-08-21",
       },
       "deepseek/deepseek-r1": {
         id: "deepseek/deepseek-r1",
@@ -1715,6 +4399,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16000,
         },
         structured_output: true,
+        release_date: "2025-01-20",
       },
       "deepseek/deepseek-r1-0528": {
         id: "deepseek/deepseek-r1-0528",
@@ -1729,6 +4414,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-05-28",
       },
       "deepseek/deepseek-r1-distill-llama-70b": {
         id: "deepseek/deepseek-r1-distill-llama-70b",
@@ -1740,9 +4426,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 8192,
-          output: 8192,
+          output: 7372,
         },
         structured_output: false,
+        release_date: "2025-01-23",
       },
       "deepseek/deepseek-v3.1-terminus": {
         id: "deepseek/deepseek-v3.1-terminus",
@@ -1754,23 +4441,25 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 163840,
-          output: 163840,
+          output: 32768,
         },
         structured_output: true,
+        release_date: "2025-09-22",
       },
       "deepseek/deepseek-v3.2": {
         id: "deepseek/deepseek-v3.2",
         name: "DeepSeek V3.2",
         family: "deepseek",
         cost: {
-          input: 0.269,
-          output: 0.4,
+          input: 0.26,
+          output: 0.38,
         },
         limit: {
           context: 163840,
-          output: 65536,
+          output: 147456,
         },
         structured_output: true,
+        release_date: "2025-12-01",
       },
       "deepseek/deepseek-v3.2-exp": {
         id: "deepseek/deepseek-v3.2-exp",
@@ -1785,62 +4474,82 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2025-09-29",
       },
       "deepseek/deepseek-v4-flash": {
         id: "deepseek/deepseek-v4-flash",
         name: "DeepSeek V4 Flash",
         family: "deepseek-flash",
         cost: {
-          input: 0.0826,
-          output: 0.1652,
+          input: 0.088606,
+          output: 0.177212,
         },
         limit: {
           context: 1048576,
           output: 384000,
         },
         structured_output: true,
+        release_date: "2026-04-24",
       },
       "deepseek/deepseek-v4-flash-0731": {
         id: "deepseek/deepseek-v4-flash-0731",
         name: "DeepSeek V4 Flash 0731",
         family: "deepseek-flash",
         cost: {
-          input: 0.14,
-          output: 0.28,
+          input: 0.06,
+          output: 0.12,
         },
         limit: {
           context: 1310720,
-          output: 393216,
+          output: 943718,
         },
         structured_output: true,
+        release_date: "2026-07-31",
+      },
+      "deepseek/deepseek-v4-flash-vision-exp": {
+        id: "deepseek/deepseek-v4-flash-vision-exp",
+        name: "DeepSeek V4 Flash Vision Exp",
+        family: "deepseek-flash",
+        cost: {
+          input: 0.44,
+          output: 1.32,
+        },
+        limit: {
+          context: 1048576,
+          output: 384000,
+        },
+        structured_output: false,
+        release_date: "2026-08-21",
       },
       "deepseek/deepseek-v4-pro": {
         id: "deepseek/deepseek-v4-pro",
         name: "DeepSeek V4 Pro",
         family: "deepseek-thinking",
         cost: {
-          input: 1.32,
-          output: 3.96,
+          input: 0.87,
+          output: 1.74,
         },
         limit: {
           context: 1048576,
           output: 384000,
         },
         structured_output: true,
+        release_date: "2026-04-24",
       },
       "deepseek/deepseek-v4-pro-0813": {
         id: "deepseek/deepseek-v4-pro-0813",
         name: "DeepSeek V4 Pro 0813",
         family: "deepseek-thinking",
         cost: {
-          input: 1.32,
-          output: 3.96,
+          input: 1.122,
+          output: 3.366,
         },
         limit: {
           context: 1048576,
-          output: 384000,
+          output: 943717,
         },
         structured_output: true,
+        release_date: "2026-08-12",
       },
       "dots-studio/dots-3-note-preview:free": {
         id: "dots-studio/dots-3-note-preview:free",
@@ -1851,9 +4560,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 512000,
-          output: 512000,
+          output: 460800,
         },
         structured_output: true,
+        release_date: "2026-08-14",
       },
       "google/gemini-2.5-flash": {
         id: "google/gemini-2.5-flash",
@@ -1868,6 +4578,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65535,
         },
         structured_output: true,
+        release_date: "2025-06-17",
       },
       "google/gemini-2.5-flash-image": {
         id: "google/gemini-2.5-flash-image",
@@ -1882,6 +4593,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 8192,
         },
         structured_output: true,
+        release_date: "2025-08-26",
       },
       "google/gemini-2.5-flash-lite": {
         id: "google/gemini-2.5-flash-lite",
@@ -1896,6 +4608,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65535,
         },
         structured_output: true,
+        release_date: "2025-06-17",
       },
       "google/gemini-2.5-pro": {
         id: "google/gemini-2.5-pro",
@@ -1910,6 +4623,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2025-06-17",
       },
       "google/gemini-2.5-pro-preview": {
         id: "google/gemini-2.5-pro-preview",
@@ -1924,6 +4638,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2025-06-05",
       },
       "google/gemini-2.5-pro-preview-05-06": {
         id: "google/gemini-2.5-pro-preview-05-06",
@@ -1938,6 +4653,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65535,
         },
         structured_output: true,
+        release_date: "2025-05-07",
       },
       "google/gemini-3-flash-preview": {
         id: "google/gemini-3-flash-preview",
@@ -1952,6 +4668,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2025-12-17",
       },
       "google/gemini-3-pro-image": {
         id: "google/gemini-3-pro-image",
@@ -1966,6 +4683,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2026-05-28",
       },
       "google/gemini-3-pro-image-preview": {
         id: "google/gemini-3-pro-image-preview",
@@ -1980,6 +4698,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-11-20",
       },
       "google/gemini-3.1-flash-image": {
         id: "google/gemini-3.1-flash-image",
@@ -1994,6 +4713,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2026-05-28",
       },
       "google/gemini-3.1-flash-image-preview": {
         id: "google/gemini-3.1-flash-image-preview",
@@ -2005,9 +4725,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 65536,
-          output: 65536,
+          output: 58982,
         },
         structured_output: true,
+        release_date: "2026-02-26",
       },
       "google/gemini-3.1-flash-lite": {
         id: "google/gemini-3.1-flash-lite",
@@ -2022,6 +4743,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-05-07",
       },
       "google/gemini-3.1-flash-lite-image": {
         id: "google/gemini-3.1-flash-lite-image",
@@ -2033,9 +4755,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 65536,
-          output: 66000,
+          output: 58982,
         },
         structured_output: false,
+        modalities: {
+          output: ["text", "image"],
+        },
       },
       "google/gemini-3.1-flash-lite-preview": {
         id: "google/gemini-3.1-flash-lite-preview",
@@ -2050,6 +4775,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-03-03",
       },
       "google/gemini-3.1-pro-preview": {
         id: "google/gemini-3.1-pro-preview",
@@ -2064,6 +4790,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-02-19",
       },
       "google/gemini-3.1-pro-preview-customtools": {
         id: "google/gemini-3.1-pro-preview-customtools",
@@ -2078,6 +4805,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-02-19",
       },
       "google/gemini-3.5-flash": {
         id: "google/gemini-3.5-flash",
@@ -2092,6 +4820,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-05-19",
       },
       "google/gemini-3.5-flash-lite": {
         id: "google/gemini-3.5-flash-lite",
@@ -2106,6 +4835,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-07-21",
       },
       "google/gemini-3.6-flash": {
         id: "google/gemini-3.6-flash",
@@ -2120,6 +4850,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-07-21",
       },
       "google/gemini-3.7-flash": {
         id: "google/gemini-3.7-flash",
@@ -2134,6 +4865,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-08-13",
       },
       "google/gemma-2-27b-it": {
         id: "google/gemma-2-27b-it",
@@ -2148,6 +4880,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 2048,
         },
         structured_output: true,
+        release_date: "2024-07-13",
       },
       "google/gemma-3-12b-it": {
         id: "google/gemma-3-12b-it",
@@ -2162,6 +4895,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2025-03-13",
       },
       "google/gemma-3-27b-it": {
         id: "google/gemma-3-27b-it",
@@ -2173,9 +4907,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 131072,
+          output: 117964,
         },
         structured_output: true,
+        release_date: "2025-03-12",
       },
       "google/gemma-3-4b-it": {
         id: "google/gemma-3-4b-it",
@@ -2190,20 +4925,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
-      },
-      "google/gemma-3n-e4b-it": {
-        id: "google/gemma-3n-e4b-it",
-        name: "Gemma 3n 4B",
-        family: "gemma",
-        cost: {
-          input: 0.06,
-          output: 0.12,
-        },
-        limit: {
-          context: 32768,
-          output: 32768,
-        },
-        structured_output: true,
+        release_date: "2025-03-13",
       },
       "google/gemma-4-26b-a4b-it": {
         id: "google/gemma-4-26b-a4b-it",
@@ -2218,6 +4940,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2026-04-02",
       },
       "google/gemma-4-26b-a4b-it:free": {
         id: "google/gemma-4-26b-a4b-it:free",
@@ -2231,7 +4954,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 262144,
           output: 32768,
         },
-        structured_output: true,
+        structured_output: false,
+        release_date: "2026-04-02",
       },
       "google/gemma-4-31b-it": {
         id: "google/gemma-4-31b-it",
@@ -2246,6 +4970,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2026-04-02",
       },
       "google/gemma-4-31b-it:free": {
         id: "google/gemma-4-31b-it:free",
@@ -2260,6 +4985,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: false,
+        release_date: "2026-04-02",
       },
       "google/lyria-3-clip-preview": {
         id: "google/lyria-3-clip-preview",
@@ -2274,6 +5000,9 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: false,
+        modalities: {
+          output: ["text", "audio"],
+        },
       },
       "google/lyria-3-pro-preview": {
         id: "google/lyria-3-pro-preview",
@@ -2288,6 +5017,9 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: false,
+        modalities: {
+          output: ["text", "audio"],
+        },
       },
       "gryphe/mythomax-l2-13b": {
         id: "gryphe/mythomax-l2-13b",
@@ -2298,9 +5030,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 8192,
-          output: 4096,
+          output: 3686,
         },
         structured_output: true,
+        release_date: "2023-07-02",
       },
       "ibm-granite/granite-4.0-h-micro": {
         id: "ibm-granite/granite-4.0-h-micro",
@@ -2312,9 +5045,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131000,
-          output: 131000,
+          output: 117900,
         },
         structured_output: false,
+        release_date: "2025-10-20",
       },
       "ibm-granite/granite-4.1-8b": {
         id: "ibm-granite/granite-4.1-8b",
@@ -2326,9 +5060,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 117964,
         },
         structured_output: true,
+        release_date: "2026-04-30",
       },
       "inception/mercury-2": {
         id: "inception/mercury-2",
@@ -2343,34 +5078,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 50000,
         },
         structured_output: true,
-      },
-      "inclusionai/ling-2.6-1t": {
-        id: "inclusionai/ling-2.6-1t",
-        name: "Ling-2.6-1T",
-        family: "ling",
-        cost: {
-          input: 0.075,
-          output: 0.625,
-        },
-        limit: {
-          context: 262144,
-          output: 32768,
-        },
-        structured_output: true,
-      },
-      "inclusionai/ling-2.6-flash": {
-        id: "inclusionai/ling-2.6-flash",
-        name: "Ling-2.6-flash",
-        family: "ling",
-        cost: {
-          input: 0.01,
-          output: 0.03,
-        },
-        limit: {
-          context: 262144,
-          output: 32768,
-        },
-        structured_output: true,
+        release_date: "2026-03-04",
       },
       "inclusionai/ling-3.0-flash": {
         id: "inclusionai/ling-3.0-flash",
@@ -2384,21 +5092,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 262144,
           output: 32768,
         },
-        structured_output: true,
-      },
-      "inclusionai/ring-2.6-1t": {
-        id: "inclusionai/ring-2.6-1t",
-        name: "Ring-2.6-1T",
-        family: "ring",
-        cost: {
-          input: 0.075,
-          output: 0.625,
-        },
-        limit: {
-          context: 262144,
-          output: 65536,
-        },
         structured_output: false,
+        release_date: "2026-07-23",
       },
       "kwaipilot/kat-coder-air-v2.5": {
         id: "kwaipilot/kat-coder-air-v2.5",
@@ -2413,6 +5108,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 80000,
         },
         structured_output: true,
+        release_date: "2026-07-10",
       },
       "kwaipilot/kat-coder-pro-v2": {
         id: "kwaipilot/kat-coder-pro-v2",
@@ -2427,6 +5123,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 80000,
         },
         structured_output: true,
+        release_date: "2026-03-27",
       },
       "kwaipilot/kat-coder-pro-v2.5": {
         id: "kwaipilot/kat-coder-pro-v2.5",
@@ -2441,6 +5138,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 80000,
         },
         structured_output: true,
+        release_date: "2026-07-10",
       },
       "liquid/lfm-2.5-2.6b:free": {
         id: "liquid/lfm-2.5-2.6b:free",
@@ -2451,10 +5149,11 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 0,
         },
         limit: {
-          context: 128000,
+          context: 65536,
           output: 8192,
         },
         structured_output: true,
+        release_date: "2026-08-11",
       },
       "mancer/weaver": {
         id: "mancer/weaver",
@@ -2468,7 +5167,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 8000,
           output: 6000,
         },
-        structured_output: true,
+        structured_output: false,
+        release_date: "2023-08-02",
       },
       "meituan/longcat-2.0": {
         id: "meituan/longcat-2.0",
@@ -2483,6 +5183,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 262144,
         },
         structured_output: false,
+        release_date: "2026-07-20",
       },
       "meta-llama/llama-3.1-70b-instruct": {
         id: "meta-llama/llama-3.1-70b-instruct",
@@ -2497,6 +5198,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2024-07-23",
       },
       "meta-llama/llama-3.1-8b-instruct": {
         id: "meta-llama/llama-3.1-8b-instruct",
@@ -2508,9 +5210,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 117964,
         },
         structured_output: true,
+        release_date: "2024-07-23",
       },
       "meta-llama/llama-3.2-1b-instruct": {
         id: "meta-llama/llama-3.2-1b-instruct",
@@ -2522,9 +5225,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 60000,
-          output: 60000,
+          output: 54000,
         },
         structured_output: false,
+        release_date: "2024-09-25",
       },
       "meta-llama/llama-3.2-3b-instruct": {
         id: "meta-llama/llama-3.2-3b-instruct",
@@ -2536,23 +5240,25 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 117964,
         },
         structured_output: true,
+        release_date: "2024-09-25",
       },
       "meta-llama/llama-3.3-70b-instruct": {
         id: "meta-llama/llama-3.3-70b-instruct",
         name: "Llama-3.3-70B-Instruct",
         family: "llama",
         cost: {
-          input: 0.1,
-          output: 0.32,
+          input: 0.71,
+          output: 0.71,
         },
         limit: {
           context: 131072,
-          output: 16384,
+          output: 115200,
         },
         structured_output: true,
+        release_date: "2024-12-06",
       },
       "meta-llama/llama-4-maverick": {
         id: "meta-llama/llama-4-maverick",
@@ -2567,20 +5273,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2025-04-05",
       },
       "meta-llama/llama-4-scout": {
         id: "meta-llama/llama-4-scout",
         name: "Llama 4 Scout",
         family: "llama",
         cost: {
-          input: 0.1,
-          output: 0.3,
+          input: 0.11,
+          output: 0.34,
         },
         limit: {
           context: 1310720,
-          output: 16384,
+          output: 8192,
         },
         structured_output: true,
+        release_date: "2025-04-05",
       },
       "meta-llama/llama-guard-4-12b": {
         id: "meta-llama/llama-guard-4-12b",
@@ -2591,10 +5299,11 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 0.18,
         },
         limit: {
-          context: 1048576,
+          context: 163840,
           output: 16384,
         },
         structured_output: false,
+        release_date: "2025-04-30",
       },
       "meta/muse-glimmer-30b": {
         id: "meta/muse-glimmer-30b",
@@ -2606,9 +5315,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 117964,
         },
         structured_output: true,
+        release_date: "2026-08-10",
       },
       "meta/muse-spark-1.1": {
         id: "meta/muse-spark-1.1",
@@ -2620,9 +5330,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 1048576,
-          output: 1048576,
+          output: 943718,
         },
         structured_output: true,
+        release_date: "2026-04-08",
       },
       "meta/muse-spark-1.2": {
         id: "meta/muse-spark-1.2",
@@ -2634,9 +5345,25 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 1048576,
-          output: 1048576,
+          output: 943718,
         },
         structured_output: true,
+        release_date: "2026-08-05",
+      },
+      "meta/muse-spark-1.2-contributor": {
+        id: "meta/muse-spark-1.2-contributor",
+        name: "Muse Spark 1.2 Contributor",
+        family: "muse",
+        cost: {
+          input: 0.1,
+          output: 0.2,
+        },
+        limit: {
+          context: 1048576,
+          output: 943718,
+        },
+        structured_output: true,
+        release_date: "2026-08-21",
       },
       "microsoft/phi-4": {
         id: "microsoft/phi-4",
@@ -2648,9 +5375,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 16384,
-          output: 16384,
+          output: 14745,
         },
         structured_output: true,
+        release_date: "2025-01-10",
       },
       "microsoft/wizardlm-2-8x22b": {
         id: "microsoft/wizardlm-2-8x22b",
@@ -2664,6 +5392,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 8000,
         },
         structured_output: false,
+        release_date: "2024-04-16",
       },
       "minimax/minimax-01": {
         id: "minimax/minimax-01",
@@ -2675,9 +5404,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 1000192,
-          output: 1000192,
+          output: 900172,
         },
         structured_output: false,
+        release_date: "2025-01-15",
       },
       "minimax/minimax-m1": {
         id: "minimax/minimax-m1",
@@ -2692,6 +5422,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 40000,
         },
         structured_output: false,
+        release_date: "2025-06-17",
       },
       "minimax/minimax-m2": {
         id: "minimax/minimax-m2",
@@ -2706,6 +5437,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2025-10-27",
       },
       "minimax/minimax-m2-her": {
         id: "minimax/minimax-m2-her",
@@ -2720,6 +5452,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 2048,
         },
         structured_output: false,
+        release_date: "2026-01-23",
       },
       "minimax/minimax-m2.1": {
         id: "minimax/minimax-m2.1",
@@ -2734,20 +5467,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: false,
+        release_date: "2025-12-23",
       },
       "minimax/minimax-m2.5": {
         id: "minimax/minimax-m2.5",
         name: "MiniMax-M2.5",
         family: "minimax",
         cost: {
-          input: 0.22,
-          output: 0.9,
+          input: 0.27,
+          output: 1.08,
         },
         limit: {
           context: 204800,
-          output: 196608,
+          output: 128000,
         },
         structured_output: true,
+        release_date: "2026-02-12",
       },
       "minimax/minimax-m2.7": {
         id: "minimax/minimax-m2.7",
@@ -2762,6 +5497,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-03-18",
+      },
+      "minimax/minimax-m2.7:free": {
+        id: "minimax/minimax-m2.7:free",
+        name: "MiniMax M2.7 (free)",
+        family: "minimax",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 196608,
+          output: 176947,
+        },
+        structured_output: false,
+        release_date: "2026-03-18",
       },
       "minimax/minimax-m3": {
         id: "minimax/minimax-m3",
@@ -2776,6 +5527,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 512000,
         },
         structured_output: true,
+        release_date: "2026-06-01",
+      },
+      "minimax/minimax-m3:free": {
+        id: "minimax/minimax-m3:free",
+        name: "MiniMax M3 (free)",
+        family: "minimax",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 1048576,
+          output: 943718,
+        },
+        structured_output: false,
+        release_date: "2026-06-01",
       },
       "mistralai/codestral-2508": {
         id: "mistralai/codestral-2508",
@@ -2787,9 +5554,25 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 256000,
-          output: 256000,
+          output: 204800,
         },
         structured_output: true,
+        release_date: "2025-08-01",
+      },
+      "mistralai/devstral-2512": {
+        id: "mistralai/devstral-2512",
+        name: "Devstral 2",
+        family: "devstral",
+        cost: {
+          input: 0.44,
+          output: 2.2,
+        },
+        limit: {
+          context: 262144,
+          output: 209715,
+        },
+        structured_output: true,
+        release_date: "2025-12-09",
       },
       "mistralai/ministral-14b-2512": {
         id: "mistralai/ministral-14b-2512",
@@ -2801,9 +5584,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 209715,
         },
         structured_output: true,
+        release_date: "2025-12-02",
       },
       "mistralai/ministral-3b-2512": {
         id: "mistralai/ministral-3b-2512",
@@ -2815,9 +5599,25 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 104857,
         },
         structured_output: true,
+        release_date: "2025-12-02",
+      },
+      "mistralai/ministral-8b": {
+        id: "mistralai/ministral-8b",
+        name: "Ministral 8B",
+        family: "ministral",
+        cost: {
+          input: 0.11,
+          output: 0.11,
+        },
+        limit: {
+          context: 128000,
+          output: 102400,
+        },
+        structured_output: true,
+        release_date: "2024-10-17",
       },
       "mistralai/ministral-8b-2512": {
         id: "mistralai/ministral-8b-2512",
@@ -2829,9 +5629,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 209715,
         },
         structured_output: true,
+        release_date: "2025-12-02",
       },
       "mistralai/mistral-large": {
         id: "mistralai/mistral-large",
@@ -2843,9 +5644,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 128000,
-          output: 128000,
+          output: 102400,
         },
         structured_output: true,
+        release_date: "2024-02-26",
       },
       "mistralai/mistral-large-2407": {
         id: "mistralai/mistral-large-2407",
@@ -2857,9 +5659,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 104857,
         },
         structured_output: true,
+        release_date: "2024-11-19",
       },
       "mistralai/mistral-large-2512": {
         id: "mistralai/mistral-large-2512",
@@ -2871,9 +5674,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 209715,
         },
         structured_output: true,
+        release_date: "2024-11-01",
       },
       "mistralai/mistral-medium-3": {
         id: "mistralai/mistral-medium-3",
@@ -2885,9 +5689,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 104857,
         },
         structured_output: true,
+        release_date: "2025-05-07",
       },
       "mistralai/mistral-medium-3-5": {
         id: "mistralai/mistral-medium-3-5",
@@ -2899,9 +5704,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 209715,
         },
         structured_output: true,
+        release_date: "2026-04-30",
       },
       "mistralai/mistral-medium-3.1": {
         id: "mistralai/mistral-medium-3.1",
@@ -2913,9 +5719,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 262144,
+          output: 104857,
         },
         structured_output: true,
+        release_date: "2025-08-13",
       },
       "mistralai/mistral-nemo": {
         id: "mistralai/mistral-nemo",
@@ -2930,6 +5737,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2024-07-01",
       },
       "mistralai/mistral-saba": {
         id: "mistralai/mistral-saba",
@@ -2941,9 +5749,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 32768,
-          output: 32768,
+          output: 26214,
         },
         structured_output: true,
+        release_date: "2025-02-17",
       },
       "mistralai/mistral-small-24b-instruct-2501": {
         id: "mistralai/mistral-small-24b-instruct-2501",
@@ -2958,6 +5767,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2025-01-30",
       },
       "mistralai/mistral-small-2603": {
         id: "mistralai/mistral-small-2603",
@@ -2969,9 +5779,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 209715,
         },
         structured_output: true,
+        release_date: "2026-03-16",
       },
       "mistralai/mistral-small-3.1-24b-instruct": {
         id: "mistralai/mistral-small-3.1-24b-instruct",
@@ -2983,23 +5794,25 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 128000,
-          output: 128000,
+          output: 102400,
         },
         structured_output: false,
+        release_date: "2025-03-17",
       },
       "mistralai/mistral-small-3.2-24b-instruct": {
         id: "mistralai/mistral-small-3.2-24b-instruct",
         name: "Mistral Small 3.2 24B",
         family: "mistral-small",
         cost: {
-          input: 0.09375,
-          output: 0.25,
+          input: 0.075,
+          output: 0.2,
         },
         limit: {
-          context: 256000,
+          context: 131072,
           output: 16384,
         },
         structured_output: true,
+        release_date: "2025-06-20",
       },
       "mistralai/mixtral-8x22b-instruct": {
         id: "mistralai/mixtral-8x22b-instruct",
@@ -3011,9 +5824,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 65536,
-          output: 65536,
+          output: 52428,
         },
         structured_output: true,
+        release_date: "2024-04-17",
       },
       "mistralai/voxtral-small-24b-2507": {
         id: "mistralai/voxtral-small-24b-2507",
@@ -3025,9 +5839,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 32000,
-          output: 32000,
+          output: 25600,
         },
         structured_output: true,
+        release_date: "2025-10-30",
       },
       "moonshotai/kimi-k2": {
         id: "moonshotai/kimi-k2",
@@ -3042,6 +5857,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 100352,
         },
         structured_output: false,
+        release_date: "2025-07-11",
       },
       "moonshotai/kimi-k2-0905": {
         id: "moonshotai/kimi-k2-0905",
@@ -3056,6 +5872,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 100352,
         },
         structured_output: true,
+        release_date: "2025-09-04",
       },
       "moonshotai/kimi-k2-thinking": {
         id: "moonshotai/kimi-k2-thinking",
@@ -3070,18 +5887,19 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 100352,
         },
         structured_output: true,
+        release_date: "2025-11-06",
       },
       "moonshotai/kimi-k2.5": {
         id: "moonshotai/kimi-k2.5",
         name: "Kimi K2.5",
         family: "kimi-k2",
         cost: {
-          input: 0.45,
-          output: 2.25,
+          input: 0.6,
+          output: 3,
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: true,
       },
@@ -3095,23 +5913,25 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: true,
+        release_date: "2026-04-21",
       },
       "moonshotai/kimi-k2.7-code": {
         id: "moonshotai/kimi-k2.7-code",
         name: "Kimi K2.7 Code",
         family: "kimi-k2",
         cost: {
-          input: 0.71,
-          output: 3.5,
+          input: 0.67,
+          output: 3.4,
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: true,
+        release_date: "2026-06-12",
       },
       "moonshotai/kimi-k3": {
         id: "moonshotai/kimi-k3",
@@ -3123,9 +5943,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 1048576,
-          output: 1048576,
+          output: 943718,
         },
         structured_output: true,
+        release_date: "2026-07-16",
       },
       "morph/morph-v3-fast": {
         id: "morph/morph-v3-fast",
@@ -3140,6 +5961,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 38000,
         },
         structured_output: false,
+        release_date: "2025-07-07",
       },
       "morph/morph-v3-large": {
         id: "morph/morph-v3-large",
@@ -3154,6 +5976,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2025-07-07",
       },
       "nex-agi/nex-n2-mini": {
         id: "nex-agi/nex-n2-mini",
@@ -3165,9 +5988,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: true,
+        release_date: "2026-06-24",
       },
       "nex-agi/nex-n2-pro": {
         id: "nex-agi/nex-n2-pro",
@@ -3179,9 +6003,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: false,
+        release_date: "2026-06-08",
       },
       "nousresearch/hermes-3-llama-3.1-405b": {
         id: "nousresearch/hermes-3-llama-3.1-405b",
@@ -3196,6 +6021,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2024-08-16",
       },
       "nousresearch/hermes-3-llama-3.1-70b": {
         id: "nousresearch/hermes-3-llama-3.1-70b",
@@ -3210,6 +6036,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2024-08-18",
       },
       "nousresearch/hermes-4-405b": {
         id: "nousresearch/hermes-4-405b",
@@ -3221,9 +6048,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 117964,
         },
         structured_output: false,
+        release_date: "2025-08-26",
       },
       "nousresearch/hermes-4-70b": {
         id: "nousresearch/hermes-4-70b",
@@ -3235,9 +6063,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 117964,
         },
         structured_output: false,
+        release_date: "2025-08-26",
       },
       "nvidia/nemotron-3-nano-30b-a3b": {
         id: "nvidia/nemotron-3-nano-30b-a3b",
@@ -3249,23 +6078,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: true,
-      },
-      "nvidia/nemotron-3-nano-30b-a3b:free": {
-        id: "nvidia/nemotron-3-nano-30b-a3b:free",
-        name: "Nemotron 3 Nano 30B A3B (free)",
-        family: "nemotron",
-        cost: {
-          input: 0,
-          output: 0,
-        },
-        limit: {
-          context: 256000,
-          output: 256000,
-        },
-        structured_output: false,
+        release_date: "2025-12-15",
       },
       "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
         id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
@@ -3280,6 +6096,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: false,
+        release_date: "2026-04-28",
       },
       "nvidia/nemotron-3-super-120b-a12b": {
         id: "nvidia/nemotron-3-super-120b-a12b",
@@ -3294,6 +6111,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2026-03-11",
       },
       "nvidia/nemotron-3-super-120b-a12b:free": {
         id: "nvidia/nemotron-3-super-120b-a12b:free",
@@ -3305,9 +6123,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: true,
+        release_date: "2026-03-11",
       },
       "nvidia/nemotron-3-ultra-550b-a55b": {
         id: "nvidia/nemotron-3-ultra-550b-a55b",
@@ -3319,9 +6138,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 512288,
-          output: 16384,
+          output: 461059,
         },
         structured_output: true,
+        release_date: "2026-06-04",
       },
       "nvidia/nemotron-3-ultra-550b-a55b:free": {
         id: "nvidia/nemotron-3-ultra-550b-a55b:free",
@@ -3336,6 +6156,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: false,
+        release_date: "2026-06-04",
       },
       "nvidia/nemotron-3.5-content-safety:free": {
         id: "nvidia/nemotron-3.5-content-safety:free",
@@ -3350,6 +6171,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 8192,
         },
         structured_output: false,
+        release_date: "2026-06-04",
       },
       "nvidia/nemotron-3.5-lightning": {
         id: "nvidia/nemotron-3.5-lightning",
@@ -3360,10 +6182,11 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 0.2,
         },
         limit: {
-          context: 1000000,
+          context: 262144,
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-08-11",
       },
       "nvidia/nemotron-3.5-lightning:free": {
         id: "nvidia/nemotron-3.5-lightning:free",
@@ -3378,34 +6201,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: false,
-      },
-      "nvidia/nemotron-nano-12b-v2-vl:free": {
-        id: "nvidia/nemotron-nano-12b-v2-vl:free",
-        name: "Nemotron Nano 12B 2 VL (free)",
-        family: "nemotron",
-        cost: {
-          input: 0,
-          output: 0,
-        },
-        limit: {
-          context: 128000,
-          output: 128000,
-        },
-        structured_output: false,
-      },
-      "nvidia/nemotron-nano-9b-v2:free": {
-        id: "nvidia/nemotron-nano-9b-v2:free",
-        name: "Nemotron Nano 9B V2 (free)",
-        family: "nemotron",
-        cost: {
-          input: 0,
-          output: 0,
-        },
-        limit: {
-          context: 128000,
-          output: 128000,
-        },
-        structured_output: true,
+        release_date: "2026-08-11",
       },
       "openai/gpt-3.5-turbo": {
         id: "openai/gpt-3.5-turbo",
@@ -3420,6 +6216,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 4096,
         },
         structured_output: true,
+        release_date: "2023-03-01",
       },
       "openai/gpt-3.5-turbo-0613": {
         id: "openai/gpt-3.5-turbo-0613",
@@ -3431,9 +6228,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 4095,
-          output: 4096,
+          output: 3685,
         },
         structured_output: true,
+        release_date: "2024-01-25",
       },
       "openai/gpt-3.5-turbo-16k": {
         id: "openai/gpt-3.5-turbo-16k",
@@ -3448,6 +6246,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 4096,
         },
         structured_output: true,
+        release_date: "2023-08-28",
       },
       "openai/gpt-3.5-turbo-instruct": {
         id: "openai/gpt-3.5-turbo-instruct",
@@ -3459,9 +6258,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 4095,
-          output: 4096,
+          output: 3685,
         },
         structured_output: true,
+        release_date: "2023-09-28",
       },
       "openai/gpt-4": {
         id: "openai/gpt-4",
@@ -3476,6 +6276,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 4096,
         },
         structured_output: true,
+        release_date: "2023-11-06",
       },
       "openai/gpt-4-turbo": {
         id: "openai/gpt-4-turbo",
@@ -3490,6 +6291,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 4096,
         },
         structured_output: true,
+        release_date: "2023-11-06",
       },
       "openai/gpt-4-turbo-preview": {
         id: "openai/gpt-4-turbo-preview",
@@ -3504,6 +6306,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 4096,
         },
         structured_output: true,
+        release_date: "2024-01-25",
       },
       "openai/gpt-4.1": {
         id: "openai/gpt-4.1",
@@ -3518,6 +6321,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-04-14",
       },
       "openai/gpt-4.1-mini": {
         id: "openai/gpt-4.1-mini",
@@ -3532,6 +6336,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-04-14",
       },
       "openai/gpt-4.1-nano": {
         id: "openai/gpt-4.1-nano",
@@ -3546,6 +6351,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-04-14",
       },
       "openai/gpt-4o": {
         id: "openai/gpt-4o",
@@ -3560,6 +6366,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2024-05-13",
       },
       "openai/gpt-4o-2024-05-13": {
         id: "openai/gpt-4o-2024-05-13",
@@ -3574,6 +6381,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 4096,
         },
         structured_output: true,
+        release_date: "2024-05-13",
       },
       "openai/gpt-4o-2024-08-06": {
         id: "openai/gpt-4o-2024-08-06",
@@ -3588,6 +6396,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2024-08-06",
       },
       "openai/gpt-4o-2024-11-20": {
         id: "openai/gpt-4o-2024-11-20",
@@ -3602,6 +6411,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2024-11-20",
       },
       "openai/gpt-4o-mini": {
         id: "openai/gpt-4o-mini",
@@ -3616,6 +6426,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2024-07-18",
       },
       "openai/gpt-4o-mini-2024-07-18": {
         id: "openai/gpt-4o-mini-2024-07-18",
@@ -3630,6 +6441,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2024-07-18",
       },
       "openai/gpt-5": {
         id: "openai/gpt-5",
@@ -3644,6 +6456,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2025-08-07",
       },
       "openai/gpt-5-image": {
         id: "openai/gpt-5-image",
@@ -3658,6 +6471,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2025-10-14",
       },
       "openai/gpt-5-image-mini": {
         id: "openai/gpt-5-image-mini",
@@ -3672,6 +6486,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2025-10-16",
       },
       "openai/gpt-5-mini": {
         id: "openai/gpt-5-mini",
@@ -3686,6 +6501,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2025-08-07",
       },
       "openai/gpt-5-nano": {
         id: "openai/gpt-5-nano",
@@ -3700,6 +6516,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2025-08-07",
       },
       "openai/gpt-5-pro": {
         id: "openai/gpt-5-pro",
@@ -3714,6 +6531,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2025-10-06",
       },
       "openai/gpt-5.1": {
         id: "openai/gpt-5.1",
@@ -3728,6 +6546,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2025-11-13",
       },
       "openai/gpt-5.1-codex": {
         id: "openai/gpt-5.1-codex",
@@ -3742,6 +6561,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2025-11-13",
       },
       "openai/gpt-5.1-codex-max": {
         id: "openai/gpt-5.1-codex-max",
@@ -3756,6 +6576,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2025-11-13",
       },
       "openai/gpt-5.1-codex-mini": {
         id: "openai/gpt-5.1-codex-mini",
@@ -3770,6 +6591,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2025-11-13",
       },
       "openai/gpt-5.2": {
         id: "openai/gpt-5.2",
@@ -3784,6 +6606,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2025-12-11",
       },
       "openai/gpt-5.2-chat": {
         id: "openai/gpt-5.2-chat",
@@ -3798,6 +6621,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32000,
         },
         structured_output: true,
+        release_date: "2025-12-10",
       },
       "openai/gpt-5.2-codex": {
         id: "openai/gpt-5.2-codex",
@@ -3812,6 +6636,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2025-12-11",
       },
       "openai/gpt-5.2-pro": {
         id: "openai/gpt-5.2-pro",
@@ -3826,6 +6651,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2025-12-11",
       },
       "openai/gpt-5.3-codex": {
         id: "openai/gpt-5.3-codex",
@@ -3840,6 +6666,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-02-05",
       },
       "openai/gpt-5.4": {
         id: "openai/gpt-5.4",
@@ -3854,6 +6681,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-03-05",
       },
       "openai/gpt-5.4-image-2": {
         id: "openai/gpt-5.4-image-2",
@@ -3868,6 +6696,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-04-21",
       },
       "openai/gpt-5.4-mini": {
         id: "openai/gpt-5.4-mini",
@@ -3882,6 +6711,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-03-17",
       },
       "openai/gpt-5.4-nano": {
         id: "openai/gpt-5.4-nano",
@@ -3896,6 +6726,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-03-17",
       },
       "openai/gpt-5.4-pro": {
         id: "openai/gpt-5.4-pro",
@@ -3910,6 +6741,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-03-05",
       },
       "openai/gpt-5.5": {
         id: "openai/gpt-5.5",
@@ -3924,6 +6756,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-04-23",
       },
       "openai/gpt-5.5-pro": {
         id: "openai/gpt-5.5-pro",
@@ -3938,6 +6771,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-04-23",
       },
       "openai/gpt-5.6-luna": {
         id: "openai/gpt-5.6-luna",
@@ -3952,6 +6786,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-07-09",
       },
       "openai/gpt-5.6-luna-pro": {
         id: "openai/gpt-5.6-luna-pro",
@@ -3966,34 +6801,37 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-07-09",
       },
       "openai/gpt-5.6-sol": {
         id: "openai/gpt-5.6-sol",
         name: "GPT-5.6 Sol",
         family: "gpt-sol",
         cost: {
-          input: 2.5,
-          output: 15,
+          input: 2,
+          output: 10,
         },
         limit: {
           context: 1050000,
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-07-09",
       },
       "openai/gpt-5.6-sol-pro": {
         id: "openai/gpt-5.6-sol-pro",
         name: "GPT-5.6 Sol Pro",
         family: "gpt-sol",
         cost: {
-          input: 2.5,
-          output: 15,
+          input: 2,
+          output: 10,
         },
         limit: {
           context: 1050000,
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-07-09",
       },
       "openai/gpt-5.6-terra": {
         id: "openai/gpt-5.6-terra",
@@ -4008,6 +6846,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-07-09",
       },
       "openai/gpt-5.6-terra-pro": {
         id: "openai/gpt-5.6-terra-pro",
@@ -4022,6 +6861,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-07-09",
       },
       "openai/gpt-audio": {
         id: "openai/gpt-audio",
@@ -4036,6 +6876,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2026-01-19",
       },
       "openai/gpt-audio-mini": {
         id: "openai/gpt-audio-mini",
@@ -4050,6 +6891,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2026-01-19",
       },
       "openai/gpt-chat-latest": {
         id: "openai/gpt-chat-latest",
@@ -4064,20 +6906,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-05-05",
       },
       "openai/gpt-oss-120b": {
         id: "openai/gpt-oss-120b",
         name: "GPT OSS 120B",
         family: "gpt-oss",
         cost: {
-          input: 0.03,
+          input: 0.037,
           output: 0.17,
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 117964,
         },
         structured_output: true,
+        release_date: "2025-08-05",
       },
       "openai/gpt-oss-20b": {
         id: "openai/gpt-oss-20b",
@@ -4089,23 +6933,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 117964,
         },
         structured_output: true,
-      },
-      "openai/gpt-oss-20b:free": {
-        id: "openai/gpt-oss-20b:free",
-        name: "gpt-oss-20b (free)",
-        family: "gpt-oss",
-        cost: {
-          input: 0,
-          output: 0,
-        },
-        limit: {
-          context: 131072,
-          output: 32768,
-        },
-        structured_output: true,
+        release_date: "2025-08-05",
       },
       "openai/gpt-oss-safeguard-20b": {
         id: "openai/gpt-oss-safeguard-20b",
@@ -4120,6 +6951,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2025-10-29",
       },
       "openai/o1": {
         id: "openai/o1",
@@ -4134,6 +6966,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 100000,
         },
         structured_output: true,
+        release_date: "2024-12-05",
       },
       "openai/o1-pro": {
         id: "openai/o1-pro",
@@ -4148,6 +6981,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 100000,
         },
         structured_output: true,
+        release_date: "2025-03-19",
       },
       "openai/o3": {
         id: "openai/o3",
@@ -4162,6 +6996,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 100000,
         },
         structured_output: true,
+        release_date: "2025-04-16",
       },
       "openai/o3-mini": {
         id: "openai/o3-mini",
@@ -4176,6 +7011,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 100000,
         },
         structured_output: true,
+        release_date: "2024-12-20",
       },
       "openai/o3-mini-high": {
         id: "openai/o3-mini-high",
@@ -4190,6 +7026,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 100000,
         },
         structured_output: true,
+        release_date: "2025-02-12",
       },
       "openai/o3-pro": {
         id: "openai/o3-pro",
@@ -4204,6 +7041,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 100000,
         },
         structured_output: true,
+        release_date: "2025-06-10",
       },
       "openai/o4-mini": {
         id: "openai/o4-mini",
@@ -4218,6 +7056,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 100000,
         },
         structured_output: true,
+        release_date: "2025-04-16",
       },
       "openai/o4-mini-high": {
         id: "openai/o4-mini-high",
@@ -4232,6 +7071,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 100000,
         },
         structured_output: true,
+        release_date: "2025-04-16",
       },
       "openrouter/auto": {
         id: "openrouter/auto",
@@ -4242,6 +7082,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 2000000,
         },
         structured_output: true,
+        release_date: "2023-11-08",
       },
       "openrouter/bodybuilder": {
         id: "openrouter/bodybuilder",
@@ -4251,6 +7092,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: false,
+        release_date: "2025-12-05",
       },
       "openrouter/free": {
         id: "openrouter/free",
@@ -4264,6 +7106,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 8000,
         },
         structured_output: true,
+        release_date: "2026-02-01",
       },
       "openrouter/fusion": {
         id: "openrouter/fusion",
@@ -4273,6 +7116,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: false,
+        release_date: "2026-06-13",
       },
       "openrouter/pareto-code": {
         id: "openrouter/pareto-code",
@@ -4282,6 +7126,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 200000,
         },
         structured_output: false,
+        release_date: "2026-04-21",
       },
       "perceptron/perceptron-mk1": {
         id: "perceptron/perceptron-mk1",
@@ -4295,6 +7140,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 8192,
         },
         structured_output: true,
+        release_date: "2026-05-12",
       },
       "perplexity/sonar": {
         id: "perplexity/sonar",
@@ -4306,9 +7152,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 127072,
-          output: 127072,
+          output: 114364,
         },
         structured_output: false,
+        release_date: "2025-01-27",
       },
       "perplexity/sonar-deep-research": {
         id: "perplexity/sonar-deep-research",
@@ -4320,9 +7167,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 128000,
-          output: 128000,
+          output: 115200,
         },
         structured_output: false,
+        release_date: "2025-03-07",
       },
       "perplexity/sonar-pro": {
         id: "perplexity/sonar-pro",
@@ -4337,6 +7185,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 8000,
         },
         structured_output: false,
+        release_date: "2025-03-07",
       },
       "perplexity/sonar-pro-search": {
         id: "perplexity/sonar-pro-search",
@@ -4351,6 +7200,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 8000,
         },
         structured_output: true,
+        release_date: "2025-10-30",
       },
       "perplexity/sonar-reasoning-pro": {
         id: "perplexity/sonar-reasoning-pro",
@@ -4362,9 +7212,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 128000,
-          output: 128000,
+          output: 115200,
         },
         structured_output: false,
+        release_date: "2025-03-07",
       },
       "poolside/laguna-s-2.1": {
         id: "poolside/laguna-s-2.1",
@@ -4379,6 +7230,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: false,
+        release_date: "2026-07-21",
       },
       "poolside/laguna-s-2.1:free": {
         id: "poolside/laguna-s-2.1:free",
@@ -4393,6 +7245,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: false,
+        release_date: "2026-07-21",
       },
       "poolside/laguna-xs-2.1": {
         id: "poolside/laguna-xs-2.1",
@@ -4407,6 +7260,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: false,
+        release_date: "2026-07-02",
       },
       "poolside/laguna-xs-2.1:free": {
         id: "poolside/laguna-xs-2.1:free",
@@ -4421,6 +7275,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: false,
+        release_date: "2026-07-02",
       },
       "qwen/qwen-2.5-72b-instruct": {
         id: "qwen/qwen-2.5-72b-instruct",
@@ -4435,6 +7290,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2024-09-19",
       },
       "qwen/qwen-2.5-7b-instruct": {
         id: "qwen/qwen-2.5-7b-instruct",
@@ -4446,9 +7302,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 32768,
-          output: 32768,
+          output: 29491,
         },
         structured_output: true,
+        release_date: "2024-10-16",
       },
       "qwen/qwen-2.5-coder-32b-instruct": {
         id: "qwen/qwen-2.5-coder-32b-instruct",
@@ -4460,9 +7317,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 32768,
-          output: 32768,
+          output: 29491,
         },
         structured_output: false,
+        release_date: "2024-11-11",
       },
       "qwen/qwen-plus": {
         id: "qwen/qwen-plus",
@@ -4477,6 +7335,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2024-01-25",
       },
       "qwen/qwen-plus-2025-07-28": {
         id: "qwen/qwen-plus-2025-07-28",
@@ -4491,34 +7350,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
-      },
-      "qwen/qwen-plus-2025-07-28:thinking": {
-        id: "qwen/qwen-plus-2025-07-28:thinking",
-        name: "Qwen Plus 0728 (thinking)",
-        family: "qwen",
-        cost: {
-          input: 0.26,
-          output: 0.78,
-        },
-        limit: {
-          context: 1000000,
-          output: 32768,
-        },
-        structured_output: true,
+        release_date: "2025-09-08",
       },
       "qwen/qwen2.5-vl-72b-instruct": {
         id: "qwen/qwen2.5-vl-72b-instruct",
         name: "Qwen2.5 VL 72B Instruct",
         family: "qwen",
         cost: {
-          input: 0.8,
-          output: 1,
+          input: 0.25,
+          output: 0.75,
         },
         limit: {
           context: 128000,
-          output: 128000,
+          output: 28800,
         },
         structured_output: true,
+        release_date: "2025-02-01",
       },
       "qwen/qwen3-14b": {
         id: "qwen/qwen3-14b",
@@ -4533,6 +7380,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2025-04-28",
       },
       "qwen/qwen3-235b-a22b": {
         id: "qwen/qwen3-235b-a22b",
@@ -4561,6 +7409,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2025-07-21",
       },
       "qwen/qwen3-235b-a22b-thinking-2507": {
         id: "qwen/qwen3-235b-a22b-thinking-2507",
@@ -4571,24 +7420,26 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 2.3,
         },
         limit: {
-          context: 262144,
-          output: 32768,
+          context: 131072,
+          output: 117964,
         },
         structured_output: false,
+        release_date: "2025-07-25",
       },
       "qwen/qwen3-30b-a3b": {
         id: "qwen/qwen3-30b-a3b",
         name: "Qwen3 30B A3B",
         family: "qwen",
         cost: {
-          input: 0.13,
-          output: 0.52,
+          input: 0.12,
+          output: 0.5,
         },
         limit: {
           context: 131072,
-          output: 8192,
+          output: 16384,
         },
         structured_output: false,
+        release_date: "2025-04-28",
       },
       "qwen/qwen3-30b-a3b-instruct-2507": {
         id: "qwen/qwen3-30b-a3b-instruct-2507",
@@ -4603,6 +7454,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32000,
         },
         structured_output: true,
+        release_date: "2025-07-29",
       },
       "qwen/qwen3-30b-a3b-thinking-2507": {
         id: "qwen/qwen3-30b-a3b-thinking-2507",
@@ -4617,6 +7469,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: false,
+        release_date: "2025-08-28",
       },
       "qwen/qwen3-32b": {
         id: "qwen/qwen3-32b",
@@ -4645,6 +7498,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 8192,
         },
         structured_output: false,
+        release_date: "2025-04-28",
       },
       "qwen/qwen3-coder": {
         id: "qwen/qwen3-coder",
@@ -4659,6 +7513,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2025-07-23",
       },
       "qwen/qwen3-coder-30b-a3b-instruct": {
         id: "qwen/qwen3-coder-30b-a3b-instruct",
@@ -4670,7 +7525,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: true,
       },
@@ -4687,6 +7542,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: false,
+        release_date: "2025-07-28",
       },
       "qwen/qwen3-coder-next": {
         id: "qwen/qwen3-coder-next",
@@ -4698,9 +7554,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: true,
+        release_date: "2026-02-03",
       },
       "qwen/qwen3-coder-plus": {
         id: "qwen/qwen3-coder-plus",
@@ -4715,6 +7572,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2025-07-23",
       },
       "qwen/qwen3-max": {
         id: "qwen/qwen3-max",
@@ -4729,6 +7587,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2025-09-23",
       },
       "qwen/qwen3-max-thinking": {
         id: "qwen/qwen3-max-thinking",
@@ -4743,18 +7602,19 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-02-09",
       },
       "qwen/qwen3-next-80b-a3b-instruct": {
         id: "qwen/qwen3-next-80b-a3b-instruct",
         name: "Qwen3-Next 80B-A3B Instruct",
         family: "qwen",
         cost: {
-          input: 0.09,
+          input: 0.1,
           output: 1.1,
         },
         limit: {
           context: 262144,
-          output: 16384,
+          output: 235929,
         },
         structured_output: true,
       },
@@ -4785,6 +7645,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-09-23",
       },
       "qwen/qwen3-vl-235b-a22b-thinking": {
         id: "qwen/qwen3-vl-235b-a22b-thinking",
@@ -4799,6 +7660,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-09-23",
       },
       "qwen/qwen3-vl-30b-a3b-instruct": {
         id: "qwen/qwen3-vl-30b-a3b-instruct",
@@ -4813,6 +7675,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-10-06",
       },
       "qwen/qwen3-vl-30b-a3b-thinking": {
         id: "qwen/qwen3-vl-30b-a3b-thinking",
@@ -4827,6 +7690,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-10-06",
       },
       "qwen/qwen3-vl-32b-instruct": {
         id: "qwen/qwen3-vl-32b-instruct",
@@ -4841,6 +7705,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-10-23",
       },
       "qwen/qwen3-vl-8b-instruct": {
         id: "qwen/qwen3-vl-8b-instruct",
@@ -4855,6 +7720,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-10-14",
       },
       "qwen/qwen3-vl-8b-thinking": {
         id: "qwen/qwen3-vl-8b-thinking",
@@ -4869,6 +7735,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: true,
+        release_date: "2025-10-14",
       },
       "qwen/qwen3.5-122b-a10b": {
         id: "qwen/qwen3.5-122b-a10b",
@@ -4880,9 +7747,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: true,
+        release_date: "2026-02-23",
       },
       "qwen/qwen3.5-27b": {
         id: "qwen/qwen3.5-27b",
@@ -4897,20 +7765,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-02-23",
       },
       "qwen/qwen3.5-35b-a3b": {
         id: "qwen/qwen3.5-35b-a3b",
         name: "Qwen3.5 35B-A3B",
         family: "qwen",
         cost: {
-          input: 0.225,
-          output: 1.8,
+          input: 0.25,
+          output: 1.25,
         },
         limit: {
           context: 262144,
-          output: 65536,
+          output: 235929,
         },
         structured_output: true,
+        release_date: "2026-02-23",
       },
       "qwen/qwen3.5-397b-a17b": {
         id: "qwen/qwen3.5-397b-a17b",
@@ -4925,6 +7795,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-02-15",
       },
       "qwen/qwen3.5-9b": {
         id: "qwen/qwen3.5-9b",
@@ -4936,9 +7807,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: true,
+        release_date: "2026-02-23",
       },
       "qwen/qwen3.5-flash-02-23": {
         id: "qwen/qwen3.5-flash-02-23",
@@ -4953,6 +7825,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-02-25",
       },
       "qwen/qwen3.5-plus-02-15": {
         id: "qwen/qwen3.5-plus-02-15",
@@ -4967,6 +7840,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-02-16",
       },
       "qwen/qwen3.5-plus-20260420": {
         id: "qwen/qwen3.5-plus-20260420",
@@ -4981,20 +7855,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-04-27",
       },
       "qwen/qwen3.6-27b": {
         id: "qwen/qwen3.6-27b",
         name: "Qwen3.6 27B",
         family: "qwen",
         cost: {
-          input: 0.3,
-          output: 2,
+          input: 0.6,
+          output: 3.6,
         },
         limit: {
           context: 262144,
-          output: 65536,
+          output: 235929,
         },
         structured_output: true,
+        release_date: "2026-04-22",
       },
       "qwen/qwen3.6-35b-a3b": {
         id: "qwen/qwen3.6-35b-a3b",
@@ -5006,9 +7882,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: true,
+        release_date: "2026-04-17",
       },
       "qwen/qwen3.6-flash": {
         id: "qwen/qwen3.6-flash",
@@ -5023,6 +7900,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-04-27",
       },
       "qwen/qwen3.6-max-preview": {
         id: "qwen/qwen3.6-max-preview",
@@ -5037,6 +7915,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-04-20",
       },
       "qwen/qwen3.6-plus": {
         id: "qwen/qwen3.6-plus",
@@ -5051,6 +7930,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-04-02",
       },
       "qwen/qwen3.7-flash": {
         id: "qwen/qwen3.7-flash",
@@ -5065,6 +7945,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: false,
+        release_date: "2026-07-15",
       },
       "qwen/qwen3.7-max": {
         id: "qwen/qwen3.7-max",
@@ -5079,6 +7960,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-05-21",
       },
       "qwen/qwen3.7-plus": {
         id: "qwen/qwen3.7-plus",
@@ -5093,6 +7975,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-06-02",
       },
       "qwen/qwen3.8-2.4t-a95b": {
         id: "qwen/qwen3.8-2.4t-a95b",
@@ -5104,23 +7987,25 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 1048576,
-          output: 262144,
+          output: 131072,
         },
         structured_output: true,
+        release_date: "2026-08-12",
       },
       "qwen/qwen3.8-27b": {
         id: "qwen/qwen3.8-27b",
         name: "Qwen3.8 27B",
         family: "qwen",
         cost: {
-          input: 0.45,
-          output: 3.2,
+          input: 0.425,
+          output: 2.55,
         },
         limit: {
-          context: 262144,
+          context: 1000000,
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-08-14",
       },
       "qwen/qwen3.8-max": {
         id: "qwen/qwen3.8-max",
@@ -5135,6 +8020,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-08-03",
       },
       "rekaai/reka-edge": {
         id: "rekaai/reka-edge",
@@ -5146,9 +8032,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 16384,
-          output: 16384,
+          output: 14745,
         },
         structured_output: true,
+        release_date: "2026-03-20",
       },
       "rekaai/reka-flash-3": {
         id: "rekaai/reka-flash-3",
@@ -5160,9 +8047,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 65536,
-          output: 65536,
+          output: 58982,
         },
         structured_output: true,
+        release_date: "2025-03-12",
       },
       "relace/relace-apply-3": {
         id: "relace/relace-apply-3",
@@ -5176,6 +8064,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: false,
+        release_date: "2025-09-26",
       },
       "relace/relace-search": {
         id: "relace/relace-search",
@@ -5189,6 +8078,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: false,
+        release_date: "2025-12-08",
       },
       "sakana/fugu-ultra": {
         id: "sakana/fugu-ultra",
@@ -5203,6 +8093,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-06-15",
       },
       "sakana/sakana-namazu": {
         id: "sakana/sakana-namazu",
@@ -5217,6 +8108,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-08-03",
       },
       "sao10k/l3-lunaris-8b": {
         id: "sao10k/l3-lunaris-8b",
@@ -5228,9 +8120,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 8192,
-          output: 16384,
+          output: 7372,
         },
         structured_output: true,
+        release_date: "2024-08-13",
       },
       "sao10k/l3.1-euryale-70b": {
         id: "sao10k/l3.1-euryale-70b",
@@ -5245,6 +8138,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2024-08-28",
       },
       "sao10k/l3.3-euryale-70b": {
         id: "sao10k/l3.3-euryale-70b",
@@ -5259,6 +8153,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2024-12-18",
+      },
+      "stealth/ox-alpha": {
+        id: "stealth/ox-alpha",
+        name: "Ox Alpha",
+        family: "alpha",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: false,
+        release_date: "2026-08-20",
       },
       "stepfun/step-3.5-flash": {
         id: "stepfun/step-3.5-flash",
@@ -5272,6 +8182,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: false,
+        release_date: "2026-01-29",
       },
       "stepfun/step-3.7-flash": {
         id: "stepfun/step-3.7-flash",
@@ -5282,9 +8193,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 256000,
+          output: 230400,
         },
         structured_output: true,
+        release_date: "2026-05-29",
       },
       "tencent/hunyuan-a13b-instruct": {
         id: "tencent/hunyuan-a13b-instruct",
@@ -5296,9 +8208,55 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 117964,
         },
         structured_output: true,
+        release_date: "2025-07-08",
+      },
+      "tencent/hy-mt2-1.8b": {
+        id: "tencent/hy-mt2-1.8b",
+        name: "Hy-MT2-1.8B",
+        family: "Hy",
+        cost: {
+          input: 0.044,
+          output: 0.177,
+        },
+        limit: {
+          context: 8192,
+          output: 4096,
+        },
+        structured_output: false,
+        release_date: "2026-08-20",
+      },
+      "tencent/hy-mt2-30b-a3b": {
+        id: "tencent/hy-mt2-30b-a3b",
+        name: "Hy-MT2-30B-A3B",
+        family: "Hy",
+        cost: {
+          input: 0.074,
+          output: 0.295,
+        },
+        limit: {
+          context: 8192,
+          output: 4096,
+        },
+        structured_output: true,
+        release_date: "2026-08-20",
+      },
+      "tencent/hy-mt2-7b": {
+        id: "tencent/hy-mt2-7b",
+        name: "Hy-MT2-7B",
+        family: "Hy",
+        cost: {
+          input: 0.074,
+          output: 0.295,
+        },
+        limit: {
+          context: 8192,
+          output: 4096,
+        },
+        structured_output: true,
+        release_date: "2026-08-19",
       },
       "tencent/hy3": {
         id: "tencent/hy3",
@@ -5313,6 +8271,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-07-06",
       },
       "tencent/hy3-preview": {
         id: "tencent/hy3-preview",
@@ -5324,9 +8283,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 235929,
         },
         structured_output: false,
+        release_date: "2026-04-20",
       },
       "thedrummer/cydonia-24b-v4.1": {
         id: "thedrummer/cydonia-24b-v4.1",
@@ -5337,9 +8297,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 117964,
         },
         structured_output: true,
+        release_date: "2025-09-27",
       },
       "thedrummer/rocinante-12b": {
         id: "thedrummer/rocinante-12b",
@@ -5350,9 +8311,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 65536,
-          output: 65536,
+          output: 58982,
         },
         structured_output: true,
+        release_date: "2024-09-30",
       },
       "thedrummer/skyfall-36b-v2": {
         id: "thedrummer/skyfall-36b-v2",
@@ -5363,9 +8325,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 32768,
-          output: 32768,
+          output: 29491,
         },
         structured_output: true,
+        release_date: "2025-03-10",
       },
       "thedrummer/unslopnemo-12b": {
         id: "thedrummer/unslopnemo-12b",
@@ -5376,9 +8339,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 1024000,
-          output: 1024000,
+          output: 26214,
         },
         structured_output: true,
+        release_date: "2024-11-08",
       },
       "thinkingmachines/inkling": {
         id: "thinkingmachines/inkling",
@@ -5393,6 +8357,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 262144,
         },
         structured_output: false,
+        release_date: "2026-07-15",
       },
       "thinkingmachines/inkling-small": {
         id: "thinkingmachines/inkling-small",
@@ -5403,10 +8368,41 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 1.2,
         },
         limit: {
-          context: 524288,
+          context: 1048576,
           output: 262144,
         },
-        structured_output: true,
+        structured_output: false,
+        release_date: "2026-07-30",
+      },
+      "thinkingmachines/inkling-small:free": {
+        id: "thinkingmachines/inkling-small:free",
+        name: "Inkling Small (free)",
+        family: "ling",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 1048576,
+          output: 262144,
+        },
+        structured_output: false,
+        release_date: "2026-07-30",
+      },
+      "thinkingmachines/inkling:free": {
+        id: "thinkingmachines/inkling:free",
+        name: "Inkling (free)",
+        family: "ling",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 1048576,
+          output: 262144,
+        },
+        structured_output: false,
+        release_date: "2026-07-15",
       },
       "undi95/remm-slerp-l2-13b": {
         id: "undi95/remm-slerp-l2-13b",
@@ -5417,9 +8413,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 6144,
-          output: 6144,
+          output: 4096,
         },
         structured_output: true,
+        release_date: "2023-07-22",
       },
       "upstage/solar-pro-3": {
         id: "upstage/solar-pro-3",
@@ -5431,9 +8428,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 131072,
-          output: 131072,
+          output: 117964,
         },
         structured_output: true,
+        release_date: "2026-01-27",
       },
       "upstage/solar-pro4": {
         id: "upstage/solar-pro4",
@@ -5448,6 +8446,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-08-10",
       },
       "writer/palmyra-x5": {
         id: "writer/palmyra-x5",
@@ -5462,6 +8461,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 8192,
         },
         structured_output: false,
+        release_date: "2026-01-21",
       },
       "x-ai/grok-4.20": {
         id: "x-ai/grok-4.20",
@@ -5473,9 +8473,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 2000000,
-          output: 2000000,
+          output: 1800000,
         },
         structured_output: true,
+        release_date: "2026-03-31",
       },
       "x-ai/grok-4.20-multi-agent": {
         id: "x-ai/grok-4.20-multi-agent",
@@ -5487,9 +8488,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 2000000,
-          output: 2000000,
+          output: 1800000,
         },
         structured_output: true,
+        release_date: "2026-03-31",
       },
       "x-ai/grok-4.3": {
         id: "x-ai/grok-4.3",
@@ -5501,9 +8503,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 1000000,
-          output: 1000000,
+          output: 900000,
         },
         structured_output: true,
+        release_date: "2026-04-17",
       },
       "x-ai/grok-4.5": {
         id: "x-ai/grok-4.5",
@@ -5515,9 +8518,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 500000,
-          output: 500000,
+          output: 450000,
         },
         structured_output: true,
+        release_date: "2026-07-08",
       },
       "x-ai/grok-4.6": {
         id: "x-ai/grok-4.6",
@@ -5529,9 +8533,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 500000,
-          output: 500000,
+          output: 450000,
         },
         structured_output: true,
+        release_date: "2026-08-12",
       },
       "x-ai/grok-build-0.1": {
         id: "x-ai/grok-build-0.1",
@@ -5543,9 +8548,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 256000,
-          output: 256000,
+          output: 230400,
         },
         structured_output: true,
+        release_date: "2026-04-16",
       },
       "xiaomi/mimo-v2.5": {
         id: "xiaomi/mimo-v2.5",
@@ -5560,6 +8566,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-04-22",
       },
       "xiaomi/mimo-v2.5-pro": {
         id: "xiaomi/mimo-v2.5-pro",
@@ -5574,6 +8581,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-04-22",
       },
       "z-ai/glm-4.5": {
         id: "z-ai/glm-4.5",
@@ -5588,6 +8596,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 98304,
         },
         structured_output: false,
+        release_date: "2025-07-28",
       },
       "z-ai/glm-4.5-air": {
         id: "z-ai/glm-4.5-air",
@@ -5602,6 +8611,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 98304,
         },
         structured_output: false,
+        release_date: "2025-07-28",
       },
       "z-ai/glm-4.5v": {
         id: "z-ai/glm-4.5v",
@@ -5616,6 +8626,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: false,
+        release_date: "2025-08-11",
       },
       "z-ai/glm-4.6": {
         id: "z-ai/glm-4.6",
@@ -5630,6 +8641,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2025-09-30",
       },
       "z-ai/glm-4.6v": {
         id: "z-ai/glm-4.6v",
@@ -5644,6 +8656,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 32768,
         },
         structured_output: false,
+        release_date: "2025-12-08",
       },
       "z-ai/glm-4.7": {
         id: "z-ai/glm-4.7",
@@ -5658,6 +8671,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2025-12-22",
       },
       "z-ai/glm-4.7-flash": {
         id: "z-ai/glm-4.7-flash",
@@ -5672,6 +8686,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 16384,
         },
         structured_output: true,
+        release_date: "2026-01-19",
       },
       "z-ai/glm-5": {
         id: "z-ai/glm-5",
@@ -5686,6 +8701,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-02-12",
       },
       "z-ai/glm-5-turbo": {
         id: "z-ai/glm-5-turbo",
@@ -5700,34 +8716,37 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: false,
+        release_date: "2026-03-16",
       },
       "z-ai/glm-5.1": {
         id: "z-ai/glm-5.1",
         name: "GLM-5.1",
         family: "glm",
         cost: {
-          input: 0.966,
-          output: 3.036,
+          input: 1.26,
+          output: 3.96,
         },
         limit: {
           context: 204800,
-          output: 128000,
+          output: 182476,
         },
         structured_output: true,
+        release_date: "2026-04-07",
       },
       "z-ai/glm-5.2": {
         id: "z-ai/glm-5.2",
         name: "GLM-5.2",
         family: "glm",
         cost: {
-          input: 0.966,
-          output: 3.036,
+          input: 1.19,
+          output: 3.74,
         },
         limit: {
           context: 1048576,
-          output: 131072,
+          output: 262144,
         },
         structured_output: true,
+        release_date: "2026-06-13",
       },
       "z-ai/glm-5.2:free": {
         id: "z-ai/glm-5.2:free",
@@ -5739,9 +8758,10 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 256000,
-          output: 256000,
+          output: 230400,
         },
         structured_output: true,
+        release_date: "2026-06-13",
       },
       "z-ai/glm-5.3": {
         id: "z-ai/glm-5.3",
@@ -5756,6 +8776,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: false,
+        release_date: "2026-08-14",
       },
       "z-ai/glm-5v-turbo": {
         id: "z-ai/glm-5v-turbo",
@@ -5770,6 +8791,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: false,
+        release_date: "2026-04-01",
       },
       "~anthropic/claude-fable-latest": {
         id: "~anthropic/claude-fable-latest",
@@ -5784,6 +8806,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-06-09",
       },
       "~anthropic/claude-haiku-latest": {
         id: "~anthropic/claude-haiku-latest",
@@ -5798,6 +8821,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 64000,
         },
         structured_output: true,
+        release_date: "2026-04-27",
       },
       "~anthropic/claude-opus-latest": {
         id: "~anthropic/claude-opus-latest",
@@ -5812,6 +8836,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-04-21",
       },
       "~anthropic/claude-sonnet-latest": {
         id: "~anthropic/claude-sonnet-latest",
@@ -5826,20 +8851,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-04-27",
       },
       "~deepseek/deepseek-v4-flash-latest": {
         id: "~deepseek/deepseek-v4-flash-latest",
         name: "DeepSeek V4 Flash Latest",
         family: "deepseek",
         cost: {
-          input: 0.0765,
-          output: 0.153,
+          input: 0.03,
+          output: 0.075,
         },
         limit: {
           context: 1310720,
-          output: 262144,
+          output: 131072,
         },
         structured_output: true,
+        release_date: "2026-08-01",
       },
       "~google/gemini-flash-latest": {
         id: "~google/gemini-flash-latest",
@@ -5854,6 +8881,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-04-27",
       },
       "~google/gemini-pro-latest": {
         id: "~google/gemini-pro-latest",
@@ -5868,34 +8896,37 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+        release_date: "2026-04-27",
       },
       "~moonshotai/kimi-latest": {
         id: "~moonshotai/kimi-latest",
         name: "MoonshotAI Kimi Latest",
         family: "kimi",
         cost: {
-          input: 2.6,
-          output: 13,
+          input: 2.55,
+          output: 12.75,
         },
         limit: {
           context: 1048576,
-          output: 974842,
+          output: 943718,
         },
         structured_output: true,
+        release_date: "2026-04-27",
       },
       "~openai/gpt-latest": {
         id: "~openai/gpt-latest",
         name: "OpenAI GPT Latest",
         family: "gpt",
         cost: {
-          input: 2.5,
-          output: 15,
+          input: 2,
+          output: 10,
         },
         limit: {
           context: 1050000,
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-04-27",
       },
       "~openai/gpt-mini-latest": {
         id: "~openai/gpt-mini-latest",
@@ -5910,6 +8941,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         structured_output: true,
+        release_date: "2026-04-27",
       },
       "~x-ai/grok-latest": {
         id: "~x-ai/grok-latest",
@@ -5921,9 +8953,25 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 500000,
-          output: 1000000,
+          output: 450000,
         },
         structured_output: true,
+        release_date: "2026-07-08",
+      },
+      "~z-ai/glm-latest": {
+        id: "~z-ai/glm-latest",
+        name: "GLM Latest",
+        family: "glm",
+        cost: {
+          input: 1.4,
+          output: 4.4,
+        },
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: false,
+        release_date: "2026-08-19",
       },
     },
   },
@@ -5945,6 +8993,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 131072,
           output: 98304,
         },
+        release_date: "2025-07-28",
       },
       "glm-4.5-air": {
         id: "glm-4.5-air",
@@ -5958,6 +9007,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 131072,
           output: 98304,
         },
+        release_date: "2025-07-28",
       },
       "glm-4.5-flash": {
         id: "glm-4.5-flash",
@@ -5971,6 +9021,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 131072,
           output: 98304,
         },
+        release_date: "2025-07-28",
       },
       "glm-4.5v": {
         id: "glm-4.5v",
@@ -5984,6 +9035,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 64000,
           output: 16384,
         },
+        release_date: "2025-08-11",
       },
       "glm-4.6": {
         id: "glm-4.6",
@@ -5997,6 +9049,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 204800,
           output: 131072,
         },
+        release_date: "2025-09-30",
       },
       "glm-4.6v": {
         id: "glm-4.6v",
@@ -6010,6 +9063,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 128000,
           output: 32768,
         },
+        release_date: "2025-12-08",
       },
       "glm-4.7": {
         id: "glm-4.7",
@@ -6023,6 +9077,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 204800,
           output: 131072,
         },
+        release_date: "2025-12-22",
       },
       "glm-4.7-flash": {
         id: "glm-4.7-flash",
@@ -6036,6 +9091,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 200000,
           output: 131072,
         },
+        release_date: "2026-01-19",
       },
       "glm-4.7-flashx": {
         id: "glm-4.7-flashx",
@@ -6049,6 +9105,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 200000,
           output: 131072,
         },
+        release_date: "2026-01-19",
       },
       "glm-5": {
         id: "glm-5",
@@ -6062,6 +9119,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 204800,
           output: 131072,
         },
+        release_date: "2026-02-12",
       },
       "glm-5-turbo": {
         id: "glm-5-turbo",
@@ -6076,6 +9134,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-03-16",
       },
       "glm-5.1": {
         id: "glm-5.1",
@@ -6090,6 +9149,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-04-07",
       },
       "glm-5.2": {
         id: "glm-5.2",
@@ -6104,6 +9164,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 131072,
         },
         structured_output: true,
+        release_date: "2026-06-13",
+      },
+      "glm-5.3": {
+        id: "glm-5.3",
+        name: "GLM-5.3",
+        family: "glm",
+        cost: {
+          input: 1.4,
+          output: 4.4,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-14",
       },
       "glm-5v-turbo": {
         id: "glm-5v-turbo",
@@ -6117,6 +9193,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 200000,
           output: 131072,
         },
+        release_date: "2026-04-01",
       },
     },
   },

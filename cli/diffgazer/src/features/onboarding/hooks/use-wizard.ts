@@ -16,10 +16,8 @@ import { warnToTerminal } from "../../../lib/report-to-terminal";
 type FocusArea = "step" | "nav";
 type WizardFocusZone = "step" | "nav" | "api-key-method" | "api-key-input";
 
-// Only the hosted credential step renders a method selector; local families
-// show explanatory copy with no control, so they must not add a focus stop.
-function getStepFocusZone(step: OnboardingStep, hasCredentialControls: boolean): WizardFocusZone {
-  return step === "authentication" && hasCredentialControls ? "api-key-method" : "step";
+function getStepFocusZone(step: OnboardingStep): WizardFocusZone {
+  return step === "authentication" ? "api-key-method" : "step";
 }
 
 function reportCleanupError(message: string): void {
@@ -58,9 +56,7 @@ export function useOnboardingWizard() {
 
   const wizardData = wizard.wizardData;
   const configurationInput = wizardData.configurationInput;
-  const hostedCredential =
-    configurationInput.transportFamily === "hosted-api" ? configurationInput.credential : undefined;
-  const hasCredentialControls = configurationInput.transportFamily === "hosted-api";
+  const hostedCredential = configurationInput.credential;
   const effectiveInputMethod = inputMethodFromCredential(hostedCredential);
   const effectiveApiKey =
     hostedCredential?.kind === "literal" ? hostedCredential.value : apiKeyDraft;
@@ -70,7 +66,6 @@ export function useOnboardingWizard() {
   const apiKeyInputFocused = focusZone === "api-key-input";
 
   function syncCredentialDraft(method: InputMethod, apiKey: string) {
-    if (configurationInput.transportFamily !== "hosted-api") return;
     wizard.updateData({
       configurationInput: {
         ...configurationInput,
@@ -104,7 +99,7 @@ export function useOnboardingWizard() {
   }
 
   function enterStep(step: OnboardingStep | undefined) {
-    setFocusZone(step ? getStepFocusZone(step, hasCredentialControls) : "step");
+    setFocusZone(step ? getStepFocusZone(step) : "step");
     setNavIndex(0);
     // The model step reads models back from a persisted record, so the draft
     // tuple is committed as the user arrives rather than invented client-side.
@@ -130,14 +125,12 @@ export function useOnboardingWizard() {
   }
 
   function toggleFocusArea() {
-    setFocusZone((current) =>
-      current === "nav" ? getStepFocusZone(wizard.currentStep, hasCredentialControls) : "nav",
-    );
+    setFocusZone((current) => (current === "nav" ? getStepFocusZone(wizard.currentStep) : "nav"));
     setNavIndex(0);
   }
 
   function cycleFocusZone() {
-    if (wizard.currentStep !== "authentication" || !hasCredentialControls) {
+    if (wizard.currentStep !== "authentication") {
       toggleFocusArea();
       return;
     }

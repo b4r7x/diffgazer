@@ -1,8 +1,4 @@
-import {
-  canProceed,
-  getInitialWizardData,
-  type OnboardingConfigurationDraft,
-} from "@diffgazer/core/onboarding";
+import { getInitialWizardData } from "@diffgazer/core/onboarding";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -14,9 +10,6 @@ describe("ApiKeyStep", () => {
   it("collects a write-only hosted credential without exposing env-var names", async () => {
     const user = userEvent.setup();
     const hosted = getInitialWizardData("gemini");
-    if (hosted.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted configuration");
-    }
 
     function ControlledStep() {
       const [configurationInput, setConfigurationInput] = useState(hosted.configurationInput);
@@ -38,45 +31,10 @@ describe("ApiKeyStep", () => {
     expect(input).toHaveAttribute("autocomplete", "off");
   });
 
-  it("does not render hosted credential controls for local HTTP setup", () => {
-    const local = getInitialWizardData("local-openai");
-    render(<ApiKeyStep configurationInput={local.configurationInput} onChange={vi.fn()} />);
-
-    expect(screen.getByText(/without storing hosted credentials/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/credential/i)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/api key/i)).not.toBeInTheDocument();
-  });
-
-  it("does not render hosted credential controls for local CLI setup", () => {
-    const localCli = getInitialWizardData("codex-cli");
-    render(<ApiKeyStep configurationInput={localCli.configurationInput} onChange={vi.fn()} />);
-
-    expect(screen.getByText(/without storing hosted credentials/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/credential/i)).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/OpenAI Codex CLI installation ID/i)).toBeInTheDocument();
-  });
-
-  it("focuses the bearer checkbox when the local HTTP step becomes active", () => {
-    const local = getInitialWizardData("local-openai");
-    render(<ApiKeyStep configurationInput={local.configurationInput} onChange={vi.fn()} />);
-
-    expect(screen.getByRole("checkbox", { name: /bearer token/i })).toHaveFocus();
-  });
-
-  it("focuses the installation input when the local CLI step becomes active", () => {
-    const localCli = getInitialWizardData("codex-cli");
-    render(<ApiKeyStep configurationInput={localCli.configurationInput} onChange={vi.fn()} />);
-
-    expect(screen.getByLabelText(/OpenAI Codex CLI installation ID/i)).toHaveFocus();
-  });
-
   it("commits environment references without retaining a typed secret", async () => {
     const user = userEvent.setup();
     const onCommit = vi.fn();
     const hosted = getInitialWizardData("gemini");
-    if (hosted.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted configuration");
-    }
 
     function ControlledStep() {
       const [configurationInput, setConfigurationInput] = useState(hosted.configurationInput);
@@ -100,9 +58,6 @@ describe("ApiKeyStep", () => {
 
   it("focuses the selected method when the step becomes active", () => {
     const hosted = getInitialWizardData("gemini");
-    if (hosted.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted configuration");
-    }
 
     render(
       <KeyboardProvider>
@@ -116,9 +71,6 @@ describe("ApiKeyStep", () => {
   it("moves DOM focus with the visible highlight through the credential zone", async () => {
     const user = userEvent.setup();
     const hosted = getInitialWizardData("gemini");
-    if (hosted.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted configuration");
-    }
 
     function ControlledStep() {
       const [configurationInput, setConfigurationInput] = useState(hosted.configurationInput);
@@ -157,9 +109,6 @@ describe("ApiKeyStep", () => {
     const user = userEvent.setup();
     const onBoundaryReached = vi.fn();
     const hosted = getInitialWizardData("gemini");
-    if (hosted.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted configuration");
-    }
 
     render(
       <KeyboardProvider>
@@ -186,9 +135,6 @@ describe("ApiKeyStep", () => {
     const user = userEvent.setup();
     const onBoundaryReached = vi.fn();
     const hosted = getInitialWizardData("gemini");
-    if (hosted.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted configuration");
-    }
 
     render(
       <KeyboardProvider>
@@ -206,83 +152,10 @@ describe("ApiKeyStep", () => {
     expect(onBoundaryReached).toHaveBeenCalledWith("down");
   });
 
-  it("reports the down boundary from the local bearer token field", async () => {
-    const user = userEvent.setup();
-    const onBoundaryReached = vi.fn();
-    const local = getInitialWizardData("local-openai");
-    if (local.configurationInput.transportFamily !== "local-http") {
-      throw new Error("Expected local HTTP configuration");
-    }
-
-    function ControlledStep() {
-      const [configurationInput, setConfigurationInput] = useState(local.configurationInput);
-      return (
-        <KeyboardProvider>
-          <ApiKeyStep
-            configurationInput={configurationInput}
-            onChange={setConfigurationInput}
-            onBoundaryReached={onBoundaryReached}
-          />
-        </KeyboardProvider>
-      );
-    }
-
-    render(<ControlledStep />);
-    await user.click(screen.getByRole("checkbox", { name: /bearer token/i }));
-    const token = await screen.findByLabelText("Local bearer token");
-    token.focus();
-    await user.keyboard("{ArrowDown}");
-
-    expect(onBoundaryReached).toHaveBeenCalledWith("down");
-  });
-
-  it("walks the arrow path through the local bearer token field", async () => {
-    const user = userEvent.setup();
-    const onBoundaryReached = vi.fn();
-    const local = getInitialWizardData("local-openai");
-    if (local.configurationInput.transportFamily !== "local-http") {
-      throw new Error("Expected local HTTP configuration");
-    }
-
-    function ControlledStep() {
-      const [configurationInput, setConfigurationInput] = useState(local.configurationInput);
-      return (
-        <KeyboardProvider>
-          <ApiKeyStep
-            configurationInput={configurationInput}
-            onChange={setConfigurationInput}
-            onBoundaryReached={onBoundaryReached}
-          />
-        </KeyboardProvider>
-      );
-    }
-
-    render(<ControlledStep />);
-    const checkbox = screen.getByRole("checkbox", { name: /bearer token/i });
-    await user.click(checkbox);
-
-    const token = screen.getByLabelText("Local bearer token");
-    checkbox.focus();
-    await user.keyboard("{ArrowDown}");
-    expect(token).toHaveFocus();
-    expect(onBoundaryReached).not.toHaveBeenCalled();
-
-    await user.keyboard("{ArrowUp}");
-    expect(checkbox).toHaveFocus();
-
-    await user.keyboard("{ArrowDown}");
-    expect(token).toHaveFocus();
-    await user.keyboard("{ArrowDown}");
-    expect(onBoundaryReached).toHaveBeenCalledWith("down");
-  });
-
   it("keeps horizontal arrows in the credential method group from reaching the footer", async () => {
     const user = userEvent.setup();
     const onBoundaryReached = vi.fn();
     const hosted = getInitialWizardData("gemini");
-    if (hosted.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted configuration");
-    }
 
     render(
       <KeyboardProvider>
@@ -306,9 +179,6 @@ describe("ApiKeyStep", () => {
 
   it("shows no credential highlight while the footer owns the step", () => {
     const hosted = getInitialWizardData("gemini");
-    if (hosted.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted configuration");
-    }
 
     render(
       <KeyboardProvider>
@@ -326,112 +196,5 @@ describe("ApiKeyStep", () => {
     expect(screen.getByRole("radio", { name: "Use environment reference" })).not.toHaveAttribute(
       "data-highlighted",
     );
-  });
-
-  it("offers the optional local bearer the setup plan advertises", async () => {
-    const user = userEvent.setup();
-    const local = getInitialWizardData("local-openai");
-    if (local.configurationInput.transportFamily !== "local-http") {
-      throw new Error("Expected local HTTP configuration");
-    }
-
-    function ControlledStep() {
-      const [configurationInput, setConfigurationInput] = useState(local.configurationInput);
-      return (
-        <KeyboardProvider>
-          <ApiKeyStep configurationInput={configurationInput} onChange={setConfigurationInput} />
-        </KeyboardProvider>
-      );
-    }
-
-    render(<ControlledStep />);
-
-    expect(screen.queryByLabelText("Local bearer token")).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("checkbox", { name: /bearer token/i }));
-
-    const token = screen.getByLabelText("Local bearer token");
-    await user.type(token, "local-secret");
-    expect(token).toHaveValue("local-secret");
-    expect(token).toHaveAttribute("autocomplete", "off");
-  });
-
-  it("blocks authentication until a bearer token is entered when optional bearer is enabled", async () => {
-    const user = userEvent.setup();
-    const local = getInitialWizardData("local-openai");
-    if (local.configurationInput.transportFamily !== "local-http") {
-      throw new Error("Expected local HTTP configuration");
-    }
-
-    function ControlledStep() {
-      const [configurationInput, setConfigurationInput] = useState(local.configurationInput);
-      return (
-        <KeyboardProvider>
-          <ApiKeyStep configurationInput={configurationInput} onChange={setConfigurationInput} />
-        </KeyboardProvider>
-      );
-    }
-
-    render(<ControlledStep />);
-    await user.click(screen.getByRole("checkbox", { name: /bearer token/i }));
-
-    const withoutToken = {
-      ...local,
-      configurationInput: {
-        ...local.configurationInput,
-        authentication: "optional-local-bearer" as const,
-      },
-    };
-    expect(canProceed("authentication", withoutToken)).toBe(false);
-
-    await user.type(screen.getByLabelText("Local bearer token"), "write-only-bearer");
-    const withToken = {
-      ...withoutToken,
-      configurationInput: {
-        ...withoutToken.configurationInput,
-        bearerToken: { kind: "literal" as const, value: "write-only-bearer" },
-      },
-    };
-    expect(canProceed("authentication", withToken)).toBe(true);
-  });
-
-  it("drops bearer input when optional bearer is unchecked", async () => {
-    const user = userEvent.setup();
-    const local = getInitialWizardData("local-openai");
-    if (local.configurationInput.transportFamily !== "local-http") {
-      throw new Error("Expected local HTTP configuration");
-    }
-
-    const initialInput = local.configurationInput;
-    if (initialInput.transportFamily !== "local-http") {
-      throw new Error("Expected local HTTP configuration");
-    }
-
-    function ControlledStep() {
-      const [configurationInput, setConfigurationInput] = useState<OnboardingConfigurationDraft>({
-        ...initialInput,
-        authentication: "optional-local-bearer",
-        bearerToken: { kind: "literal", value: "write-only-bearer" },
-      });
-      return (
-        <KeyboardProvider>
-          <ApiKeyStep configurationInput={configurationInput} onChange={setConfigurationInput} />
-        </KeyboardProvider>
-      );
-    }
-
-    render(<ControlledStep />);
-    await user.click(screen.getByRole("checkbox", { name: /bearer token/i }));
-
-    expect(screen.queryByLabelText("Local bearer token")).not.toBeInTheDocument();
-    expect(
-      canProceed("authentication", {
-        ...local,
-        configurationInput: {
-          ...local.configurationInput,
-          authentication: "none",
-        },
-      }),
-    ).toBe(true);
   });
 });

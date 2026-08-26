@@ -47,6 +47,46 @@ describe("ReviewCompleteSummary", () => {
     expect(screen.getByRole("cell", { name: "Performance" })).toBeVisible();
   });
 
+  it("frames a partial run in the warning tone, never success-green", () => {
+    render(
+      <ReviewCompleteSummary
+        stats={{ runId: "run-1", totalIssues: 2, filesWithIssues: 1, blockerCount: 0 }}
+        severityCounts={{ blocker: 0, high: 0, medium: 2, low: 0, nit: 0 }}
+        categoryStats={[]}
+        topIssues={[]}
+        lensStats={[
+          { lensId: "correctness", issueCount: 2, status: "success" },
+          { lensId: "security", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
+        ]}
+      />,
+    );
+
+    // The Panel's rendered tone attribute is the documented contract: the frame
+    // must agree with the "Partially Complete" headline instead of painting a
+    // pass.
+    expect(screen.getByRole("region", { name: "Run status" })).toHaveAttribute(
+      "data-tone",
+      "warning",
+    );
+  });
+
+  it("keeps the success frame for a fully reported run", () => {
+    render(
+      <ReviewCompleteSummary
+        stats={{ runId: "run-1", totalIssues: 1, filesWithIssues: 1, blockerCount: 0 }}
+        severityCounts={{ blocker: 0, high: 1, medium: 0, low: 0, nit: 0 }}
+        categoryStats={[]}
+        topIssues={[]}
+        lensStats={[{ lensId: "correctness", issueCount: 1, status: "success" }]}
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "Run status" })).toHaveAttribute(
+      "data-tone",
+      "success",
+    );
+  });
+
   it("names the run status and top issues panels for assistive tech", () => {
     render(
       <ReviewCompleteSummary

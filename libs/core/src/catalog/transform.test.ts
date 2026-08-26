@@ -11,6 +11,7 @@ import {
   type CatalogModelObservation,
   isOfferableObservation,
   transformCatalogObservation,
+  withholdsDeclaredStructuredOutputRefusal,
 } from "./transform.js";
 
 const CHECKED_AT = "2026-07-31T12:00:00.000Z";
@@ -33,10 +34,12 @@ describe("transformCatalogObservation", () => {
       "gemini",
       "zai",
       "openrouter",
-      "groq",
-      "cerebras",
       "deepseek",
+      "qwen",
+      "moonshot",
+      "minimax",
       "ollama-cloud",
+      "opencode-zen",
     ]);
 
     for (const observation of observations) {
@@ -62,6 +65,7 @@ describe("transformCatalogObservation", () => {
               "modelId",
               "modelName",
               "outputTokens",
+              "releaseDate",
               "sourceProviderId",
               "structuredOutput",
             ].includes(key),
@@ -166,8 +170,8 @@ describe("transformCatalogObservation", () => {
 
   it("treats non-positive token limits as absent instead of forwarding them", () => {
     const observations = transform({
-      groq: {
-        id: "groq",
+      google: {
+        id: "google",
         models: {
           "whisper-large-v3": {
             id: "whisper-large-v3",
@@ -183,12 +187,12 @@ describe("transformCatalogObservation", () => {
       },
     });
 
-    const groq = observations.find(({ productId }) => productId === "groq");
-    expect(groq?.models).toEqual([
+    const gemini = observations.find(({ productId }) => productId === "gemini");
+    expect(gemini?.models).toEqual([
       {
         modelId: "llama-3.3-70b-versatile",
         modelName: "Llama 3.3 70B Versatile",
-        sourceProviderId: "groq",
+        sourceProviderId: "google",
         billing: "unknown",
         contextTokens: 131072,
         outputTokens: 32768,
@@ -196,7 +200,7 @@ describe("transformCatalogObservation", () => {
       {
         modelId: "whisper-large-v3",
         modelName: "Whisper Large V3",
-        sourceProviderId: "groq",
+        sourceProviderId: "google",
         billing: "unknown",
       },
     ]);
@@ -237,6 +241,7 @@ describe("transformCatalogObservation", () => {
     expect(byId.get("gemini-2.5-flash")).toMatchObject({
       structuredOutput: true,
       billing: "paid",
+      releaseDate: "2025-03-20",
     });
     // Zero-priced upstream with no structured-output declaration: the
     // observation states neither true nor false rather than guessing.
@@ -338,6 +343,105 @@ describe("transformCatalogObservation", () => {
     expect(zai?.models[0] && isOfferableObservation("zai", zai.models[0])).toBe(true);
   });
 
+  // OpenRouter is strict-json-schema too, but every route is pinned and the
+  // gateway drops an unsupported response_format instead of rejecting the
+  // request; local validation is the quality gate there, so a declared
+  // refusal must not hide the route from the picker.
+  it("offers a declared structured-output refusal on a pinned-downstream-route product", () => {
+    const observations = transform(
+      parseModelsDevCatalog({
+        openrouter: {
+          id: "openrouter",
+          models: {
+            "stealth/ox-alpha": {
+              id: "stealth/ox-alpha",
+              name: "Ox Alpha",
+              cost: { input: 0, output: 0 },
+              structured_output: false,
+            },
+          },
+        },
+      }),
+    );
+
+    const openrouter = observations.find(({ productId }) => productId === "openrouter");
+    const oxAlpha = openrouter?.models.find(
+      ({ modelId }) => String(modelId) === "stealth/ox-alpha",
+    );
+    expect(PRODUCT_REGISTRY.openrouter.admission.structuredOutput).toBe("strict-json-schema");
+    expect(oxAlpha).toMatchObject({ structuredOutput: false, billing: "free" });
+    expect(oxAlpha && isOfferableObservation("openrouter", oxAlpha)).toBe(true);
+  });
+
+  // OpenCode Zen unions two models.dev sources (`opencode`, `opencode-go`)
+  // whose catalogs overlap: the first source's row must win an overlapping id
+  // so the Zen pay-as-you-go price — the default endpoint's price — is the one
+  // the picker shows, while ids only one source knows still union in.
+  it("keeps the first source's observation when overlay sources share a model id", () => {
+    const observations = transform(
+      parseModelsDevCatalog({
+        opencode: {
+          id: "opencode",
+          models: {
+            "deepseek-v4-flash": {
+              id: "deepseek-v4-flash",
+              name: "DeepSeek V4 Flash",
+              cost: { input: 0.14, output: 0.28 },
+            },
+            "big-pickle": {
+              id: "big-pickle",
+              name: "Big Pickle",
+              cost: { input: 0, output: 0 },
+            },
+          },
+        },
+        "opencode-go": {
+          id: "opencode-go",
+          models: {
+            "deepseek-v4-flash": {
+              id: "deepseek-v4-flash",
+              name: "DeepSeek V4 Flash",
+              cost: { input: 0.22, output: 0.66 },
+            },
+            "glm-5.3": {
+              id: "glm-5.3",
+              name: "GLM 5.3",
+              cost: { input: 0.6, output: 2.2 },
+            },
+          },
+        },
+      }),
+    );
+
+    const zen = observations.find(({ productId }) => productId === "opencode-zen");
+    expect(zen?.models).toEqual([
+      {
+        modelId: "big-pickle",
+        modelName: "Big Pickle",
+        sourceProviderId: "opencode",
+        billing: "free",
+      },
+      {
+        modelId: "deepseek-v4-flash",
+        modelName: "DeepSeek V4 Flash",
+        sourceProviderId: "opencode",
+        billing: "paid",
+      },
+      {
+        modelId: "glm-5.3",
+        modelName: "GLM 5.3",
+        sourceProviderId: "opencode-go",
+        billing: "paid",
+      },
+    ]);
+  });
+
+  it("withholds declared refusals only for strict-schema products without pinned routes", () => {
+    expect(withholdsDeclaredStructuredOutputRefusal("gemini")).toBe(true);
+    expect(withholdsDeclaredStructuredOutputRefusal("openrouter")).toBe(false);
+    expect(withholdsDeclaredStructuredOutputRefusal("zai")).toBe(false);
+  });
+
   it("never observes a model that cannot emit text even when it declares structured output", () => {
     const observations = transform(
       parseModelsDevCatalog({
@@ -350,10 +454,23 @@ describe("transformCatalogObservation", () => {
               structured_output: true,
               modalities: { output: ["audio"] },
             },
+            // Image-generation model: text rides along in the output, but no
+            // structured-output claim backs a schema-constrained review.
             "text-and-image": {
               id: "text-and-image",
               name: "Text and image",
               modalities: { output: ["text", "image"] },
+            },
+            "text-and-image-structured": {
+              id: "text-and-image-structured",
+              name: "Text and image, structured",
+              structured_output: true,
+              modalities: { output: ["text", "image"] },
+            },
+            "text-only": {
+              id: "text-only",
+              name: "Text only",
+              modalities: { output: ["text"] },
             },
           },
         },
@@ -361,7 +478,10 @@ describe("transformCatalogObservation", () => {
     );
 
     const gemini = observations.find(({ productId }) => productId === "gemini");
-    expect(gemini?.models.map(({ modelId }) => String(modelId))).toEqual(["text-and-image"]);
+    expect(gemini?.models.map(({ modelId }) => String(modelId))).toEqual([
+      "text-and-image-structured",
+      "text-only",
+    ]);
   });
 
   it("admits only a parsed model ID into an observation, never a bare string", () => {
@@ -379,7 +499,7 @@ describe("transformCatalogObservation", () => {
   it("keeps excluded identities out of the shared fixture", () => {
     const providerIds = Object.keys(RAW_CATALOG);
 
-    expect(providerIds).toEqual(["google", "zai", "groq", "cerebras", "openrouter", "deepseek"]);
+    expect(providerIds).toEqual(["google", "zai", "openrouter"]);
     expect(providerIds).not.toContain("github-models");
     for (const candidateId of Object.keys(CANDIDATE_VERDICTS)) {
       expect(providerIds, candidateId).not.toContain(candidateId);

@@ -452,7 +452,7 @@ describe("configuration catalog model discovery", () => {
   });
 
   async function seedHostedConfiguration(
-    productId: "zai" | "deepseek" = "zai",
+    productId: "zai" | "openrouter" = "zai",
     endpoint = "https://api.z.ai/api/paas/v4",
   ) {
     const service = await loadService();
@@ -475,14 +475,14 @@ describe("configuration catalog model discovery", () => {
 
   it("returns product-filtered catalog models for a supported configuration", async () => {
     const { service, configurationId } = await seedHostedConfiguration(
-      "deepseek",
-      "https://api.deepseek.com/v1",
+      "openrouter",
+      "https://openrouter.ai/api/v1",
     );
     catalog.discoverConfigurationCatalog.mockImplementation(
       async (tuple: { configurationId: string; productId: string }) => ({
         ...tuple,
         status: "passed",
-        models: [catalogModel("deepseek-v4-flash"), catalogModel("deepseek-chat")],
+        models: [catalogModel("openai/gpt-4.1-mini"), catalogModel("openrouter/auto")],
         fetchedAt: discoveredAt,
         source: "snapshot",
         cached: false,
@@ -497,17 +497,17 @@ describe("configuration catalog model discovery", () => {
     expect(result.value).toMatchObject({
       status: "passed",
       configurationId,
-      productId: "deepseek",
+      productId: "openrouter",
       transportFamily: "hosted-api",
       checkedAt: discoveredAt,
       source: "snapshot",
       cached: false,
     });
     if (result.value.status !== "passed") return;
-    expect(result.value.models.map(({ id }) => id)).toEqual(["deepseek-v4-flash"]);
+    expect(result.value.models.map(({ id }) => id)).toEqual(["openai/gpt-4.1-mini"]);
     expect(catalog.discoverConfigurationCatalog).toHaveBeenCalledWith({
       configurationId,
-      productId: "deepseek",
+      productId: "openrouter",
     });
   });
 
@@ -518,7 +518,8 @@ describe("configuration catalog model discovery", () => {
         ...tuple,
         status: "skipped",
         models: [],
-        reason: "Catalog observations are unavailable for this configuration product.",
+        reason:
+          "The catalog lists no model this product's model policy admits. Configure a different provider to run reviews.",
         checkedAt: discoveredAt,
       }),
     );
@@ -532,7 +533,8 @@ describe("configuration catalog model discovery", () => {
       configurationId,
       models: [],
       checkedAt: discoveredAt,
-      reason: "Catalog observations are unavailable for this configuration product.",
+      reason:
+        "The catalog lists no model this product's model policy admits. Configure a different provider to run reviews.",
     });
   });
 

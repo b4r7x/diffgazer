@@ -189,8 +189,8 @@ const REDACTION_CASES = [
   {
     category: "argv",
     secret: "argv-flag-secret-9a",
-    stdout: "codex exec --api-key argv-flag-secret-9a --model gpt-5",
-    stderr: "copilot -p argv-flag-secret-9a --output-format=json",
+    stdout: "node exec --api-key argv-flag-secret-9a --model gpt-5",
+    stderr: "bash -p argv-flag-secret-9a --output-format=json",
     network: "--token argv-flag-secret-9a",
     parser: "--secret argv-flag-secret-9a",
     sensitive: undefined,

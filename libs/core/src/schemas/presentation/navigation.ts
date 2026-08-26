@@ -3,6 +3,7 @@ import { PROVIDER_CONSENT_NOTICE } from "../config/settings.js";
 export type MenuAction =
   | "review-unstaged"
   | "review-staged"
+  | "review-files"
   | "resume-review"
   | "history"
   | "settings"
@@ -41,6 +42,7 @@ interface SettingsMenuItem {
 export const MENU_ITEMS: NavItem[] = [
   { id: "review-unstaged", label: "Review Unstaged", shortcut: "r", group: "review" },
   { id: "review-staged", label: "Review Staged", shortcut: "R", group: "review" },
+  { id: "review-files", label: "Review Specific Files", shortcut: "f", group: "review" },
   { id: "resume-review", label: "Resume Last Review", shortcut: "l", group: "review" },
   { id: "history", label: "History", shortcut: "h", group: "navigation" },
   { id: "settings", label: "Settings", shortcut: "s", group: "navigation" },

@@ -104,8 +104,11 @@ export function ContextSidebar({
           ariaLabel="Choose files to review"
         >
           <div className="flex items-center justify-between gap-2">
+            {/* Named for what a run can actually read: the server reviews one
+                diff at a time (unstaged or staged) — there is no "all changes"
+                mode for this row to promise. */}
             <span className="truncate">
-              {onChooseFiles ? "All changes — choose files" : "All changes"}
+              {onChooseFiles ? "Unstaged or staged — choose files" : "Unstaged or staged"}
             </span>
             {onChooseFiles ? (
               <span

@@ -80,7 +80,7 @@ export function areShortcutsEqual(a: Shortcut[], b: Shortcut[]): boolean {
 }
 
 // "Navigate"/"Select"/"Quit" matches the rest of the keyboard model
-// (`j/k Navigate` in review, `Enter Select` everywhere else). Both web and CLI
+// (`↑/↓ Navigate` in review, `Enter Select` everywhere else). Both web and CLI
 // consume this single constant.
 export const MAIN_MENU_SHORTCUTS: Shortcut[] = [
   { key: "↑/↓", label: "Navigate" },
@@ -134,6 +134,7 @@ export const HELP_SHORTCUTS: ContextualShortcut[] = [
   { key: "j/k", label: "Move the highlight", context: "list" },
   { key: "r", label: "Review Unstaged", context: "home" },
   { key: "R", label: "Review Staged", context: "home" },
+  { key: "f", label: "Review Specific Files", context: "home" },
   { key: "l", label: "Resume Last Review", context: "home" },
   { key: "m", label: "Change model", context: "providers" },
   { key: "e", label: "Update configuration", context: "providers" },

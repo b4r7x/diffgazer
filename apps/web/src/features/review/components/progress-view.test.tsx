@@ -1679,7 +1679,7 @@ describe("ReviewProgressView elapsed clock", () => {
       act(() => vi.advanceTimersByTime(600));
 
       expect(screen.getByText("00:46")).toBeVisible();
-      expect(screen.getByText(/waiting for model response · 46\.5s$/)).toBeVisible();
+      expect(screen.getByText(/waiting for model response · 46s$/)).toBeVisible();
     } finally {
       vi.useRealTimers();
     }

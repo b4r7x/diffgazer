@@ -38,6 +38,9 @@ export function createHomeMenuAction({
       case "start-review":
         requireProviderConsent(() => navigate({ screen: "review", mode: decision.mode }));
         return;
+      case "pick-files":
+        navigate({ screen: "review", pickFiles: true });
+        return;
       case "resume":
         if (!activeSession) return;
         navigate({

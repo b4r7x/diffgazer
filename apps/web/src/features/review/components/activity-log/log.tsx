@@ -4,6 +4,7 @@ import { hasModifierKey } from "@diffgazer/keys";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { groupFileRowWindow } from "../../lib/file-row-groups";
 import {
   convertEventRowWindow,
   deriveEventRowIndex,
@@ -16,6 +17,7 @@ import {
 import { ActivityLogAnnouncement } from "./announcement";
 import { LogEntry } from "./entry";
 import { buildTailStatus, LiveTailRow } from "./live-tail-row";
+import { NewEntriesRow } from "./new-entries-row";
 
 export interface ActivityLogProps extends React.HTMLAttributes<HTMLDivElement> {
   events: readonly ReviewEvent[];
@@ -42,7 +44,15 @@ export interface ActivityLogProps extends React.HTMLAttributes<HTMLDivElement> {
 interface LogWindowState {
   cacheRevision: number;
   endRow: number;
-  isNearBottom: boolean;
+  /** Rows seen up to here; arrivals beyond it feed the new-entries affordance. */
+  lastSeenEnd: number;
+  /**
+   * Following the live tail. Set true only by user gestures (scrolling to the
+   * true bottom, End, the new-entries affordance, a filter switch) and on
+   * mount; window arithmetic never pins, so arrivals cannot steal the scroll
+   * position from a reader who is back in the history.
+   */
+  pinned: boolean;
   sourceFilter: string | undefined;
 }
 
@@ -52,6 +62,22 @@ interface ScrollWindowAnchor {
   entryId: string;
   pixelOffset: number;
   row: number;
+}
+
+// A programmatic scrollTop write echoes back as a scroll event that carries no
+// user intent; the flag lets handleScroll tell the echo from a gesture. Only a
+// write that actually moved the container echoes (a clamped or equal write
+// fires no event), so the flag arms on the observed change.
+function writeScrollTop(
+  programmaticScrollRef: { current: boolean },
+  container: HTMLElement,
+  scrollTop: number,
+) {
+  const before = container.scrollTop;
+  container.scrollTop = scrollTop;
+  if (container.scrollTop !== before) {
+    programmaticScrollRef.current = true;
+  }
 }
 
 export function ActivityLog({
@@ -68,6 +94,7 @@ export function ActivityLog({
   ...props
 }: ActivityLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const programmaticScrollRef = useRef(false);
   const pendingScrollAlignmentRef = useRef<ScrollAlignment | null>(null);
   const pendingWindowAnchorRef = useRef<ScrollWindowAnchor | null>(null);
   const committedRowIndexRef = useRef<EventRowIndex | null>(null);
@@ -87,20 +114,37 @@ export function ActivityLog({
   const [windowState, setWindowState] = useState<LogWindowState>(() => ({
     cacheRevision,
     endRow: rowBounds.end,
-    isNearBottom: true,
+    lastSeenEnd: rowBounds.end,
+    pinned: true,
     sourceFilter: normalizedSourceFilter,
   }));
-  const isCurrentWindow =
-    windowState.cacheRevision === cacheRevision &&
-    windowState.sourceFilter === normalizedSourceFilter;
-  const shouldRenderTail = !isCurrentWindow || windowState.isNearBottom;
-  const windowEnd = shouldRenderTail
+
+  // Render-time adjustment for a stale window (the React "information from
+  // previous renders" pattern): a filter switch is a view change and lands the
+  // reader on the live end, following; a replaced event array is a new stream
+  // (reconnect or a new run) in which the old reading position is meaningless,
+  // so it deliberately re-pins to the live end as well.
+  if (
+    windowState.sourceFilter !== normalizedSourceFilter ||
+    windowState.cacheRevision !== cacheRevision
+  ) {
+    pendingScrollAlignmentRef.current = "end";
+    setWindowState({
+      cacheRevision,
+      endRow: rowBounds.end,
+      lastSeenEnd: rowBounds.end,
+      pinned: true,
+      sourceFilter: normalizedSourceFilter,
+    });
+  }
+
+  const windowEnd = windowState.pinned
     ? rowBounds.end
     : getAnchoredWindowEnd(rowBounds, windowState.endRow);
   const windowStart = Math.max(rowBounds.start, windowEnd - LOG_WINDOW_SIZE);
   const hasPrevious = windowStart > rowBounds.start;
   const hasNext = windowEnd < rowBounds.end;
-  const entries = convertEventRowWindow(rowIndex, windowStart, windowEnd);
+  const renderedRows = groupFileRowWindow(rowIndex, windowStart, windowEnd);
 
   const captureScrollWindowAnchor = (): ScrollWindowAnchor | null => {
     const container = scrollRef.current;
@@ -111,34 +155,39 @@ export function ActivityLog({
     );
     const index = firstVisibleIndex >= 0 ? firstVisibleIndex : rows.length - 1;
     const row = rows[index];
-    const entry = entries[index];
-    if (!row || !entry) return null;
+    const renderedRow = renderedRows[index];
+    if (!row || !renderedRow) return null;
     return {
-      entryId: entry.id,
+      entryId: renderedRow.entry.id,
       pixelOffset: row.offsetTop - container.scrollTop,
-      row: windowStart + index,
+      // Grouped FILE rows compress the visual list, so the underlying row
+      // comes from the rendered row itself, not from windowStart + index.
+      row: renderedRow.firstRow,
     };
   };
 
-  const showPreviousWindow = () => {
-    if (!hasPrevious) return;
-    setWindowState({
+  // Unpinning snapshots the live end so later arrivals can be counted. While
+  // already unpinned, only the window's own end counts as seen: paging forward
+  // to the tail catches the reader up, paging back into history keeps the
+  // snapshot instead of forfeiting the unseen count.
+  const unpinnedWindow =
+    (endRow: number) =>
+    (current: LogWindowState): LogWindowState => ({
       cacheRevision,
-      endRow: windowStart,
-      isNearBottom: false,
+      endRow,
+      lastSeenEnd: current.pinned ? rowBounds.end : Math.max(current.lastSeenEnd, endRow),
+      pinned: false,
       sourceFilter: normalizedSourceFilter,
     });
+
+  const showPreviousWindow = () => {
+    if (!hasPrevious) return;
+    setWindowState(unpinnedWindow(windowStart));
   };
 
   const showNextWindow = () => {
     if (!hasNext) return;
-    const nextEnd = Math.min(rowBounds.end, windowEnd + LOG_WINDOW_SIZE);
-    setWindowState({
-      cacheRevision,
-      endRow: nextEnd,
-      isNearBottom: nextEnd === rowBounds.end,
-      sourceFilter: normalizedSourceFilter,
-    });
+    setWindowState(unpinnedWindow(Math.min(rowBounds.end, windowEnd + LOG_WINDOW_SIZE)));
   };
 
   const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
@@ -150,44 +199,52 @@ export function ActivityLog({
       container.scrollHeight - container.scrollTop - container.clientHeight;
     const isAtRenderedBottom = distanceFromBottom <= 50;
 
+    // Paging and pin state are user-gesture-only: the echo of our own
+    // scrollTop write must change neither. In the edge branches, an anchor
+    // restore that clamps to an edge would re-window again and the log
+    // ping-pongs forever; in the pin-state update, a tail-write echo
+    // processed after the next arrival already grew the content reads the
+    // taller geometry as "away from the bottom" and unpins a follower
+    // mid-stream. Every position the writes produce already matches the pin
+    // state set by the action that requested them.
+    if (programmaticScrollRef.current) {
+      programmaticScrollRef.current = false;
+      return;
+    }
+
     if (container.scrollTop <= 50 && hasPrevious) {
       const anchor = captureScrollWindowAnchor();
       if (!anchor) return;
       pendingWindowAnchorRef.current = anchor;
-      setWindowState({
-        cacheRevision,
-        endRow: Math.min(rowBounds.end, anchor.row + 1),
-        isNearBottom: false,
-        sourceFilter: normalizedSourceFilter,
-      });
+      setWindowState(unpinnedWindow(Math.min(rowBounds.end, anchor.row + 1)));
       return;
     }
 
     if (isAtRenderedBottom && hasNext) {
       const anchor = captureScrollWindowAnchor();
       if (!anchor) return;
-      const nextEnd = Math.min(rowBounds.end, anchor.row + LOG_WINDOW_SIZE);
       pendingWindowAnchorRef.current = anchor;
-      setWindowState({
-        cacheRevision,
-        endRow: nextEnd,
-        isNearBottom: nextEnd === rowBounds.end,
-        sourceFilter: normalizedSourceFilter,
-      });
+      // Reaching the end of the rendered window is not reaching the live end:
+      // the reader is still looking at history, so this re-window never pins.
+      setWindowState(unpinnedWindow(Math.min(rowBounds.end, anchor.row + LOG_WINDOW_SIZE)));
       return;
     }
 
-    const nextIsNearBottom = isAtRenderedBottom && !hasNext;
+    const nextPinned = isAtRenderedBottom && !hasNext;
     setWindowState((current) =>
       current.cacheRevision === cacheRevision &&
       current.endRow === windowEnd &&
-      current.isNearBottom === nextIsNearBottom &&
+      current.pinned === nextPinned &&
       current.sourceFilter === normalizedSourceFilter
         ? current
         : {
             cacheRevision,
             endRow: windowEnd,
-            isNearBottom: nextIsNearBottom,
+            // Pinned means the reader is at the live end, so the seen mark
+            // tracks it; the step away from pinned leaves that end as the
+            // snapshot later arrivals are counted against.
+            lastSeenEnd: nextPinned || current.pinned ? rowBounds.end : current.lastSeenEnd,
+            pinned: nextPinned,
             sourceFilter: normalizedSourceFilter,
           },
     );
@@ -201,16 +258,31 @@ export function ActivityLog({
     if (!container) return;
     if (anchor) {
       pendingWindowAnchorRef.current = null;
-      const anchoredRow = Array.from(
-        container.querySelectorAll<HTMLElement>("[data-log-entry-id]"),
-      ).find((row) => row.dataset.logEntryId === anchor.entryId);
+      const rows = Array.from(container.querySelectorAll<HTMLElement>("[data-log-entry-id]"));
+      // A FILE burst split by the old window boundary merges into one group once
+      // the earlier window loads, so the captured id is no longer rendered. The
+      // group whose row span covers the captured row is the same place.
+      const spanIndex = renderedRows.findIndex(
+        (rendered) =>
+          anchor.row >= rendered.firstRow && anchor.row < rendered.firstRow + rendered.rowCount,
+      );
+      const anchoredRow =
+        rows.find((row) => row.dataset.logEntryId === anchor.entryId) ?? rows[spanIndex];
       if (anchoredRow) {
-        container.scrollTop = anchoredRow.offsetTop - anchor.pixelOffset;
+        writeScrollTop(
+          programmaticScrollRef,
+          container,
+          anchoredRow.offsetTop - anchor.pixelOffset,
+        );
       }
     }
     if (!alignment) return;
     pendingScrollAlignmentRef.current = null;
-    container.scrollTop = alignment === "start" ? 0 : container.scrollHeight;
+    writeScrollTop(
+      programmaticScrollRef,
+      container,
+      alignment === "start" ? 0 : container.scrollHeight,
+    );
   }, [windowState]);
 
   const tailRowProps =
@@ -231,13 +303,27 @@ export function ActivityLog({
     rowBounds.end,
   ).at(-1);
 
+  const pinned = windowState.pinned;
+  const unseenCount = pinned ? 0 : rowBounds.end - windowState.lastSeenEnd;
+
   useEffect(() => {
-    if (!shouldRenderTail || !tailEvent) return;
+    if (!pinned || !tailEvent) return;
     const container = scrollRef.current;
     if (container) {
-      container.scrollTop = container.scrollHeight;
+      writeScrollTop(programmaticScrollRef, container, container.scrollHeight);
     }
-  }, [shouldRenderTail, tailEvent]);
+  }, [pinned, tailEvent]);
+
+  const jumpToLatest = () => {
+    pendingScrollAlignmentRef.current = "end";
+    setWindowState({
+      cacheRevision,
+      endRow: rowBounds.end,
+      lastSeenEnd: rowBounds.end,
+      pinned: true,
+      sourceFilter: normalizedSourceFilter,
+    });
+  };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(event);
@@ -263,24 +349,13 @@ export function ActivityLog({
     if (event.key === "Home") {
       event.preventDefault();
       pendingScrollAlignmentRef.current = "start";
-      setWindowState({
-        cacheRevision,
-        endRow: Math.min(rowBounds.end, rowBounds.start + LOG_WINDOW_SIZE),
-        isNearBottom: false,
-        sourceFilter: normalizedSourceFilter,
-      });
+      setWindowState(unpinnedWindow(Math.min(rowBounds.end, rowBounds.start + LOG_WINDOW_SIZE)));
       return;
     }
 
     if (event.key === "End") {
       event.preventDefault();
-      pendingScrollAlignmentRef.current = "end";
-      setWindowState({
-        cacheRevision,
-        endRow: rowBounds.end,
-        isNearBottom: true,
-        sourceFilter: normalizedSourceFilter,
-      });
+      jumpToLatest();
       return;
     }
 
@@ -309,7 +384,7 @@ export function ActivityLog({
         {...props}
       >
         <div className="space-y-1 p-2">
-          {entries.map((entry) => (
+          {renderedRows.map(({ entry }) => (
             <LogEntry
               key={entry.id}
               data-log-entry-id={entry.id}
@@ -326,6 +401,7 @@ export function ActivityLog({
       </ScrollArea>
       {/* Outside the scrolling content: the tail row is pinned to the pane so
           "is it alive?" stays answerable without scrolling to the bottom. */}
+      {unseenCount > 0 && <NewEntriesRow count={unseenCount} onJump={jumpToLatest} />}
       {tailRowProps && <LiveTailRow {...tailRowProps} />}
       <ActivityLogAnnouncement
         tailEvent={tailEvent}

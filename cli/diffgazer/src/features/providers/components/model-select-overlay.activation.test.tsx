@@ -174,7 +174,7 @@ describe("ModelSelectOverlay stale discovery", () => {
   test("rejects a stale configuration tuple and keeps retry available", async () => {
     const getConfigurationModels = vi.fn<BoundApi["getConfigurationModels"]>().mockResolvedValue({
       ...catalogModelsResponse(GEMINI_CONFIGURATION),
-      productId: "groq",
+      productId: "zai",
     });
     const api = { ...makeGeminiApi(), getConfigurationModels } satisfies BoundApi;
     const { lastFrame } = render(

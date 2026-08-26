@@ -21,6 +21,7 @@ import { ExecutionLeaseRegistry } from "../../shared/lib/ai/admission/service.js
 import { createBudgetLedger } from "../../shared/lib/ai/budget/ledger.js";
 import { buildExecutionResult } from "../../shared/lib/ai/client/generate.js";
 import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
+import { MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE } from "../../shared/lib/ai/diagnostics.js";
 import { promptAttemptEstimate } from "../../shared/lib/ai/providers/execution-receipt.js";
 import type { Adapter } from "../../shared/lib/ai/types.js";
 import { hashAdmissionEvidenceKeySync } from "../../shared/lib/config/admission-evidence.js";
@@ -326,19 +327,44 @@ function makeBudgetExhaustedAIClient(): InitializedAIClient {
 
 function makeConformanceAIClient(options: {
   evidenceState: "proven" | "unproven";
-  structuredOutputFailure?: boolean;
+  /**
+   * The single lens fails structured output with this decisive adapter
+   * diagnostic. Only the diagnostic code says whether the corrective re-ask ran
+   * and failed; `attemptCount` counts blind retries too, so it proves nothing.
+   */
+  structuredOutputFailure?: {
+    diagnosticCode: string;
+    attemptCount: number;
+    outcome?: "schema-failed" | "transport-failed";
+  };
 }): InitializedAIClient {
   const base = makeAIClient();
   const authorization = requireValue(base.authorization, "test client authorization");
-  return {
+  const withEvidenceState = {
     ...base,
     authorization: Object.freeze({ ...authorization, evidenceState: options.evidenceState }),
-    ...(options.structuredOutputFailure
-      ? {
-          generate: async () =>
-            err({ code: "PARSE_ERROR", message: "Adapter response failed schema validation" }),
-        }
-      : {}),
+  };
+  const failure = options.structuredOutputFailure;
+  if (!failure) return withEvidenceState;
+  const diagnostic = {
+    code: failure.diagnosticCode,
+    safeMessage: "The model's answer failed review schema validation.",
+    retryable: false,
+    remediation: "none",
+    correlationId: "conformance-correlation",
+  };
+  return {
+    ...withEvidenceState,
+    terminalExecutions: [
+      buildExecutionResult(authorization.plan, failure.outcome ?? "schema-failed", {
+        startedAt: "2026-07-31T10:00:00.000Z",
+        finishedAt: "2026-07-31T10:00:01.000Z",
+        attemptCount: failure.attemptCount,
+      }),
+    ],
+    terminalDiagnostics: [diagnostic],
+    generate: async () =>
+      err({ code: "STREAM_ERROR", message: diagnostic.safeMessage, diagnostic }),
   };
 }
 
@@ -1476,12 +1502,15 @@ describe("admitted configuration execution", () => {
     recordEvidence.mockRestore();
   });
 
-  it("records failed evidence when the review ends on a structured-output failure", async () => {
+  it("records failed evidence for malformed output the corrective retry could not fix", async () => {
     const { getStore } = await import("../../shared/lib/config/store.js");
     const recordEvidence = vi.spyOn(getStore(), "recordConfigurationEvidence");
     const aiClient = makeConformanceAIClient({
       evidenceState: "unproven",
-      structuredOutputFailure: true,
+      structuredOutputFailure: {
+        diagnosticCode: MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE,
+        attemptCount: 2,
+      },
     });
 
     const result = await createReviewSession(aiClient, {
@@ -1503,6 +1532,102 @@ describe("admitted configuration execution", () => {
       "recorded conformance evidence",
     );
     expect(evidence).toMatchObject({ status: "failed", expiresAt: null });
+    recordEvidence.mockRestore();
+  });
+
+  it.each([
+    { diagnosticCode: "reasoning-budget-consumed", attemptCount: 1 },
+    { diagnosticCode: "output-truncated", attemptCount: 1 },
+  ])("records no evidence for the $diagnosticCode geometry failure", async ({
+    diagnosticCode,
+    attemptCount,
+  }) => {
+    const { getStore } = await import("../../shared/lib/config/store.js");
+    const recordEvidence = vi.spyOn(getStore(), "recordConfigurationEvidence");
+    const aiClient = makeConformanceAIClient({
+      evidenceState: "unproven",
+      structuredOutputFailure: { diagnosticCode, attemptCount },
+    });
+
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    await vi.waitFor(() => {
+      if (!getSession(result.value.reviewId)?.isComplete) {
+        throw new Error("session not complete yet");
+      }
+    });
+
+    expect(recordEvidence).not.toHaveBeenCalled();
+    recordEvidence.mockRestore();
+  });
+
+  it("records no failed evidence for an upstream finish-error run, even after the blind retry", async () => {
+    const { getStore } = await import("../../shared/lib/config/store.js");
+    const recordEvidence = vi.spyOn(getStore(), "recordConfigurationEvidence");
+    const aiClient = makeConformanceAIClient({
+      evidenceState: "unproven",
+      structuredOutputFailure: {
+        diagnosticCode: "provider-generation-error",
+        attemptCount: 2,
+        outcome: "transport-failed",
+      },
+    });
+
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    await vi.waitFor(() => {
+      if (!getSession(result.value.reviewId)?.isComplete) {
+        throw new Error("session not complete yet");
+      }
+    });
+
+    expect(recordEvidence).not.toHaveBeenCalled();
+    recordEvidence.mockRestore();
+  });
+
+  // attemptCount 2 is the blind-retry case: a retry that carried no correction
+  // (an upstream mid-generation death, an empty answer) spends the same retry
+  // budget, so only the adapter's code may arm the memo.
+  it.each([
+    { attemptCount: 1 },
+    { attemptCount: 2 },
+  ])("records no evidence when the corrective retry never ran (attemptCount $attemptCount)", async ({
+    attemptCount,
+  }) => {
+    const { getStore } = await import("../../shared/lib/config/store.js");
+    const recordEvidence = vi.spyOn(getStore(), "recordConfigurationEvidence");
+    const aiClient = makeConformanceAIClient({
+      evidenceState: "unproven",
+      structuredOutputFailure: { diagnosticCode: "malformed-review-output", attemptCount },
+    });
+
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    await vi.waitFor(() => {
+      if (!getSession(result.value.reviewId)?.isComplete) {
+        throw new Error("session not complete yet");
+      }
+    });
+
+    expect(recordEvidence).not.toHaveBeenCalled();
     recordEvidence.mockRestore();
   });
 

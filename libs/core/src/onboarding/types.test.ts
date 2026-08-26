@@ -24,27 +24,17 @@ describe("onboarding state", () => {
       family: "hosted-api",
       input: {
         transportFamily: "hosted-api",
-        productId: "deepseek",
-        endpoint: "https://api.deepseek.com/v1",
+        productId: "zai",
+        endpoint: "https://api.z.ai/api/paas/v4",
         credential: { kind: "environment" },
       },
     },
     {
-      family: "local-http",
+      family: "hosted-api",
       input: {
-        transportFamily: "local-http",
-        productId: "local-openai",
-        endpoint: "http://127.0.0.1:1234/v1",
-        authentication: "none",
-        presetId: "lm-studio",
-      },
-    },
-    {
-      family: "local-cli",
-      input: {
-        transportFamily: "local-cli",
-        productId: "codex-cli",
-        installationId: "codex-installation",
+        transportFamily: "hosted-api",
+        productId: "gemini",
+        endpoint: "https://generativelanguage.googleapis.com/v1beta",
       },
     },
   ])("parses a dynamic $family setup plan from its V2 input", ({ family, input }) => {
@@ -59,11 +49,11 @@ describe("onboarding state", () => {
   it("requires explicit acknowledgement of the exact selected product notice", () => {
     const input = runnableState({
       transportFamily: "hosted-api",
-      productId: "deepseek",
-      endpoint: "https://api.deepseek.com/v1",
+      productId: "zai",
+      endpoint: "https://api.z.ai/api/paas/v4",
       credential: { kind: "literal", value: "write-only-value" },
     });
-    const notice = PRODUCT_REGISTRY.deepseek.notice;
+    const notice = PRODUCT_REGISTRY.zai.notice;
 
     expect(onboardingTypes.OnboardingStateSchema.safeParse(input).success).toBe(true);
     expect(

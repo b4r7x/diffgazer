@@ -107,17 +107,6 @@ export const CANDIDATE_VERDICTS = {
     reconsiderWhen:
       "A pinned release passes auth, deny, isolation, privacy, schema, and cancellation proof.",
   },
-  "minimax-payg": {
-    id: "minimax-payg",
-    name: "MiniMax PAYG",
-    verdict: "deferred",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "Current review-oriented models lack a documented structured-output contract.",
-    reconsiderWhen:
-      "An exact model documents and passes structured output plus terminal usage proof.",
-  },
   "tencent-hunyuan-tokenhub": {
     id: "tencent-hunyuan-tokenhub",
     name: "Tencent Hunyuan / TokenHub",

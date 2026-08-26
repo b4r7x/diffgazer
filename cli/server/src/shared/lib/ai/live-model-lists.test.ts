@@ -1,4 +1,4 @@
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { HostedApiProductId } from "@diffgazer/core/schemas/config";
@@ -13,9 +13,7 @@ const loadLiveModelLists = () => import("./live-model-lists.js");
 
 const KEY_BEARING_INPUTS = {
   zai: { endpoint: "https://api.z.ai/api/paas/v4" },
-  groq: { endpoint: "https://api.groq.com/openai/v1" },
-  cerebras: { endpoint: "https://api.cerebras.ai/v1" },
-  deepseek: { endpoint: "https://api.deepseek.com/v1" },
+  "opencode-zen": { endpoint: "https://opencode.ai/zen/v1" },
 } as const;
 
 async function seedConfiguration(
@@ -74,14 +72,18 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
 
   it("sends each credential only to the endpoint of the configuration it belongs to", async () => {
     const zaiId = await seedConfiguration("zai", KEY_BEARING_INPUTS.zai, "zai-secret");
-    const groqId = await seedConfiguration("groq", KEY_BEARING_INPUTS.groq, "groq-secret");
+    const zenId = await seedConfiguration(
+      "opencode-zen",
+      KEY_BEARING_INPUTS["opencode-zen"],
+      "zen-secret",
+    );
     const spy = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(okResponse({ data: [{ id: "model-a" }] }));
     const { resolveLiveModelList } = await loadLiveModelLists();
 
     await resolveLiveModelList({ configurationId: zaiId, productId: "zai" });
-    await resolveLiveModelList({ configurationId: groqId, productId: "groq" });
+    await resolveLiveModelList({ configurationId: zenId, productId: "opencode-zen" });
 
     expect(fetchCalls(spy)).toEqual([
       {
@@ -90,8 +92,8 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
         redirect: "error",
       },
       {
-        url: "https://api.groq.com/openai/v1/models",
-        headers: { authorization: "Bearer groq-secret" },
+        url: "https://opencode.ai/zen/v1/models",
+        headers: { authorization: "Bearer zen-secret" },
         redirect: "error",
       },
     ]);
@@ -169,7 +171,11 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
   });
 
   it("degrades to null when the endpoint refuses the credential", async () => {
-    const configurationId = await seedConfiguration("groq", KEY_BEARING_INPUTS.groq, "groq-secret");
+    const configurationId = await seedConfiguration(
+      "opencode-zen",
+      KEY_BEARING_INPUTS["opencode-zen"],
+      "zen-secret",
+    );
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 401,
@@ -177,12 +183,12 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
     } as Response);
     const { resolveLiveModelList } = await loadLiveModelLists();
 
-    expect(await resolveLiveModelList({ configurationId, productId: "groq" })).toBeNull();
+    expect(await resolveLiveModelList({ configurationId, productId: "opencode-zen" })).toBeNull();
     expect(existsSync(join(diffgazerHome, "model-lists"))).toBe(false);
   });
 });
 
-describe("resolveLiveModelList — public and catalog-only products", () => {
+describe("resolveLiveModelList — public products", () => {
   it("never attaches a credential to a public list request", async () => {
     const configurationId = await seedConfiguration(
       "openrouter",
@@ -197,7 +203,7 @@ describe("resolveLiveModelList — public and catalog-only products", () => {
             name: "Z.AI: GLM 5.2 (free)",
             pricing: { prompt: "0", completion: "0" },
             context_length: 202752,
-            supported_parameters: ["structured_outputs"],
+            supported_parameters: ["structured_outputs", "reasoning"],
           },
           {
             id: "openai/gpt-oss-20b",
@@ -224,24 +230,143 @@ describe("resolveLiveModelList — public and catalog-only products", () => {
         tier: "free",
         contextTokens: 202752,
         structuredOutput: true,
+        reasoning: true,
       },
       // An unsafe display name falls back to the id; a zero context is no context.
-      { id: "openai/gpt-oss-20b", tier: "paid", structuredOutput: false },
+      { id: "openai/gpt-oss-20b", tier: "paid", structuredOutput: false, reasoning: false },
       // Malformed metadata never drops the id itself.
       { id: "provider/model", tier: "unknown" },
     ]);
   });
+});
 
-  it("requests nothing for Google Gemini, which stays catalog-only", async () => {
+describe("readCachedLiveModelList — dispatch-time capability reads", () => {
+  it("serves the stored list past the refetch TTL instead of degrading capability to null", async () => {
+    const configurationId = await seedConfiguration(
+      "openrouter",
+      { endpoint: "https://openrouter.ai/api/v1" },
+      "openrouter-secret",
+    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      okResponse({
+        data: [{ id: "provider/strict-model", supported_parameters: ["structured_outputs"] }],
+      }),
+    );
+    const { resolveLiveModelList, readCachedLiveModelList } = await loadLiveModelLists();
+    await resolveLiveModelList({ configurationId, productId: "openrouter" });
+
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(Date.now() + 6 * 60 * 1000);
+      const list = readCachedLiveModelList({ configurationId, productId: "openrouter" });
+      expect(list?.cached).toBe(true);
+      expect(list?.models.find((model) => model.id === "provider/strict-model")).toMatchObject({
+        structuredOutput: true,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("returns null for a configuration whose list was never fetched", async () => {
+    const configurationId = await seedConfiguration("zai", KEY_BEARING_INPUTS.zai, "zai-secret");
+    const { readCachedLiveModelList } = await loadLiveModelLists();
+    expect(readCachedLiveModelList({ configurationId, productId: "zai" })).toBeNull();
+  });
+
+  it("treats a pre-shapeVersion cache as expired on the picker path but still serves it at dispatch", async () => {
+    const configurationId = await seedConfiguration(
+      "openrouter",
+      { endpoint: "https://openrouter.ai/api/v1" },
+      "openrouter-secret",
+    );
+    // A fresh cache written by a pre-upgrade binary: no shapeVersion, and its
+    // derived models never carry capability fields like `reasoning`.
+    mkdirSync(join(diffgazerHome, "model-lists"), { recursive: true });
+    writeFileSync(
+      join(diffgazerHome, "model-lists", "openrouter.json"),
+      JSON.stringify({
+        models: [{ id: "provider/old-shape-model", tier: "unknown" }],
+        fetchedAt: new Date().toISOString(),
+      }),
+    );
+    vi.resetModules();
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      okResponse({
+        data: [{ id: "provider/reasoning-model", supported_parameters: ["reasoning"] }],
+      }),
+    );
+    const { resolveLiveModelList, readCachedLiveModelList } = await loadLiveModelLists();
+
+    // Dispatch path stays no-network: stale capability evidence beats guessing.
+    const dispatchList = readCachedLiveModelList({ configurationId, productId: "openrouter" });
+    expect(dispatchList?.models[0]?.id).toBe("provider/old-shape-model");
+    expect(spy).not.toHaveBeenCalled();
+
+    // Picker path refetches despite the fresh timestamp, healing the shape.
+    const pickerList = await resolveLiveModelList({ configurationId, productId: "openrouter" });
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(pickerList?.models[0]).toMatchObject({
+      id: "provider/reasoning-model",
+      reasoning: true,
+    });
+  });
+});
+
+describe("resolveLiveModelList — Gemini's OpenAI-compat list", () => {
+  const GEMINI_ENDPOINT = PRODUCT_REGISTRY.gemini.configuration.endpoints[0]?.endpoint ?? "";
+
+  it("requests {endpoint}/openai/models with the configuration's own bearer credential and strips the models/ id prefix", async () => {
     const configurationId = await seedConfiguration(
       "gemini",
-      { endpoint: PRODUCT_REGISTRY.gemini.configuration.endpoints[0]?.endpoint ?? "" },
+      { endpoint: GEMINI_ENDPOINT },
       "gemini-secret",
     );
-    const spy = vi.spyOn(globalThis, "fetch");
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      okResponse({
+        object: "list",
+        data: [
+          { id: "models/gemini-2.5-flash", object: "model", owned_by: "google" },
+          { id: "models/gemini-2.5-pro", object: "model", owned_by: "google" },
+          // An id the compat layer serves bare must pass through unchanged.
+          { id: "gemma-4-31b-it", object: "model", owned_by: "google" },
+        ],
+      }),
+    );
+    const { resolveLiveModelList } = await loadLiveModelLists();
+
+    const list = await resolveLiveModelList({ configurationId, productId: "gemini" });
+
+    expect(fetchCalls(spy)).toEqual([
+      {
+        url: `${GEMINI_ENDPOINT}/openai/models`,
+        headers: { authorization: "Bearer gemini-secret" },
+        redirect: "error",
+      },
+    ]);
+    // Without the strip, no id matches the catalog and a selected id would
+    // double the `models/` prefix in the google dispatch URL.
+    expect(list?.models).toEqual([
+      { id: "gemini-2.5-flash", tier: "unknown" },
+      { id: "gemini-2.5-pro", tier: "unknown" },
+      { id: "gemma-4-31b-it", tier: "unknown" },
+    ]);
+  });
+
+  it("degrades to null when the Gemini endpoint refuses the credential", async () => {
+    const configurationId = await seedConfiguration(
+      "gemini",
+      { endpoint: GEMINI_ENDPOINT },
+      "gemini-secret",
+    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 404,
+      headers: new Headers(),
+    } as Response);
     const { resolveLiveModelList } = await loadLiveModelLists();
 
     expect(await resolveLiveModelList({ configurationId, productId: "gemini" })).toBeNull();
-    expect(spy).not.toHaveBeenCalled();
+    expect(existsSync(join(diffgazerHome, "model-lists"))).toBe(false);
   });
 });

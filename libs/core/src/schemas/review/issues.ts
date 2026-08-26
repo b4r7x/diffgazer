@@ -112,7 +112,12 @@ export const ReviewIssueSchema = z.object({
   line_end: z.number().nullable(),
   rationale: NonBlankProviderTextSchema,
   recommendation: NonBlankProviderTextSchema,
-  suggested_patch: z.string().nullable(),
+  suggested_patch: z
+    .string()
+    .nullable()
+    .describe(
+      'A minimal unified diff ("--- a/<file>", "+++ b/<file>", numbered hunk headers like "@@ -2,3 +2,8 @@", "+"/"-" line prefixes), with a real newline character between every line (JSON "\\n" escapes) — never flattened onto one line; null if a correct diff is impractical.',
+    ),
   confidence: z.number().min(0).max(1),
   symptom: NonBlankProviderTextSchema,
   whyItMatters: NonBlankProviderTextSchema,
@@ -156,7 +161,12 @@ export const MAX_REVIEW_ISSUES_PER_LENS = 256;
 /** Final-result cap across every member of the closed lens enum. */
 export const MAX_REVIEW_ISSUES = MAX_REVIEW_ISSUES_PER_LENS * LENS_IDS.length;
 
-export const LensReviewResultSchema = z.strictObject({
+// Top-level tolerance mirrors the lenient line-number reads above: an extra
+// top-level key ("summary", "overall", ...) is stripped, not a reason to void
+// the whole paid lens response. The strict provider wire schema still forbids
+// extra keys for capable routes (structured-output-schema.ts forces
+// additionalProperties: false); this only widens the local validation.
+export const LensReviewResultSchema = z.object({
   issues: z.array(ProviderReviewIssueSchema).max(MAX_REVIEW_ISSUES_PER_LENS),
 });
 export type LensReviewResult = z.infer<typeof LensReviewResultSchema>;

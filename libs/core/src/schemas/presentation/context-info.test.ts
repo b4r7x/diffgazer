@@ -117,7 +117,7 @@ describe("buildHomeContextInfo", () => {
       context: { lastRunId: "rev-1", lastRunIssueCount: 0, lastRunDurationMs: 3800 },
       isTrusted: true,
     });
-    expect(clean.lastRun.meta).toBe("no issues · 3.8s");
+    expect(clean.lastRun.meta).toBe("no issues · 3s");
     expect(clean.lastRun.hasIssues).toBe(false);
 
     const noDuration = buildHomeContextRows({
@@ -133,6 +133,6 @@ describe("buildHomeContextInfo", () => {
       isTrusted: true,
     });
     expect(single.lastRun.issueCount).toBe("(1 issue)");
-    expect(single.lastRun.meta).toBe("1 issue · 3.8s");
+    expect(single.lastRun.meta).toBe("1 issue · 3s");
   });
 });

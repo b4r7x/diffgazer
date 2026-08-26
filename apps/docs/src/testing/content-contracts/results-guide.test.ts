@@ -46,22 +46,9 @@ const REQ_101_SYMPTOMS = [
     heading: "Budget exhaustion",
     outcome: "budget-exhausted" as const,
   },
-  // The local probe reports these two through its own failure-reason
-  // vocabulary, not through a readiness status, so the doc is pinned to the
-  // reason text the user actually sees.
   {
-    id: "local-non-loopback-rejection",
-    heading: "Local non-loopback rejection",
-    phrase: "Local endpoint is not allowed",
-  },
-  {
-    id: "local-incompatibility",
-    heading: "Local incompatibility",
-    phrase: "Local API is incompatible",
-  },
-  {
-    id: "cli-version-account-policy-failure",
-    heading: "CLI version, account, or policy failure",
+    id: "unsupported-configuration",
+    heading: "Unsupported configuration",
     readiness: "unsupported" as const,
   },
   {
@@ -192,7 +179,7 @@ describe("troubleshooting and API vocabulary", () => {
       expect(apiReference, action).toContain(`| \`${action}\` |`);
     }
 
-    for (const productId of ["gemini", "ollama", "codex-cli"] as const) {
+    for (const productId of ["gemini", "zai", "openrouter"] as const) {
       expect(troubleshooting).toContain(PRODUCT_REGISTRY[productId].presentation.name);
     }
   });

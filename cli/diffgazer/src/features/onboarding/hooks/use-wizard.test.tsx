@@ -110,19 +110,6 @@ describe("useOnboardingWizard", () => {
     expect(mockRunConfigurationAction).not.toHaveBeenCalled();
   });
 
-  it("uses the shorter CLI plan without hosted authentication controls", () => {
-    const wrapper = createWrapper();
-    const hook = renderHook(() => useOnboardingWizard(), { wrapper });
-
-    act(() => hook.result.current.handleProductChange("codex-cli"));
-    expect(hook.result.current.steps).toEqual([
-      "product",
-      "authentication",
-      "model",
-      "acknowledgement",
-    ]);
-  });
-
   it("resets to the selected product plan without preserving literal credentials", () => {
     const wrapper = createWrapper();
     const hook = renderHook(() => useOnboardingWizard(), { wrapper });
@@ -131,26 +118,13 @@ describe("useOnboardingWizard", () => {
       hook.result.current.handleProductChange("zai");
       hook.result.current.handleInputMethodChange("paste");
       hook.result.current.handleApiKeyChange("write-only-secret");
-      hook.result.current.handleProductChange("local-openai");
+      hook.result.current.handleProductChange("gemini");
     });
 
-    expect(hook.result.current.wizardData).toEqual(getInitialWizardData("local-openai"));
+    expect(hook.result.current.wizardData).toEqual(getInitialWizardData("gemini"));
     expect(JSON.stringify(hook.result.current.wizardData.configurationInput)).not.toContain(
       "write-only-secret",
     );
-  });
-
-  it("moves from a local authentication step straight to the actions", () => {
-    const wrapper = createWrapper();
-    const hook = renderHook(() => useOnboardingWizard(), { wrapper });
-
-    act(() => hook.result.current.handleProductChange("codex-cli"));
-    act(() => hook.result.current.handleNext());
-    expect(hook.result.current.currentStep).toBe("authentication");
-    expect(hook.result.current.focusZone).toBe("step");
-
-    act(() => hook.result.current.cycleFocusZone());
-    expect(hook.result.current.focusZone).toBe("nav");
   });
 
   it("keeps the hosted method and input focus stops", () => {
@@ -174,12 +148,12 @@ describe("useOnboardingWizard", () => {
       action: "create",
       status: "succeeded",
       configuration: {
-        configurationId: "codex-cli-draft",
+        configurationId: "gemini-draft",
         revision: 1,
         status: "supported",
-        transportFamily: "local-cli",
-        productId: "codex-cli",
-        installationId: "codex-installation",
+        transportFamily: "hosted-api",
+        productId: "gemini",
+        endpoint: "https://generativelanguage.googleapis.com/v1beta",
         selectedModelId: null,
         notices: [],
         availableActions: ["inspect", "select", "test", "update", "delete"],
@@ -189,17 +163,10 @@ describe("useOnboardingWizard", () => {
     const wrapper = createWrapper();
     const hook = renderHook(() => useOnboardingWizard(), { wrapper });
 
-    act(() => hook.result.current.handleProductChange("codex-cli"));
+    act(() => hook.result.current.handleProductChange("gemini"));
     act(() => hook.result.current.handleNext());
-    act(() =>
-      hook.result.current.updateData({
-        configurationInput: {
-          transportFamily: "local-cli",
-          productId: "codex-cli",
-          installationId: "codex-installation",
-        },
-      }),
-    );
+    act(() => hook.result.current.handleNext());
+    act(() => hook.result.current.handleInputMethodChange("env"));
     await act(async () => {
       hook.result.current.handleNext();
     });
@@ -212,7 +179,7 @@ describe("useOnboardingWizard", () => {
     for (const [action] of mockRunConfigurationAction.mock.calls) {
       expect(action).not.toHaveProperty("configurationId");
     }
-    expect(hook.result.current.draftConfiguration?.configurationId).toBe("codex-cli-draft");
+    expect(hook.result.current.draftConfiguration?.configurationId).toBe("gemini-draft");
   });
 
   it("strips terminal escapes from a rejected cleanup before warning about it", async () => {
@@ -220,12 +187,12 @@ describe("useOnboardingWizard", () => {
       action: "create",
       status: "succeeded",
       configuration: {
-        configurationId: "codex-cli-draft",
+        configurationId: "gemini-draft",
         revision: 1,
         status: "supported",
-        transportFamily: "local-cli",
-        productId: "codex-cli",
-        installationId: "codex-installation",
+        transportFamily: "hosted-api",
+        productId: "gemini",
+        endpoint: "https://generativelanguage.googleapis.com/v1beta",
         selectedModelId: null,
         notices: [],
         availableActions: ["inspect", "select", "test", "update", "delete"],
@@ -243,21 +210,14 @@ describe("useOnboardingWizard", () => {
     const wrapper = createWrapper();
     const hook = renderHook(() => useOnboardingWizard(), { wrapper });
 
-    act(() => hook.result.current.handleProductChange("codex-cli"));
+    act(() => hook.result.current.handleProductChange("gemini"));
     act(() => hook.result.current.handleNext());
-    act(() =>
-      hook.result.current.updateData({
-        configurationInput: {
-          transportFamily: "local-cli",
-          productId: "codex-cli",
-          installationId: "codex-installation",
-        },
-      }),
-    );
+    act(() => hook.result.current.handleNext());
+    act(() => hook.result.current.handleInputMethodChange("env"));
     await act(async () => {
       hook.result.current.handleNext();
     });
-    expect(hook.result.current.draftConfiguration?.configurationId).toBe("codex-cli-draft");
+    expect(hook.result.current.draftConfiguration?.configurationId).toBe("gemini-draft");
 
     // Quitting mid-setup revokes the draft the wizard created.
     hook.unmount();

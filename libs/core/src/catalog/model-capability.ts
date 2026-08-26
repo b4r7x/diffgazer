@@ -13,12 +13,18 @@ export interface DerivedCatalogModel {
 }
 
 /**
- * True unless the model declares an output modality that lacks "text" — audio
- * (TTS), image, or video-only models that can never emit a review object.
+ * True unless the declared output modalities disqualify the model from
+ * emitting a review object: no "text" at all (TTS, image, or video-only), or
+ * a non-text modality alongside text without an explicit
+ * `structured_output: true` — image-generation models declare
+ * `output: ["text", "image"]` yet cannot honor a schema-constrained review.
+ * Absent output modalities still count as text.
  */
 export function producesTextOutput(model: ModelsDevModel): boolean {
   const output = model.modalities?.output;
-  return !output || output.includes("text");
+  if (!output) return true;
+  if (!output.includes("text")) return false;
+  return output.every((modality) => modality === "text") || model.structured_output === true;
 }
 
 export function getModelBilling(model: ModelsDevModel): ModelBilling {

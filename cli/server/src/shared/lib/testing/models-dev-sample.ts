@@ -48,10 +48,10 @@ export const MODELS_DEV_SAMPLE: unknown = {
       },
     },
   },
-  groq: {
-    id: "groq",
-    name: "Groq",
-    env: ["GROQ_API_KEY"],
+  openrouter: {
+    id: "openrouter",
+    name: "OpenRouter",
+    env: ["OPENROUTER_API_KEY"],
     models: {
       // Declares structured output and carries a price => picker row, tier 'paid'.
       "meta-llama/llama-4-scout-17b-16e-instruct": {
@@ -66,16 +66,9 @@ export const MODELS_DEV_SAMPLE: unknown = {
         release_date: "2025-04-05",
         last_updated: "2025-04-05",
       },
-    },
-  },
-  cerebras: {
-    id: "cerebras",
-    name: "Cerebras",
-    env: ["CEREBRAS_API_KEY"],
-    models: {
       // No structured-output declaration upstream => still a picker row.
-      "gpt-oss-120b": {
-        id: "gpt-oss-120b",
+      "openai/gpt-oss-120b": {
+        id: "openai/gpt-oss-120b",
         name: "GPT OSS 120B",
         family: "gpt-oss",
         cost: { input: 0.25, output: 0.69 },

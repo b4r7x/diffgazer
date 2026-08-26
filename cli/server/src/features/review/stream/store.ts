@@ -152,9 +152,10 @@ function isCapWarningEvent(event: FullReviewStreamEvent | undefined): boolean {
 
 type StoreEventResult = { stored: boolean; firstDrop: boolean };
 
-// Append to the session buffer, bounded at MAX_EVENTS_PER_SESSION. Terminal events
-// past the cap overwrite an older slot so the outcome stays observable; non-terminal
-// ones are dropped, and the first drop is reported via `firstDrop`.
+// Append to the session buffer, bounded at MAX_EVENTS_PER_SESSION. The cap governs
+// the buffer only, never live delivery. Terminal events past the cap overwrite an
+// older slot so the outcome stays observable; non-terminal ones are dropped from the
+// buffer, and the first drop is reported via `firstDrop`.
 function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent): StoreEventResult {
   session.lastActivityTick = monotonicNowFor(session);
   if (session.events.length < MAX_EVENTS_PER_SESSION) {
@@ -442,7 +443,9 @@ export function addEvent(reviewId: string, event: FullReviewStreamEvent): void {
     }
     notifySubscribers(session, notice);
   }
-  if (result.stored) notifySubscribers(session, event);
+  // The cap bounds the replay buffer only — live subscribers always receive the event,
+  // otherwise a long-running review goes wire-silent past the cap and stalls clients.
+  notifySubscribers(session, event);
 }
 
 export function markComplete(reviewId: string): void {

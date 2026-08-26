@@ -1,17 +1,16 @@
 import { z } from "zod";
 import { ConfigurationIdSchema } from "./provider-config.js";
-import { RunnableProductIdSchema, TransportFamilySchema } from "./transports.js";
+import { RunnableProductIdSchema } from "./transports.js";
 
 /**
  * Billing-neutral model classifications used by discovery payloads.
  *
  * `free` and `paid` are only used when the applicable provider has established
- * that billing classification. Local runtimes and ambient vendor-managed CLI
- * auth deliberately use neutral values: neither value makes a cost or quota
- * promise. `unknown` covers a catalog model the upstream source publishes no
- * price for — guessing `paid` would be as much of an invented claim as `free`.
+ * that billing classification. `unknown` covers a catalog model the upstream
+ * source publishes no price for — guessing `paid` would be as much of an
+ * invented claim as `free`.
  */
-export const ModelTierSchema = z.enum(["free", "paid", "unknown", "local", "ambient"]);
+export const ModelTierSchema = z.enum(["free", "paid", "unknown"]);
 export type ModelTier = z.infer<typeof ModelTierSchema>;
 
 const ModelInfoSchema = z.object({
@@ -20,6 +19,8 @@ const ModelInfoSchema = z.object({
   description: z.string(),
   tier: ModelTierSchema,
   recommended: z.boolean().optional(),
+  /** Catalog release date (YYYY-MM-DD); absent when the source publishes none. */
+  releaseDate: z.string().optional(),
 });
 export type ModelInfo = z.infer<typeof ModelInfoSchema>;
 
@@ -53,7 +54,7 @@ export type ProviderModelsResponse = z.infer<typeof ProviderModelsResponseSchema
 const ConfigurationModelsBaseSchema = z.strictObject({
   configurationId: ConfigurationIdSchema,
   productId: RunnableProductIdSchema,
-  transportFamily: TransportFamilySchema,
+  transportFamily: z.literal("hosted-api"),
   checkedAt: z.iso.datetime(),
 });
 

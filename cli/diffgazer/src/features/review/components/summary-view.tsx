@@ -2,6 +2,7 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import { formatDuration, formatRunId } from "@diffgazer/core/format";
 import {
   buildCategoryStats,
+  buildCompletionHeadline,
   buildDroppedFindingsNotice,
   buildDuplicateCollapseNotice,
   buildHiddenIssuesNotice,
@@ -96,7 +97,7 @@ export function ReviewSummaryView({
   const sectionWidth = isNarrow ? width : Math.max(Math.floor((width - 2) / 2), 1);
   const scrollHeight = Math.max(contentRows - SUMMARY_FIXED_ROWS, 1);
   const reviewIdLabel = reviewId ? formatRunId(reviewId) : "#unknown";
-  const headline = failure ? failure.title : "Review Complete";
+  const headline = failure ? failure.title : buildCompletionHeadline(lensStats);
 
   return (
     <Box justifyContent="center" height={contentRows} overflow="hidden">

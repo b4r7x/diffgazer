@@ -12,8 +12,8 @@ import {
 import {
   configurationStatus,
   GEMINI_CONFIGURATION,
-  LOCAL_OPENAI_CONFIGURATION,
   makeConfigurationInitResponse,
+  ZAI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import type { Page, Route } from "@playwright/test";
 import {
@@ -52,6 +52,12 @@ export const ONBOARDING_E2E_INIT: ConfigurationInitResponse = {
   project: { projectId: "onboarding-responsive", path: "/repo", trust: null },
 };
 
+/** Conformance-failed with no model selected: Verify leads, Select model rides second. */
+const ZAI_MODELLESS_CONFIGURATION: ClientConfigurationSummary = {
+  ...ZAI_CONFIGURATION,
+  selectedModelId: null,
+};
+
 export const PROVIDER_E2E_INIT = makeProviderE2eInitResponse();
 
 function makeProviderE2eInitResponse(): ConfigurationInitResponse {
@@ -59,7 +65,7 @@ function makeProviderE2eInitResponse(): ConfigurationInitResponse {
     ...makeConfigurationInitResponse(
       [
         configurationStatus(GEMINI_CONFIGURATION, "ready"),
-        configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
+        configurationStatus(ZAI_MODELLESS_CONFIGURATION, "conformance-failed"),
       ],
       "gemini-primary",
     ),
@@ -76,7 +82,7 @@ const PROVIDER_E2E_LIST: ConfigurationListResponse = {
 
 function succeededAction(
   action: ClientConfigurationActionResponse["action"],
-  configuration: ClientConfigurationSummary = LOCAL_OPENAI_CONFIGURATION,
+  configuration: ClientConfigurationSummary = ZAI_MODELLESS_CONFIGURATION,
 ): ClientConfigurationActionResponse {
   return ClientConfigurationActionResponseSchema.parse({
     action,
@@ -85,12 +91,12 @@ function succeededAction(
     ...(action === "test"
       ? {
           readiness: {
-            status: "local-conformance-failed",
+            status: "conformance-failed",
             ready: false,
             evidenceStatus: "failed",
             checkedAt: "2026-07-31T12:00:00.000Z",
             acknowledgement: { status: "not-applicable" },
-            ...READINESS_PRESENTATION["local-conformance-failed"],
+            ...READINESS_PRESENTATION["conformance-failed"],
           },
         }
       : {}),

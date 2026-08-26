@@ -40,6 +40,11 @@ export const reviewQueries = {
       queryKey: [...reviewQueries.all(), "active-session", mode] as const,
       queryFn: ({ signal }) => api.getActiveReviewSession(mode, signal),
       staleTime: 0,
+      // Home's "Resume last" reads this entry at mount; the session seeded at
+      // review start must outlive however long the review screen holds no
+      // observer on it, or the default 5-minute gc leaves the row disabled
+      // until two git-backed round trips answer again.
+      gcTime: Infinity,
     }),
 
   // Client-authored and never fetched: what the create response reported about

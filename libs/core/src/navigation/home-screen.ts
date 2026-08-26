@@ -52,6 +52,7 @@ export type NavigableMenuAction = Extract<MenuAction, "history" | "settings" | "
 
 export type HomeMenuActivation =
   | { kind: "start-review"; mode: ResumableMode }
+  | { kind: "pick-files" }
   | { kind: "resume" }
   | { kind: "navigate"; target: NavigableMenuAction }
   | { kind: "quit" }
@@ -81,6 +82,10 @@ export function resolveHomeMenuActivation(
       return { kind: "blocked-untrusted" };
     }
     return { kind: "start-review", mode: REVIEW_START_MODE[action] };
+  }
+
+  if (action === "review-files") {
+    return isTrusted ? { kind: "pick-files" } : { kind: "blocked-untrusted" };
   }
 
   if (action === "resume-review") {

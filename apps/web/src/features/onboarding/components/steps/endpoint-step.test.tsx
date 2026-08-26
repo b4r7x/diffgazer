@@ -31,18 +31,14 @@ describe("EndpointStep", () => {
     const user = userEvent.setup();
     const onBoundaryReached = vi.fn();
 
-    render(
-      <ControlledEndpointStep productId="local-openai" onBoundaryReached={onBoundaryReached} />,
-    );
+    render(<ControlledEndpointStep productId="gemini" onBoundaryReached={onBoundaryReached} />);
 
-    await waitFor(() => expect(screen.getByRole("radio", { name: /LM Studio/ })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("radio", { name: /Global/ })).toHaveFocus());
 
     await user.keyboard("{ArrowUp}");
     expect(onBoundaryReached).toHaveBeenCalledWith("up");
     expect(onBoundaryReached).not.toHaveBeenCalledWith("down");
 
-    await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("radio", { name: /llama\.cpp/ })).toHaveFocus();
     await user.keyboard("{ArrowDown}");
     expect(onBoundaryReached).toHaveBeenCalledWith("down");
   });
@@ -51,39 +47,27 @@ describe("EndpointStep", () => {
     const user = userEvent.setup();
     const onBoundaryReached = vi.fn();
 
-    render(
-      <ControlledEndpointStep productId="local-openai" onBoundaryReached={onBoundaryReached} />,
-    );
+    render(<ControlledEndpointStep productId="gemini" onBoundaryReached={onBoundaryReached} />);
 
-    await waitFor(() => expect(screen.getByRole("radio", { name: /LM Studio/ })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("radio", { name: /Global/ })).toHaveFocus());
 
     await user.keyboard("{ArrowLeft}");
-    await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("radio", { name: /llama\.cpp/ })).toHaveFocus();
     await user.keyboard("{ArrowRight}");
 
     expect(onBoundaryReached).not.toHaveBeenCalled();
   });
 
   it("moves the endpoint highlight with focus", async () => {
-    const user = userEvent.setup();
+    render(<ControlledEndpointStep productId="gemini" onBoundaryReached={vi.fn()} />);
 
-    render(<ControlledEndpointStep productId="local-openai" onBoundaryReached={vi.fn()} />);
-
-    const lmStudio = screen.getByRole("radio", { name: /LM Studio/ });
-    await waitFor(() => expect(lmStudio).toHaveFocus());
-    expect(lmStudio).toHaveAttribute("data-highlighted");
-
-    await user.keyboard("{ArrowDown}");
-    const llamaCpp = screen.getByRole("radio", { name: /llama\.cpp/ });
-    expect(llamaCpp).toHaveFocus();
-    expect(llamaCpp).toHaveAttribute("data-highlighted");
-    expect(lmStudio).not.toHaveAttribute("data-highlighted");
+    const global = screen.getByRole("radio", { name: /Global/ });
+    await waitFor(() => expect(global).toHaveFocus());
+    expect(global).toHaveAttribute("data-highlighted");
   });
 
   it.each([
-    "deepseek",
-    "local-openai",
+    "gemini",
+    "zai",
   ] as const)("shows no endpoint highlight on %s while the footer owns the step", (productId) => {
     render(
       <EndpointStep

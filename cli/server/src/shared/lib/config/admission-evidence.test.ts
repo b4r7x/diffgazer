@@ -3,11 +3,14 @@ import type { EvidenceKey } from "@diffgazer/core/schemas/review";
 import { describe, expect, it } from "vitest";
 import {
   AdmissionEvidenceSchema,
+  buildExpectedEvidenceKey,
   canAuthorizeEvidence,
   createAdmissionEvidence,
   evidenceMatchesKey,
   hashAdmissionEvidenceKeySync,
 } from "./admission-evidence.js";
+import { effectiveBudgetForRecord, executionLimitsFromBudget } from "./budget-ceiling.js";
+import type { SupportedProviderConfigurationRecord } from "./provider-config.js";
 
 const limits = {
   maxInputTokens: 20_000,
@@ -47,17 +50,9 @@ describe("admission evidence", () => {
 
   it.each([
     ["credential reference", { credentialReferenceIdentity: "4".repeat(64) }],
-    ["product", { productId: "groq", normalizedEndpoint: "https://api.groq.com/openai/v1" }],
     [
-      "endpoint",
-      {
-        productId: "local-openai",
-        transportFamily: "local-http",
-        authentication: "none",
-        credentialReferenceIdentity: null,
-        normalizedEndpoint: "http://127.0.0.1:1234/v1",
-        runtime: { identity: "lm-studio", version: "0.3.0" },
-      },
+      "product and endpoint",
+      { productId: "zai", normalizedEndpoint: "https://api.z.ai/api/paas/v4" },
     ],
     ["model", { modelId: "openai/gpt-4.1" }],
     ["runtime", { runtime: { identity: "diffgazer-server", version: "1.2.4" } }],
@@ -114,6 +109,69 @@ describe("admission evidence", () => {
       expiresAt: "2026-07-31T12:01:00.000Z",
     });
     expect(canAuthorizeEvidence(evidence, evidenceKey, { now })).toBe(false);
+  });
+
+  it("admits the profile's per-dispatch wall time for a paced product", () => {
+    const record = (
+      productId: "zai" | "gemini" | "openrouter",
+      endpoint: string,
+      selectedModelId: string,
+    ): SupportedProviderConfigurationRecord => ({
+      schemaVersion: 2,
+      status: "supported",
+      configurationId: `${productId}-primary`,
+      revision: 1,
+      productId,
+      transportFamily: "hosted-api",
+      input: { transportFamily: "hosted-api", productId, endpoint },
+      selectedModelId,
+      acknowledgement: {
+        noticeId: `${productId}-hosted-api`,
+        noticeVersion: 1,
+        acceptedAt: checkedAt,
+      },
+      evidenceReference: `evidence-${productId}-1`,
+      budget: {
+        inputTokens: 20_000,
+        responseBytes: 1_048_576,
+        wallTimeMs: 120_000,
+        retries: 2,
+        concurrency: 1,
+        perReview: 0.5,
+      },
+      createdAt: checkedAt,
+      updatedAt: checkedAt,
+    });
+    const build = (input: SupportedProviderConfigurationRecord) =>
+      buildExpectedEvidenceKey({
+        record: input,
+        runtime: { identity: "diffgazer-server", version: "1.2.3" },
+        structuredOutputSchemaSha256: "1".repeat(64),
+        credentialReferenceIdentity: "3".repeat(64),
+      });
+
+    const zaiRecord = record("zai", "https://api.z.ai/api/paas/v4", "glm-5-turbo");
+    const zaiKey = build(zaiRecord);
+    expect(zaiKey.limits.wallTimeMs).toBe(300_000);
+    expect(zaiKey.limits).toEqual({
+      ...executionLimitsFromBudget(effectiveBudgetForRecord(zaiRecord)),
+      wallTimeMs: 300_000,
+    });
+
+    const geminiKey = build(
+      record("gemini", "https://generativelanguage.googleapis.com/v1beta", "gemini-2.5-flash"),
+    );
+    expect(geminiKey.limits.wallTimeMs).toBe(120_000);
+
+    // The openrouter product wall beats the budget wall for every route.
+    const openrouterKey = build(
+      record(
+        "openrouter",
+        "https://openrouter.ai/api/v1",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+      ),
+    );
+    expect(openrouterKey.limits.wallTimeMs).toBe(600_000);
   });
 
   it("rejects a forged hash and literal secret reference", () => {

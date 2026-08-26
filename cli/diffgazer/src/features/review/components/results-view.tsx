@@ -38,7 +38,7 @@ export interface ReviewResultsViewProps {
 type Zone = "list" | "details";
 
 const RESULTS_SHORTCUTS_LEFT: Shortcut[] = [
-  { key: "j/k", label: "Navigate" },
+  { key: "↑/↓", label: "Navigate" },
   SWITCH_PANE_SHORTCUT,
 ];
 const RESULTS_SHORTCUTS_RIGHT: Shortcut[] = [BACK_SHORTCUT];

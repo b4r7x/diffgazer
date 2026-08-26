@@ -101,8 +101,6 @@ function structuredOutputLabel(
       return "strict JSON schema";
     case "json-object-local-validation":
       return "JSON object with local validation";
-    case "pinned-cli-terminal-schema":
-      return "pinned CLI terminal schema";
   }
 }
 
@@ -181,8 +179,9 @@ describe("Web Ink canonical terminology matches", () => {
   const providersAndModels = readConcept("providers-and-models");
   const providersReference = readDoc("reference", "providers.mdx");
 
-  it("describes exactly twelve selectable products with registry names", () => {
-    expect(providersAndModels).toContain("twelve selectable products");
+  it("describes exactly nine selectable products with registry names", () => {
+    expect(providersAndModels).toContain("nine selectable products");
+    expect(readConcept("how-it-works")).toContain("nine selectable products");
     for (const productId of SELECTABLE_PRODUCT_IDS) {
       const name = PRODUCT_REGISTRY[productId].presentation.name;
       expect(providersAndModels).toContain(name);
@@ -213,7 +212,15 @@ const KEYLESS_MODEL_LIST_URLS = [
   "https://ollama.com/v1/models",
 ] as const;
 
-const KEY_BEARING_LIST_PRODUCTS = ["zai", "groq", "cerebras", "deepseek", "opencode-zen"] as const;
+const KEY_BEARING_LIST_PRODUCTS = [
+  "zai",
+  "opencode-zen",
+  "deepseek",
+  "qwen",
+  "moonshot",
+  "minimax",
+  "gemini",
+] as const;
 
 describe("provider catalog privacy copy", () => {
   it("discloses pre-review model-list traffic in the overview and links to full privacy details", () => {
@@ -251,7 +258,7 @@ describe("provider catalog privacy copy", () => {
       "A credential is sent only to the endpoint of the configuration it belongs to",
     );
     expect(catalogSection).toContain(
-      "Google Gemini uses a different list API and stays catalog-only, so model discovery never sends a Gemini key; only a review or an explicit Verify does.",
+      "Google Gemini's list lives at `{endpoint}/openai/models` on its endpoint's OpenAI-compatible layer, on the same terms.",
     );
     expect(catalogSection).toContain("`DIFFGAZER_OFFLINE`");
   });

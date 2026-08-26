@@ -9,11 +9,7 @@ function setupPlan(productId: Parameters<typeof buildSetupPlan>[0]): RunnableSet
 }
 
 describe("setup-plan-derived onboarding steps", () => {
-  it("uses transport-neutral copy and never presents local setup as an API-key step", () => {
-    const localPlan = setupPlan("local-openai");
-
-    expect(localPlan.kind).toBe("runnable");
-    expect(localPlan.requiredFields).not.toContain("credential");
+  it("uses transport-neutral copy for every step label", () => {
     expect(STEP_LABELS.authentication).toBe("Authentication");
     expect(STEP_TITLES.authentication).toBe("Configure Authentication");
     expect(Object.keys(STEP_LABELS)).not.toContain("conformance");
@@ -23,15 +19,12 @@ describe("setup-plan-derived onboarding steps", () => {
 
   it("formats progress from each plan's actual length and order", () => {
     const hostedPlan = setupPlan("gemini");
-    const cliPlan = setupPlan("codex-cli");
 
     expect(getStepAt(hostedPlan, 1)).toBe("endpoint-binding");
     expect(getOnboardingProgressLabel(hostedPlan, 1)).toBe("Step 2 of 5: Endpoint");
-    expect(getStepAt(cliPlan, 1)).toBe("authentication");
-    expect(getOnboardingProgressLabel(cliPlan, 1)).toBe("Step 2 of 4: Authentication");
   });
 
   it("rejects an index outside the selected plan", () => {
-    expect(() => getStepAt(setupPlan("codex-cli"), 4)).toThrow("No onboarding step at index 4");
+    expect(() => getStepAt(setupPlan("gemini"), 5)).toThrow("No onboarding step at index 5");
   });
 });

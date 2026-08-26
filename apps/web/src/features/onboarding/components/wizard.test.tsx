@@ -303,10 +303,10 @@ describe("OnboardingWizard", () => {
     expect(screen.getByText(/Step 1 of 5/i)).toBeInTheDocument();
   });
 
-  it("shows exactly 12 selectable products", async () => {
+  it("shows every selectable product", async () => {
     renderWizard();
     await expectStep(/select product/i);
-    expect(screen.getAllByRole("radio")).toHaveLength(12);
+    expect(screen.getAllByRole("radio")).toHaveLength(9);
   });
 
   it("uses shared product names from the registry projection", async () => {
@@ -472,18 +472,6 @@ describe("OnboardingWizard", () => {
         ),
       ).toBe(true);
     });
-  });
-
-  it("skips hosted credential prompts for local CLI plans", async () => {
-    const user = userEvent.setup();
-    renderWizard();
-
-    await expectStep(/select product/i);
-    await user.click(getRadio(/OpenAI Codex CLI/i));
-    await clickNext(user);
-    await expectStep(/configure authentication/i);
-    expect(screen.queryByLabelText(/credential/i)).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/OpenAI Codex CLI installation ID/i)).toBeInTheDocument();
   });
 
   it("shows an inline error when completion fails and keeps the user on the wizard", async () => {

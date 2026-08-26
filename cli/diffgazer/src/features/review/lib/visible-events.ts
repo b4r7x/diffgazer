@@ -76,6 +76,7 @@ function continueVisibleEvents(
 // The web log runs the same continuation/eviction/append windowing contract over
 // the same core primitives in apps/web/src/features/review/lib/row-index.ts,
 // projected to logical row indices instead of retained events. Change both together.
+// Web-side tail pinning is scroll-layer state owned by log.tsx, outside this shared contract.
 /**
  * Filtered view of the retained event history, extended in place across an
  * append. A streaming review re-renders the log once per event, so recomputing

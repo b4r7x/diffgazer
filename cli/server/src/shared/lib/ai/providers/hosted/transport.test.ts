@@ -3,6 +3,12 @@ import { HOSTED_API_PRODUCT_IDS, type HostedApiProductId } from "@diffgazer/core
 import { type EvidenceKey, ExecutionResultSchema } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const readCachedLiveModelListMock = vi.hoisted(() => vi.fn());
+vi.mock("../../live-model-lists.js", () => ({
+  readCachedLiveModelList: readCachedLiveModelListMock,
+}));
+
 import {
   boundedFetchInit as canonicalBoundedFetchInit,
   resolveHostedApiEndpoint,
@@ -158,8 +164,8 @@ describe("hosted transport facade", () => {
     const boundedInit = boundedFetchInit({ method: "POST" });
     expect(boundedInit).toEqual({ method: "POST", redirect: "error" });
     const endpoint = validateHostedEndpoint({
-      productId: "groq",
-      endpoint: "https://api.groq.com/openai/v1",
+      productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
     });
     expect(endpoint.ok).toBe(true);
   });
@@ -168,8 +174,8 @@ describe("hosted transport facade", () => {
 describe("resolveHostedApiEndpoint", () => {
   it("rejects invalid hosted endpoints before secret resolution", () => {
     const result = resolveHostedApiEndpoint({
-      productId: "groq",
-      endpoint: "http://api.groq.com/openai/v1",
+      productId: "openrouter",
+      endpoint: "http://openrouter.ai/api/v1",
     });
 
     expect(result.ok).toBe(false);
@@ -183,8 +189,6 @@ describe("existing hosted provider continuity", () => {
     "gemini",
     "zai",
     "openrouter",
-    "groq",
-    "cerebras",
   ] as const)("completes %s with bounded receipt and schema-valid findings", async (productId) => {
     const review = { issues: [makeIssue()] };
     const fetch =
@@ -212,25 +216,6 @@ describe("existing hosted provider continuity", () => {
 });
 
 describe("add-now PAYG tuple model and notice policies", () => {
-  it("binds DeepSeek to its exact endpoint and allowlisted model", async () => {
-    const fetch = mockFetchResponse(
-      openAiSuccessBody(
-        { issues: [] },
-        { prompt_tokens: 4, completion_tokens: 2, total_tokens: 6 },
-      ),
-    );
-
-    const result = await executeHostedReview({
-      ...executeRequest("deepseek"),
-      context: hostedContext(fetch),
-    });
-
-    expect(result.receipt.outcome).toBe("completed");
-    expect(result.receipt.normalizedEndpoint).toBe("https://api.deepseek.com/v1");
-    expect(result.receipt.modelId).toBe("deepseek-v4-flash");
-    expect(result.receipt.usageAvailability).toBe("reported");
-  });
-
   it("drives Ollama Cloud through ollama.com with a bearer credential and JSON mode", async () => {
     const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
 
@@ -310,7 +295,7 @@ describe("usage contracts", () => {
     });
 
     const result = await executeHostedReview({
-      ...executeRequest("groq"),
+      ...executeRequest("openrouter"),
       context: hostedContext(fetch),
     });
 
@@ -318,20 +303,209 @@ describe("usage contracts", () => {
     expect(result.receipt.usageAvailability).toBe("unavailable");
     expect(result.receipt.usage).toBeUndefined();
   });
+});
 
-  it("fails required-terminal providers when usage is missing", async () => {
-    const fetch = mockFetchResponse({
-      choices: [{ message: { content: JSON.stringify({ issues: [] }) }, finish_reason: "stop" }],
-    });
+describe("openrouter structured-output capability at dispatch", () => {
+  const OPENROUTER_MODEL_ID = suggestedModelId("openrouter");
+
+  function liveList(structuredOutput: boolean, reasoning?: boolean) {
+    return {
+      models: [
+        {
+          id: OPENROUTER_MODEL_ID,
+          tier: "free" as const,
+          structuredOutput,
+          ...(reasoning === undefined ? {} : { reasoning }),
+        },
+      ],
+      fetchedAt: new Date().toISOString(),
+      cached: true,
+    };
+  }
+
+  afterEach(() => {
+    readCachedLiveModelListMock.mockReset();
+    vi.restoreAllMocks();
+  });
+
+  it("keeps the strict schema and require_parameters on the strict path", async () => {
+    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
 
     const result = await executeHostedReview({
-      ...executeRequest("deepseek"),
+      ...executeRequest("openrouter"),
       context: hostedContext(fetch),
     });
 
-    expect(result.receipt.outcome).toBe("transport-failed");
-    expect(result.receipt.usageAvailability).toBe("required-missing");
-    expect(result.result.issues).toEqual([]);
+    expect(result.receipt.outcome).toBe("completed");
+    const body = requestBodyAt(fetch, 0);
+    expect(body.provider).toEqual({ require_parameters: true });
+    expect(body.response_format).toMatchObject({
+      type: "json_schema",
+      json_schema: { strict: true },
+    });
+  });
+
+  it("degrades to JSON mode without require_parameters when the context mode says the route lacks structured outputs", async () => {
+    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
+
+    const result = await executeHostedReview({
+      ...executeRequest("openrouter"),
+      context: { ...hostedContext(fetch), structuredOutputMode: "json-object-local-validation" },
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    const body = requestBodyAt(fetch, 0);
+    expect(body.response_format).toEqual({ type: "json_object" });
+    expect(body.provider).toBeUndefined();
+  });
+
+  it("degrades a dispatch whose live-list route does not declare structured_outputs", async () => {
+    readCachedLiveModelListMock.mockReturnValue(liveList(false));
+    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
+    vi.spyOn(globalThis, "fetch").mockImplementation(fetch);
+
+    const result = await createHostedAdapter("openrouter").execute({
+      ...executeRequest("openrouter"),
+      resolveCredential: async () => TEST_CREDENTIAL,
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(readCachedLiveModelListMock).toHaveBeenCalledWith({
+      configurationId: "configuration-1",
+      productId: "openrouter",
+    });
+    const body = requestBodyAt(fetch, 0);
+    expect(body.response_format).toEqual({ type: "json_object" });
+    expect(body.provider).toBeUndefined();
+  });
+
+  it("keeps strict dispatch for a route the live list marks structured-output capable", async () => {
+    readCachedLiveModelListMock.mockReturnValue(liveList(true));
+    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
+    vi.spyOn(globalThis, "fetch").mockImplementation(fetch);
+
+    const result = await createHostedAdapter("openrouter").execute({
+      ...executeRequest("openrouter"),
+      resolveCredential: async () => TEST_CREDENTIAL,
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    const body = requestBodyAt(fetch, 0);
+    expect(body.provider).toEqual({ require_parameters: true });
+    expect(body.response_format).toMatchObject({ type: "json_schema" });
+  });
+
+  it("degrades when the live list is unavailable instead of risking a strict 404", async () => {
+    readCachedLiveModelListMock.mockReturnValue(null);
+    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
+    vi.spyOn(globalThis, "fetch").mockImplementation(fetch);
+
+    const result = await createHostedAdapter("openrouter").execute({
+      ...executeRequest("openrouter"),
+      resolveCredential: async () => TEST_CREDENTIAL,
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    const body = requestBodyAt(fetch, 0);
+    expect(body.response_format).toEqual({ type: "json_object" });
+    expect(body.provider).toBeUndefined();
+  });
+
+  it("bounds reasoning spend for a strict route that declares the reasoning control", async () => {
+    readCachedLiveModelListMock.mockReturnValue(liveList(true, true));
+    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
+    vi.spyOn(globalThis, "fetch").mockImplementation(fetch);
+
+    const result = await createHostedAdapter("openrouter").execute({
+      ...executeRequest("openrouter"),
+      resolveCredential: async () => TEST_CREDENTIAL,
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    const body = requestBodyAt(fetch, 0);
+    expect(body.reasoning).toEqual({ max_tokens: 2048 });
+    expect(body.provider).toEqual({ require_parameters: true });
+    expect(body.response_format).toMatchObject({ type: "json_schema" });
+  });
+
+  it("bounds reasoning spend on the degraded path too", async () => {
+    readCachedLiveModelListMock.mockReturnValue(liveList(false, true));
+    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
+    vi.spyOn(globalThis, "fetch").mockImplementation(fetch);
+
+    const result = await createHostedAdapter("openrouter").execute({
+      ...executeRequest("openrouter"),
+      resolveCredential: async () => TEST_CREDENTIAL,
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    const body = requestBodyAt(fetch, 0);
+    expect(body.reasoning).toEqual({ max_tokens: 2048 });
+    expect(body.response_format).toEqual({ type: "json_object" });
+  });
+
+  it("sends no reasoning control to a route that never declared it", async () => {
+    readCachedLiveModelListMock.mockReturnValue(liveList(true, false));
+    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
+    vi.spyOn(globalThis, "fetch").mockImplementation(fetch);
+
+    const result = await createHostedAdapter("openrouter").execute({
+      ...executeRequest("openrouter"),
+      resolveCredential: async () => TEST_CREDENTIAL,
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    // require_parameters travels with the strict schema: an undeclared control
+    // would exclude the model's own routes from routing.
+    expect(requestBodyAt(fetch, 0).reasoning).toBeUndefined();
+  });
+
+  it("never consults the live list for a non-aggregator product", async () => {
+    const fetch = mockFetchResponse(googleSuccessBody({ issues: [] }));
+    vi.spyOn(globalThis, "fetch").mockImplementation(fetch);
+
+    const result = await createHostedAdapter("gemini").execute({
+      ...executeRequest("gemini"),
+      resolveCredential: async () => TEST_CREDENTIAL,
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(readCachedLiveModelListMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("openrouter free-pool rate limiting", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("honors Retry-After on a 429 and completes on the delayed retry within the deadline", async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const fetch = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) {
+        return new Response(JSON.stringify({ error: "rate limited" }), {
+          status: 429,
+          headers: { "content-type": "application/json", "retry-after": "5" },
+        });
+      }
+      return new Response(JSON.stringify(openAiSuccessBody({ issues: [makeIssue()] })), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as FetchFn;
+
+    const pending = executeHostedReview({
+      ...executeRequest("openrouter"),
+      context: hostedContext(fetch),
+    });
+    await vi.advanceTimersByTimeAsync(5_000);
+    const result = await pending;
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.result.issues).toHaveLength(1);
   });
 });
 
@@ -343,7 +517,7 @@ describe("failure outcomes emit zero findings without fallback", () => {
     });
 
     const result = await executeHostedReview({
-      ...executeRequest("groq"),
+      ...executeRequest("openrouter"),
       context: hostedContext(fetch),
     });
 
@@ -356,7 +530,7 @@ describe("failure outcomes emit zero findings without fallback", () => {
     const fetch = mockFetchResponse(openAiSuccessBody({ issues: [], filler: huge }));
 
     const result = await executeHostedReview({
-      ...executeRequest("groq", {
+      ...executeRequest("openrouter", {
         limits: { ...limits, maxResponseBytes: 256 },
       }),
       context: hostedContext(fetch),
@@ -384,7 +558,7 @@ describe("failure outcomes emit zero findings without fallback", () => {
     }) as FetchFn;
 
     const result = await executeHostedReview({
-      ...executeRequest("groq"),
+      ...executeRequest("openrouter"),
       context: hostedContext(fetch),
     });
 
@@ -398,7 +572,7 @@ describe("failure outcomes emit zero findings without fallback", () => {
     }) as FetchFn;
 
     const result = await executeHostedReview({
-      ...executeRequest("groq"),
+      ...executeRequest("openrouter"),
       context: hostedContext(fetch),
     });
 
@@ -410,7 +584,7 @@ describe("failure outcomes emit zero findings without fallback", () => {
     const fetch = mockFetchResponse({ error: "rate limited" }, { status: 429 });
 
     const result = await executeHostedReview({
-      ...executeRequest("groq"),
+      ...executeRequest("openrouter"),
       context: hostedContext(fetch),
     });
 
@@ -419,18 +593,18 @@ describe("failure outcomes emit zero findings without fallback", () => {
   });
 
   it.each([
-    [401, "Groq rejected the credential (HTTP 401)."],
-    [403, "Groq refused access (HTTP 403)."],
-    [402, "Groq reported billing or quota exhausted (HTTP 402)."],
-    [404, "Groq could not find the selected model or endpoint (HTTP 404)."],
-    [413, "Groq rejected the request as too large (HTTP 413)."],
-    [429, "Groq rate limited the request (HTTP 429)."],
+    [401, "OpenRouter rejected the credential (HTTP 401)."],
+    [403, "OpenRouter refused access (HTTP 403)."],
+    [402, "OpenRouter reported billing or quota exhausted (HTTP 402)."],
+    [404, "OpenRouter could not find the selected model or endpoint (HTTP 404)."],
+    [413, "OpenRouter rejected the request as too large (HTTP 413)."],
+    [429, "OpenRouter rate limited the request (HTTP 429)."],
   ])("reports a refused HTTP %s response as a provider rejection the user can fix", async (status, message) => {
     const fetch = mockFetchResponse({ error: "sk-secret-abcdefghijklmnop" }, { status });
     const reportDiagnostic = vi.fn();
 
     const result = await executeHostedReview({
-      ...executeRequest("groq"),
+      ...executeRequest("openrouter"),
       reportDiagnostic,
       context: hostedContext(fetch),
     });
@@ -450,7 +624,7 @@ describe("failure outcomes emit zero findings without fallback", () => {
     const reportDiagnostic = vi.fn();
 
     await executeHostedReview({
-      ...executeRequest("groq"),
+      ...executeRequest("openrouter"),
       reportDiagnostic,
       context: hostedContext(fetch),
     });
@@ -459,7 +633,7 @@ describe("failure outcomes emit zero findings without fallback", () => {
       expect.objectContaining({
         code: "transport-failed",
         retryable: true,
-        safeMessage: "Groq returned HTTP 503.",
+        safeMessage: "OpenRouter returned HTTP 503.",
       }),
     );
   });
@@ -473,7 +647,7 @@ describe("failure outcomes emit zero findings without fallback", () => {
       });
 
     const result = await executeHostedReview({
-      ...executeRequest("groq", { limits: { ...limits, wallTimeMs: 50 } }),
+      ...executeRequest("openrouter", { limits: { ...limits, wallTimeMs: 50 } }),
       context: hostedContext(fetch),
     });
 
@@ -487,7 +661,7 @@ describe("failure outcomes emit zero findings without fallback", () => {
     controller.abort();
 
     const result = await executeHostedReview({
-      ...executeRequest("groq"),
+      ...executeRequest("openrouter"),
       signal: controller.signal,
       context: hostedContext(fetch),
     });
@@ -501,7 +675,7 @@ describe("failure outcomes emit zero findings without fallback", () => {
     const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
 
     const result = await executeHostedReview({
-      ...executeRequest("groq", { limits: { ...limits, maxInputTokens: 1 } }),
+      ...executeRequest("openrouter", { limits: { ...limits, maxInputTokens: 1 } }),
       context: hostedContext(fetch),
     });
 
@@ -582,7 +756,7 @@ describe("failure outcomes emit zero findings without fallback", () => {
     });
   });
 
-  it("retries DeepSeek once for malformed output then fails closed", async () => {
+  it("retries Z.AI once for malformed output then fails closed", async () => {
     const fetch = vi
       .fn()
       .mockResolvedValueOnce(
@@ -605,7 +779,7 @@ describe("failure outcomes emit zero findings without fallback", () => {
       ) as FetchFn;
 
     const result = await executeHostedReview({
-      ...executeRequest("deepseek"),
+      ...executeRequest("zai"),
       context: hostedContext(fetch),
     });
 
@@ -633,24 +807,12 @@ describe("hosted adapter factory", () => {
     expect(result.result.issues).toEqual([]);
   });
 
-  it("fails closed without resolving credentials for a non-hosted evidence key", async () => {
+  it("fails closed without resolving credentials for a mismatched evidence key", async () => {
     const resolveCredential = vi.fn(async () => TEST_CREDENTIAL);
     const adapter = createHostedAdapter("gemini");
     const result = await adapter.execute({
       ...executeRequest("gemini"),
-      evidenceKey: {
-        ...executeRequest("gemini").evidenceKey,
-        authentication: "none",
-        credentialReferenceIdentity: null,
-        installationId: null,
-        productId: "ollama",
-        transportFamily: "local-http",
-        normalizedEndpoint: "http://127.0.0.1:11434",
-        region: null,
-        workspaceAccountReference: null,
-        runtime: { identity: "ollama", version: "0.6.0" },
-        modelId: "llama3.2",
-      },
+      evidenceKey: evidenceKeyFor("zai"),
       resolveCredential,
     });
 
@@ -727,7 +889,9 @@ describe("admitted attempt accounting", () => {
   });
 
   it("retries a billed malformed attempt without sending an output cap", async () => {
-    const retryLimits = { ...limits, maxInputTokens: 40 } as const;
+    // Enough for the prompt plus the corrective-retry turns, which now count
+    // into the retry's input reservation.
+    const retryLimits = { ...limits, maxInputTokens: 200 } as const;
     const fetch = vi
       .fn()
       .mockResolvedValueOnce(
@@ -920,24 +1084,6 @@ describe("admitted attempt accounting", () => {
     expect(result.receipt.usage).toBeUndefined();
   });
 
-  it("fails closed for contradictory required-terminal usage", async () => {
-    const fetch = mockFetchResponse({
-      choices: [{ message: { content: "{" }, finish_reason: "stop" }],
-      usage: { prompt_tokens: 4, total_tokens: 3 },
-    });
-
-    const result = await executeHostedReview({
-      ...executeRequest("deepseek"),
-      context: hostedContext(fetch),
-    });
-
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(result.receipt.outcome).toBe("transport-failed");
-    expect(result.receipt.usageAvailability).toBe("unavailable");
-    expect(result.receipt.usage).toBeUndefined();
-    expect(result.result.issues).toEqual([]);
-  });
-
   it("derives an omitted attempt total and accumulates every known token component", async () => {
     const fetch = vi
       .fn()
@@ -1087,7 +1233,7 @@ describe("admitted attempt accounting", () => {
     );
 
     const result = await executeHostedReview({
-      ...executeRequest("groq"),
+      ...executeRequest("openrouter"),
       context: hostedContext(fetch),
     });
 
@@ -1110,7 +1256,7 @@ describe("admitted attempt accounting", () => {
     );
 
     const result = await executeHostedReview({
-      ...executeRequest("groq"),
+      ...executeRequest("openrouter"),
       context: hostedContext(fetch),
     });
 
@@ -1179,13 +1325,22 @@ describe("rate-limit diagnostics", () => {
         ),
     ) as MockFetchFn;
 
-    const result = await executeHostedReview({
-      ...executeRequest("groq"),
-      context: hostedContext(fetch),
-    });
+    vi.useFakeTimers();
+    try {
+      const pending = executeHostedReview({
+        ...executeRequest("openrouter"),
+        context: hostedContext(fetch),
+      });
+      await vi.advanceTimersByTimeAsync(10_000);
+      const result = await pending;
 
-    expect(result.receipt.outcome).toBe("transport-failed");
-    expect(pulledChunks).toBeLessThanOrEqual(16);
+      expect(result.receipt.outcome).toBe("transport-failed");
+      // The capped read runs once per rate-limit attempt (two retries + the
+      // final diagnostic capture), never buffering a whole body.
+      expect(pulledChunks).toBeLessThanOrEqual(48);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -1361,7 +1516,7 @@ describe("hosted trust boundary", () => {
     const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
 
     const result = await executeHostedReview({
-      ...executeRequest("groq"),
+      ...executeRequest("openrouter"),
       systemPrompt: "invariant reviewer instructions",
       context: hostedContext(fetch),
     });
@@ -1377,7 +1532,7 @@ describe("hosted trust boundary", () => {
     const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
 
     await executeHostedReview({
-      ...executeRequest("groq"),
+      ...executeRequest("openrouter"),
       context: hostedContext(fetch),
     });
 

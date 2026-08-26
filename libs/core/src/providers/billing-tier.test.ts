@@ -4,16 +4,6 @@ import { BILLING_TIER_BADGES, getBillingTier, offersFreeModels } from "./billing
 import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "./product-registry.js";
 
 describe("getBillingTier", () => {
-  it("never bills a locally hosted model as paid", () => {
-    expect(getBillingTier("ollama")).toBe("local");
-    expect(getBillingTier("local-openai")).toBe("local");
-  });
-
-  it("reads a CLI that rides an existing subscription as ambient rather than paid", () => {
-    expect(getBillingTier("codex-cli")).toBe("ambient");
-    expect(getBillingTier("copilot-cli")).toBe("ambient");
-  });
-
   // Two facts, both true: every offerable Gemini model carries a list price, and
   // Google publishes a no-cost quota to run them on. FREE would promise the
   // wrong one and PAID would hide the product's only free on-ramp.
@@ -23,21 +13,18 @@ describe("getBillingTier", () => {
     expect(getBillingTier("gemini")).toBe("free-tier");
   });
 
-  // Cerebras closed its free tier (2026-08-17); with no zero-priced catalog
-  // model and no declared free quota the badge must not promise one, while
-  // Ollama Cloud's unpriced quota-billed catalog can say no more than FREE TIER.
-  it("does not invent a free tier and names a declared one for an unpriced catalog", () => {
-    expect(PRODUCT_REGISTRY.cerebras.billing.modes).toEqual(["pay-as-you-go"]);
-    expect(getBillingTier("cerebras")).toBe("paid");
+  // Ollama Cloud's unpriced quota-billed catalog can say no more than FREE
+  // TIER: with no zero-priced catalog model the badge must not promise FREE.
+  it("names a declared free tier for an unpriced catalog without inventing FREE", () => {
     expect(PROVIDER_DERIVED["ollama-cloud"].billing).toBe("unknown");
     expect(getBillingTier("ollama-cloud")).toBe("free-tier");
   });
 
-  // A zero-priced catalog model outranks the declared account tier: Groq and
-  // OpenRouter publish free models beside priced ones, so the badge names the
-  // mix rather than the quota, and Z.AI earns it with no declared free quota at all.
+  // A zero-priced catalog model outranks the declared account tier: OpenRouter
+  // publishes free models beside priced ones, so the badge names the mix rather
+  // than the quota, and Z.AI earns it with no declared free quota at all.
   it("reports a product offering both priced and zero-priced models as mixed", () => {
-    for (const productId of ["openrouter", "groq", "zai"] as const) {
+    for (const productId of ["openrouter", "zai"] as const) {
       expect(PROVIDER_DERIVED[productId].billing, productId).toBe("mixed");
       expect(getBillingTier(productId), productId).toBe("mixed");
       expect(offersFreeModels(getBillingTier(productId)), productId).toBe(true);
@@ -46,22 +33,17 @@ describe("getBillingTier", () => {
   });
 
   // A subscription is not a free quota. OpenCode Go buys included usage on the
-  // same key and endpoint as Zen credits, so neither declared mode may promise
-  // a no-cost route; Zen's free and stealth models speak per model instead.
+  // same key as Zen credits, so neither declared mode may promise a no-cost
+  // route; the FREE/PAID mix is earned by Zen's zero-priced catalog models
+  // (models.dev `opencode`/`opencode-go` sources), not by a registry claim.
   it("does not read a subscription-credit mode as a declared free tier", () => {
     expect(PRODUCT_REGISTRY["opencode-zen"].billing.modes).toEqual([
       "pay-as-you-go",
       "subscription-credit",
     ]);
-    expect(PROVIDER_DERIVED["opencode-zen"].billing).toBe("unknown");
-    expect(getBillingTier("opencode-zen")).toBe("paid");
-    expect(offersFreeModels(getBillingTier("opencode-zen"))).toBe(false);
-  });
-
-  it("stays paid for a pay-as-you-go product that declares no free quota", () => {
-    expect(PRODUCT_REGISTRY.deepseek.billing.modes).toEqual(["pay-as-you-go"]);
-    expect(getBillingTier("deepseek")).toBe("paid");
-    expect(offersFreeModels(getBillingTier("deepseek"))).toBe(false);
+    expect(PROVIDER_DERIVED["opencode-zen"].billing).toBe("mixed");
+    expect(getBillingTier("opencode-zen")).toBe("mixed");
+    expect(offersFreeModels(getBillingTier("opencode-zen"))).toBe(true);
   });
 
   // The one safeguard that costs money if it slips: FREE is a claim about a
@@ -81,7 +63,6 @@ describe("offersFreeModels", () => {
     expect(offersFreeModels("mixed")).toBe(true);
     expect(offersFreeModels("free-tier")).toBe(true);
     expect(offersFreeModels("paid")).toBe(false);
-    expect(offersFreeModels("local")).toBe(false);
   });
 });
 
@@ -89,7 +70,7 @@ describe("BILLING_TIER_BADGES", () => {
   it("gives every tier its own badge word so surfaces cannot invent one", () => {
     const labels = Object.values(BILLING_TIER_BADGES).map(({ label }) => label);
 
-    expect(labels).toEqual(["FREE", "PAID", "FREE/PAID", "LOCAL", "AMBIENT", "FREE TIER"]);
+    expect(labels).toEqual(["FREE", "PAID", "FREE/PAID", "FREE TIER"]);
     expect(BILLING_TIER_BADGES.free.variant).toBe("success");
     expect(BILLING_TIER_BADGES["free-tier"].variant).toBe("info");
   });

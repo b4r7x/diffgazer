@@ -1,7 +1,7 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import { STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import { LocalOpenAIPresetIdSchema, PROVIDER_CONSENT_TEXT } from "@diffgazer/core/schemas/config";
+import { PROVIDER_CONSENT_TEXT } from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { Button } from "../../../components/ui/button";
@@ -32,66 +32,25 @@ function EndpointBindingStep({ wizard }: WizardStepBodyProps): ReactElement | nu
   const input = draft.configurationInput;
   const isActive = wizard.focusArea === "step";
 
-  if (input.transportFamily === "hosted-api") {
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color={tokens.muted}>Choose the endpoint profile for this hosted product.</Text>
-        <RadioGroup
-          value={input.endpoint}
-          onChange={(endpoint) => wizard.updateData({ configurationInput: { ...input, endpoint } })}
-          isActive={isActive}
-        >
-          {step.endpoints.map((endpoint) => (
-            <RadioGroup.Item
-              key={endpoint.endpoint}
-              value={endpoint.endpoint}
-              label={endpoint.label}
-              description={endpoint.endpoint}
-            />
-          ))}
-        </RadioGroup>
-      </Box>
-    );
-  }
-
-  if (input.transportFamily === "local-http") {
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color={tokens.muted}>Choose the loopback endpoint for this local server.</Text>
-        <RadioGroup
-          value={input.endpoint}
-          onChange={(endpoint) => {
-            const profile = step.endpoints.find((candidate) => candidate.endpoint === endpoint);
-            const nextInput = { ...input, endpoint };
-            if (input.productId !== "local-openai" || !profile) {
-              wizard.updateData({ configurationInput: nextInput });
-              return;
-            }
-            // The schema that owns this id is the only thing allowed to widen it,
-            // so a future third preset skips the selection instead of throwing out
-            // of the key handler, which has no boundary to land in.
-            const presetId = LocalOpenAIPresetIdSchema.safeParse(profile.id);
-            if (!presetId.success) return;
-            wizard.updateData({
-              configurationInput: { ...nextInput, presetId: presetId.data },
-            });
-          }}
-          isActive={isActive}
-        >
-          {step.endpoints.map((endpoint) => (
-            <RadioGroup.Item
-              key={endpoint.endpoint}
-              value={endpoint.endpoint}
-              label={endpoint.label}
-              description={endpoint.endpoint}
-            />
-          ))}
-        </RadioGroup>
-      </Box>
-    );
-  }
-
-  return null;
+  return (
+    <Box flexDirection="column" gap={1}>
+      <Text color={tokens.muted}>Choose the endpoint profile for this hosted product.</Text>
+      <RadioGroup
+        value={input.endpoint}
+        onChange={(endpoint) => wizard.updateData({ configurationInput: { ...input, endpoint } })}
+        isActive={isActive}
+      >
+        {step.endpoints.map((endpoint) => (
+          <RadioGroup.Item
+            key={endpoint.endpoint}
+            value={endpoint.endpoint}
+            label={endpoint.label}
+            description={endpoint.endpoint}
+          />
+        ))}
+      </RadioGroup>
+    </Box>
+  );
 }
 
 function AcknowledgementStep({ wizard }: WizardStepBodyProps): ReactElement | null {
@@ -143,7 +102,6 @@ function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
       return (
         <ApiKeyStep
           productId={wizard.wizardData.configurationInput.productId}
-          transportFamily={wizard.wizardData.configurationInput.transportFamily}
           method={wizard.inputMethod}
           onMethodChange={wizard.handleInputMethodChange}
           apiKey={wizard.apiKey}
@@ -176,7 +134,6 @@ export function OnboardingWizard(): ReactElement {
   const fullProgressWidth = getFullProgressWidth(stepLabels);
   const compactProgress = columns < fullProgressWidth;
   const nextActionIndex = wizard.isFirstStep ? 0 : 1;
-  const transportFamily = wizard.wizardData.configurationInput.transportFamily;
 
   const actions = useActionRow({
     actionCount: wizard.isFirstStep ? 1 : 2,
@@ -200,7 +157,6 @@ export function OnboardingWizard(): ReactElement {
       canProceed: wizard.canProceed,
       inputMethod: wizard.inputMethod,
       apiKeyInputFocused: wizard.apiKeyInputFocused,
-      transportFamily,
     }),
   });
 

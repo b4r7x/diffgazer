@@ -8,9 +8,9 @@ import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import {
   configurationStatus,
-  LOCAL_OPENAI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeReadyInitResponse,
+  ZAI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { Toaster, toast } from "@diffgazer/ui/components/toast";
@@ -1091,7 +1091,7 @@ describe("ReviewPage protected route readiness", () => {
 
     renderPage({
       init: makeConfigurationInitResponse([
-        configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
+        configurationStatus(ZAI_CONFIGURATION, "conformance-failed"),
       ]),
     });
 

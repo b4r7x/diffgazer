@@ -139,20 +139,20 @@ describe("useApiKeyEntry", () => {
     expect(result.current.error).toBeNull();
   });
 
-  it("routes credentialless saves through the same guard and error channel", async () => {
-    const onSubmit = vi.fn().mockRejectedValueOnce(new Error("local save failed"));
+  it("routes env-method saves through the same guard and error channel", async () => {
+    const onSubmit = vi.fn().mockRejectedValueOnce(new Error("env save failed"));
     const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
 
     await act(async () => {
-      await result.current.submitCredentialless();
+      await result.current.submit("env");
     });
 
     expect(onSubmit).toHaveBeenCalledWith("env", "");
-    expect(result.current.error).toBe("local save failed");
+    expect(result.current.error).toBe("env save failed");
     expect(result.current.isSubmitting).toBe(false);
   });
 
-  it("declines a credentialless duplicate while the first save is pending", async () => {
+  it("declines a duplicate submit while the first save is pending", async () => {
     let resolveSubmit!: (committed: boolean) => void;
     const onSubmit = vi.fn(
       () =>
@@ -165,8 +165,8 @@ describe("useApiKeyEntry", () => {
     let submitPromise!: Promise<boolean>;
     let duplicatePromise!: Promise<boolean>;
     act(() => {
-      submitPromise = result.current.submitCredentialless();
-      duplicatePromise = result.current.submitCredentialless();
+      submitPromise = result.current.submit("env");
+      duplicatePromise = result.current.submit("env");
     });
 
     expect(result.current.isSubmitting).toBe(true);

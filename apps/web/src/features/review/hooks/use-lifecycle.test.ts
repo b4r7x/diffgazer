@@ -11,11 +11,11 @@ import {
   makeReviewMetadata,
 } from "@diffgazer/core/testing/factories";
 import {
-  CODEX_CLI_CONFIGURATION,
   configurationStatus,
-  LOCAL_OPENAI_CONFIGURATION,
+  GEMINI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeReadyInitResponse,
+  ZAI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -952,9 +952,9 @@ describe("useReviewLifecycle readiness gate", () => {
     });
   });
 
-  it("routes local unreachable readiness to the test action without API-key copy", async () => {
+  it("routes conformance-failed readiness to the test action without API-key copy", async () => {
     const init = makeConfigurationInitResponse([
-      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
+      configurationStatus(ZAI_CONFIGURATION, "conformance-failed"),
     ]);
     mockApi = createMockApi(init);
     let capturedOptions: Parameters<typeof mockUseReviewLifecycleBase>[0] | undefined;
@@ -973,16 +973,16 @@ describe("useReviewLifecycle readiness gate", () => {
     const { result } = renderReviewLifecycle("unstaged");
 
     await waitFor(() => {
-      expect(capturedOptions?.readiness?.status).toBe("local-conformance-failed");
+      expect(capturedOptions?.readiness?.status).toBe("conformance-failed");
       expect(capturedOptions?.readiness?.action).toBe("test");
     });
     expect(result.current.readiness?.remediation.message).not.toMatch(/api key/i);
-    expect(result.current.readiness?.status).toBe("local-conformance-failed");
+    expect(result.current.readiness?.status).toBe("conformance-failed");
   });
 
-  it("routes CLI unsupported readiness to the inspect action", async () => {
+  it("routes unsupported readiness to the inspect action", async () => {
     const init = makeConfigurationInitResponse([
-      configurationStatus(CODEX_CLI_CONFIGURATION, "unsupported"),
+      configurationStatus(GEMINI_CONFIGURATION, "unsupported"),
     ]);
     mockApi = createMockApi(init);
     mockUseReviewLifecycleBase.mockReturnValue({
@@ -1004,7 +1004,7 @@ describe("useReviewLifecycle readiness gate", () => {
 
   it("allows a saved completed review to resume without readiness", async () => {
     const init = makeConfigurationInitResponse([
-      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
+      configurationStatus(ZAI_CONFIGURATION, "conformance-failed"),
     ]);
     mockApi = createMockApi(init);
     let capturedOptions: Parameters<typeof mockUseReviewLifecycleBase>[0] | undefined;

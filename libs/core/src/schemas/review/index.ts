@@ -15,6 +15,7 @@ export {
   hashExecutionReceiptFingerprintSync,
   type NormalizedUsage,
   NormalizedUsageSchema,
+  REVIEW_WALL_CEILING_SLACK,
   type RuntimeIdentity,
   RuntimeIdentitySchema,
   Sha256HexSchema,

@@ -19,7 +19,7 @@ import {
 
 test("formatProviderProbeLine keeps the frozen key order and reason vocabulary", () => {
   const line = formatProviderProbeLine({
-    providerId: "groq",
+    providerId: "zai",
     modelId: "gpt-oss-120b",
     status: "skipped",
     reason: "network-disabled",
@@ -27,12 +27,12 @@ test("formatProviderProbeLine keeps the frozen key order and reason vocabulary",
   });
   assert.equal(
     line,
-    '{"type":"provider-probe","providerId":"groq","modelId":"gpt-oss-120b","status":"skipped","reason":"network-disabled","checkedAt":"2026-07-31T12:00:00.000Z"}',
+    '{"type":"provider-probe","providerId":"zai","modelId":"gpt-oss-120b","status":"skipped","reason":"network-disabled","checkedAt":"2026-07-31T12:00:00.000Z"}',
   );
   for (const reason of PROVIDER_PROBE_REASONS) {
     assert.match(
       formatProviderProbeLine({
-        providerId: "groq",
+        providerId: "zai",
         modelId: null,
         status: reason === "none" ? "passed" : "skipped",
         reason,
@@ -44,7 +44,7 @@ test("formatProviderProbeLine keeps the frozen key order and reason vocabulary",
 });
 
 test("resolveLiveProbeDisposition types every prerequisite as not-requested or unavailable", () => {
-  const tuple = { providerId: "groq", credentialEnv: "GROQ_API_KEY", modelId: "gpt-oss-120b" };
+  const tuple = { providerId: "zai", credentialEnv: "ZAI_API_KEY", modelId: "gpt-oss-120b" };
   assert.deepEqual(resolveLiveProbeDisposition(tuple, {}, false), {
     kind: "not-requested",
     reason: "network-disabled",
@@ -60,7 +60,7 @@ test("resolveLiveProbeDisposition types every prerequisite as not-requested or u
   assert.deepEqual(
     resolveLiveProbeDisposition(
       tuple,
-      { DIFFGAZER_LIVE_PROBES: "1", GROQ_API_KEY: "present" },
+      { DIFFGAZER_LIVE_PROBES: "1", ZAI_API_KEY: "present" },
       true,
     ),
     { kind: "ready", reason: "none" },
@@ -82,9 +82,9 @@ test("buildHostedProbeTuples derives hosted credentials from the canonical map a
       transportFamily: "hosted-api",
       modelPolicy: { suggestedModelId: "glm-5" },
     },
-    ollama: {
-      id: "ollama",
-      transportFamily: "local-http",
+    "kimi-code-cli": {
+      id: "kimi-code-cli",
+      transportFamily: "local-cli",
       modelPolicy: {},
     },
   };
@@ -117,7 +117,7 @@ test("emitProviderProbeResults emits one line per tuple and never upgrades skipp
   const emitted = [];
   const { lines, results } = await emitProviderProbeResults(
     [
-      { providerId: "groq", credentialEnv: "GROQ_API_KEY", modelId: "gpt-oss-120b" },
+      { providerId: "zai", credentialEnv: "ZAI_API_KEY", modelId: "gpt-oss-120b" },
       { providerId: "gemini", credentialEnv: "GOOGLE_API_KEY", modelId: "gemini-2.5-flash" },
     ],
     {
@@ -141,9 +141,9 @@ test("emitProviderProbeResults emits one line per tuple and never upgrades skipp
 
 test("emitProviderProbeResults reports probe-failed instead of passed when a live probe does not succeed", async () => {
   const { lines } = await emitProviderProbeResults(
-    [{ providerId: "groq", credentialEnv: "GROQ_API_KEY", modelId: "gpt-oss-120b" }],
+    [{ providerId: "zai", credentialEnv: "ZAI_API_KEY", modelId: "gpt-oss-120b" }],
     {
-      env: { DIFFGAZER_LIVE_PROBES: "1", GROQ_API_KEY: "present" },
+      env: { DIFFGAZER_LIVE_PROBES: "1", ZAI_API_KEY: "present" },
       networkEnabled: true,
       checkedAt: "2026-07-31T12:00:00.000Z",
       runProbe: async () => ({ passed: false }),
@@ -152,7 +152,7 @@ test("emitProviderProbeResults reports probe-failed instead of passed when a liv
   assert.equal(
     lines[0],
     formatProviderProbeLine({
-      providerId: "groq",
+      providerId: "zai",
       modelId: "gpt-oss-120b",
       status: "failed",
       reason: "probe-failed",
@@ -163,9 +163,9 @@ test("emitProviderProbeResults reports probe-failed instead of passed when a liv
 
 test("emitProviderProbeResults records an unavailable runner as skipped, never failed", async () => {
   const { lines, results } = await emitProviderProbeResults(
-    [{ providerId: "groq", credentialEnv: "GROQ_API_KEY", modelId: "gpt-oss-120b" }],
+    [{ providerId: "zai", credentialEnv: "ZAI_API_KEY", modelId: "gpt-oss-120b" }],
     {
-      env: { DIFFGAZER_LIVE_PROBES: "1", GROQ_API_KEY: "present" },
+      env: { DIFFGAZER_LIVE_PROBES: "1", ZAI_API_KEY: "present" },
       networkEnabled: true,
       checkedAt: "2026-07-31T12:00:00.000Z",
       runProbe: async () => ({ unavailable: "runner-unavailable" }),
@@ -180,27 +180,27 @@ test("emitProviderProbeResults records an unavailable runner as skipped, never f
 // strict exit code is proven for every disposition without live credentials.
 const STRICT_FIXTURES = {
   passed: {
-    tuple: { providerId: "groq", modelId: "gpt-oss-120b" },
+    tuple: { providerId: "zai", modelId: "gpt-oss-120b" },
     status: "passed",
     reason: "none",
   },
   failed: {
-    tuple: { providerId: "groq", modelId: "gpt-oss-120b" },
+    tuple: { providerId: "zai", modelId: "gpt-oss-120b" },
     status: "failed",
     reason: "probe-failed",
   },
   unavailableRunner: {
-    tuple: { providerId: "groq", modelId: null },
+    tuple: { providerId: "zai", modelId: null },
     status: "skipped",
     reason: "runner-unavailable",
   },
   unavailableCredential: {
-    tuple: { providerId: "zai", modelId: null },
+    tuple: { providerId: "openrouter", modelId: null },
     status: "skipped",
     reason: "credential-missing",
   },
   notRequested: {
-    tuple: { providerId: "groq", modelId: null },
+    tuple: { providerId: "zai", modelId: null },
     status: "skipped",
     reason: "network-disabled",
   },
@@ -220,7 +220,7 @@ test("finalizeStrictProbeResults fails strict mode on every failed or unavailabl
         [STRICT_FIXTURES.failed, STRICT_FIXTURES.unavailableCredential],
         true,
       ),
-    /strict probes: 2 provider probe\(s\) did not pass after emission \(groq failed\/probe-failed, zai skipped\/credential-missing\)/,
+    /strict probes: 2 provider probe\(s\) did not pass after emission \(zai failed\/probe-failed, openrouter skipped\/credential-missing\)/,
   );
 });
 
@@ -235,19 +235,19 @@ test("finalizeStrictProbeResults passes when live probes were never requested, a
 });
 
 test("assertCatalogProviders returns a summary line per provider when all resolve to models", () => {
-  const resolve = (_catalog, provider) => ({ gemini: [1, 2], groq: [1, 2, 3] })[provider];
-  const lines = assertCatalogProviders({}, ["gemini", "groq"], resolve, "test source");
+  const resolve = (_catalog, provider) => ({ gemini: [1, 2], zai: [1, 2, 3] })[provider];
+  const lines = assertCatalogProviders({}, ["gemini", "zai"], resolve, "test source");
   assert.deepEqual(lines, [
     "OK: gemini -> 2 models (test source)",
-    "OK: groq -> 3 models (test source)",
+    "OK: zai -> 3 models (test source)",
   ]);
 });
 
 test("assertCatalogProviders throws attributing the failure to the injected source", () => {
-  const resolve = (_catalog, provider) => (provider === "groq" ? [] : [1]);
+  const resolve = (_catalog, provider) => (provider === "zai" ? [] : [1]);
   assert.throws(
-    () => assertCatalogProviders({}, ["gemini", "groq"], resolve, "bundled snapshot"),
-    /bundled snapshot: provider 'groq' resolved to zero models/,
+    () => assertCatalogProviders({}, ["gemini", "zai"], resolve, "bundled snapshot"),
+    /bundled snapshot: provider 'zai' resolved to zero models/,
   );
 });
 
@@ -269,7 +269,7 @@ test("findSnapshotInBundle returns the first bundle file containing every snapsh
 test("findSnapshotInBundle rejects a complete overlay when its snapshot-only evidence is absent", () => {
   const files = ["chunk-a.js", "chunk-b.js"];
   const completeOverlayWithoutSnapshot = JSON.stringify({
-    cerebras: {
+    "opencode-zen": {
       enabled: true,
       defaultModel: "gpt-oss-120b",
       recommendedModelId: "gpt-oss-120b",

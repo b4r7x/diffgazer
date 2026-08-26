@@ -3,6 +3,7 @@ import { AGENT_METADATA, type AgentState, type LensStat } from "../../schemas/ev
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 import {
   AGENT_STATUS_META,
+  buildCompletionHeadline,
   buildDroppedFindingsNotice,
   buildLensFailureNotice,
   buildMissingLensIssuesNotice,
@@ -11,6 +12,7 @@ import {
   getLensCoverage,
   getPartialFailureWarning,
   hasCompletedLens,
+  hasFailedLenses,
   isAgentHeartbeatEvent,
   PERSISTED_RUN_ERROR_CODES,
   savedRunExists,
@@ -155,6 +157,37 @@ describe("buildLensFailureNotice", () => {
         { lensId: "security", issueCount: 0, status: "failed" },
       ]),
     ).toBe("Partial run — 1 of 2 lenses failed. Issues from Guardian are missing.");
+  });
+});
+
+describe("buildCompletionHeadline", () => {
+  it("headlines a run with a failed lens as partially complete", () => {
+    expect(
+      buildCompletionHeadline([
+        { lensId: "correctness", issueCount: 4, status: "success" },
+        { lensId: "security", issueCount: 0, status: "failed" },
+      ]),
+    ).toBe("Review Partially Complete");
+  });
+
+  it("headlines a fully reported run — or one without lens stats — as complete", () => {
+    expect(
+      buildCompletionHeadline([{ lensId: "security", issueCount: 2, status: "success" }]),
+    ).toBe("Review Complete");
+    expect(buildCompletionHeadline(undefined)).toBe("Review Complete");
+  });
+});
+
+describe("hasFailedLenses", () => {
+  it("is true once any lens failed and false for a clean or absent report", () => {
+    expect(
+      hasFailedLenses([
+        { lensId: "correctness", issueCount: 4, status: "success" },
+        { lensId: "security", issueCount: 0, status: "failed" },
+      ]),
+    ).toBe(true);
+    expect(hasFailedLenses([{ lensId: "security", issueCount: 2, status: "success" }])).toBe(false);
+    expect(hasFailedLenses(undefined)).toBe(false);
   });
 });
 

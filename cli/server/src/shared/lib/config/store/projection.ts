@@ -47,36 +47,13 @@ export function summaryForSupportedRecord(
     notices,
     availableActions: SUPPORTED_CONFIGURATION_ACTIONS,
   };
-  const input = record.input;
-  let candidate: unknown;
-  if (input.transportFamily === "hosted-api") {
-    candidate = {
-      status: "supported",
-      transportFamily: "hosted-api",
-      productId: record.productId,
-      endpoint: input.endpoint,
-      ...base,
-    };
-  } else if (input.transportFamily === "local-http") {
-    candidate = {
-      status: "supported",
-      transportFamily: "local-http",
-      productId: record.productId,
-      endpoint: input.endpoint,
-      authentication: input.authentication,
-      ...(input.presetId !== undefined ? { presetId: input.presetId } : {}),
-      ...base,
-    };
-  } else {
-    candidate = {
-      status: "supported",
-      transportFamily: "local-cli",
-      productId: record.productId,
-      installationId: input.installationId,
-      ...base,
-    };
-  }
-  const parsed = ClientConfigurationSummarySchema.safeParse(candidate);
+  const parsed = ClientConfigurationSummarySchema.safeParse({
+    status: "supported",
+    transportFamily: "hosted-api",
+    productId: record.productId,
+    endpoint: record.input.endpoint,
+    ...base,
+  });
   return parsed.success
     ? ok(parsed.data)
     : err(

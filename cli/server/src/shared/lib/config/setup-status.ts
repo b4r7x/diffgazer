@@ -63,11 +63,18 @@ export const getSetupVerdict = async (): Promise<
     return ok(verdictFromReadiness(readiness, null));
   }
 
-  const selected = current.value.config.configurations.find(
-    (entry) =>
-      entry.status === "supported" && entry.record.configurationId === selectedConfigurationId,
+  const selected = current.value.config.configurations.find((entry) =>
+    entry.status === "supported"
+      ? entry.record.configurationId === selectedConfigurationId
+      : entry.configurationId === selectedConfigurationId,
   );
-  if (!selected || selected.status !== "supported") return err(verdictReadFailure());
+  if (!selected) return err(verdictReadFailure());
+  if (selected.status !== "supported") {
+    // A retired product's configuration stays selected on disk; it reads as
+    // unsupported instead of failing the whole setup verdict.
+    const readiness = computeProviderReadinessResult({ configuration: selected }).readiness;
+    return ok(verdictFromReadiness(readiness, selectedConfigurationId));
+  }
   const binding = findSecretBinding(
     current.value.secrets,
     selected.record.configurationId,

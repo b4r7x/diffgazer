@@ -12,16 +12,25 @@ const fixture = ModelsDevCatalogSchema.parse({
         id: "text-only",
         name: "Text Only",
         modalities: { output: ["text"] },
+        release_date: "2026-01-15",
+        knowledge: "2025-10",
       },
       "mixed-output": {
         id: "mixed-output",
         name: "Mixed Output",
         modalities: { output: ["text", "image"] },
       },
+      "mixed-output-structured": {
+        id: "mixed-output-structured",
+        name: "Mixed Output Structured",
+        structured_output: true,
+        modalities: { output: ["text", "image"] },
+      },
       "audio-only": {
         id: "audio-only",
         name: "Audio Only",
         modalities: { output: ["audio"] },
+        release_date: "2026-01-15",
       },
       "image-only": {
         id: "image-only",
@@ -69,6 +78,7 @@ describe("trimCatalogSnapshot", () => {
       "image-only",
       "missing-modality",
       "mixed-output",
+      "mixed-output-structured",
       "null-capability",
       "text-only",
       "video-only",
@@ -87,7 +97,14 @@ describe("trimCatalogSnapshot", () => {
       name: "Audio Only",
       modalities: { output: ["audio"] },
     });
-    for (const id of ["text-only", "mixed-output", "missing-modality"]) {
+    // Mixed output with no structured-output claim is withheld too, so its
+    // modalities must survive for the offline re-evaluation.
+    expect(models["mixed-output"]).toEqual({
+      id: "mixed-output",
+      name: "Mixed Output",
+      modalities: { output: ["text", "image"] },
+    });
+    for (const id of ["text-only", "mixed-output-structured", "missing-modality"]) {
       expect(models[id]).not.toHaveProperty("modalities");
     }
   });
@@ -99,6 +116,21 @@ describe("trimCatalogSnapshot", () => {
 
     expect(trimmed["text-provider"]?.models["missing-modality"]?.structured_output).toBe(true);
     expect(trimmed["text-provider"]?.models["text-only"]).not.toHaveProperty("structured_output");
+  });
+
+  // The picker sorts newest first on the release date, so it must survive the
+  // trim — but only on rows the transform can offer: a withheld row carries
+  // nothing beyond what withholds it.
+  it("retains the release date on offerable rows and drops it from withheld ones", () => {
+    const trimmed = trimCatalogSnapshot(fixture, new Set(["text-provider"]));
+    const models = requireValue(trimmed["text-provider"], "trimmed text-provider").models;
+
+    expect(models["text-only"]).toEqual({
+      id: "text-only",
+      name: "Text Only",
+      release_date: "2026-01-15",
+    });
+    expect(models["audio-only"]).not.toHaveProperty("release_date");
   });
 
   // Absent and null both mean "unknown", so the snapshot carries one spelling.

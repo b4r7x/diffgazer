@@ -161,7 +161,9 @@ describe("ModelList configuration-bound discovery", () => {
     expect(screen.queryByText("No models available")).not.toBeInTheDocument();
   });
 
-  it("shows a saving placeholder instead of model radios while persistence is pending", () => {
+  it("keeps the disabled model radios with the selection visible while persistence is pending", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
     render(
       <ModelList
         models={DISCOVERED_MODELS}
@@ -169,15 +171,19 @@ describe("ModelList configuration-bound discovery", () => {
         currentModelId="gemini-2.5-flash"
         isFocused
         isSaving
-        onSelect={vi.fn()}
+        onSelect={onSelect}
         onConfirm={vi.fn()}
         onHighlightChange={vi.fn()}
         onBoundaryReached={vi.fn()}
       />,
     );
 
-    expect(screen.getByText("Saving...")).toBeInTheDocument();
-    expect(screen.queryByRole("radio", { name: /gemini-2\.5-flash/ })).not.toBeInTheDocument();
+    const checkedRow = screen.getByRole("radio", { name: /gemini-2\.5-flash/ });
+    expect(checkedRow).toBeChecked();
+    expect(checkedRow).toHaveAttribute("aria-disabled", "true");
+
+    await user.click(screen.getByRole("radio", { name: /gemini-2\.5-pro/ }));
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it("keeps the live status region mounted across the results→empty transition", () => {

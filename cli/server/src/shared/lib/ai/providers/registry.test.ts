@@ -2,8 +2,6 @@ import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import {
   CANDIDATE_PRODUCT_IDS,
   HOSTED_API_PRODUCT_IDS,
-  LOCAL_HTTP_PRODUCT_IDS,
-  LOCAL_OPENAI_PRESET_ENDPOINTS,
   RUNNABLE_PRODUCT_IDS,
   type RunnableProductId,
 } from "@diffgazer/core/schemas/config";
@@ -16,20 +14,15 @@ import {
 import { describe, expect, it } from "vitest";
 import { type AdapterExecuteRequest, assertBoundedExecutionResult } from "../types.js";
 import { HOSTED_ADAPTERS } from "./hosted/transport.js";
-import { localOpenaiAdapter, ollamaAdapter } from "./local-http/transport.js";
 import {
   ADAPTER_REGISTRY,
-  bundledCliCompatibilityRecordCount,
-  CLI_ADAPTERS,
   FAIL_CLOSED_ADAPTER_OUTCOME,
   getAdapter,
-  LOCAL_HTTP_ADAPTERS,
   validateAdapterRegistry,
 } from "./registry.js";
 
 const SCHEMA_SHA256 = "1".repeat(64);
 const CREDENTIAL_REFERENCE_IDENTITY = "3".repeat(64);
-const INSTALLATION_ID = "codex-installation-1";
 
 const limits = {
   maxInputTokens: 20_000,
@@ -63,9 +56,6 @@ function suggestedModelId(productId: RunnableProductId): string {
     return policy.suggestedModelId;
   }
   if (productId === "openrouter") return "openai/gpt-4.1-mini";
-  if (productId === "ollama") return "llama3.2";
-  if (productId === "codex-cli") return "gpt-5-codex";
-  if (productId === "copilot-cli") return "gpt-5";
   return "model-1";
 }
 
@@ -75,66 +65,21 @@ function evidenceKeyFor(productId: RunnableProductId): EvidenceKey {
   const modelId = suggestedModelId(productId);
   const noticeVersion = product.notice.noticeVersion;
 
-  // Switching on the product id (not the registry transport family) is what
-  // narrows `productId` to the member of the EvidenceKey union being built.
-  switch (productId) {
-    case "ollama":
-    case "local-openai":
-      return {
-        authentication: "none",
-        credentialReferenceIdentity: null,
-        installationId: null,
-        productId,
-        transportFamily: "local-http",
-        normalizedEndpoint:
-          productId === "local-openai"
-            ? LOCAL_OPENAI_PRESET_ENDPOINTS["llama-cpp"]
-            : (endpoint?.endpoint ?? "http://127.0.0.1:11434"),
-        region: null,
-        workspaceAccountReference: null,
-        modelId,
-        runtime:
-          productId === "local-openai"
-            ? { identity: "llama-cpp", version: "b-version-2026-07" }
-            : { identity: "ollama", version: "0.6.0" },
-        structuredOutputSchemaSha256: SCHEMA_SHA256,
-        noticeVersion,
-        limits,
-      };
-    case "codex-cli":
-    case "copilot-cli":
-      return {
-        authentication: null,
-        credentialReferenceIdentity: null,
-        installationId: productId === "codex-cli" ? INSTALLATION_ID : "copilot-installation",
-        productId,
-        transportFamily: "local-cli",
-        normalizedEndpoint: null,
-        region: null,
-        workspaceAccountReference: null,
-        modelId,
-        runtime: { identity: productId, version: "0.1.0" },
-        structuredOutputSchemaSha256: SCHEMA_SHA256,
-        noticeVersion,
-        limits,
-      };
-    default:
-      return {
-        authentication: null,
-        credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-        installationId: null,
-        productId,
-        transportFamily: "hosted-api",
-        normalizedEndpoint: endpoint?.endpoint ?? "https://example.invalid/v1",
-        region: null,
-        workspaceAccountReference: null,
-        modelId,
-        runtime: { identity: "diffgazer-server", version: "1.2.3" },
-        structuredOutputSchemaSha256: SCHEMA_SHA256,
-        noticeVersion,
-        limits,
-      };
-  }
+  return {
+    authentication: null,
+    credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
+    installationId: null,
+    productId,
+    transportFamily: "hosted-api",
+    normalizedEndpoint: endpoint?.endpoint ?? "https://example.invalid/v1",
+    region: null,
+    workspaceAccountReference: null,
+    modelId,
+    runtime: { identity: "diffgazer-server", version: "1.2.3" },
+    structuredOutputSchemaSha256: SCHEMA_SHA256,
+    noticeVersion,
+    limits,
+  };
 }
 
 function executeRequestFor(productId: RunnableProductId): AdapterExecuteRequest {
@@ -149,19 +94,11 @@ function executeRequestFor(productId: RunnableProductId): AdapterExecuteRequest 
 describe("adapter registry", () => {
   it("enumerates exactly one wired adapter per runnable product id", () => {
     expect(Object.keys(ADAPTER_REGISTRY).sort()).toEqual([...RUNNABLE_PRODUCT_IDS].sort());
-    expect(Object.keys(ADAPTER_REGISTRY)).toHaveLength(12);
+    expect(Object.keys(ADAPTER_REGISTRY)).toHaveLength(9);
 
     for (const productId of HOSTED_API_PRODUCT_IDS) {
       expect(ADAPTER_REGISTRY[productId]).toBe(HOSTED_ADAPTERS[productId]);
     }
-
-    expect(ADAPTER_REGISTRY.ollama).toBe(ollamaAdapter);
-    expect(ADAPTER_REGISTRY.ollama).toBe(LOCAL_HTTP_ADAPTERS.ollama);
-    expect(ADAPTER_REGISTRY["local-openai"]).toBe(localOpenaiAdapter);
-    expect(ADAPTER_REGISTRY["local-openai"]).toBe(LOCAL_HTTP_ADAPTERS["local-openai"]);
-
-    expect(ADAPTER_REGISTRY["codex-cli"]).toBe(CLI_ADAPTERS["codex-cli"]);
-    expect(ADAPTER_REGISTRY["copilot-cli"]).toBe(CLI_ADAPTERS["copilot-cli"]);
 
     for (const productId of RUNNABLE_PRODUCT_IDS) {
       const adapter = ADAPTER_REGISTRY[productId];
@@ -175,7 +112,14 @@ describe("adapter registry", () => {
   it.each([
     ...CANDIDATE_PRODUCT_IDS.slice(0, 3),
     "bogus-product",
-  ])("rejects candidate and unknown adapter registry keys (%s)", (productId) => {
+    // Permanently removed products stay fail-closed instead of routing anywhere.
+    "cerebras",
+    "groq",
+    "ollama",
+    "local-openai",
+    "codex-cli",
+    "copilot-cli",
+  ])("rejects candidate, removed, and unknown adapter registry keys (%s)", (productId) => {
     expect(() => getAdapter(productId)).toThrow(/Adapter unavailable/);
   });
 
@@ -192,7 +136,7 @@ describe("adapter registry", () => {
     expect(() =>
       validateAdapterRegistry({
         ...ADAPTER_REGISTRY,
-        groq: {
+        zai: {
           ...ADAPTER_REGISTRY.gemini,
           productId: "gemini",
         },
@@ -201,9 +145,9 @@ describe("adapter registry", () => {
   });
 
   it("rejects a missing adapter for a runnable product", () => {
-    const { groq: _groq, ...withoutGroq } = ADAPTER_REGISTRY;
-    expect(() => validateAdapterRegistry(withoutGroq)).toThrow(
-      /Missing adapter for runnable product: groq/,
+    const { zai: _zai, ...withoutZai } = ADAPTER_REGISTRY;
+    expect(() => validateAdapterRegistry(withoutZai)).toThrow(
+      /Missing adapter for runnable product: zai/,
     );
   });
 
@@ -211,12 +155,12 @@ describe("adapter registry", () => {
     expect(() =>
       validateAdapterRegistry({
         ...ADAPTER_REGISTRY,
-        groq: {
-          ...ADAPTER_REGISTRY.groq,
+        zai: {
+          ...ADAPTER_REGISTRY.zai,
           transportFamily: "local-http",
         },
       }),
-    ).toThrow(/Adapter transport mismatch for groq/);
+    ).toThrow(/Adapter transport mismatch for zai/);
   });
 
   it("returns bounded receipt and outcome without transport fallback", async () => {
@@ -232,24 +176,12 @@ describe("adapter registry", () => {
 
     const mismatched = await ADAPTER_REGISTRY.gemini.execute({
       ...executeRequestFor("gemini"),
-      evidenceKey: evidenceKeyFor("groq"),
+      evidenceKey: evidenceKeyFor("zai"),
     });
     expect(mismatched.receipt.outcome).toBe("transport-failed");
     expect(mismatched.result.issues).toEqual([]);
     expect(() => getAdapter("gemini")).not.toThrow();
-    expect(() => getAdapter("groq")).not.toThrow();
-  });
-
-  it("keeps CLI adapters unavailable without an exact bundled compatibility record", async () => {
-    expect(bundledCliCompatibilityRecordCount()).toBe(0);
-
-    for (const productId of ["codex-cli", "copilot-cli"] as const) {
-      const result = await ADAPTER_REGISTRY[productId].execute(executeRequestFor(productId));
-      expect(result.receipt.outcome).toBe("transport-failed");
-      expect(result.receipt.productId).toBe(productId);
-      expect(result.result.issues).toEqual([]);
-      expect(ExecutionResultSchema.safeParse(result).success).toBe(true);
-    }
+    expect(() => getAdapter("zai")).not.toThrow();
   });
 
   it("keeps zero findings unless receipt outcome is completed", async () => {
@@ -287,6 +219,5 @@ describe("adapter registry", () => {
     for (const productId of RUNNABLE_PRODUCT_IDS) {
       expect(CANDIDATE_PRODUCT_IDS).not.toContain(productId);
     }
-    expect(LOCAL_HTTP_PRODUCT_IDS).toHaveLength(2);
   });
 });

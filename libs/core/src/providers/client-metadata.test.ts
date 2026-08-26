@@ -72,7 +72,6 @@ function copyNotice(notice: ProductNotice) {
 
 function selectedModelFor(productId: RunnableProductId): string {
   const policy = PRODUCT_REGISTRY[productId].modelPolicy;
-  if (policy.kind === "discovered-allowlist") return policy.modelIds[0];
   if (policy.kind === "pinned-downstream-route") return "openai/gpt-4.1-mini";
   return "suggestedModelId" in policy
     ? (policy.suggestedModelId ?? "discovered-model")
@@ -91,30 +90,11 @@ function readyConfigurationFor(productId: RunnableProductId): ClientConfiguratio
     availableActions: ["inspect", "select", "test", "update", "delete"] as const,
   };
 
-  if (product.transportFamily === "hosted-api") {
-    const endpoint = product.configuration.endpoints[0];
-    return ClientConfigurationSummarySchema.parse({
-      ...base,
-      transportFamily: product.transportFamily,
-      endpoint: endpoint.endpoint,
-    });
-  }
-
-  if (product.transportFamily === "local-http") {
-    const endpoint = product.configuration.endpoints[0];
-    return ClientConfigurationSummarySchema.parse({
-      ...base,
-      transportFamily: product.transportFamily,
-      endpoint: endpoint.endpoint,
-      authentication: "none",
-      ...(productId === "local-openai" ? { presetId: endpoint.id } : {}),
-    });
-  }
-
+  const endpoint = product.configuration.endpoints[0];
   return ClientConfigurationSummarySchema.parse({
     ...base,
     transportFamily: product.transportFamily,
-    installationId: `${productId}-installation`,
+    endpoint: endpoint.endpoint,
   });
 }
 
@@ -148,34 +128,21 @@ const CONFIGURATIONS = [
     revision: 1,
     status: "supported",
     transportFamily: "hosted-api",
-    productId: "deepseek",
-    endpoint: "https://api.deepseek.com/v1",
-    selectedModelId: "deepseek-v4-flash",
-    notices: [copyNotice(PRODUCT_REGISTRY.deepseek.notice)],
+    productId: "zai",
+    endpoint: "https://api.z.ai/api/paas/v4",
+    selectedModelId: "glm-4.7",
+    notices: [copyNotice(PRODUCT_REGISTRY.zai.notice)],
     availableActions: ["inspect", "select", "test", "update", "delete"],
   },
   {
-    configurationId: "http-1",
+    configurationId: "hosted-2",
     revision: 1,
     status: "supported",
-    transportFamily: "local-http",
-    productId: "local-openai",
-    endpoint: "http://127.0.0.1:1234/v1",
-    authentication: "none",
-    presetId: "lm-studio",
-    selectedModelId: "local-model",
-    notices: [copyNotice(PRODUCT_REGISTRY["local-openai"].notice)],
-    availableActions: ["inspect", "select", "test", "update", "delete"],
-  },
-  {
-    configurationId: "cli-1",
-    revision: 1,
-    status: "supported",
-    transportFamily: "local-cli",
-    productId: "codex-cli",
-    installationId: "codex-installation-1",
-    selectedModelId: "gpt-5",
-    notices: [copyNotice(PRODUCT_REGISTRY["codex-cli"].notice)],
+    transportFamily: "hosted-api",
+    productId: "gemini",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta",
+    selectedModelId: "gemini-2.5-flash",
+    notices: [copyNotice(PRODUCT_REGISTRY.gemini.notice)],
     availableActions: ["inspect", "select", "test", "update", "delete"],
   },
 ] as const satisfies readonly ClientConfigurationSummary[];
@@ -215,42 +182,20 @@ describe("client metadata projection", () => {
       "status",
       "transportFamily",
     ]);
+    const hostedConfigurationKeys = [
+      "availableActions",
+      "configurationId",
+      "endpoint",
+      "notices",
+      "productId",
+      "revision",
+      "selectedModelId",
+      "status",
+      "transportFamily",
+    ];
     expect(payloads.map((payload) => serializedKeys(payload.configuration))).toEqual([
-      [
-        "availableActions",
-        "configurationId",
-        "endpoint",
-        "notices",
-        "productId",
-        "revision",
-        "selectedModelId",
-        "status",
-        "transportFamily",
-      ],
-      [
-        "authentication",
-        "availableActions",
-        "configurationId",
-        "endpoint",
-        "notices",
-        "presetId",
-        "productId",
-        "revision",
-        "selectedModelId",
-        "status",
-        "transportFamily",
-      ],
-      [
-        "availableActions",
-        "configurationId",
-        "installationId",
-        "notices",
-        "productId",
-        "revision",
-        "selectedModelId",
-        "status",
-        "transportFamily",
-      ],
+      hostedConfigurationKeys,
+      hostedConfigurationKeys,
     ]);
     expect(serializedKeys(hostedPayload.readiness)).toEqual([
       "acknowledgement",
@@ -307,7 +252,7 @@ describe("client metadata projection", () => {
       ...sourceForConfiguration(CONFIGURATIONS[0]),
       [field]: value,
       configuration: { ...CONFIGURATIONS[0], [field]: value },
-      readiness: { ...readiness("unsupported", "deepseek"), [field]: value },
+      readiness: { ...readiness("unsupported", "zai"), [field]: value },
       notices: CONFIGURATIONS[0].notices.map((notice) => ({ ...notice, [field]: value })),
     };
     expect(
@@ -319,10 +264,10 @@ describe("client metadata projection", () => {
     const configured = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[0]));
     const otherProduct = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[1])).product;
     const unconfigured = projectClientMetadata({
-      productId: "deepseek",
+      productId: "zai",
       configuration: null,
-      readiness: readiness("unconfigured", "deepseek"),
-      notices: [PRODUCT_REGISTRY.deepseek.notice],
+      readiness: readiness("unconfigured", "zai"),
+      notices: [PRODUCT_REGISTRY.zai.notice],
       actions: ["create"],
     });
 
@@ -338,7 +283,7 @@ describe("client metadata projection", () => {
         notices: CONFIGURATIONS[1].notices,
         actions: [...CONFIGURATIONS[1].availableActions],
       },
-      { ...configured, readiness: readiness("unconfigured", "deepseek") },
+      { ...configured, readiness: readiness("unconfigured", "zai") },
       { ...configured, actions: ["inspect", "delete"] },
       {
         ...configured,
@@ -354,7 +299,7 @@ describe("client metadata projection", () => {
   it("binds projected configurations to the canonical product endpoint tuples", () => {
     const forgedHosted = {
       ...CONFIGURATIONS[0],
-      endpoint: "https://api.groq.com/openai/v1",
+      endpoint: "https://generativelanguage.googleapis.com/v1beta",
     };
     expect(ClientConfigurationSummarySchema.safeParse(forgedHosted).success).toBe(false);
 
@@ -362,31 +307,9 @@ describe("client metadata projection", () => {
       ClientConfigurationSummarySchema.safeParse({
         ...CONFIGURATIONS[0],
         productId: "gemini",
-        endpoint: "https://generativelanguage.googleapis.com/v1beta",
+        endpoint: "https://api.z.ai/api/paas/v4",
       }).success,
     ).toBe(false);
-
-    const forgedPreset = {
-      ...CONFIGURATIONS[1],
-      endpoint: "http://127.0.0.1:8080/v1",
-    };
-    expect(ClientConfigurationSummarySchema.safeParse(forgedPreset).success).toBe(false);
-
-    const forgedOllamaPreset = {
-      ...CONFIGURATIONS[1],
-      productId: "ollama",
-      presetId: "lm-studio",
-    };
-    expect(ClientConfigurationSummarySchema.safeParse(forgedOllamaPreset).success).toBe(false);
-
-    const customLoopback = ClientConfigurationSummarySchema.parse({
-      ...CONFIGURATIONS[1],
-      endpoint: "http://127.0.0.1:4321/v1",
-      presetId: undefined,
-    });
-    expect(projectClientMetadata(sourceForConfiguration(customLoopback)).configuration).toEqual(
-      expect.objectContaining({ endpoint: "http://127.0.0.1:4321/v1", presetId: undefined }),
-    );
   });
 
   it("keeps terminal and Unicode line controls out of client-safe projections", () => {
@@ -430,11 +353,7 @@ describe("client metadata projection", () => {
         }).success,
       ).toBe(false);
 
-      const forgedModelId =
-        product.modelPolicy.kind === "discovered-exact" ||
-        product.modelPolicy.kind === "pinned-downstream-route"
-          ? "latest"
-          : "forged-model";
+      const forgedModelId = "latest";
       expect(
         ClientMetadataPayloadSchema.safeParse({
           ...payload,
@@ -483,15 +402,7 @@ describe("client metadata projection", () => {
     }
   });
 
-  it("fails closed for off-allowlist and unpinned route models at the client boundary", () => {
-    const deepseek = projectClientMetadata(readySourceFor("deepseek"));
-    expect(
-      ClientMetadataPayloadSchema.safeParse({
-        ...deepseek,
-        configuration: { ...deepseek.configuration, selectedModelId: "deepseek-v5-flash" },
-      }).success,
-    ).toBe(false);
-
+  it("fails closed for unpinned route models at the client boundary", () => {
     const openrouter = projectClientMetadata(readySourceFor("openrouter"));
     for (const selectedModelId of [
       "gpt-4.1-mini",
@@ -535,9 +446,9 @@ describe("client metadata projection", () => {
     "skipped",
   ] as const)("rejects a wrong-product acknowledgement in %s readiness", (status) => {
     const payload = projectClientMetadata({
-      productId: "deepseek",
+      productId: "zai",
       configuration: CONFIGURATIONS[0],
-      readiness: readiness(status, "deepseek"),
+      readiness: readiness(status, "zai"),
       notices: CONFIGURATIONS[0].notices,
       actions: [...CONFIGURATIONS[0].availableActions],
     });
@@ -561,9 +472,9 @@ describe("client metadata projection", () => {
   });
 
   it("preserves an accepted current notice on a non-ready state and rejects stale acceptance", () => {
-    const product = PRODUCT_REGISTRY.deepseek;
+    const product = PRODUCT_REGISTRY.zai;
     const acceptedReadiness = ReadinessSchema.parse({
-      ...readiness("skipped", "deepseek"),
+      ...readiness("skipped", "zai"),
       acknowledgement: {
         status: "accepted",
         noticeId: product.notice.id,
@@ -572,7 +483,7 @@ describe("client metadata projection", () => {
       },
     });
     const payload = projectClientMetadata({
-      productId: "deepseek",
+      productId: "zai",
       configuration: CONFIGURATIONS[0],
       readiness: acceptedReadiness,
       notices: CONFIGURATIONS[0].notices,
@@ -610,7 +521,7 @@ describe("client metadata projection", () => {
     };
     const unsupported = {
       ...payload,
-      readiness: readiness("unsupported", "deepseek"),
+      readiness: readiness("unsupported", "zai"),
     };
 
     expect(unsupported.readiness.acknowledgement).toEqual({ status: "not-applicable" });
@@ -677,26 +588,19 @@ describe("client metadata projection", () => {
     ).toBe(true);
   });
 
-  it("rejects readiness states belonging to another transport family", () => {
+  it("rejects local readiness states on a hosted configuration", () => {
     const hostedPayload = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[0]));
-    const cliPayload = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[2]));
 
     expect(
       ClientMetadataPayloadSchema.safeParse({
         ...hostedPayload,
-        readiness: readiness("local-conformance-failed", "deepseek"),
+        readiness: readiness("local-conformance-failed", "zai"),
       }).success,
     ).toBe(false);
     expect(
       ClientMetadataPayloadSchema.safeParse({
         ...hostedPayload,
-        readiness: readiness("conformance-failed", "deepseek"),
-      }).success,
-    ).toBe(true);
-    expect(
-      ClientMetadataPayloadSchema.safeParse({
-        ...cliPayload,
-        readiness: readiness("local-conformance-failed", "codex-cli"),
+        readiness: readiness("conformance-failed", "zai"),
       }).success,
     ).toBe(true);
   });

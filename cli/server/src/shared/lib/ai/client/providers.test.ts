@@ -62,7 +62,7 @@ describe("createFromAdmittedPlan registry routing", () => {
 
   it("passes the admitted plan tuple unchanged to adapter execute", async () => {
     const { createFromAdmittedPlan } = await loadCreate();
-    const productId = "groq" as const;
+    const productId = "openrouter" as const;
     const plan = clientTestAdmittedPlan(productId);
     const clientResult = createFromAdmittedPlan(plan);
     expect(clientResult.ok).toBe(true);

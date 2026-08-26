@@ -313,6 +313,9 @@ describe("GET /config/providers/:configurationId/models", () => {
   it("returns passed catalog models for a supported configuration", async () => {
     const app = await loadRouter();
     const configurationId = await seedGeminiConfiguration(app);
+    // Discovery also kicks off Gemini's key-bearing live-list fetch; refusing
+    // it here keeps the test off the network and the reader's list argument null.
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("list unavailable"));
     const catalogSpy = await spyCatalogModels([
       catalogModel("gemini-2.5-flash"),
       catalogModel("gemini-2.5-pro"),
@@ -332,7 +335,7 @@ describe("GET /config/providers/:configurationId/models", () => {
     });
     if (body.status !== "passed") throw new Error("expected a passed models response");
     expect(body.models.map(({ id }) => id)).toEqual(["gemini-2.5-flash", "gemini-2.5-pro"]);
-    // Gemini stays catalog-only, so discovery reaches the reader with no live list.
+    // The failed live-list fetch degrades to null before it reaches the reader.
     expect(catalogSpy).toHaveBeenCalledTimes(1);
     await expect(catalogSpy.mock.calls[0]?.[1]).resolves.toBeNull();
   });
@@ -351,8 +354,9 @@ describe("GET /config/providers/:configurationId/models", () => {
   it("passes discovery when the cached catalog carries a zero-limit model", async () => {
     const app = await loadRouter();
     const configurationId = await seedGeminiConfiguration(app);
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("list unavailable"));
     // Real cache tier, no catalog spy: models.dev publishes limit 0 for audio
-    // models (groq whisper), which used to fail ModelInfo parsing with a 500.
+    // models (e.g. whisper), which ModelInfo parsing must accept.
     // Both declare structured output so the capability filter keeps them and
     // the cache tier is exercised rather than skipped for an empty result.
     writeFileSync(
@@ -394,6 +398,7 @@ describe("GET /config/providers/:configurationId/models", () => {
   it("returns a skipped response when the catalog has no models for the product", async () => {
     const app = await loadRouter();
     const configurationId = await seedGeminiConfiguration(app);
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("list unavailable"));
     await spyCatalogModels([]);
 
     const response = await app.request(`/config/providers/${configurationId}/models`);
@@ -456,6 +461,7 @@ describe("GET /config/providers/:configurationId/models", () => {
   it("rate-limits catalog model fetches after 30 requests per minute", async () => {
     const app = await loadRouter();
     const configurationId = await seedGeminiConfiguration(app);
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("list unavailable"));
     await spyCatalogModels([catalogModel("gemini-2.5-flash")]);
 
     for (let request = 0; request < 30; request += 1) {

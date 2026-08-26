@@ -40,8 +40,9 @@ export function useModelFilters({
   enterListFromBoundary,
   enterFooter,
 }: UseModelFiltersOptions): UseModelFiltersResult {
-  // The dialog footer advertises "↑/↓ j/k Navigate" as one chip, so j/k must
-  // move through the filter row exactly like the arrow keys.
+  // The footer teaches arrows only, but j/k stays the vim alias the shared
+  // Help table promises, so j/k must move through the filter row exactly like
+  // the arrow keys.
   useKey(["ArrowUp", "k"], focusSearchInput, { enabled: open && inFilters, preventDefault: true });
   useKey(
     ["ArrowDown", "j"],

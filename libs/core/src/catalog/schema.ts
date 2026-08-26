@@ -78,6 +78,10 @@ export const ModelsDevModelSchema = z.object({
     })
     .optional(),
   knowledge: z.string().optional(),
+  // models.dev publishes YYYY-MM-DD release dates; the picker sorts newest
+  // first on them. A malformed date reads as "no date" rather than dropping
+  // the whole model.
+  release_date: z.iso.date().optional().catch(undefined),
   // Upstream declares JSON-schema response support per model. The review
   // contract is a structured generation, so this is the field that decides
   // whether a model can run a review at all. Absent OR null upstream means

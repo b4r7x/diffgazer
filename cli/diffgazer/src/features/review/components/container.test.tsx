@@ -172,7 +172,9 @@ function RouteHarness({
   const { route } = useNavigation();
 
   if (route.screen !== "review") {
-    return <Text>{route.screen === "home" ? "Home route" : `Route: ${route.screen}`}</Text>;
+    if (route.screen === "home") return <Text>Home route</Text>;
+    const intent = route.screen === "settings/providers" && route.intent ? ` ${route.intent}` : "";
+    return <Text>{`Route: ${route.screen}${intent}`}</Text>;
   }
 
   return (
@@ -325,7 +327,7 @@ describe("ReviewContainer", () => {
 
     const summary = lastFrame() ?? "";
     expect(summary).toMatch(/Review Complete/i);
-    expect(summary).toContain("Duration: 5.0s");
+    expect(summary).toContain("Duration: 5s");
   });
 
   test("summary Escape resets and navigates back to home", async () => {
@@ -603,12 +605,16 @@ describe("ReviewContainer", () => {
     await waitUntil(() => (lastFrame() ?? "").includes("Model Incompatible"));
     const frame = frameText(lastFrame());
     expect(frame).toContain("Adapter response failed schema validation.");
-    expect(frame).toContain("Change the model or update the configuration");
+    expect(frame).toContain("Change the model or update the configuration.");
+    // The static screen copy no longer promises the fail-fast memo; the memo
+    // sentence travels only on memo-class failures from the server.
+    expect(frame).not.toContain("fail immediately");
     // The key is named by the same CTA the web button carries.
     expect(frame).toContain("Press p — Change model.");
 
     stdin.write("p");
-    await waitUntil(() => (lastFrame() ?? "").includes("Route: settings/providers"));
+    // Change model lands in the model dialog itself, not just on the page.
+    await waitUntil(() => (lastFrame() ?? "").includes("Route: settings/providers select-model"));
   });
 
   test("a reducer-stopped stream no longer exposes Cancel", () => {

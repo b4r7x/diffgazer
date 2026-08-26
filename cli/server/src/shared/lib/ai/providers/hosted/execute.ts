@@ -11,8 +11,10 @@ import { log } from "../../../log.js";
 import { composeExecutionDeadline } from "../../deadline.js";
 import {
   type FailureDiagnosticInput,
+  MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE,
   PROVIDER_REJECTED_DIAGNOSTIC_CODE,
   serializeFailureDiagnostic,
+  truncateUtf8,
 } from "../../diagnostics.js";
 import {
   cancelResponseBody,
@@ -23,16 +25,18 @@ import { resolveHostedApiEndpoint } from "../endpoints.js";
 import {
   createCompletedExecutionResult,
   createFailedExecutionResult,
+  estimatePromptTokens,
   promptAttemptEstimate,
 } from "../execution-receipt.js";
 import { HOSTED_PROFILES, HTTP_DIAGNOSTIC_MAX_BYTES } from "./profiles.js";
-import type { HostedExecuteRequest } from "./types.js";
+import { recoverJsonObject } from "./recover-json.js";
+import type { HostedExecuteRequest, HostedProductProfile } from "./types.js";
 import {
   accumulateUsage,
   buildRequestInit,
   buildRequestUrl,
+  type OutputCorrection,
   parseProviderPayload,
-  resolveUsageAvailability,
 } from "./wire.js";
 
 function isAbortError(error: unknown): boolean {
@@ -47,6 +51,64 @@ function isTimeoutError(error: unknown): boolean {
     (error instanceof DOMException && error.name === "TimeoutError") ||
     (error instanceof Error && error.name === "TimeoutError")
   );
+}
+
+/**
+ * The runtime's own response timeouts. Node's fetch caps a silent response at
+ * its default headers/body timeout (300s) regardless of the dispatch budget,
+ * and reports it as a generic `TypeError: fetch failed` whose cause carries the
+ * code — so without this check a dispatch that died of slowness would be filed
+ * as an undiagnosed transport failure.
+ */
+const TRANSPORT_TIMEOUT_CAUSE_CODES = new Set(["UND_ERR_HEADERS_TIMEOUT", "UND_ERR_BODY_TIMEOUT"]);
+
+function errorCode(value: unknown): string | null {
+  const code =
+    typeof value === "object" && value !== null ? (value as { code?: unknown }).code : undefined;
+  return typeof code === "string" ? code : null;
+}
+
+function transportTimeoutCause(error: unknown): string | null {
+  const own = errorCode(error);
+  if (own !== null && TRANSPORT_TIMEOUT_CAUSE_CODES.has(own)) return own;
+  const cause = error instanceof Error ? errorCode(error.cause) : null;
+  return cause !== null && TRANSPORT_TIMEOUT_CAUSE_CODES.has(cause) ? cause : null;
+}
+
+function isLengthFinishReason(finishReason: string | null): boolean {
+  if (finishReason === null) return false;
+  const normalized = finishReason.toLowerCase();
+  return normalized === "length" || normalized === "max_tokens";
+}
+
+/** The failed answer replayed on a corrective retry, bounded so it cannot dominate the re-ask. */
+const CORRECTION_FAILED_OUTPUT_MAX_BYTES = 8 * 1024;
+/** Zod issue paths quoted back to the model; more adds noise, not signal. */
+const CORRECTION_MAX_ISSUE_PATHS = 5;
+
+function buildOutputCorrection(failedOutput: string, problem: string): OutputCorrection {
+  return {
+    failedOutput: truncateUtf8(failedOutput, CORRECTION_FAILED_OUTPUT_MAX_BYTES),
+    instruction: `Your previous response was not valid: ${problem} Respond with ONLY the corrected JSON object — no markdown fences, no commentary, no other text.`,
+  };
+}
+
+function correctionInputEstimate(correction: OutputCorrection): number {
+  return (
+    estimatePromptTokens("assistant") +
+    estimatePromptTokens(correction.failedOutput) +
+    estimatePromptTokens("user") +
+    estimatePromptTokens(correction.instruction)
+  );
+}
+
+function zodIssuePaths(error: { issues: ReadonlyArray<{ path: PropertyKey[] }> }): string[] {
+  const paths = new Set<string>();
+  for (const issue of error.issues) {
+    paths.add(issue.path.length === 0 ? "(root)" : issue.path.map(String).join("."));
+    if (paths.size >= CORRECTION_MAX_ISSUE_PATHS) break;
+  }
+  return [...paths];
 }
 
 /**
@@ -105,7 +167,8 @@ function describeHttpFailure(
         ...rejected,
         retryable: true,
         message: `${name} rate limited the request (HTTP 429).`,
-        remediation: "Wait and retry, or change the model or plan.",
+        remediation:
+          "Wait and retry. If Agent Execution is set to Parallel, switching it to Sequential can help.",
       };
     default:
       return {
@@ -116,8 +179,81 @@ function describeHttpFailure(
   }
 }
 
+/**
+ * A 429 whose body marks the account's balance or quota as exhausted rather
+ * than the request as too fast. Waiting cannot clear it, so it names the
+ * account fix instead of the pacing remediation.
+ */
+function describeExhaustedRateLimit(
+  productId: HostedApiProductId,
+): Pick<FailureDiagnosticInput, "code" | "message" | "retryable" | "remediation"> {
+  const name = PRODUCT_REGISTRY[productId].presentation.name;
+  return {
+    code: PROVIDER_REJECTED_DIAGNOSTIC_CODE,
+    retryable: false,
+    message: `${name} reported the account's balance or quota is exhausted (HTTP 429).`,
+    remediation: "Check the account balance or plan, or change the model.",
+  };
+}
+
 function validateNoticeVersion(productId: HostedApiProductId, noticeVersion: number): boolean {
   return PRODUCT_REGISTRY[productId].notice.noticeVersion === noticeVersion;
+}
+
+const SLOW_ANSWER_REMEDIATION =
+  "Free pools queue and reasoning models answer slowly — retry, or pick a faster model.";
+
+const RATE_LIMIT_RETRY_DELAYS_MS = [2_000, 8_000] as const;
+
+// Z.AI business codes a 429 body can carry that a retry cannot fix: insufficient
+// balance (1113), exhausted 5h/weekly/monthly quotas (1308/1310/1316/1317), and
+// fair-usage violations (1313).
+const NON_RETRYABLE_RATE_LIMIT_CODES = new Set(["1113", "1308", "1310", "1313", "1316", "1317"]);
+
+function rateLimitCodeBlocksRetry(bodyText: string): boolean {
+  try {
+    const parsed: unknown = JSON.parse(bodyText);
+    const code =
+      typeof parsed === "object" && parsed !== null
+        ? (parsed as { error?: { code?: unknown } }).error?.code
+        : undefined;
+    return (
+      (typeof code === "string" || typeof code === "number") &&
+      NON_RETRYABLE_RATE_LIMIT_CODES.has(String(code))
+    );
+  } catch {
+    return false;
+  }
+}
+
+function rateLimitRetryDelayMs(response: Response, attempt: number): number {
+  const retryAfter = response.headers.get("retry-after");
+  const retryAfterSeconds =
+    retryAfter === null || retryAfter.trim() === "" ? NaN : Number(retryAfter);
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0 && retryAfterSeconds <= 60) {
+    return Math.ceil(retryAfterSeconds * 1000);
+  }
+  return RATE_LIMIT_RETRY_DELAYS_MS[
+    Math.min(attempt, RATE_LIMIT_RETRY_DELAYS_MS.length - 1)
+  ] as number;
+}
+
+function abortableDelay(ms: number, signal: AbortSignal): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (signal.aborted) {
+      resolve(false);
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve(false);
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve(true);
+    }, ms);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 type ResponseAccounting = Readonly<{
@@ -174,7 +310,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
   }
 
   const hostedProductId = productId as HostedApiProductId;
-  const profile = HOSTED_PROFILES[hostedProductId];
+  const profile: HostedProductProfile = HOSTED_PROFILES[hostedProductId];
   const now = context.now ?? (() => new Date());
   const startedAt = now().toISOString();
 
@@ -214,8 +350,9 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
     });
   }
 
+  const structuredOutputMode = context.structuredOutputMode ?? profile.structuredOutput;
   if (
-    profile.structuredOutput === "strict-json-schema" &&
+    structuredOutputMode === "strict-json-schema" &&
     context.structuredOutputSchema === undefined
   ) {
     return createFailedExecutionResult(request, "transport-failed", {
@@ -241,6 +378,13 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
   const fetcher = createResponseLimitingFetch(context.fetch ?? globalThis.fetch);
   const deadline = composeExecutionDeadline(admittedLimits.wallTimeMs, request.signal);
   const maxAttempts = Math.min(profile.malformedOutputRetry ? 2 : 1, admittedLimits.maxRetries + 1);
+  // A product whose dispatch profile pins the per-dispatch wall overrides the
+  // configured budget wall outright, so sending those users to the budget knob
+  // would name a control that cannot move their deadline.
+  const slowAnswerRemediation =
+    profile.pacing?.perDispatchWallTimeMs === undefined
+      ? "Free pools queue and reasoning models answer slowly — retry, pick a faster model, or raise the wall-time budget."
+      : SLOW_ANSWER_REMEDIATION;
 
   const failed = (outcome: Parameters<typeof createFailedExecutionResult>[1]): ExecutionResult =>
     createFailedExecutionResult(request, outcome, {
@@ -251,10 +395,52 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
       usageAvailability: lastUsageAvailability,
     });
 
-  const canRetry = (): "retry" | "budget-exhausted" | "stop" => {
+  /**
+   * The wall deadline names its own numbers on expiry, so the lens error is
+   * more than the bare timeout sentence. A plain cancel stays silent.
+   */
+  const timedOutOrCancelled = (): ExecutionResult => {
+    if (!deadline.expired()) return failed("cancelled");
+    const elapsedSeconds = Math.round((now().getTime() - Date.parse(startedAt)) / 1000);
+    request.reportDiagnostic?.(
+      serializeFailureDiagnostic({
+        code: "timed-out",
+        retryable: true,
+        message: `The dispatch hit its ${Math.round(admittedLimits.wallTimeMs / 1000)}s wall-time limit after ${elapsedSeconds}s without a complete answer.`,
+        remediation: slowAnswerRemediation,
+        sensitive: { literalSecrets: [context.credential] },
+      }),
+    );
+    return failed("timed-out");
+  };
+
+  /**
+   * The HTTP client gave up before the wall deadline did: the runtime caps a
+   * silent response well below a pinned per-dispatch wall, so name that as the
+   * timeout instead of leaving an unexplained transport failure behind.
+   */
+  const transportTimedOut = (causeCode: string): ExecutionResult => {
+    const elapsedSeconds = Math.round((now().getTime() - Date.parse(startedAt)) / 1000);
+    request.reportDiagnostic?.(
+      serializeFailureDiagnostic({
+        code: "timed-out",
+        retryable: true,
+        message: `${PRODUCT_REGISTRY[hostedProductId].presentation.name} sent no response before the HTTP client's own response timeout (${causeCode}) after ${elapsedSeconds}s.`,
+        remediation: SLOW_ANSWER_REMEDIATION,
+        sensitive: { literalSecrets: [context.credential] },
+      }),
+    );
+    return failed("timed-out");
+  };
+
+  let correction: OutputCorrection | null = null;
+
+  const canRetry = (extraInputTokens = 0): "retry" | "budget-exhausted" | "stop" => {
     if (!profile.malformedOutputRetry || attemptCount >= maxAttempts) return "stop";
     if (!currentAttemptUsageAvailable || reportedUsage === null) return "stop";
-    if (remainingLimits.maxInputTokens < promptInputEstimate) return "budget-exhausted";
+    if (remainingLimits.maxInputTokens < promptInputEstimate + extraInputTokens) {
+      return "budget-exhausted";
+    }
     if (remainingLimits.maxResponseBytes <= 0) return "budget-exhausted";
     return "retry";
   };
@@ -265,13 +451,15 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
     }
 
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      if (remainingLimits.maxInputTokens < promptInputEstimate) {
+      const attemptInputEstimate =
+        promptInputEstimate + (correction ? correctionInputEstimate(correction) : 0);
+      if (remainingLimits.maxInputTokens < attemptInputEstimate) {
         return failed("budget-exhausted");
       }
 
       attemptCount += 1;
       if (deadline.signal.aborted) {
-        return failed(deadline.expired() ? "timed-out" : "cancelled");
+        return timedOutOrCancelled();
       }
 
       const url = buildRequestUrl(
@@ -286,31 +474,76 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         prompt: request.prompt,
         systemPrompt: request.systemPrompt,
         structuredOutputSchema: context.structuredOutputSchema,
+        structuredOutputMode,
+        ...(context.boundReasoning ? { boundReasoning: true } : {}),
+        ...(correction ? { correction } : {}),
         signal: deadline.signal,
       });
 
       let response: Response;
-      try {
-        response = await fetcher(url, init);
-      } catch (error) {
-        if (isAbortError(error) || isTimeoutError(error)) {
+      let rateLimitCapture: string | null = null;
+      for (let rateLimitAttempt = 0; ; rateLimitAttempt += 1) {
+        try {
+          response = await fetcher(url, init);
+        } catch (error) {
+          if (isAbortError(error) || isTimeoutError(error)) {
+            return timedOutOrCancelled();
+          }
+          const transportTimeout = transportTimeoutCause(error);
+          if (transportTimeout !== null) {
+            return transportTimedOut(transportTimeout);
+          }
+          return failed("transport-failed");
+        }
+        if (response.status !== 429 || rateLimitAttempt >= RATE_LIMIT_RETRY_DELAYS_MS.length) {
+          break;
+        }
+        const captured = await readTextResponseWithLimit(
+          response,
+          Math.min(remainingLimits.maxResponseBytes, HTTP_DIAGNOSTIC_MAX_BYTES),
+          "Hosted error",
+        );
+        const capturedText = captured.ok ? captured.value : "";
+        if (hostedProductId === "zai" && rateLimitCodeBlocksRetry(capturedText)) {
+          rateLimitCapture = capturedText;
+          break;
+        }
+        const delayMs = rateLimitRetryDelayMs(response, rateLimitAttempt);
+        log("warn", "hosted_rate_limited", {
+          productId: hostedProductId,
+          delayMs,
+          retriesLeft: RATE_LIMIT_RETRY_DELAYS_MS.length - 1 - rateLimitAttempt,
+        });
+        if (!(await abortableDelay(delayMs, deadline.signal))) {
+          // The run is over, but the 429 evidence still matters: report it
+          // before mapping the abort, or the rate limit leaves no trace.
+          request.reportDiagnostic?.(
+            serializeFailureDiagnostic({
+              ...describeHttpFailure(hostedProductId, 429),
+              capture: { channel: "response", text: capturedText },
+              sensitive: { literalSecrets: [context.credential] },
+            }),
+          );
           return failed(deadline.expired() ? "timed-out" : "cancelled");
         }
-        return failed("transport-failed");
       }
 
       if (!response.ok) {
-        const captured =
-          response.status >= 400 && response.status < 500
-            ? await readTextResponseWithLimit(
-                response,
-                Math.min(remainingLimits.maxResponseBytes, HTTP_DIAGNOSTIC_MAX_BYTES),
-                "Hosted error",
-              )
-            : null;
+        let captured: { ok: true; value: string } | { ok: false } | null = null;
+        if (rateLimitCapture !== null) {
+          captured = { ok: true, value: rateLimitCapture };
+        } else if (response.status >= 400 && response.status < 500) {
+          captured = await readTextResponseWithLimit(
+            response,
+            Math.min(remainingLimits.maxResponseBytes, HTTP_DIAGNOSTIC_MAX_BYTES),
+            "Hosted error",
+          );
+        }
         if (!captured) cancelResponseBody(response);
         const diagnostic = serializeFailureDiagnostic({
-          ...describeHttpFailure(hostedProductId, response.status),
+          ...(rateLimitCapture === null
+            ? describeHttpFailure(hostedProductId, response.status)
+            : describeExhaustedRateLimit(hostedProductId)),
           ...(captured
             ? { capture: { channel: "response", text: captured.ok ? captured.value : "" } }
             : {}),
@@ -349,11 +582,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
       }
 
       const parsed = parseProviderPayload(hostedProductId, payload);
-      const usageAvailability = resolveUsageAvailability(
-        hostedProductId,
-        parsed.usage,
-        parsed.usageFieldPresent,
-      );
+      const usageAvailability: UsageAvailability = parsed.usage ? "reported" : "unavailable";
       // A retry repeats the prompt, so it needs a trustworthy input/output
       // report from the attempt that just failed. Partial usage remains useful
       // for the terminal receipt, but it cannot establish a safe retry
@@ -378,11 +607,63 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
       lastUsageAvailability = reportedUsage === null ? usageAvailability : "reported";
       if (accounting.status === "budget-exhausted") return failed("budget-exhausted");
 
-      if (usageAvailability === "required-missing") {
-        return failed("transport-failed");
+      const lengthFinish =
+        isLengthFinishReason(parsed.finishReason) ||
+        isLengthFinishReason(parsed.nativeFinishReason);
+      const reportedFinishReason = parsed.finishReason ?? parsed.nativeFinishReason ?? "unknown";
+
+      // finish "error" or a choice-level error object means the upstream died
+      // mid-generation: transport-class, never evidence against the model's
+      // answer. Checked before the reasoning trap — a reasoning burn that ends
+      // in an upstream death is the death, not the burn. The retry is blind
+      // (no correction turns): upstream routing is the nondeterminism.
+      const errorFinish =
+        parsed.finishReason?.toLowerCase() === "error" ||
+        parsed.nativeFinishReason?.toLowerCase() === "error";
+      if (errorFinish || parsed.choiceError !== null) {
+        const diagnostic = serializeFailureDiagnostic({
+          code: "provider-generation-error",
+          retryable: true,
+          message: `The upstream provider failed mid-generation (finish reason "${reportedFinishReason}"${
+            parsed.choiceError?.message ? `: ${parsed.choiceError.message}` : ""
+          }).`,
+          remediation:
+            "The upstream provider failed mid-generation; retrying may route to a different provider.",
+          ...(parsed.content ? { capture: { channel: "response", text: parsed.content } } : {}),
+          sensitive: { literalSecrets: [context.credential] },
+        });
+        log("warn", "hosted_provider_generation_error", {
+          productId: hostedProductId,
+          code: diagnostic.code,
+          correlationId: diagnostic.correlationId,
+          safeMessage: diagnostic.safeMessage,
+          details: diagnostic.truncatedDetails,
+        });
+        request.reportDiagnostic?.(diagnostic);
+        const retry = canRetry();
+        if (retry === "retry") continue;
+        return failed(retry === "budget-exhausted" ? "budget-exhausted" : "transport-failed");
       }
-      if (profile.usageContract === "required-terminal" && usageAvailability !== "reported") {
-        return failed("transport-failed");
+
+      const reasoningTokens = parsed.usage?.reasoningTokens ?? 0;
+      // Empty content beside spent reasoning tokens IS the reasoning trap,
+      // whatever the finish reason claims: a reasoning-default route has been
+      // observed stopping with finish "stop" after burning its whole output on
+      // thought, so gating on a length-like finish let the real case through.
+      if ((!parsed.content || parsed.content.trim() === "") && reasoningTokens > 0) {
+        // No retry: an identical re-ask re-spends the same reasoning budget on
+        // the same empty answer.
+        request.reportDiagnostic?.(
+          serializeFailureDiagnostic({
+            code: "reasoning-budget-consumed",
+            retryable: false,
+            message: `The model spent its output on reasoning (${reasoningTokens} reasoning tokens, finish reason "${reportedFinishReason}") and returned no review content.`,
+            remediation:
+              "Pick a non-reasoning model, or a provider/plan with a larger completion budget.",
+            sensitive: { literalSecrets: [context.credential] },
+          }),
+        );
+        return failed("schema-failed");
       }
 
       if (!parsed.content) {
@@ -391,20 +672,93 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         return failed(retry === "budget-exhausted" ? "budget-exhausted" : "schema-failed");
       }
 
+      // The head of the malformed answer, so a field failure leaves a fixture
+      // behind instead of vanishing with the response body. Logged as well as
+      // reported: downstream diagnostics drop truncatedDetails, so the log line
+      // is the only place the fixture survives.
+      const logMalformedOutput = (diagnostic: ReturnType<typeof serializeFailureDiagnostic>) => {
+        log("warn", "hosted_malformed_output", {
+          productId: hostedProductId,
+          code: diagnostic.code,
+          correlationId: diagnostic.correlationId,
+          safeMessage: diagnostic.safeMessage,
+          details: diagnostic.truncatedDetails,
+        });
+      };
+      // Only an answer the corrective retry already faced proves the tuple
+      // cannot conform; malformed content on a first attempt — or after a blind
+      // retry that carried no correction — leaves that question open, so the two
+      // carry different codes and only the corrected one arms the fail-fast memo.
+      const reportMalformedOutput = (stage: string, invalidPaths?: readonly string[]): void => {
+        const diagnostic = serializeFailureDiagnostic({
+          code:
+            correction === null
+              ? "malformed-review-output"
+              : MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE,
+          retryable: false,
+          message: `The model's answer failed ${stage} (finish reason "${reportedFinishReason}").`,
+          ...(invalidPaths?.length
+            ? { details: [{ label: "invalid-paths", text: invalidPaths.join(", ") }] }
+            : {}),
+          capture: { channel: "response", text: parsed.content ?? "" },
+          sensitive: { literalSecrets: [context.credential] },
+        });
+        logMalformedOutput(diagnostic);
+        request.reportDiagnostic?.(diagnostic);
+      };
+
       let reviewPayload: unknown;
       try {
         reviewPayload = JSON.parse(parsed.content);
       } catch {
-        const retry = canRetry();
-        if (retry === "retry") continue;
-        return failed(retry === "budget-exhausted" ? "budget-exhausted" : "schema-failed");
+        reviewPayload = recoverJsonObject(parsed.content);
+      }
+
+      if (reviewPayload === null || reviewPayload === undefined) {
+        if (lengthFinish) {
+          // No retry: the same prompt overruns the same completion cap.
+          const diagnostic = serializeFailureDiagnostic({
+            code: "output-truncated",
+            retryable: false,
+            message: `The model ran out of completion budget mid-answer (finish reason "${reportedFinishReason}") and returned truncated review output.`,
+            remediation:
+              "Reduce the review scope, or pick a model or plan with a larger completion limit.",
+            capture: { channel: "response", text: parsed.content },
+            sensitive: { literalSecrets: [context.credential] },
+          });
+          logMalformedOutput(diagnostic);
+          request.reportDiagnostic?.(diagnostic);
+          return failed("schema-failed");
+        }
+        // The corrective retry replays the failed answer and names what was
+        // wrong with it. The correction turns count into the retry's input
+        // estimate so the budget still bounds it.
+        const candidate = buildOutputCorrection(parsed.content, "it was not parseable JSON.");
+        const retry = canRetry(correctionInputEstimate(candidate));
+        if (retry === "retry") {
+          correction = candidate;
+          continue;
+        }
+        if (retry === "budget-exhausted") return failed("budget-exhausted");
+        reportMalformedOutput("JSON parsing");
+        return failed("schema-failed");
       }
 
       const validated = context.reviewSchema.safeParse(reviewPayload);
       if (!validated.success) {
-        const retry = canRetry();
-        if (retry === "retry") continue;
-        return failed(retry === "budget-exhausted" ? "budget-exhausted" : "schema-failed");
+        const invalidPaths = zodIssuePaths(validated.error);
+        const candidate = buildOutputCorrection(
+          parsed.content,
+          `these fields were missing or invalid: ${invalidPaths.join(", ")}.`,
+        );
+        const retry = canRetry(correctionInputEstimate(candidate));
+        if (retry === "retry") {
+          correction = candidate;
+          continue;
+        }
+        if (retry === "budget-exhausted") return failed("budget-exhausted");
+        reportMalformedOutput("review schema validation", invalidPaths);
+        return failed("schema-failed");
       }
 
       return createCompletedExecutionResult(request, validated.data as ReviewResult, {

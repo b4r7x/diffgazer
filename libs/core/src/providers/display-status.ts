@@ -1,6 +1,6 @@
 import { CATALOG_MODEL_DERIVED } from "../catalog/model-derived.js";
 import type { Readiness, ReadinessAction, ReadinessStatus } from "../schemas/config/readiness.js";
-import type { RunnableProductId, TransportFamily } from "../schemas/config/transports.js";
+import type { RunnableProductId } from "../schemas/config/transports.js";
 import type { BadgeVariant } from "../schemas/presentation/index.js";
 import { PRODUCT_REGISTRY } from "./product-registry.js";
 
@@ -47,22 +47,8 @@ export interface ProviderDisplayStatus {
   readonly accessibleText: string;
 }
 
-function getReadinessBadge(
-  status: ReadinessStatus,
-  transportFamily: TransportFamily,
-): ReadinessBadge {
-  if (status === "unsupported" && transportFamily === "local-cli") {
-    return { label: "CLI unsupported", shortLabel: "unsupported", variant: "warning" };
-  }
-
-  return READINESS_BADGES[status];
-}
-
-export function getProviderDisplayStatus(
-  readiness: Readiness,
-  transportFamily: TransportFamily,
-): ProviderDisplayStatus {
-  const badge = getReadinessBadge(readiness.status, transportFamily);
+export function getProviderDisplayStatus(readiness: Readiness): ProviderDisplayStatus {
+  const badge = READINESS_BADGES[readiness.status];
   const remediation = readiness.remediation.message;
 
   return {
@@ -143,7 +129,6 @@ export type ShellProviderState =
   | {
       readonly status: "configured";
       readonly readiness: Readiness;
-      readonly transportFamily: TransportFamily;
       readonly productId: RunnableProductId;
       readonly modelId?: string | null;
     };
@@ -182,6 +167,6 @@ export function resolveShellProviderIdentity(state: ShellProviderState): ShellPr
 
   return {
     providerName: getProviderDisplay(state.productId, state.modelId ?? undefined),
-    providerStatus: getProviderDisplayStatus(state.readiness, state.transportFamily),
+    providerStatus: getProviderDisplayStatus(state.readiness),
   };
 }

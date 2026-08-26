@@ -72,7 +72,7 @@ describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
   });
 
   it("reports skipped live probes without credential or opt-in", () => {
-    const descriptor = HOSTED_LIVE_PROBE_DESCRIPTORS.find((entry) => entry.productId === "groq");
+    const descriptor = HOSTED_LIVE_PROBE_DESCRIPTORS.find((entry) => entry.productId === "zai");
     expect(descriptor).toBeDefined();
     if (!descriptor) return;
 

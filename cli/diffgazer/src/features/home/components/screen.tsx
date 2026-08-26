@@ -33,11 +33,6 @@ import { TrustPanel } from "./trust-panel";
 
 const RETRY_SHORTCUTS: Shortcut[] = [{ key: "r", label: "Retry" }];
 
-// The file-scope key is this surface's own row on the bar: it follows the keys
-// every menu publishes, so a terminal too narrow for all four drops the extra
-// one rather than Quit.
-const HOME_SHORTCUTS: Shortcut[] = [...MAIN_MENU_SHORTCUTS, { key: "f", label: "Review Files" }];
-
 type InitData = NonNullable<ReturnType<typeof useConfigurationInit>["data"]>;
 
 export function HomeScreen(): ReactElement {
@@ -157,16 +152,6 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
   // the menu takes the slack.
   const paneHeight = isNarrow ? undefined : "100%";
 
-  // Picking files starts a review, so the key answers to the trust gate the
-  // menu's review rows answer to, and stands down while the consent notice owns
-  // the frame.
-  useInput(
-    (input) => {
-      if (input === "f") navigate({ screen: "review", pickFiles: true });
-    },
-    { isActive: isTrusted && !consent.isOpen },
-  );
-
   if (consent.isOpen) return <ProviderConsentOverlay gate={consent} />;
 
   return (
@@ -209,6 +194,6 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
  * being overwritten by a parent effect on the same commit.
  */
 function MainMenuFooter(): null {
-  usePageFooter({ shortcuts: HOME_SHORTCUTS });
+  usePageFooter({ shortcuts: MAIN_MENU_SHORTCUTS });
   return null;
 }

@@ -3,8 +3,6 @@ import { isModelIdAllowedForProduct, PRODUCT_REGISTRY } from "../providers/produ
 import {
   HostedApiConfigurationInputSchema,
   HostedApiTransportInputSchema,
-  LocalCliConfigurationInputSchema,
-  LocalHttpConfigurationInputSchema,
   WriteOnlySecretInputSchema,
 } from "../schemas/config/index.js";
 import type { OnboardingDraft } from "./defaults.js";
@@ -21,37 +19,18 @@ function hasCurrentProduct(data: OnboardingDraft): boolean {
 
 function hasEndpointBinding(data: OnboardingDraft): boolean {
   const { configurationInput } = data;
+  const { credential: _credential, ...endpointInput } = configurationInput;
+  if (!HostedApiTransportInputSchema.safeParse(endpointInput).success) return false;
 
-  if (configurationInput.transportFamily === "local-cli") return true;
-  if (configurationInput.transportFamily === "local-http") {
-    return LocalHttpConfigurationInputSchema.safeParse(configurationInput).success;
-  }
-  if (configurationInput.transportFamily === "hosted-api") {
-    const { credential: _credential, ...endpointInput } = configurationInput;
-    if (!HostedApiTransportInputSchema.safeParse(endpointInput).success) return false;
-
-    return PRODUCT_REGISTRY[configurationInput.productId].configuration.endpoints.some(
-      (candidate) => candidate.endpoint === configurationInput.endpoint,
-    );
-  }
-
-  return false;
+  return PRODUCT_REGISTRY[configurationInput.productId].configuration.endpoints.some(
+    (candidate) => candidate.endpoint === configurationInput.endpoint,
+  );
 }
 
 function hasAuthentication(data: OnboardingDraft): boolean {
   const { configurationInput } = data;
-
-  if (configurationInput.transportFamily === "hosted-api") {
-    if (!HostedApiConfigurationInputSchema.safeParse(configurationInput).success) return false;
-    return WriteOnlySecretInputSchema.safeParse(configurationInput.credential).success;
-  }
-  if (configurationInput.transportFamily === "local-cli") {
-    return LocalCliConfigurationInputSchema.safeParse(configurationInput).success;
-  }
-  if (!LocalHttpConfigurationInputSchema.safeParse(configurationInput).success) return false;
-  if (configurationInput.authentication === "none")
-    return configurationInput.bearerToken === undefined;
-  return WriteOnlySecretInputSchema.safeParse(configurationInput.bearerToken).success;
+  if (!HostedApiConfigurationInputSchema.safeParse(configurationInput).success) return false;
+  return WriteOnlySecretInputSchema.safeParse(configurationInput.credential).success;
 }
 
 function hasConfiguredTransport(data: OnboardingDraft): boolean {

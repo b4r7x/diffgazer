@@ -1,11 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { sha256CanonicalJsonSync } from "../canonical-json.js";
-import {
-  type HostedApiProductId,
-  LOCAL_OPENAI_PRESET_ENDPOINTS,
-  type LocalCliProductId,
-  type LocalHttpProductId,
-} from "../config/transports.js";
+import type { HostedApiProductId } from "../config/transports.js";
 import {
   type EvidenceKey,
   EvidenceKeySchema,
@@ -19,13 +14,13 @@ import {
   hashExecutionReceiptFingerprintSync,
   type NormalizedUsage,
   NormalizedUsageSchema,
+  REVIEW_WALL_CEILING_SLACK,
   type RuntimeIdentity,
   TERMINAL_OUTCOMES,
 } from "./index.js";
 
 const SCHEMA_SHA256 = "1".repeat(64);
 const CREDENTIAL_REFERENCE_IDENTITY = "3".repeat(64);
-const INSTALLATION_ID = "codex-installation-1";
 
 const limits = {
   maxInputTokens: 20_000,
@@ -52,49 +47,14 @@ const evidenceKey: EvidenceKey = {
   limits,
 };
 
-const localHttpEvidence: EvidenceKey = {
-  ...evidenceKey,
-  authentication: "none",
-  credentialReferenceIdentity: null,
-  productId: "local-openai",
-  transportFamily: "local-http",
-  normalizedEndpoint: "http://127.0.0.1:1234/v1",
-  region: null,
-  workspaceAccountReference: null,
-  runtime: { identity: "lm-studio", version: "0.3.0" },
-};
-
-const localHttpBearerEvidence: EvidenceKey = {
-  ...localHttpEvidence,
-  authentication: "optional-local-bearer",
-};
-
-const localHttpCredentialEvidence: EvidenceKey = {
-  ...localHttpBearerEvidence,
-  credentialReferenceIdentity: "5".repeat(64),
-};
-
-const localHttpLlamaCppEvidence: EvidenceKey = {
-  ...localHttpEvidence,
-  normalizedEndpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["llama-cpp"],
-  runtime: { identity: "llama-cpp", version: "0.3.0" },
-};
-
-const allowlistEvidence: EvidenceKey = {
-  ...evidenceKey,
-  productId: "deepseek",
-  normalizedEndpoint: "https://api.deepseek.com/v1",
-  modelId: "deepseek-v4-flash",
-};
-
 type ReceiptFixture = {
   schemaVersion: 1;
   executionFingerprint: string;
   configurationId: string;
   configurationRevision: number;
-  authentication: "none" | "optional-local-bearer" | null;
+  authentication: null;
   credentialReferenceIdentity: string | null;
-  installationId: string | null;
+  installationId: null;
   productId: EvidenceKey["productId"];
   transportFamily: EvidenceKey["transportFamily"];
   modelId: string;
@@ -111,6 +71,8 @@ type ReceiptFixture = {
   usage?: NormalizedUsage;
   usageAvailability: "reported" | "required-missing" | "unavailable";
   outcome: (typeof TERMINAL_OUTCOMES)[number];
+  scope?: "dispatch" | "review";
+  dispatchCount?: number;
 };
 
 function makeReceipt(overrides: Partial<ReceiptFixture> = {}) {
@@ -205,25 +167,9 @@ describe("canonical execution hashes", () => {
       base: evidenceKey,
       changed: {
         ...evidenceKey,
-        productId: "groq",
-        normalizedEndpoint: "https://api.groq.com/openai/v1",
+        productId: "zai",
+        normalizedEndpoint: "https://api.z.ai/api/paas/v4",
       },
-    },
-    { label: "transport family", base: evidenceKey, changed: localHttpEvidence },
-    {
-      label: "local HTTP authentication mode",
-      base: localHttpEvidence,
-      changed: localHttpBearerEvidence,
-    },
-    {
-      label: "local HTTP credential reference",
-      base: localHttpBearerEvidence,
-      changed: localHttpCredentialEvidence,
-    },
-    {
-      label: "normalized endpoint",
-      base: localHttpEvidence,
-      changed: localHttpLlamaCppEvidence,
     },
     {
       label: "exact model",
@@ -345,18 +291,12 @@ describe("canonical execution hashes", () => {
 });
 
 describe("execution contracts", () => {
-  it("narrows EvidenceKey transport tuples at the type level", () => {
-    type HostedEvidence = Extract<EvidenceKey, { transportFamily: "hosted-api" }>;
-    type LocalHttpEvidence = Extract<EvidenceKey, { transportFamily: "local-http" }>;
-    type LocalCliEvidence = Extract<EvidenceKey, { transportFamily: "local-cli" }>;
-
-    expectTypeOf<HostedEvidence["productId"]>().toEqualTypeOf<HostedApiProductId>();
-    expectTypeOf<LocalHttpEvidence["productId"]>().toEqualTypeOf<LocalHttpProductId>();
-    expectTypeOf<LocalCliEvidence["productId"]>().toEqualTypeOf<LocalCliProductId>();
-    expectTypeOf<HostedEvidence["authentication"]>().toEqualTypeOf<null>();
-    expectTypeOf<LocalHttpEvidence["region"]>().toEqualTypeOf<null>();
-    expectTypeOf<LocalCliEvidence["normalizedEndpoint"]>().toEqualTypeOf<null>();
-    expectTypeOf<"openrouter">().not.toMatchTypeOf<LocalCliEvidence["productId"]>();
+  it("narrows the hosted EvidenceKey tuple at the type level", () => {
+    expectTypeOf<EvidenceKey["transportFamily"]>().toEqualTypeOf<"hosted-api">();
+    expectTypeOf<EvidenceKey["productId"]>().toEqualTypeOf<HostedApiProductId>();
+    expectTypeOf<EvidenceKey["authentication"]>().toEqualTypeOf<null>();
+    expectTypeOf<EvidenceKey["installationId"]>().toEqualTypeOf<null>();
+    expectTypeOf<EvidenceKey["region"]>().toEqualTypeOf<null>();
   });
 
   it("models receipt usage availability as a discriminated union", () => {
@@ -466,7 +406,7 @@ describe("execution contracts", () => {
   });
 
   it("rejects non-runnable identities, mismatched transports, and unsafe references", () => {
-    for (const productId of ["xiaomi-mimo", "bogus-product"]) {
+    for (const productId of ["xiaomi-mimo", "bogus-product", "groq", "ollama", "codex-cli"]) {
       expect(EvidenceKeySchema.safeParse({ ...evidenceKey, productId }).success).toBe(false);
       expect(
         ExecutionReceiptSchema.safeParse(
@@ -486,22 +426,14 @@ describe("execution contracts", () => {
     }
 
     for (const invalidReceipt of [
-      makeReceipt({ transportFamily: "local-cli" }),
+      makeReceipt({ transportFamily: "local-cli" as ReceiptFixture["transportFamily"] }),
       makeReceipt({ modelId: "../model" }),
       makeReceipt({ workspaceAccountReference: "review-team" }),
       makeReceipt({ runtime: { identity: "/usr/local/bin/tool", version: "1.2.3" } }),
       makeReceipt({
-        productId: "deepseek",
-        modelId: "deepseek-v4-flash",
+        productId: "zai" as ReceiptFixture["productId"],
+        modelId: "glm-4.7",
         normalizedEndpoint: "https://openrouter.ai/api/v1",
-      }),
-      makeReceipt({
-        productId: "local-openai",
-        transportFamily: "local-http",
-        authentication: "none",
-        credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-        normalizedEndpoint: "http://127.0.0.1:1234/v1",
-        runtime: { identity: "lm-studio", version: "0.3.0" },
       }),
     ]) {
       expect(ExecutionReceiptSchema.safeParse(invalidReceipt).success).toBe(false);
@@ -516,191 +448,17 @@ describe("execution contracts", () => {
     ).toBe(false);
   });
 
-  it("accepts only transport-applicable execution identity fields", () => {
-    expect(
-      EvidenceKeySchema.safeParse({
-        ...evidenceKey,
-        authentication: "none",
-        credentialReferenceIdentity: null,
-        productId: "local-openai",
-        transportFamily: "local-http",
-        normalizedEndpoint: "http://127.0.0.1:1234/v1",
-        region: null,
-        workspaceAccountReference: null,
-        runtime: { identity: "lm-studio", version: "0.3.0" },
-      }).success,
-    ).toBe(true);
-    expect(
-      EvidenceKeySchema.safeParse({
-        ...evidenceKey,
-        credentialReferenceIdentity: null,
-        productId: "codex-cli",
-        transportFamily: "local-cli",
-        normalizedEndpoint: null,
-        region: null,
-        workspaceAccountReference: null,
-        installationId: INSTALLATION_ID,
-        runtime: { identity: "codex-cli", version: "0.1.0" },
-      }).success,
-    ).toBe(true);
-    expect(
-      ExecutionReceiptSchema.safeParse(
-        makeReceipt({
-          productId: "ollama",
-          transportFamily: "local-http",
-          authentication: "none",
-          normalizedEndpoint: "http://127.0.0.1:11434",
-          credentialReferenceIdentity: null,
-          installationId: null,
-          region: undefined,
-          workspaceAccountReference: undefined,
-          runtime: { identity: "ollama", version: "0.6.0" },
-        }),
-      ).success,
-    ).toBe(true);
-    expect(
-      ExecutionReceiptSchema.safeParse(
-        makeReceipt({
-          productId: "copilot-cli",
-          transportFamily: "local-cli",
-          normalizedEndpoint: undefined,
-          credentialReferenceIdentity: null,
-          installationId: "copilot-installation",
-          region: undefined,
-          workspaceAccountReference: undefined,
-          runtime: { identity: "copilot-cli", version: "0.1.0" },
-        }),
-      ).success,
-    ).toBe(true);
-  });
-
-  it("binds local runtime identity to the selected product and preset", () => {
-    expect(
-      EvidenceKeySchema.safeParse({
-        ...localHttpEvidence,
-        runtime: { identity: "ollama", version: "0.6.0" },
-      }).success,
-    ).toBe(false);
-    expect(
-      EvidenceKeySchema.safeParse({
-        ...localHttpEvidence,
-        normalizedEndpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["llama-cpp"],
-        runtime: { identity: "lm-studio", version: "0.3.0" },
-      }).success,
-    ).toBe(false);
-    expect(
-      EvidenceKeySchema.safeParse({
-        ...localHttpEvidence,
-        normalizedEndpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["llama-cpp"],
-        runtime: { identity: "llama-cpp", version: "b-version-2026-07" },
-      }).success,
-    ).toBe(true);
-
-    expect(
-      EvidenceKeySchema.safeParse({
-        ...localHttpEvidence,
-        productId: "ollama",
-        normalizedEndpoint: "http://127.0.0.1:11434",
-        runtime: { identity: "lm-studio", version: "0.3.0" },
-      }).success,
-    ).toBe(false);
-    expect(
-      EvidenceKeySchema.safeParse({
-        ...localHttpEvidence,
-        productId: "ollama",
-        normalizedEndpoint: "http://127.0.0.1:11434",
-        runtime: { identity: "ollama", version: "0.6.0" },
-      }).success,
-    ).toBe(true);
-
-    const localCli = {
-      ...localHttpEvidence,
-      authentication: null,
-      credentialReferenceIdentity: null,
-      productId: "codex-cli" as const,
-      transportFamily: "local-cli" as const,
-      normalizedEndpoint: null,
-      installationId: INSTALLATION_ID,
-      runtime: { identity: "copilot-cli", version: "1.0.0" },
-    };
-    expect(EvidenceKeySchema.safeParse(localCli).success).toBe(false);
-    expect(
-      EvidenceKeySchema.safeParse({
-        ...localCli,
-        runtime: { identity: "codex-cli", version: "1.0.0" },
-      }).success,
-    ).toBe(true);
-
-    const parsed = EvidenceKeySchema.parse(localHttpEvidence);
-    expect(parsed.runtime).toEqual(localHttpEvidence.runtime);
-    expect(
-      hashEvidenceKey({
-        ...localHttpEvidence,
-        runtime: { identity: "lm-studio", version: "0.3.1" },
-      }),
-    ).not.toBe(hashEvidenceKey(localHttpEvidence));
-  });
-
-  it("rejects forged product tuples and missing family-specific evidence", () => {
+  it("rejects forged product tuples and missing hosted evidence", () => {
     const invalidEvidence = [
-      { ...evidenceKey, normalizedEndpoint: "https://api.groq.com/openai/v1" },
-      { ...evidenceKey, productId: "deepseek", normalizedEndpoint: "https://openrouter.ai/api/v1" },
+      { ...evidenceKey, normalizedEndpoint: "https://generativelanguage.googleapis.com/v1beta" },
       { ...evidenceKey, region: "international" },
       { ...evidenceKey, credentialReferenceIdentity: null },
-      {
-        ...localHttpEvidence,
-        credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-      },
-      { ...localHttpEvidence, runtime: null },
-      {
-        ...localHttpEvidence,
-        productId: "codex-cli",
-        transportFamily: "local-cli",
-        normalizedEndpoint: null,
-        runtime: null,
-      },
-      {
-        ...localHttpEvidence,
-        productId: "codex-cli",
-        transportFamily: "local-cli",
-        normalizedEndpoint: null,
-        installationId: null,
-        runtime: { identity: "codex-cli", version: "0.1.0" },
-      },
+      { ...evidenceKey, runtime: null },
     ];
 
     for (const candidate of invalidEvidence) {
       expect(EvidenceKeySchema.safeParse(candidate).success).toBe(false);
     }
-
-    expect(
-      EvidenceKeySchema.safeParse({
-        ...localHttpEvidence,
-        authentication: "optional-local-bearer",
-        credentialReferenceIdentity: null,
-      }).success,
-    ).toBe(true);
-    expect(
-      EvidenceKeySchema.safeParse({
-        ...localHttpEvidence,
-        authentication: "optional-local-bearer",
-        credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-      }).success,
-    ).toBe(true);
-
-    expect(
-      EvidenceKeySchema.safeParse({
-        ...allowlistEvidence,
-        modelId: "deepseek-v5-flash",
-      }).success,
-    ).toBe(false);
-  });
-
-  it("admits every id the product allowlist names", () => {
-    expect(EvidenceKeySchema.safeParse(allowlistEvidence).success).toBe(true);
-    expect(
-      EvidenceKeySchema.safeParse({ ...allowlistEvidence, modelId: "deepseek-v4-pro" }).success,
-    ).toBe(true);
   });
 
   const pinnedRoutePolicyCases = [
@@ -758,29 +516,6 @@ describe("execution contracts", () => {
     );
     expect(EvidenceKeySchema.safeParse({ ...evidenceKey, runtime: null }).success).toBe(false);
     expect(ExecutionReceiptSchema.safeParse(makeReceipt({ runtime: null })).success).toBe(false);
-  });
-
-  it("binds local HTTP authentication mode and credential identity to receipt fingerprints", () => {
-    const withoutBearer = makeReceipt({
-      productId: "local-openai",
-      transportFamily: "local-http",
-      authentication: "none",
-      credentialReferenceIdentity: null,
-      normalizedEndpoint: "http://127.0.0.1:1234/v1",
-      runtime: { identity: "lm-studio", version: "0.3.0" },
-    });
-    const optionalBearer = makeReceipt({
-      productId: "local-openai",
-      transportFamily: "local-http",
-      authentication: "optional-local-bearer",
-      credentialReferenceIdentity: null,
-      normalizedEndpoint: "http://127.0.0.1:1234/v1",
-      runtime: { identity: "lm-studio", version: "0.3.0" },
-    });
-
-    expect(ExecutionReceiptSchema.safeParse(withoutBearer).success).toBe(true);
-    expect(ExecutionReceiptSchema.safeParse(optionalBearer).success).toBe(true);
-    expect(optionalBearer.executionFingerprint).not.toBe(withoutBearer.executionFingerprint);
   });
 
   it("rejects contradictory usage totals and component counts", () => {
@@ -879,6 +614,78 @@ describe("execution contracts", () => {
     ).toBe(false);
   });
 
+  it("scales review-scope receipt ceilings by dispatch count", () => {
+    const dispatchCount = 6;
+    const reviewScope = { scope: "review", dispatchCount } as const;
+    expect(
+      ExecutionReceiptSchema.safeParse(
+        makeReceipt({
+          ...reviewScope,
+          usage: { inputTokens: limits.maxInputTokens * dispatchCount - 1 },
+        }),
+      ).success,
+    ).toBe(true);
+    expect(
+      ExecutionReceiptSchema.safeParse(
+        makeReceipt({
+          ...reviewScope,
+          usage: { inputTokens: limits.maxInputTokens * dispatchCount + 1 },
+        }),
+      ).success,
+    ).toBe(false);
+
+    const startedAt = "2026-07-31T10:00:00.000Z";
+    const overOneDispatchWall = new Date(
+      Date.parse(startedAt) + limits.wallTimeMs + 1_000,
+    ).toISOString();
+    expect(
+      ExecutionReceiptSchema.safeParse(
+        makeReceipt({ ...reviewScope, startedAt, finishedAt: overOneDispatchWall }),
+      ).success,
+    ).toBe(true);
+    expect(
+      ExecutionReceiptSchema.safeParse(makeReceipt({ startedAt, finishedAt: overOneDispatchWall }))
+        .success,
+    ).toBe(false);
+    const overReviewCeiling = new Date(
+      Date.parse(startedAt) + limits.wallTimeMs * dispatchCount * REVIEW_WALL_CEILING_SLACK + 1,
+    ).toISOString();
+    expect(
+      ExecutionReceiptSchema.safeParse(
+        makeReceipt({ ...reviewScope, startedAt, finishedAt: overReviewCeiling }),
+      ).success,
+    ).toBe(false);
+
+    expect(
+      ExecutionReceiptSchema.safeParse(
+        makeReceipt({ ...reviewScope, attemptCount: (limits.maxRetries + 1) * dispatchCount }),
+      ).success,
+    ).toBe(true);
+    expect(
+      ExecutionReceiptSchema.safeParse(
+        makeReceipt({ ...reviewScope, attemptCount: (limits.maxRetries + 1) * dispatchCount + 1 }),
+      ).success,
+    ).toBe(false);
+    expect(
+      ExecutionReceiptSchema.safeParse(makeReceipt({ attemptCount: limits.maxRetries + 1 }))
+        .success,
+    ).toBe(true);
+    expect(
+      ExecutionReceiptSchema.safeParse(makeReceipt({ attemptCount: limits.maxRetries + 2 }))
+        .success,
+    ).toBe(false);
+  });
+
+  it("pairs scope with dispatch count and keeps fingerprints scope-independent", () => {
+    expect(ExecutionReceiptSchema.safeParse(makeReceipt({ scope: "review" })).success).toBe(false);
+    expect(ExecutionReceiptSchema.safeParse(makeReceipt({ dispatchCount: 6 })).success).toBe(false);
+    const dispatchReceipt = ExecutionReceiptSchema.parse(makeReceipt());
+    const reviewReceipt = ExecutionReceiptSchema.parse(
+      makeReceipt({ scope: "review", dispatchCount: 6 }),
+    );
+    expect(reviewReceipt.executionFingerprint).toBe(dispatchReceipt.executionFingerprint);
+  });
+
   it("allows schema-valid findings only with a completed receipt", () => {
     expect(
       ExecutionResultSchema.safeParse({
@@ -929,31 +736,5 @@ describe("execution contracts", () => {
         makeReceipt({ usage: undefined, usageAvailability: "required-missing" }),
       ).success,
     ).toBe(false);
-  });
-
-  it("requires terminal usage for products whose admission policy documents it", () => {
-    expect(
-      ExecutionReceiptSchema.safeParse(
-        makeReceipt({
-          productId: "deepseek",
-          normalizedEndpoint: "https://api.deepseek.com/v1",
-          modelId: "deepseek-v4-flash",
-          usage: undefined,
-          usageAvailability: "unavailable",
-        }),
-      ).success,
-    ).toBe(false);
-    expect(
-      ExecutionReceiptSchema.safeParse(
-        makeReceipt({
-          productId: "deepseek",
-          normalizedEndpoint: "https://api.deepseek.com/v1",
-          modelId: "deepseek-v4-flash",
-          usage: undefined,
-          usageAvailability: "required-missing",
-          outcome: "transport-failed",
-        }),
-      ).success,
-    ).toBe(true);
   });
 });

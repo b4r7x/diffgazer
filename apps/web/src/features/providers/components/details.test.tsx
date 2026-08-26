@@ -176,7 +176,7 @@ describe("ProviderDetails", () => {
 
     const term = screen.getByText("Product");
     // getByText matches an element's own text, so this also pins the value slot
-    // to the scalar: the description nests inside it as a block of its own.
+    // to the scalar: the description is a definition of its own, not part of it.
     const value = screen.getByText(GEMINI_ROW.product.name, { selector: "dd" });
     const description = screen.getByText(GEMINI_ROW.product.description);
 
@@ -185,11 +185,13 @@ describe("ProviderDetails", () => {
     // from content, so the pairing is asserted, not queried by name.)
     expect(term).toHaveRole("term");
     expect(value).toHaveRole("definition");
+    expect(description).toHaveRole("definition");
     // The value must follow the label it answers, never trail a description:
     // anything reading the row linearly would otherwise get a whole sentence
-    // between the two.
+    // between the two. The description then follows as a second definition of
+    // the same term.
     expect(term.nextElementSibling).toBe(value);
-    expect(value).toContainElement(description);
+    expect(value.nextElementSibling).toBe(description);
   });
 
   it("publishes the display-status tone on the status readout", () => {
@@ -199,12 +201,6 @@ describe("ProviderDetails", () => {
       "data-tone",
       "success",
     );
-  });
-
-  it("shows CLI unsupported evidence for unsupported CLI rows", () => {
-    renderDetails(findRow("codex-cli-1"));
-
-    expect(screen.getByLabelText(/CLI unsupported\./i)).toBeInTheDocument();
   });
 
   it("prompts to select a provider when none is provided", () => {

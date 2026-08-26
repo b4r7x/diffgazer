@@ -17,6 +17,9 @@ export function DiffView({ patch }: DiffViewProps) {
   // Defense-in-depth: the server already sanitizes suggested_patch, but strip any
   // residual terminal-escape sequences before rendering into the raw terminal.
   const lines = sanitizeTerminalText(patch).split("\n");
+  // A model that flattened its diff onto one line would otherwise lose everything
+  // past the first terminal row; wrap that single line instead of truncating it.
+  const isFlattened = lines.length === 1;
 
   return (
     <Box
@@ -41,11 +44,11 @@ export function DiffView({ patch }: DiffViewProps) {
           <Box
             key={`${i}:${line}`}
             width={contentWidth}
-            height={1}
+            height={isFlattened ? undefined : 1}
             overflow="hidden"
             flexWrap="nowrap"
           >
-            <Text color={color} wrap="truncate-end">
+            <Text color={color} wrap={isFlattened ? "wrap" : "truncate-end"}>
               {line}
             </Text>
           </Box>

@@ -9,10 +9,6 @@ import {
   getHostedApiEndpointTuple,
   HOSTED_API_PRODUCT_IDS,
   HostedApiEndpointSchema,
-  LOCAL_OPENAI_PRESET_ENDPOINTS,
-  LOCAL_OPENAI_PRESET_IDS,
-  LoopbackHttpEndpointSchema,
-  matchesLocalHttpTransportTuple,
   REJECTED_PRODUCT_IDS,
   RUNNABLE_PRODUCT_IDS,
   RunnableProductIdSchema,
@@ -30,21 +26,19 @@ describe("transport family contract", () => {
     expect(TransportFamilySchema.safeParse("sdk").success).toBe(false);
   });
 
-  it("partitions exactly 12 runnable product identities", () => {
+  it("keeps every runnable product hosted", () => {
     expect(RUNNABLE_PRODUCT_IDS).toEqual([
       "gemini",
       "zai",
       "openrouter",
-      "groq",
-      "cerebras",
       "deepseek",
+      "qwen",
+      "moonshot",
+      "minimax",
       "ollama-cloud",
       "opencode-zen",
-      "ollama",
-      "local-openai",
-      "codex-cli",
-      "copilot-cli",
     ]);
+    expect(RUNNABLE_PRODUCT_IDS).toEqual(HOSTED_API_PRODUCT_IDS);
   });
 
   it("keeps every experimental, deferred, and rejected candidate non-runnable", () => {
@@ -63,63 +57,32 @@ describe("transport family contract", () => {
 describe("endpoint contracts", () => {
   it.each([
     "https://generativelanguage.googleapis.com/v1beta",
-    "https://api.deepseek.com/v1",
+    "https://api.z.ai/api/paas/v4",
   ])("accepts a normalized hosted HTTPS endpoint: %s", (endpoint) => {
     expect(HostedApiEndpointSchema.parse(endpoint)).toBe(endpoint);
   });
 
   it.each([
-    "http://api.deepseek.com/v1",
-    "https://user:secret@api.deepseek.com/v1",
-    "https://api.deepseek.com:8443/v1",
-    "https://api.deepseek.com/v1?region=eu",
-    "https://api.deepseek.com/v1#models",
-    "https://API.DEEPSEEK.COM/v1",
-    "https://api.deepseek.com/v1/../v1",
+    "http://api.z.ai/api/paas/v4",
+    "https://user:secret@api.z.ai/api/paas/v4",
+    "https://api.z.ai:8443/api/paas/v4",
+    "https://api.z.ai/api/paas/v4?region=eu",
+    "https://api.z.ai/api/paas/v4#models",
+    "https://API.Z.AI/api/paas/v4",
+    "https://api.z.ai/api/paas/v4/../v4",
   ])("rejects an unsafe or non-normalized hosted endpoint: %s", (endpoint) => {
     expect(HostedApiEndpointSchema.safeParse(endpoint).success).toBe(false);
-  });
-
-  it.each([
-    "http://localhost:11434",
-    "http://127.0.0.1:11434",
-    "http://127.10.20.30:9000/v1",
-    "http://[::1]:8080/v1",
-  ])("accepts a normalized HTTP loopback endpoint: %s", (endpoint) => {
-    expect(LoopbackHttpEndpointSchema.parse(endpoint)).toBe(endpoint);
-  });
-
-  it.each([
-    "https://127.0.0.1:11434",
-    "http://0.0.0.0:11434",
-    "http://192.168.1.2:11434",
-    "http://example.com:11434",
-    "http://user:secret@localhost:11434",
-    "http://localhost:11434/v1?token=secret",
-    "http://LOCALHOST:11434",
-  ])("rejects a non-loopback or unsafe local endpoint: %s", (endpoint) => {
-    expect(LoopbackHttpEndpointSchema.safeParse(endpoint).success).toBe(false);
   });
 });
 
 describe("endpoint tuple authority", () => {
-  it("centralizes hosted endpoint and local preset matching", () => {
-    expect(getHostedApiEndpointTuple("deepseek", "https://api.deepseek.com/v1")?.id).toBe("payg");
-    expect(getHostedApiEndpointTuple("deepseek", "https://api.z.ai/api/paas/v4")).toBeUndefined();
+  it("centralizes hosted endpoint matching", () => {
+    expect(getHostedApiEndpointTuple("zai", "https://api.z.ai/api/paas/v4")?.id).toBe(
+      "general-payg",
+    );
     expect(
-      matchesLocalHttpTransportTuple({
-        productId: "local-openai",
-        endpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["lm-studio"],
-        presetId: "lm-studio",
-      }),
-    ).toBe(true);
-    expect(
-      matchesLocalHttpTransportTuple({
-        productId: "local-openai",
-        endpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["llama-cpp"],
-        presetId: "lm-studio",
-      }),
-    ).toBe(false);
+      getHostedApiEndpointTuple("zai", "https://generativelanguage.googleapis.com/v1beta"),
+    ).toBeUndefined();
   });
 
   it("keeps transport validation and product presentation on the same profiles", () => {
@@ -143,56 +106,37 @@ describe("endpoint tuple authority", () => {
   });
 });
 
-describe("transport-specific configuration", () => {
+describe("hosted configuration input", () => {
   const hostedInput = {
     transportFamily: "hosted-api" as const,
-    productId: "deepseek" as const,
-    endpoint: "https://api.deepseek.com/v1",
-  };
-  const localHttpInput = {
-    transportFamily: "local-http" as const,
-    productId: "ollama" as const,
-    endpoint: "http://localhost:11434",
-    authentication: "none" as const,
-  };
-  const localCliInput = {
-    transportFamily: "local-cli" as const,
-    productId: "codex-cli" as const,
-    installationId: "codex-installation-1",
+    productId: "zai" as const,
+    endpoint: "https://api.z.ai/api/paas/v4",
   };
 
-  it("accepts one closed input shape for each transport family", () => {
+  it("accepts one closed hosted input shape", () => {
     expect(ClientConfigurationInputSchema.parse(hostedInput)).toEqual(hostedInput);
-    expect(ClientConfigurationInputSchema.parse(localHttpInput)).toEqual(localHttpInput);
-    expect(ClientConfigurationInputSchema.parse(localCliInput)).toEqual(localCliInput);
   });
 
   it.each([
     { ...hostedInput, installationId: "codex-installation-1" },
-    { ...localHttpInput, installationId: "codex-installation-1" },
-    { ...localCliInput, endpoint: "http://localhost:11434" },
-    { ...localHttpInput, productId: "gemini" },
-    { ...localCliInput, productId: "ollama" },
-  ])("rejects fields or products from another transport family", (input) => {
+    { ...hostedInput, transportFamily: "local-http" },
+    { ...hostedInput, productId: "ollama" },
+    { ...hostedInput, productId: "groq" },
+    // A pre-removal qwen record still carrying region/workspace transport
+    // fields must fail the strict shape, not ride back in with the restored id.
+    {
+      transportFamily: "hosted-api",
+      productId: "qwen",
+      endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+      region: "international",
+      workspace: "workspace-reference",
+    },
+  ])("rejects a retired transport family, product, or foreign field", (input) => {
     expect(ClientConfigurationInputSchema.safeParse(input).success).toBe(false);
   });
 
   it.each([
-    {
-      transportFamily: "local-http",
-      productId: "ollama",
-      endpoint: "http://localhost:11434",
-    },
-    {
-      transportFamily: "local-cli",
-      productId: "codex-cli",
-    },
-  ])("rejects a transport missing a family-required field", (input) => {
-    expect(ClientConfigurationInputSchema.safeParse(input).success).toBe(false);
-  });
-
-  it.each([
-    { ...hostedInput, endpoint: "https://api.z.ai/api/paas/v4" },
+    { ...hostedInput, endpoint: "https://generativelanguage.googleapis.com/v1beta" },
     {
       transportFamily: "hosted-api",
       productId: "gemini",
@@ -213,51 +157,6 @@ describe("transport-specific configuration", () => {
     },
   ])("rejects a hosted endpoint tuple outside its product contract", (input) => {
     expect(ClientConfigurationInputSchema.safeParse(input).success).toBe(false);
-  });
-
-  it("binds local-openai presets to their exact identities and URLs", () => {
-    expect(LOCAL_OPENAI_PRESET_IDS).toEqual(["lm-studio", "llama-cpp"]);
-    expect(LOCAL_OPENAI_PRESET_ENDPOINTS).toEqual({
-      "lm-studio": "http://127.0.0.1:1234/v1",
-      "llama-cpp": "http://127.0.0.1:8080/v1",
-    });
-
-    for (const presetId of LOCAL_OPENAI_PRESET_IDS) {
-      const endpoint = LOCAL_OPENAI_PRESET_ENDPOINTS[presetId];
-      expect(
-        ClientConfigurationInputSchema.parse({
-          transportFamily: "local-http",
-          productId: "local-openai",
-          endpoint,
-          authentication: "none",
-          presetId,
-        }),
-      ).toEqual({
-        transportFamily: "local-http",
-        productId: "local-openai",
-        endpoint,
-        authentication: "none",
-        presetId,
-      });
-    }
-  });
-
-  it("rejects a mismatched local-openai preset and an Ollama preset", () => {
-    expect(
-      ClientConfigurationInputSchema.safeParse({
-        transportFamily: "local-http",
-        productId: "local-openai",
-        endpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["llama-cpp"],
-        authentication: "none",
-        presetId: "lm-studio",
-      }).success,
-    ).toBe(false);
-    expect(
-      ClientConfigurationInputSchema.safeParse({
-        ...localHttpInput,
-        presetId: "lm-studio",
-      }).success,
-    ).toBe(false);
   });
 
   it("keeps the exact normalized hosted tuple valid", () => {

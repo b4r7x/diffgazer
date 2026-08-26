@@ -91,7 +91,7 @@ describe("ReviewSummaryView", () => {
   it("says a clean run found nothing and drops the empty category table", () => {
     renderSummary({ issues: [], durationMs: 3800 });
 
-    expect(screen.getByText("No issues found · 3.8s")).toBeVisible();
+    expect(screen.getByText("No issues found · 3s")).toBeVisible();
     const categories = screen.getByRole("region", { name: "Issues by category" });
     expect(within(categories).getByText("Nothing to categorise.")).toBeVisible();
     expect(within(categories).queryByRole("table")).not.toBeInTheDocument();
@@ -103,10 +103,29 @@ describe("ReviewSummaryView", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Review Complete #unknown");
   });
 
+  it("headlines a partial run honestly when a lens failed but the run completed", () => {
+    renderSummary({
+      reviewId: "7685a1b2-0000-4000-8000-000000000000",
+      lensStats: [
+        { lensId: "correctness", issueCount: 2, status: "success" },
+        { lensId: "security", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
+      ],
+    });
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Review Partially Complete #7685",
+    );
+    // The frame agrees with the headline: warning tone, not success-green.
+    expect(screen.getByRole("region", { name: "Run status" })).toHaveAttribute(
+      "data-tone",
+      "warning",
+    );
+  });
+
   it("renders the persisted review duration in the fact line", () => {
     renderSummary({ durationMs: 2500 });
 
-    expect(screen.getByText("1 issue in 1 file · 2.5s")).toBeVisible();
+    expect(screen.getByText("1 issue in 1 file · 2s")).toBeVisible();
   });
 
   it("renders category names in the stats table without literal icon words", () => {
@@ -510,7 +529,7 @@ describe("ReviewSummaryView failure mode", () => {
       durationMs: 3800,
     });
 
-    expect(screen.getByText("1 of 1 lens completed · 0 issues · 3.8s")).toBeVisible();
+    expect(screen.getByText("1 of 1 lens completed · 0 issues · 3s")).toBeVisible();
     expect(screen.queryByText(/No issues found/)).not.toBeInTheDocument();
   });
 });

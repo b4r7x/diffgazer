@@ -5,7 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { z } from "zod";
-import { buildCliChildEnvironment } from "../../../../shared/lib/ai/providers/cli-compatibility/child-environment.js";
+import { buildCliChildEnvironment } from "../../../../shared/lib/child-environment.js";
 import { formatSchemaIssues } from "../../../../shared/lib/errors.js";
 import { executableCandidateNames } from "../../../../shared/lib/executable-candidates.js";
 import { readFileDirectory } from "../directory.js";

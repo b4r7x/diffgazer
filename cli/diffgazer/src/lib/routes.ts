@@ -14,7 +14,11 @@ export type Route =
   | { screen: "help" }
   | { screen: "settings" }
   | { screen: "settings/theme" }
-  | { screen: "settings/providers" }
+  | {
+      screen: "settings/providers";
+      /** "Change model" on the review error screen opens the model dialog on arrival. */
+      intent?: "select-model";
+    }
   | { screen: "settings/storage" }
   | { screen: "settings/analysis" }
   | { screen: "settings/agent-execution" }

@@ -6,7 +6,6 @@ import {
   ReadinessSchema,
   type ReadinessStatus,
 } from "../schemas/config/readiness.js";
-import type { TransportFamily } from "../schemas/config/transports.js";
 import {
   getProviderDisplay,
   getProviderDisplayStatus,
@@ -87,18 +86,18 @@ function readiness(status: ReadinessStatus): Readiness {
   });
 }
 
-function display(status: ReadinessStatus, family: TransportFamily) {
-  return getProviderDisplayStatus(readiness(status), family);
+function display(status: ReadinessStatus) {
+  return getProviderDisplayStatus(readiness(status));
 }
 
 describe("getProviderDisplayStatus", () => {
   it.each([
-    ["local-conformance-failed", "local-http", "Local conformance failed", "test"],
-    ["unsupported", "local-cli", "CLI unsupported", "inspect"],
-    ["acknowledgement-required", "hosted-api", "Acknowledgement required", "update"],
-    ["ready", "hosted-api", "Ready", "inspect"],
-  ] as const)("presents %s as distinct non-color status text with its machine action", (status, family, label, action) => {
-    const result = display(status, family);
+    ["conformance-failed", "Compatibility check failed", "test"],
+    ["unsupported", "Unsupported", "inspect"],
+    ["acknowledgement-required", "Acknowledgement required", "update"],
+    ["ready", "Ready", "inspect"],
+  ] as const)("presents %s as distinct non-color status text with its machine action", (status, label, action) => {
+    const result = display(status);
 
     expect(result).toMatchObject({ status, action, label });
     expect(result.explanation).toBe(READINESS_PRESENTATION[status].explanation);
@@ -110,10 +109,10 @@ describe("getProviderDisplayStatus", () => {
 
   it("does not reduce distinct machine states to color or credential-only copy", () => {
     const results = [
-      display("local-conformance-failed", "local-http"),
-      display("unsupported", "local-cli"),
-      display("acknowledgement-required", "hosted-api"),
-      display("ready", "hosted-api"),
+      display("conformance-failed"),
+      display("unsupported"),
+      display("acknowledgement-required"),
+      display("ready"),
     ];
 
     expect(new Set(results.map(({ status }) => status))).toHaveLength(results.length);
@@ -124,12 +123,12 @@ describe("getProviderDisplayStatus", () => {
 
 describe("status badge wording", () => {
   it("keeps readable text alongside the visual variant", () => {
-    expect(display("unsupported", "local-cli")).toMatchObject({
-      label: "CLI unsupported",
+    expect(display("unsupported")).toMatchObject({
+      label: "Unsupported",
       shortLabel: "unsupported",
       variant: "warning",
     });
-    expect(display("ready", "hosted-api")).toMatchObject({
+    expect(display("ready")).toMatchObject({
       label: "Ready",
       shortLabel: "ready",
       variant: "success",
@@ -137,27 +136,27 @@ describe("status badge wording", () => {
   });
 
   it("describes verification in product language and never presents an unverified model as a blocker", () => {
-    expect(display("conformance-pending", "hosted-api")).toMatchObject({
+    expect(display("conformance-pending")).toMatchObject({
       label: "Not verified",
       variant: "info",
     });
-    expect(display("conformance-failed", "hosted-api").label).toBe("Compatibility check failed");
+    expect(display("conformance-failed").label).toBe("Compatibility check failed");
   });
 
   it("marks a missing model as needing attention, not as a failure", () => {
-    expect(display("model-missing", "hosted-api").variant).toBe("warning");
+    expect(display("model-missing").variant).toBe("warning");
   });
 });
 
 describe("status short labels", () => {
   it.each(READINESS_STATUSES)("reduces %s to one lowercase status word", (status) => {
-    expect(display(status, "hosted-api").shortLabel).toMatch(/^[a-z]+$/);
+    expect(display(status).shortLabel).toMatch(/^[a-z]+$/);
   });
 });
 
 describe("getUnconfiguredDisplayStatus", () => {
   it("carries the shared unconfigured badge wording with nothing to explain yet", () => {
-    const { label, shortLabel, variant } = display("unconfigured", "hosted-api");
+    const { label, shortLabel, variant } = display("unconfigured");
     expect(getUnconfiguredDisplayStatus()).toEqual({
       label,
       shortLabel,
@@ -222,7 +221,6 @@ describe("resolveShellProviderIdentity", () => {
     const identity = resolveShellProviderIdentity({
       status: "configured",
       readiness: readiness("ready"),
-      transportFamily: "hosted-api",
       productId: "gemini",
       modelId: "gemini-2.5-flash",
     });
@@ -235,7 +233,6 @@ describe("resolveShellProviderIdentity", () => {
     const identity = resolveShellProviderIdentity({
       status: "configured",
       readiness: readiness("model-missing"),
-      transportFamily: "hosted-api",
       productId: "gemini",
       modelId: null,
     });

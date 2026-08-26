@@ -1,8 +1,5 @@
 import type { ModelInfo } from "../schemas/config/models.js";
-import {
-  CATALOG_EMPTY_MODELS_REASON,
-  CATALOG_SKIPPED_REASON,
-} from "./catalog-discovery-reasons.js";
+import { CATALOG_EMPTY_MODELS_REASON } from "./catalog-discovery-reasons.js";
 
 export const MODEL_DISCOVERY_ERROR_FALLBACK =
   "Model discovery failed. Test the configuration again.";
@@ -12,7 +9,6 @@ export const MODEL_DISCOVERY_SKIPPED_FALLBACK =
 /** Every message a discovery producer can put in front of a user, verbatim. */
 const SAFE_MODEL_DISCOVERY_MESSAGES = new Set([
   "Model discovery returned a different configuration tuple.",
-  CATALOG_SKIPPED_REASON,
   CATALOG_EMPTY_MODELS_REASON,
 ]);
 

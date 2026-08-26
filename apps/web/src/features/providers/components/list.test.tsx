@@ -67,13 +67,13 @@ describe("ProviderList", () => {
   it("badges a zero-priced route FREE on the strength of its own catalog price", () => {
     render(
       <ProviderList
-        providers={[openrouterRow("openai/gpt-oss-20b:free")]}
+        providers={[openrouterRow("nvidia/nemotron-3-super-120b-a12b:free")]}
         {...DEFAULT_LIST_PROPS}
       />,
     );
 
     expect(screen.getByRole("option", { name: "OpenRouter" })).toHaveAccessibleDescription(
-      "FREE gpt-oss-20b (free) openai/gpt-oss-20b:free",
+      "FREE Nemotron 3 Super (free) nvidia/nemotron-3-super-120b-a12b:free",
     );
   });
 

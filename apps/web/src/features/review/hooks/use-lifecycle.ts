@@ -235,15 +235,24 @@ export function useReviewLifecycle({
   // Deep-links the providers screen to the affected configuration so key entry
   // lands on the right product; the stale remembered selection is cleared so
   // the link wins over it.
-  const handleSetupProvider = () => {
+  const goToProviders = (intent?: "select-model") => {
     runCancelTransition(true, () => {
       const product = selectedConfiguration?.productId;
       if (product) {
         clearScopedRouteState("/settings/providers", "providerId");
       }
-      navigate({ to: "/settings/providers", search: product ? { product } : {} });
+      navigate({
+        to: "/settings/providers",
+        search: { ...(product ? { product } : {}), ...(intent ? { intent } : {}) },
+      });
     });
   };
+
+  const handleSetupProvider = () => goToProviders();
+
+  // "Change model" opens the model dialog itself: the providers screen reads
+  // the intent and lands there instead of leaving the user one more step away.
+  const handleChangeModel = () => goToProviders("select-model");
 
   const startAlternateMode = () => {
     runCancelTransition(
@@ -293,6 +302,7 @@ export function useReviewLifecycle({
     handleViewRun,
     handleRetry,
     handleSetupProvider,
+    handleChangeModel,
     handleSwitchMode,
   };
 }

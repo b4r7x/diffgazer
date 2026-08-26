@@ -8,19 +8,16 @@ const SELECTABLE_PRODUCT_IDS = [
   "gemini",
   "zai",
   "openrouter",
-  "groq",
-  "cerebras",
   "deepseek",
+  "qwen",
+  "moonshot",
+  "minimax",
   "ollama-cloud",
   "opencode-zen",
-  "ollama",
-  "local-openai",
-  "codex-cli",
-  "copilot-cli",
 ];
 
 describe("selectable product presentation", () => {
-  it("exposes exactly the 12 selectable products from product authority", () => {
+  it("exposes exactly the 9 selectable products from product authority", () => {
     expect(selectableProducts.SELECTABLE_PRODUCTS.map((product) => product.productId)).toEqual(
       SELECTABLE_PRODUCT_IDS,
     );

@@ -213,8 +213,24 @@ const API_KEY_ERROR_PATTERN = /api.?key/i;
 const RAW_DIAGNOSTIC_PATTERN =
   /(?:\/Users\/|\/home\/|Bearer\s+\S+|sk-[A-Za-z0-9_-]{8,}|ghp_[A-Za-z0-9]+|correlationId\s*[:=])/i;
 
+/**
+ * True when the text is a serialized JSON object or array — the shape a
+ * stringified ZodError or dumped diagnostic takes. No intentionally-emitted
+ * stream-error message is one, so firing on it is always safe.
+ */
+export function looksLikeSerializedDiagnostic(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return false;
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    return typeof parsed === "object" && parsed !== null;
+  } catch {
+    return false;
+  }
+}
+
 export function sanitizePresentationText(text: string): string {
-  if (!RAW_DIAGNOSTIC_PATTERN.test(text)) return text;
+  if (!RAW_DIAGNOSTIC_PATTERN.test(text) && !looksLikeSerializedDiagnostic(text)) return text;
   return "Diffgazer could not present this failure safely. Return home and retry the review.";
 }
 
@@ -256,8 +272,11 @@ export function classifyReviewStreamError(
     return {
       kind: "model-incompatible",
       title: "Model Incompatible",
+      // The fail-immediately sentence lives with the fail-fast memo (the
+      // server's structured-output guidance), which now arms only on proven
+      // incapacity — this static copy must not promise it for every failure.
       guidance:
-        "This model could not produce Diffgazer's structured review output. Change the model or update the configuration; reviews with this exact setup fail immediately until it changes.",
+        "This model could not produce Diffgazer's structured review output. Change the model or update the configuration.",
       ctaLabel: "Change model",
     };
   }
@@ -291,6 +310,15 @@ export function classifyReviewStreamError(
       kind: "other",
       title: TERMINAL_OUTCOME_PRESENTATION["budget-exhausted"].title,
       guidance: "Reduce the review scope or raise the configured budget, then start a new review.",
+      ctaLabel: "Back to Home",
+    };
+  }
+  if (errorCode === ReviewErrorCode.INTERNAL_ERROR) {
+    return {
+      kind: "other",
+      title: "Internal Error",
+      guidance:
+        "This is a bug in Diffgazer, not a problem with your provider or configuration. Retry the review.",
       ctaLabel: "Back to Home",
     };
   }

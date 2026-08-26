@@ -4,7 +4,7 @@ import { PLANNING_OUTPUT_TOKENS } from "../ai/budget/cost.js";
 import { budgetWithinModelObservation, DEFAULT_CONFIGURATION_BUDGET } from "./store.js";
 import { configPath, loadStore, readJson, secretsPath, writeJson } from "./store.test-support.js";
 
-const CEREBRAS_ENDPOINT = "https://api.cerebras.ai/v1";
+const ZAI_ENDPOINT = "https://api.z.ai/api/paas/v4";
 const CREATED_AT = "2026-01-01T00:00:00.000Z";
 
 describe("configuration budget ceilings", () => {
@@ -44,14 +44,14 @@ describe("configuration budget ceilings", () => {
         {
           schemaVersion: 2,
           status: "supported",
-          configurationId: "cfg-cerebras",
+          configurationId: "cfg-zai",
           revision: 1,
           transportFamily: "hosted-api",
-          productId: "cerebras",
+          productId: "zai",
           input: {
             transportFamily: "hosted-api",
-            productId: "cerebras",
-            endpoint: CEREBRAS_ENDPOINT,
+            productId: "zai",
+            endpoint: ZAI_ENDPOINT,
           },
           selectedModelId: null,
           acknowledgement: { noticeId: "gemini-hosted-api", noticeVersion: 1, acceptedAt: null },
@@ -66,7 +66,7 @@ describe("configuration budget ceilings", () => {
       schemaVersion: 2,
       bindings: [
         {
-          configurationId: "cfg-cerebras",
+          configurationId: "cfg-zai",
           revision: 1,
           kind: "none",
           status: "active",
@@ -77,19 +77,19 @@ describe("configuration budget ceilings", () => {
 
     const selected = await store.runConfigurationAction({
       action: "select",
-      configurationId: "cfg-cerebras",
-      modelId: "gpt-oss-120b",
+      configurationId: "cfg-zai",
+      modelId: "glm-4.6",
     });
 
     expect(selected.ok).toBe(true);
     if (!selected.ok) return;
-    expect(selected.value.configuration?.selectedModelId).toBe("gpt-oss-120b");
+    expect(selected.value.configuration?.selectedModelId).toBe("glm-4.6");
     const persisted = readJson<{
       configurations: Array<{ budget: { inputTokens: number } }>;
     }>(configPath());
     expect(persisted.configurations[0]?.budget).toEqual({
       ...DEFAULT_CONFIGURATION_BUDGET,
-      inputTokens: 98_304,
+      inputTokens: 172_032,
     });
   });
 
@@ -99,9 +99,9 @@ describe("configuration budget ceilings", () => {
     const decodedLegacyBudget = { ...DEFAULT_CONFIGURATION_BUDGET, inputTokens: 5_000_000 };
     // Persisted files still carry the retired outputTokens dimension; reads strip it.
     const legacyBudget = { ...decodedLegacyBudget, outputTokens: 1_000_000 };
-    const catalogLimit = CATALOG_SNAPSHOT.cerebras?.models["gpt-oss-120b"]?.limit;
+    const catalogLimit = CATALOG_SNAPSHOT.zai?.models["glm-4.6"]?.limit;
     if (catalogLimit?.context === undefined || catalogLimit.output === undefined) {
-      throw new Error("Bundled snapshot is missing cerebras/gpt-oss-120b limits");
+      throw new Error("Bundled snapshot is missing zai/glm-4.6 limits");
     }
     writeJson(configPath(), {
       schemaVersion: 2,
@@ -111,16 +111,16 @@ describe("configuration budget ceilings", () => {
         {
           schemaVersion: 2,
           status: "supported",
-          configurationId: "cfg-cerebras",
+          configurationId: "cfg-zai",
           revision: 1,
           transportFamily: "hosted-api",
-          productId: "cerebras",
+          productId: "zai",
           input: {
             transportFamily: "hosted-api",
-            productId: "cerebras",
-            endpoint: CEREBRAS_ENDPOINT,
+            productId: "zai",
+            endpoint: ZAI_ENDPOINT,
           },
-          selectedModelId: "gpt-oss-120b",
+          selectedModelId: "glm-4.6",
           acknowledgement: { noticeId: "gemini-hosted-api", noticeVersion: 1, acceptedAt: null },
           evidenceReference: null,
           budget: legacyBudget,
@@ -133,7 +133,7 @@ describe("configuration budget ceilings", () => {
       schemaVersion: 2,
       bindings: [
         {
-          configurationId: "cfg-cerebras",
+          configurationId: "cfg-zai",
           revision: 1,
           kind: "none",
           status: "active",

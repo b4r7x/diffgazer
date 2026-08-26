@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { ConfigurationStatus } from "../schemas/config/configuration-status.js";
-import type { ClientConfigurationSummary } from "../schemas/config/provider-config.js";
 import { HostedApiConfigurationInputSchema } from "../schemas/config/provider-config.js";
 import {
   READINESS_PRESENTATION,
   type Readiness,
   ReadinessSchema,
 } from "../schemas/config/readiness.js";
-import { LOCAL_OPENAI_PRESET_ENDPOINTS } from "../schemas/config/transports.js";
 import { makeClientNotice } from "../testing/provider-fixtures.js";
 import { mapProviderList, type ProviderListRow } from "./list.js";
 import { PRODUCT_REGISTRY } from "./product-registry.js";
@@ -46,22 +44,8 @@ function configuredRow(status: ConfigurationStatus): ProviderListRow {
   return row;
 }
 
-const PRESET_CONFIGURATION: ClientConfigurationSummary = {
-  configurationId: "local-openai-lm-studio",
-  revision: 1,
-  status: "supported",
-  transportFamily: "local-http",
-  productId: "local-openai",
-  endpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["lm-studio"],
-  authentication: "none",
-  presetId: "lm-studio",
-  selectedModelId: null,
-  notices: [makeClientNotice("local-openai")],
-  availableActions: [...CONFIGURED_ACTIONS],
-};
-
-/** Hosted and local HTTP products must carry a real endpoint tuple. */
-const ENDPOINT_BEARING_PRODUCTS = ["gemini", "ollama"] as const;
+/** Hosted products must carry a real endpoint tuple. */
+const ENDPOINT_BEARING_PRODUCTS = ["gemini", "opencode-zen"] as const;
 
 describe("buildSetupInput", () => {
   it("saves a hosted product with its registry endpoint and the entered credential", () => {
@@ -78,37 +62,17 @@ describe("buildSetupInput", () => {
     });
   });
 
-  it("omits the credential when the surface passes none", () => {
-    expect(buildSetupInput(unconfiguredRow("gemini"))).not.toHaveProperty("credential");
-  });
-
-  it("saves a local HTTP product without a hosted credential or a preset it has none of", () => {
+  it("defaults moonshot quick setup to the international endpoint", () => {
     const input = buildSetupInput(
-      unconfiguredRow("ollama"),
+      unconfiguredRow("moonshot"),
       toSetupCredential("paste", "secret-key"),
     );
 
-    expect(input).toEqual({
-      transportFamily: "local-http",
-      productId: "ollama",
-      endpoint: PRODUCT_REGISTRY.ollama.configuration.endpoints[0]?.endpoint,
-      authentication: "none",
-    });
+    expect(input.endpoint).toBe("https://api.moonshot.ai/v1");
   });
 
-  it("keeps the stored endpoint and preset of an already configured local HTTP product", () => {
-    const row = configuredRow({
-      configuration: PRESET_CONFIGURATION,
-      readiness: readiness("credential-invalid"),
-    });
-
-    expect(buildSetupInput(row)).toEqual({
-      transportFamily: "local-http",
-      productId: "local-openai",
-      endpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["lm-studio"],
-      authentication: "none",
-      presetId: "lm-studio",
-    });
+  it("omits the credential when the surface passes none", () => {
+    expect(buildSetupInput(unconfiguredRow("gemini"))).not.toHaveProperty("credential");
   });
 
   it.each(ENDPOINT_BEARING_PRODUCTS)("refuses to invent a %s endpoint", (productId) => {
@@ -118,25 +82,17 @@ describe("buildSetupInput", () => {
     expect(() => buildSetupInput(withoutEndpoints)).toThrow(/No endpoint profile/);
   });
 
-  it("names a local CLI installation after the product when none is stored", () => {
-    expect(buildSetupInput(unconfiguredRow("codex-cli"))).toEqual({
-      transportFamily: "local-cli",
-      productId: "codex-cli",
-      installationId: "codex-cli-installation",
-    });
-  });
-
   it("reuses the stored endpoint when updating a configured hosted product", () => {
     const row = configuredRow({
       configuration: {
-        configurationId: "deepseek-1",
+        configurationId: "zai-1",
         revision: 2,
         status: "supported",
         transportFamily: "hosted-api",
-        productId: "deepseek",
-        endpoint: "https://api.deepseek.com/v1",
-        selectedModelId: "deepseek-v4-flash",
-        notices: [makeClientNotice("deepseek")],
+        productId: "zai",
+        endpoint: "https://api.z.ai/api/paas/v4",
+        selectedModelId: "glm-4.7",
+        notices: [makeClientNotice("zai")],
         availableActions: [...CONFIGURED_ACTIONS],
       },
       readiness: readiness("credential-invalid"),
@@ -146,8 +102,8 @@ describe("buildSetupInput", () => {
 
     expect(input).toEqual({
       transportFamily: "hosted-api",
-      productId: "deepseek",
-      endpoint: "https://api.deepseek.com/v1",
+      productId: "zai",
+      endpoint: "https://api.z.ai/api/paas/v4",
       credential: { kind: "environment" },
     });
     expect(() => HostedApiConfigurationInputSchema.parse(input)).not.toThrow();
@@ -178,23 +134,9 @@ describe("toSetupCredential", () => {
 });
 
 describe("getSetupLayoutCopy", () => {
-  it("asks for credentials by product name only where credentials are stored", () => {
+  it("asks for credentials by product name", () => {
     expect(getSetupLayoutCopy(unconfiguredRow("gemini"))).toContain(
       PRODUCT_REGISTRY.gemini.presentation.name,
-    );
-  });
-
-  it("names the local endpoint a local HTTP setup will use", () => {
-    const endpoint = PRODUCT_REGISTRY.ollama.configuration.endpoints[0]?.endpoint ?? "";
-
-    expect(getSetupLayoutCopy(unconfiguredRow("ollama"))).toBe(
-      `Configure the local endpoint at ${endpoint} without storing hosted credentials.`,
-    );
-  });
-
-  it("explains that a local CLI stores no hosted credentials", () => {
-    expect(getSetupLayoutCopy(unconfiguredRow("codex-cli"))).toBe(
-      "Configure the local CLI installation without storing hosted credentials.",
     );
   });
 });

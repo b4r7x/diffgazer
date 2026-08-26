@@ -1,91 +1,20 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import {
   CANDIDATE_PRODUCT_IDS,
-  type LOCAL_HTTP_PRODUCT_IDS,
   RUNNABLE_PRODUCT_IDS,
   type RunnableProductId,
 } from "@diffgazer/core/schemas/config";
 import type { TerminalOutcome } from "@diffgazer/core/schemas/review";
 import type { Adapter, AdapterRegistry } from "../types.js";
-import {
-  CLI_COMPATIBILITY_GENERATOR_MARKER,
-  type CliCompatibilityRecord,
-  CliCompatibilityRecordBundleSchema,
-  type CliCompatibilityTuple,
-  matchCliCompatibilityTuple,
-  parseCliCompatibilityRecord,
-} from "./cli-compatibility/compat.js";
-import { createCodexCliAdapter } from "./codex-cli.js";
-import { createCopilotCliAdapter } from "./copilot/cli.js";
 import { HOSTED_ADAPTERS } from "./hosted/transport.js";
-import { localOpenaiAdapter, ollamaAdapter } from "./local-http/transport.js";
 
 export type { Adapter } from "../types.js";
 
 /** Wired adapters fail closed until admission supplies matching runtime evidence. */
 export const FAIL_CLOSED_ADAPTER_OUTCOME = "transport-failed" as const satisfies TerminalOutcome;
 
-export const LOCAL_HTTP_ADAPTERS = {
-  ollama: ollamaAdapter,
-  "local-openai": localOpenaiAdapter,
-} as const satisfies Record<(typeof LOCAL_HTTP_PRODUCT_IDS)[number], Adapter>;
-
-function loadBundledCliCompatibilityRecords(): readonly CliCompatibilityRecord[] {
-  const fixturePath = path.join(
-    path.dirname(fileURLToPath(import.meta.url)),
-    "fixtures/cli-compatibility/compatibility-records.json",
-  );
-  const bundle = CliCompatibilityRecordBundleSchema.safeParse(
-    JSON.parse(readFileSync(fixturePath, "utf8")),
-  );
-  if (!bundle.success) {
-    throw new Error(
-      `Bundled CLI compatibility records are not a ${CLI_COMPATIBILITY_GENERATOR_MARKER} bundle: ${bundle.error.issues
-        .map((issue) => issue.message)
-        .join("; ")}`,
-    );
-  }
-  const records: CliCompatibilityRecord[] = [];
-  for (const entry of bundle.data.records) {
-    const parsed = parseCliCompatibilityRecord(entry);
-    if (parsed.ok) {
-      records.push(parsed.value);
-    }
-  }
-  return records;
-}
-
-const BUNDLED_CLI_COMPATIBILITY_RECORDS = loadBundledCliCompatibilityRecords();
-
-async function resolveBundledCliCompatibilityRecord(
-  tuple: CliCompatibilityTuple,
-): Promise<CliCompatibilityRecord | null> {
-  for (const record of BUNDLED_CLI_COMPATIBILITY_RECORDS) {
-    if (matchCliCompatibilityTuple(record, tuple).matched) {
-      return record;
-    }
-  }
-  return null;
-}
-
-export const CLI_ADAPTERS = {
-  "codex-cli": createCodexCliAdapter({
-    resolveCompatibilityRecord: resolveBundledCliCompatibilityRecord,
-  }),
-  "copilot-cli": createCopilotCliAdapter({
-    resolveCompatibilityRecord: resolveBundledCliCompatibilityRecord,
-  }),
-} as const satisfies Record<"codex-cli" | "copilot-cli", Adapter>;
-
 function buildAdapterRegistry(): AdapterRegistry {
-  const registry = {
-    ...HOSTED_ADAPTERS,
-    ...LOCAL_HTTP_ADAPTERS,
-    ...CLI_ADAPTERS,
-  };
+  const registry = { ...HOSTED_ADAPTERS };
   validateAdapterRegistry(registry);
   return registry;
 }
@@ -150,8 +79,4 @@ export function getAdapter(productId: string): Adapter {
     throw new Error(`Adapter unavailable for unknown product: ${productId}`);
   }
   return ADAPTER_REGISTRY[productId];
-}
-
-export function bundledCliCompatibilityRecordCount(): number {
-  return BUNDLED_CLI_COMPATIBILITY_RECORDS.length;
 }

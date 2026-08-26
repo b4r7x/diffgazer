@@ -95,14 +95,14 @@ describe("server V2 provider configuration records", () => {
     const legacyRecord = {
       schemaVersion: 2,
       status: "supported",
-      configurationId: "cfg-v1-groq",
+      configurationId: "cfg-v1-zai",
       revision: 1,
-      productId: "groq",
+      productId: "zai",
       transportFamily: "hosted-api",
       input: {
         transportFamily: "hosted-api",
-        productId: "groq",
-        endpoint: "https://api.groq.com/openai/v1",
+        productId: "zai",
+        endpoint: "https://api.z.ai/api/paas/v4",
       },
       selectedModelId: null,
       acknowledgement: { noticeVersion: 1, acceptedAt: null },
@@ -116,7 +116,7 @@ describe("server V2 provider configuration records", () => {
     expect(decoded.status).toBe("supported");
     if (decoded.status !== "supported") return;
     expect(decoded.record.acknowledgement).toEqual({
-      noticeId: PRODUCT_REGISTRY.groq.notice.id,
+      noticeId: PRODUCT_REGISTRY.zai.notice.id,
       noticeVersion: 1,
       acceptedAt: null,
     });
@@ -135,6 +135,54 @@ describe("server V2 provider configuration records", () => {
     if (decoded.status !== "supported") return;
     expect(decoded.record.budget).toEqual(budget);
     expect("outputTokens" in decoded.record.budget).toBe(false);
+  });
+
+  it("floors a persisted retries: 0 budget to the current default on read", () => {
+    const persisted = { ...supportedRecord(), budget: { ...budget, retries: 0 } };
+
+    const decoded = decodeProviderConfigurationRecord(encoder.encode(JSON.stringify(persisted)));
+    expect(decoded.status).toBe("supported");
+    if (decoded.status !== "supported") return;
+    expect(decoded.record.budget).toEqual({ ...budget, retries: 1 });
+  });
+
+  it("keeps a persisted non-zero retries budget unchanged on read", () => {
+    const decoded = decodeProviderConfigurationRecord(
+      encoder.encode(JSON.stringify(supportedRecord())),
+    );
+    expect(decoded.status).toBe("supported");
+    if (decoded.status !== "supported") return;
+    expect(decoded.record.budget.retries).toBe(budget.retries);
+  });
+
+  it("decodes a legacy qwen record carrying region and workspace transport fields to unknown", () => {
+    // Written by a build whose qwen transport still bound region/workspace; the
+    // strict transport input schema rejects the extra keys instead of parsing a
+    // shape this build cannot honor.
+    const legacyQwen = {
+      ...supportedRecord(),
+      configurationId: "qwen-legacy",
+      productId: "qwen",
+      input: {
+        transportFamily: "hosted-api",
+        productId: "qwen",
+        endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        region: "international",
+        workspace: "ws-default",
+      },
+      selectedModelId: "qwen3-coder-flash",
+      acknowledgement: {
+        noticeId: "qwen-international-payg",
+        noticeVersion: 1,
+        acceptedAt: "2026-07-31T12:00:00.000Z",
+      },
+      evidenceReference: null,
+    };
+
+    const decoded = decodeProviderConfigurationRecord(encoder.encode(JSON.stringify(legacyQwen)));
+    expect(decoded.status).toBe("unknown");
+    if (decoded.status !== "unknown") return;
+    expect(decoded.configurationId).toBe("qwen-legacy");
   });
 
   it("does not accept a supported record carrying secret input", () => {

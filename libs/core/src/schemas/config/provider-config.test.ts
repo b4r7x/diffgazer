@@ -11,30 +11,15 @@ import { READINESS_PRESENTATION } from "./readiness.js";
 
 const hostedInput = {
   transportFamily: "hosted-api" as const,
-  productId: "deepseek" as const,
-  endpoint: "https://api.deepseek.com/v1",
+  productId: "zai" as const,
+  endpoint: "https://api.z.ai/api/paas/v4",
   credential: { kind: "literal" as const, value: "write-only-credential" },
 };
 
-const localHttpInput = {
-  transportFamily: "local-http" as const,
-  productId: "local-openai" as const,
-  endpoint: "http://127.0.0.1:1234/v1",
-  authentication: "optional-local-bearer" as const,
-  presetId: "lm-studio" as const,
-  bearerToken: { kind: "literal" as const, value: "write-only-bearer" },
-};
-
-const localCliInput = {
-  transportFamily: "local-cli" as const,
-  productId: "codex-cli" as const,
-  installationId: "codex-installation-1",
-};
-
 const notice = {
-  ...PRODUCT_REGISTRY.deepseek.notice,
-  billing: [...PRODUCT_REGISTRY.deepseek.notice.billing],
-  privacy: [...PRODUCT_REGISTRY.deepseek.notice.privacy],
+  ...PRODUCT_REGISTRY.zai.notice,
+  billing: [...PRODUCT_REGISTRY.zai.notice.billing],
+  privacy: [...PRODUCT_REGISTRY.zai.notice.privacy],
 };
 
 const acknowledgement = {
@@ -71,9 +56,9 @@ const hostedSummary = {
   revision: 3,
   status: "supported" as const,
   transportFamily: "hosted-api" as const,
-  productId: "deepseek" as const,
+  productId: "zai" as const,
   endpoint: hostedInput.endpoint,
-  selectedModelId: "deepseek-v4-flash",
+  selectedModelId: "glm-4.7",
   notices: [notice],
   availableActions: ["inspect", "select", "test", "update", "delete"] as const,
 };
@@ -86,14 +71,14 @@ describe("client configuration actions", () => {
       {
         action: "select",
         configurationId: "configuration-1",
-        modelId: "deepseek-v4-flash",
+        modelId: "glm-4.7",
       },
       { action: "test", configurationId: "configuration-1" },
       {
         action: "update",
         configurationId: "configuration-1",
         expectedRevision: 3,
-        input: localHttpInput,
+        input: hostedInput,
         acknowledgement,
       },
       { action: "delete", configurationId: "configuration-1", expectedRevision: 3 },
@@ -120,7 +105,7 @@ describe("client configuration actions", () => {
     expect(
       ClientConfigurationActionSchema.safeParse({
         action: "select",
-        modelId: "deepseek-v4-flash",
+        modelId: "glm-4.7",
       }).success,
     ).toBe(false);
   });
@@ -196,23 +181,15 @@ describe("client configuration actions", () => {
     }
   });
 
-  it("accepts only the fields belonging to the selected transport family", () => {
-    for (const input of [hostedInput, localHttpInput, localCliInput]) {
-      expect(ClientConfigurationActionSchema.safeParse({ action: "create", input }).success).toBe(
-        true,
-      );
-    }
+  it("accepts only the fields belonging to the hosted transport", () => {
+    expect(
+      ClientConfigurationActionSchema.safeParse({ action: "create", input: hostedInput }).success,
+    ).toBe(true);
 
     for (const input of [
       { ...hostedInput, installationId: "codex-installation-1" },
-      { ...localHttpInput, installationId: "codex-installation-1" },
-      { ...localCliInput, endpoint: "http://127.0.0.1:1234/v1" },
-      { ...localCliInput, credential: { kind: "literal", value: "secret" } },
-      {
-        ...localHttpInput,
-        authentication: "none",
-        bearerToken: { kind: "literal", value: "secret" },
-      },
+      { ...hostedInput, authentication: "none" },
+      { ...hostedInput, bearerToken: { kind: "literal", value: "secret" } },
     ]) {
       expect(ClientConfigurationActionSchema.safeParse({ action: "create", input }).success).toBe(
         false,
@@ -473,13 +450,6 @@ describe("client configuration responses", () => {
     expect(
       ClientConfigurationSummarySchema.safeParse({
         ...hostedSummary,
-        selectedModelId: "deepseek-v5-flash",
-      }).success,
-    ).toBe(false);
-
-    expect(
-      ClientConfigurationSummarySchema.safeParse({
-        ...hostedSummary,
         productId: "openrouter",
         endpoint: "https://openrouter.ai/api/v1",
         selectedModelId: "openai/auto",
@@ -519,13 +489,13 @@ describe("client configuration responses", () => {
 
   it.each([
     ["literal secret", { apiKey: "secret-value" }],
-    ["environment name", { environmentName: "DIFFGAZER_DEEPSEEK_API_KEY" }],
+    ["environment name", { environmentName: "DIFFGAZER_ZAI_API_KEY" }],
     ["local bearer", { bearerToken: "secret-value" }],
     ["account identifier", { account: "account-secret-id" }],
     ["workspace identifier", { workspace: "workspace-secret-id" }],
     ["authentication path", { authPath: "/home/user/.vendor/auth.json" }],
     ["executable path", { executablePath: "/usr/local/bin/codex" }],
-    ["argument vector", { argv: ["--model", "deepseek-v4-flash"] }],
+    ["argument vector", { argv: ["--model", "glm-4.7"] }],
     ["raw evidence", { rawEvidence: { response: "provider output" } }],
   ])("rejects a response containing a %s", (_name, forbiddenField) => {
     expect(
@@ -553,13 +523,13 @@ describe("client configuration responses", () => {
     expect(
       ClientConfigurationSummarySchema.safeParse({
         ...hostedSummary,
-        endpoint: "https://api.z.ai/api/paas/v4",
+        endpoint: "https://generativelanguage.googleapis.com/v1beta",
       }).success,
     ).toBe(false);
     expect(
       ClientConfigurationSummarySchema.safeParse({
         ...hostedSummary,
-        endpoint: "https://api.deepseek.com/v1?token=secret",
+        endpoint: "https://api.z.ai/api/paas/v4?token=secret",
       }).success,
     ).toBe(false);
     expect(
@@ -584,7 +554,7 @@ describe("client configuration responses", () => {
       ClientConfigurationActionResponseSchema.safeParse({
         action: "inspect",
         status: "succeeded",
-        configuration: { ...hostedSummary, selectedModelId: "deepseek-v4-latest" },
+        configuration: { ...hostedSummary, selectedModelId: "glm-4-latest" },
       }).success,
     ).toBe(false);
   });

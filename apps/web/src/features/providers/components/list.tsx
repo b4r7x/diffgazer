@@ -79,16 +79,14 @@ function findCatalogModel(row: ProviderListRow): DerivedCatalogModel | undefined
 
 /**
  * A configured row wears the badge its selected model earns, so a product-wide
- * range can never imply a price the chosen model does not have. Three tiers keep
- * answering for the product because the fact they state is not a model's list
- * price: local and ambient transports bill by runtime, and a free tier is a
- * quota on the account every one of those priced models runs under.
+ * range can never imply a price the chosen model does not have. The free tier
+ * keeps answering for the product because the fact it states is not a model's
+ * list price: it is a quota on the account every one of those priced models
+ * runs under.
  */
 function getRowTierBadge(row: ProviderListRow): BillingTierBadge | null {
   const productTier = getBillingTier(row.product.productId);
-  if (productTier === "local" || productTier === "ambient" || productTier === "free-tier") {
-    return BILLING_TIER_BADGES[productTier];
-  }
+  if (productTier === "free-tier") return BILLING_TIER_BADGES[productTier];
   if (!row.configuration?.selectedModelId) return BILLING_TIER_BADGES[productTier];
   return getModelTierBadge(findCatalogModel(row)?.billing ?? "unknown");
 }
@@ -122,7 +120,7 @@ export function ProviderList({
     const rowId = getProviderRowId(row);
     const modelId = row.configuration?.selectedModelId ?? null;
     const tierBadge = getRowTierBadge(row);
-    const status = getProviderDisplayStatus(row.readiness, row.product.transportFamily);
+    const status = getProviderDisplayStatus(row.readiness);
     const tone = getStatusTone(status);
     const subtitle = (modelId && findCatalogModel(row)?.name) || modelId;
 

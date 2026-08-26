@@ -3,9 +3,9 @@ import type { ProviderListRow } from "@diffgazer/core/providers";
 import {
   buildSetupAcknowledgement,
   buildSetupInput,
+  CREDENTIAL_ENV_VARS,
   getSetupLayoutCopy,
   requiresExplicitModelSelection,
-  resolveCredentialEnvironmentVariable,
   toSetupCredential,
 } from "@diffgazer/core/providers";
 import { useApiKeyEntry } from "@diffgazer/core/providers/hooks";
@@ -31,8 +31,7 @@ const SETUP_SHORTCUTS: Shortcut[] = [
   { key: "←/→", label: "Switch Action" },
   { key: "Enter", label: "Confirm" },
 ];
-// Only hosted rows render a key field, so only they can offer the Tab focus swap.
-const HOSTED_KEY_FIELD_SHORTCUT: Shortcut = { key: "Tab", label: "Focus Key Field" };
+const KEY_FIELD_SHORTCUT: Shortcut = { key: "Tab", label: "Focus Key Field" };
 const ACCEPT_SHORTCUT: Shortcut = { key: "a", label: "Accept" };
 const SETUP_RIGHT_SHORTCUTS: Shortcut[] = [{ ...BACK_SHORTCUT, label: "Close" }];
 
@@ -72,7 +71,6 @@ export function ApiKeyOverlay({
   const needsAcceptance = row.readiness.acknowledgement.status === "required";
   const [accepted, setAccepted] = useState(false);
   const acknowledged = !needsAcceptance || accepted;
-  const isHosted = row.product.transportFamily === "hosted-api";
   const isUpdating = row.configuration != null;
 
   const entry = useApiKeyEntry({
@@ -92,7 +90,7 @@ export function ApiKeyOverlay({
   });
 
   const { method, value, setMethod, setValue, canSubmit, isSubmitting: saving, error } = entry;
-  const canConfirm = isHosted ? canSubmit && acknowledged : acknowledged;
+  const canConfirm = canSubmit && acknowledged;
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen && saving) return;
@@ -105,11 +103,7 @@ export function ApiKeyOverlay({
 
   function handleSave() {
     if (!canConfirm || saving) return;
-    if (isHosted) {
-      void entry.submit();
-      return;
-    }
-    void entry.submitCredentialless();
+    void entry.submit();
   }
 
   useInput(
@@ -121,7 +115,7 @@ export function ApiKeyOverlay({
 
   useInput(
     (_input, key) => {
-      if (key.tab && isHosted && method === "paste") {
+      if (key.tab && method === "paste") {
         setInputFocused((focused) => !focused);
         return;
       }
@@ -132,7 +126,7 @@ export function ApiKeyOverlay({
 
   usePageFooter({
     shortcuts: [
-      ...(isHosted ? [HOSTED_KEY_FIELD_SHORTCUT] : []),
+      KEY_FIELD_SHORTCUT,
       ...SETUP_SHORTCUTS,
       ...(needsAcceptance ? [ACCEPT_SHORTCUT] : []),
     ],
@@ -143,9 +137,8 @@ export function ApiKeyOverlay({
     actionCount: 2,
     disabledActions: [!canConfirm, false],
     onAction: (index) => (index === 0 ? handleSave() : handleClose()),
-    isActive: open && !saving && !inputFocused && (isHosted || acknowledged),
+    isActive: open && !saving && !inputFocused,
   });
-  const acceptButtonActive = open && !saving && !isHosted && needsAcceptance && !accepted;
 
   const resetSecrets = useEffectEvent(() => {
     if (entry.isSubmitting) return;
@@ -172,18 +165,16 @@ export function ApiKeyOverlay({
         <Dialog.Body>
           <Box flexDirection="column" gap={1}>
             <Text color={tokens.muted}>{layoutCopy}</Text>
-            {isHosted ? (
-              <ApiKeyMethodSelector
-                method={method}
-                onMethodChange={setMethod}
-                apiKey={value}
-                onApiKeyChange={setValue}
-                envVar={resolveCredentialEnvironmentVariable(row.product.productId)}
-                isActive={open && !saving}
-                inputFocused={inputFocused}
-                onInputFocusedChange={setInputFocused}
-              />
-            ) : null}
+            <ApiKeyMethodSelector
+              method={method}
+              onMethodChange={setMethod}
+              apiKey={value}
+              onApiKeyChange={setValue}
+              envVar={CREDENTIAL_ENV_VARS[row.product.productId]}
+              isActive={open && !saving}
+              inputFocused={inputFocused}
+              onInputFocusedChange={setInputFocused}
+            />
             <Box flexDirection="column">
               {[...row.product.notice.billing, ...row.product.notice.privacy].map((line) => (
                 <Text key={line} color={tokens.muted}>
@@ -195,14 +186,6 @@ export function ApiKeyOverlay({
               <>
                 <Text>This product's notice needs your acceptance before saving.</Text>
                 <Text color={tokens.muted}>{accepted ? "[x]" : "[ ]"} I accept</Text>
-                <Button
-                  variant="secondary"
-                  isActive={acceptButtonActive}
-                  onPress={() => setAccepted((current) => !current)}
-                  disabled={saving}
-                >
-                  {accepted ? "Accepted" : "Accept"}
-                </Button>
               </>
             ) : null}
             {error != null ? <Text color={tokens.error}>{sanitizeTerminalText(error)}</Text> : null}

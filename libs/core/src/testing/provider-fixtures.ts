@@ -107,29 +107,15 @@ export const ZAI_CONFIGURATION = {
   availableActions: ["inspect", "select", "test", "update", "delete"],
 } satisfies ClientConfigurationSummary;
 
-export const LOCAL_OPENAI_CONFIGURATION = {
-  configurationId: "local-openai-1",
+export const OPENROUTER_CONFIGURATION = {
+  configurationId: "openrouter-1",
   revision: 1,
   status: "supported",
-  transportFamily: "local-http",
-  productId: "local-openai",
-  endpoint: "http://127.0.0.1:1234/v1",
-  authentication: "none",
-  presetId: "lm-studio",
+  transportFamily: "hosted-api",
+  productId: "openrouter",
+  endpoint: "https://openrouter.ai/api/v1",
   selectedModelId: null,
-  notices: [makeClientNotice("local-openai")],
-  availableActions: ["inspect", "select", "test", "update", "delete"],
-} satisfies ClientConfigurationSummary;
-
-export const CODEX_CLI_CONFIGURATION = {
-  configurationId: "codex-cli-1",
-  revision: 1,
-  status: "supported",
-  transportFamily: "local-cli",
-  productId: "codex-cli",
-  installationId: "codex-installation",
-  selectedModelId: null,
-  notices: [makeClientNotice("codex-cli")],
+  notices: [makeClientNotice("openrouter")],
   availableActions: ["inspect", "select", "test", "update", "delete"],
 } satisfies ClientConfigurationSummary;
 
@@ -143,13 +129,12 @@ export function configurationStatus(
   };
 }
 
-/** Two hosted-api configurations plus one local-http and one local-cli. */
+/** Two ready configurations plus one still pending model selection. */
 function representativeConfigurationStatuses(): ConfigurationStatus[] {
   return [
     configurationStatus(GEMINI_CONFIGURATION, "ready"),
     configurationStatus(ZAI_CONFIGURATION, "ready"),
-    configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
-    configurationStatus(CODEX_CLI_CONFIGURATION, "unsupported"),
+    configurationStatus(OPENROUTER_CONFIGURATION, "model-missing"),
   ];
 }
 

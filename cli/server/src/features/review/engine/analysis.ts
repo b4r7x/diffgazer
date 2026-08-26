@@ -1,5 +1,5 @@
 import type { Result } from "@diffgazer/core/result";
-import { ok } from "@diffgazer/core/result";
+import { err, ok } from "@diffgazer/core/result";
 import type { AgentId, AgentStreamEvent, StepEvent } from "@diffgazer/core/schemas/events";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/core/schemas/events";
 import type {
@@ -26,7 +26,7 @@ import { severityMeetsMinimum } from "./issues/ordering.js";
 import { SYNTHESIS_LENS } from "./lenses.js";
 import { buildReviewPrompt, buildSynthesisPrompt, type ReviewPrompt } from "./prompts.js";
 import { sanitizeIssue } from "./sanitize-issue.js";
-import type { LensResult, ReviewError } from "./types.js";
+import type { LensAnalysisError, LensDispatch, LensResult, ReviewError } from "./types.js";
 
 function getThinkingMessage(lens: Lens): string {
   switch (lens.id) {
@@ -283,7 +283,7 @@ export async function runLensAnalysis({
   projectContext,
   signal,
   severityFilter,
-}: LensAnalysisOptions): Promise<Result<LensResult, AIError>> {
+}: LensAnalysisOptions): Promise<Result<LensResult, LensAnalysisError>> {
   const agentId = LENS_TO_AGENT[lens.id];
   const agentMeta = AGENT_METADATA[agentId];
   const batchCount = batches.length;
@@ -311,6 +311,7 @@ export async function runLensAnalysis({
   });
 
   const collectedIssues: ReviewIssue[] = [];
+  const dispatches: LensDispatch[] = [];
   let droppedIncompleteProviderIssues = 0;
   let filesReported = 0;
   let batchError: ReviewError | undefined;
@@ -351,6 +352,7 @@ export async function runLensAnalysis({
       timestamp: new Date().toISOString(),
     });
 
+    const dispatchStartedAt = new Date().toISOString();
     const result = await generateWithWaitProgress({
       client,
       prompt,
@@ -360,10 +362,16 @@ export async function runLensAnalysis({
       onEvent,
       signal,
     });
+    dispatches.push({
+      batchIndex,
+      startedAt: dispatchStartedAt,
+      finishedAt: new Date().toISOString(),
+      outcome: result.ok ? "completed" : (result.error.code ?? "AI_ERROR"),
+    });
 
     if (!result.ok) {
       emitDispatchError(onEvent, agentId, result.error);
-      if (collectedIssues.length === 0) return result;
+      if (collectedIssues.length === 0) return err({ ...result.error, dispatches });
       batchError = {
         code: result.error.code ?? "AI_ERROR",
         message: result.error.message,
@@ -387,6 +395,7 @@ export async function runLensAnalysis({
     droppedIncompleteProviderIssues,
     droppedOverLensCap: uniqueIssues.length - processedIssues.length,
     batchError,
+    dispatches,
   });
 }
 
@@ -414,7 +423,7 @@ export async function runSynthesisAnalysis({
   projectContext,
   signal,
   severityFilter,
-}: SynthesisAnalysisOptions): Promise<Result<LensResult, AIError>> {
+}: SynthesisAnalysisOptions): Promise<Result<LensResult, LensAnalysisError>> {
   const lens = SYNTHESIS_LENS;
   const agentId = LENS_TO_AGENT[lens.id];
 
@@ -445,6 +454,7 @@ export async function runSynthesisAnalysis({
     timestamp: new Date().toISOString(),
   });
 
+  const dispatchStartedAt = new Date().toISOString();
   const result = await generateWithWaitProgress({
     client,
     prompt,
@@ -454,10 +464,18 @@ export async function runSynthesisAnalysis({
     onEvent,
     signal,
   });
+  const dispatches: LensDispatch[] = [
+    {
+      batchIndex: 0,
+      startedAt: dispatchStartedAt,
+      finishedAt: new Date().toISOString(),
+      outcome: result.ok ? "completed" : (result.error.code ?? "AI_ERROR"),
+    },
+  ];
 
   if (!result.ok) {
     emitDispatchError(onEvent, agentId, result.error);
-    return result;
+    return err({ ...result.error, dispatches });
   }
 
   const resolved = resolveBatchIssues(diff, promptFiles, result.value.issues);
@@ -469,5 +487,6 @@ export async function runSynthesisAnalysis({
     lensId: lens.id,
     issues: processedIssues,
     droppedIncompleteProviderIssues: resolved.droppedCount,
+    dispatches,
   });
 }

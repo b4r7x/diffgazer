@@ -2,16 +2,11 @@
  * @vitest-environment jsdom
  */
 import { type BoundApi, createApi } from "@diffgazer/core/api";
-import { canProceed, getInitialWizardData } from "@diffgazer/core/onboarding";
-import { SELECTABLE_PRODUCT_IDS } from "@diffgazer/core/providers";
 import type {
   ClientConfigurationSummary,
   ConfigurationModelsResponse,
 } from "@diffgazer/core/schemas/config";
-import {
-  DEFAULT_SETTINGS,
-  LocalHttpConfigurationInputSchema,
-} from "@diffgazer/core/schemas/config";
+import { DEFAULT_SETTINGS } from "@diffgazer/core/schemas/config";
 import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { cleanup } from "ink-testing-library";
@@ -256,45 +251,5 @@ describe("OnboardingWizard", () => {
     // Nothing left to accept: the recorded consent stands and Complete Setup is live.
     expect(frameText()).toContain("[ Accepted ]");
     expect(frameText()).toContain("[ Complete Setup ]");
-  });
-
-  test("names each local server in the endpoint picker instead of showing bare URLs", async () => {
-    terminalDimensions.current = { columns: 100, rows: 50 };
-
-    const Wrapper = createWrapper();
-    const { lastFrame, stdin } = renderRootFrame(
-      100,
-      50,
-      <Wrapper>
-        <OnboardingWizard />
-      </Wrapper>,
-    );
-    const frameText = () => stripAnsi(lastFrame() ?? "").replace(/\s+/g, " ");
-
-    await flushInk();
-    for (let step = 0; step < SELECTABLE_PRODUCT_IDS.indexOf("local-openai"); step += 1) {
-      stdin.write("\u001b[B");
-      await flushInk();
-    }
-    stdin.write("\r");
-    await flushInk();
-    stdin.write("\t");
-    await flushInk();
-    stdin.write("\r");
-    await waitUntil(() => frameText().includes("CONFIGURE ENDPOINT"));
-
-    expect(frameText()).toContain("LM Studio");
-    expect(frameText()).toContain("http://127.0.0.1:1234/v1");
-  });
-
-  test("ollama endpoint binding stays valid without a local-openai preset", () => {
-    const draft = getInitialWizardData("ollama");
-    const input = draft.configurationInput;
-    expect(input.transportFamily).toBe("local-http");
-    expect(canProceed("endpoint-binding", draft)).toBe(true);
-
-    expect(
-      LocalHttpConfigurationInputSchema.safeParse({ ...input, presetId: "default" }).success,
-    ).toBe(false);
   });
 });

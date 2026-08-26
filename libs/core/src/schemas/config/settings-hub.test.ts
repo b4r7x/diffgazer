@@ -65,20 +65,23 @@ describe("buildProviderSettingsRows", () => {
   test.each([
     ["PAYG", "zai" as const, "Pay as you go (PAYG)"],
     ["free tier and PAYG", "gemini" as const, "Evaluation/free quota, Pay as you go (PAYG)"],
-    ["subscription", "copilot-cli" as const, "Subscription credit/rate limits"],
-    ["local", "ollama" as const, "Local execution costs"],
+    ["route-specific", "openrouter" as const, "Route-specific billing"],
+    [
+      "free tier and subscription",
+      "ollama-cloud" as const,
+      "Evaluation/free quota, Subscription credit/rate limits",
+    ],
   ])("distinguishes %s billing", (_billingClass, productId, expected) => {
     expect(rowValue(productId, "billing")).toBe(expected);
   });
 
   test("renders billing and privacy text from the client projection", () => {
-    const rows = buildProviderSettingsRows(metadataFor("deepseek"));
+    const rows = buildProviderSettingsRows(metadataFor("opencode-zen"));
     const billing = rows.find(({ id }) => id === "billing");
     const privacy = rows.find(({ id }) => id === "privacy");
 
-    expect(billing?.description).toContain("opt-in pay-as-you-go usage");
-    expect(privacy?.value).toContain("processed and stored in the PRC");
-    expect(privacy?.value).toContain("not presented as zero retention");
+    expect(billing?.description).toContain("charged per token");
+    expect(privacy?.value).toContain("may retain prompts and train on them");
   });
 
   test("renders readiness with the shared status label from the client projection", () => {
@@ -157,16 +160,6 @@ describe("buildProviderSettingsRows", () => {
         expect(scanned.join(" "), `${productId}/${row.id}`).not.toMatch(ACTION_WORDING);
       }
     }
-  });
-
-  test.each([
-    "ollama" as const,
-    "local-openai" as const,
-    "codex-cli" as const,
-    "copilot-cli" as const,
-  ])("contains no API-key wording for %s", (productId) => {
-    const text = JSON.stringify(buildProviderSettingsRows(metadataFor(productId))).toLowerCase();
-    expect(text).not.toMatch(/api[ -]?key/);
   });
 });
 

@@ -13,21 +13,18 @@ import { useWizardState } from "./use-wizard-state.js";
 
 const ACCEPTED_AT = "2026-07-31T12:00:00.000Z";
 
-function readyDraft(productId: "deepseek" | "local-openai" = "deepseek"): OnboardingDraft {
-  const draft = getInitialWizardData(productId);
-  const notice = PRODUCT_REGISTRY[productId].notice;
+function readyDraft(): OnboardingDraft {
+  const draft = getInitialWizardData("zai");
+  const notice = PRODUCT_REGISTRY.zai.notice;
   return {
     ...draft,
-    configurationInput:
-      productId === "deepseek"
-        ? {
-            transportFamily: "hosted-api",
-            productId: "deepseek",
-            endpoint: "https://api.deepseek.com/v1",
-            credential: { kind: "environment" },
-          }
-        : draft.configurationInput,
-    selectedModelId: productId === "deepseek" ? "deepseek-v4-flash" : "local-model",
+    configurationInput: {
+      transportFamily: "hosted-api",
+      productId: "zai",
+      endpoint: "https://api.z.ai/api/paas/v4",
+      credential: { kind: "environment" },
+    },
+    selectedModelId: "glm-4.7",
     acknowledgement: {
       status: "accepted",
       noticeId: notice.id,
@@ -43,57 +40,27 @@ function configurationSummary(
   revision = 3,
 ) {
   const input = data.configurationInput;
-  if (input.transportFamily === "hosted-api") {
-    return {
-      configurationId: "created-configuration",
-      revision,
-      status: "supported" as const,
-      transportFamily: "hosted-api" as const,
-      productId: input.productId,
-      endpoint: input.endpoint,
-      selectedModelId,
-      notices: [
-        {
-          id: PRODUCT_REGISTRY[data.plan.productId].notice.id,
-          noticeVersion: PRODUCT_REGISTRY[data.plan.productId].notice.noticeVersion,
-          acknowledgement: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgement,
-          acknowledgeBefore: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgeBefore,
-          renewAcknowledgementOn:
-            PRODUCT_REGISTRY[data.plan.productId].notice.renewAcknowledgementOn,
-          billing: [...PRODUCT_REGISTRY[data.plan.productId].notice.billing],
-          privacy: [...PRODUCT_REGISTRY[data.plan.productId].notice.privacy],
-        },
-      ],
-      availableActions: ["inspect", "select", "test", "update", "delete"] as const,
-    };
-  }
-  if (input.transportFamily === "local-http") {
-    return {
-      configurationId: "created-configuration",
-      revision,
-      status: "supported" as const,
-      transportFamily: "local-http" as const,
-      productId: input.productId,
-      endpoint: input.endpoint,
-      authentication: input.authentication,
-      presetId: input.presetId,
-      selectedModelId,
-      notices: [
-        {
-          id: PRODUCT_REGISTRY[data.plan.productId].notice.id,
-          noticeVersion: PRODUCT_REGISTRY[data.plan.productId].notice.noticeVersion,
-          acknowledgement: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgement,
-          acknowledgeBefore: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgeBefore,
-          renewAcknowledgementOn:
-            PRODUCT_REGISTRY[data.plan.productId].notice.renewAcknowledgementOn,
-          billing: [...PRODUCT_REGISTRY[data.plan.productId].notice.billing],
-          privacy: [...PRODUCT_REGISTRY[data.plan.productId].notice.privacy],
-        },
-      ],
-      availableActions: ["inspect", "select", "test", "update", "delete"] as const,
-    };
-  }
-  throw new Error("Test fixture requires hosted or local HTTP configuration");
+  return {
+    configurationId: "created-configuration",
+    revision,
+    status: "supported" as const,
+    transportFamily: "hosted-api" as const,
+    productId: input.productId,
+    endpoint: input.endpoint,
+    selectedModelId,
+    notices: [
+      {
+        id: PRODUCT_REGISTRY[data.plan.productId].notice.id,
+        noticeVersion: PRODUCT_REGISTRY[data.plan.productId].notice.noticeVersion,
+        acknowledgement: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgement,
+        acknowledgeBefore: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgeBefore,
+        renewAcknowledgementOn: PRODUCT_REGISTRY[data.plan.productId].notice.renewAcknowledgementOn,
+        billing: [...PRODUCT_REGISTRY[data.plan.productId].notice.billing],
+        privacy: [...PRODUCT_REGISTRY[data.plan.productId].notice.privacy],
+      },
+    ],
+    availableActions: ["inspect", "select", "test", "update", "delete"] as const,
+  };
 }
 
 function readyReadiness(data: OnboardingDraft) {
@@ -187,7 +154,7 @@ function makeCallbacks(
 
 describe("useWizardState", () => {
   it("derives steps from the selected product plan and resets the full tuple atomically", () => {
-    const { result } = renderHook(() => useWizardState({ initial: getInitialWizardData("deepseek") }));
+    const { result } = renderHook(() => useWizardState({ initial: getInitialWizardData("zai") }));
 
     expect(result.current.steps).toEqual([
       "product",
@@ -201,13 +168,13 @@ describe("useWizardState", () => {
       result.current.updateData({
         configurationInput: {
           transportFamily: "hosted-api",
-          productId: "deepseek",
-          endpoint: "https://api.deepseek.com/v1",
+          productId: "zai",
+          endpoint: "https://api.z.ai/api/paas/v4",
           credential: { kind: "literal", value: "write-only" },
         },
-        selectedModelId: "deepseek-v4-flash",
+        selectedModelId: "glm-4.7",
       });
-      result.current.setProduct("local-openai");
+      result.current.setProduct("gemini");
     });
 
     expect(result.current.steps).toEqual([
@@ -217,29 +184,29 @@ describe("useWizardState", () => {
       "model",
       "acknowledgement",
     ]);
-    expect(result.current.wizardData).toEqual(getInitialWizardData("local-openai"));
+    expect(result.current.wizardData).toEqual(getInitialWizardData("gemini"));
     expect(JSON.stringify(result.current.wizardData.configurationInput)).not.toMatch(
-      /credential|deepseek-v4-flash/,
+      /credential|glm-4\.7/,
     );
     expect(result.current.stepIndex).toBe(0);
   });
 
   it("rejects a configuration input that targets a different product than the stored plan", () => {
     const { result } = renderHook(() =>
-      useWizardState({ initial: getInitialWizardData("local-openai") }),
+      useWizardState({ initial: getInitialWizardData("gemini") }),
     );
 
     act(() => {
       result.current.updateData({
         configurationInput: {
           transportFamily: "hosted-api",
-          productId: "deepseek",
-          endpoint: "https://api.deepseek.com/v1",
+          productId: "zai",
+          endpoint: "https://api.z.ai/api/paas/v4",
         },
       });
     });
 
-    expect(result.current.wizardData).toEqual(getInitialWizardData("local-openai"));
+    expect(result.current.wizardData).toEqual(getInitialWizardData("gemini"));
     expect(result.current.error).toMatch(/cannot change the product/);
   });
 
@@ -249,27 +216,27 @@ describe("useWizardState", () => {
     );
 
     act(() => {
-      result.current.setProduct("local-openai");
+      result.current.setProduct("zai");
       result.current.updateData({
         configurationInput: {
-          transportFamily: "local-http",
-          productId: "local-openai",
-          endpoint: "http://127.0.0.1:8080/v1",
-          authentication: "none",
+          transportFamily: "hosted-api",
+          productId: "zai",
+          endpoint: "https://api.z.ai/api/paas/v4",
+          credential: { kind: "environment" },
         },
       });
     });
 
     expect(result.current.error).toBeNull();
     expect(result.current.wizardData.configurationInput).toMatchObject({
-      productId: "local-openai",
-      endpoint: "http://127.0.0.1:8080/v1",
+      productId: "zai",
+      endpoint: "https://api.z.ai/api/paas/v4",
     });
   });
 
   it("evaluates rapid navigation against the latest step without skipping or underflowing", () => {
     const { result } = renderHook(() =>
-      useWizardState({ initial: getInitialWizardData("codex-cli") }),
+      useWizardState({ initial: getInitialWizardData("gemini") }),
     );
 
     act(() => {
@@ -277,7 +244,7 @@ describe("useWizardState", () => {
       result.current.next();
     });
     expect(result.current.currentStep).toBe("authentication");
-    expect(result.current.stepIndex).toBe(1);
+    expect(result.current.stepIndex).toBe(2);
     expect(result.current.canProceed).toBe(false);
 
     act(() => {
@@ -289,35 +256,23 @@ describe("useWizardState", () => {
   });
 
   it("evaluates rapid product changes against the latest selection", () => {
-    const { result } = renderHook(() => useWizardState({ initial: getInitialWizardData("deepseek") }));
+    const { result } = renderHook(() => useWizardState({ initial: getInitialWizardData("zai") }));
 
     act(() => {
-      result.current.setProduct("local-openai");
-      result.current.setProduct("deepseek");
+      result.current.setProduct("gemini");
+      result.current.setProduct("zai");
     });
 
-    expect(result.current.wizardData).toEqual(getInitialWizardData("deepseek"));
+    expect(result.current.wizardData).toEqual(getInitialWizardData("zai"));
     expect(result.current.stepIndex).toBe(0);
-  });
-
-  it("uses the shorter local CLI plan without inventing endpoint or credential fields", () => {
-    const { result } = renderHook(() => useWizardState({ initial: getInitialWizardData("deepseek") }));
-
-    act(() => result.current.setProduct("codex-cli"));
-
-    expect(result.current.steps).toEqual(["product", "authentication", "model", "acknowledgement"]);
-    expect(result.current.wizardData).toEqual(getInitialWizardData("codex-cli"));
-    expect(JSON.stringify(result.current.wizardData.configurationInput)).not.toMatch(
-      /endpoint|credential|apiKey/,
-    );
   });
 
   it("invalidates acknowledgement when the exact tuple or model changes", () => {
     const { result } = renderHook(() => useWizardState({ initial: readyDraft() }));
 
-    act(() => result.current.updateData({ selectedModelId: "deepseek-v4-pro" }));
+    act(() => result.current.updateData({ selectedModelId: "glm-5-turbo" }));
     expect(result.current.wizardData).toMatchObject({
-      selectedModelId: "deepseek-v4-pro",
+      selectedModelId: "glm-5-turbo",
       acknowledgement: { status: "required" },
     });
 
@@ -325,8 +280,8 @@ describe("useWizardState", () => {
       result.current.updateData({
         acknowledgement: {
           status: "accepted",
-          noticeId: PRODUCT_REGISTRY.deepseek.notice.id,
-          noticeVersion: PRODUCT_REGISTRY.deepseek.notice.noticeVersion,
+          noticeId: PRODUCT_REGISTRY.zai.notice.id,
+          noticeVersion: PRODUCT_REGISTRY.zai.notice.noticeVersion,
           acceptedAt: ACCEPTED_AT,
         },
       }),
@@ -335,8 +290,8 @@ describe("useWizardState", () => {
       result.current.updateData({
         configurationInput: {
           transportFamily: "hosted-api",
-          productId: "deepseek",
-          endpoint: "https://api.deepseek.com/v1",
+          productId: "zai",
+          endpoint: "https://api.z.ai/api/paas/v4",
           credential: { kind: "literal", value: "rotated-credential" },
         },
       }),
@@ -368,41 +323,11 @@ describe("useWizardState", () => {
     expect(result.current.currentStep).toBe("acknowledgement");
     expect(result.current.wizardData.acknowledgement).toEqual({
       status: "accepted",
-      noticeId: PRODUCT_REGISTRY.deepseek.notice.id,
-      noticeVersion: PRODUCT_REGISTRY.deepseek.notice.noticeVersion,
+      noticeId: PRODUCT_REGISTRY.zai.notice.id,
+      noticeVersion: PRODUCT_REGISTRY.zai.notice.noticeVersion,
       acceptedAt: "2026-08-01T09:00:00.000Z",
     });
     expect(result.current.canProceed).toBe(true);
-  });
-
-  it("requires a model from the new endpoint after the discovery tuple changes", () => {
-    const initial = readyDraft("local-openai");
-    const { result } = renderHook(() => useWizardState({ initial }));
-
-    act(() => {
-      result.current.next();
-      result.current.next();
-      result.current.next();
-    });
-    expect(result.current.currentStep).toBe("model");
-    expect(result.current.canProceed).toBe(true);
-
-    const configurationInput = initial.configurationInput;
-    if (configurationInput.transportFamily !== "local-http") {
-      throw new Error("Expected local HTTP configuration");
-    }
-    act(() => {
-      result.current.updateData({
-        configurationInput: {
-          ...configurationInput,
-          endpoint: "http://127.0.0.1:8080/v1",
-          presetId: "llama-cpp",
-        },
-      });
-    });
-
-    expect(result.current.wizardData.selectedModelId).toBeNull();
-    expect(result.current.canProceed).toBe(false);
   });
 
   it("revokes a newly created partial configuration on abandon with its exact revision", async () => {
@@ -480,7 +405,7 @@ describe("useWizardState", () => {
       await result.current.complete();
     });
     await act(async () => {
-      result.current.setProduct("local-openai");
+      result.current.setProduct("gemini");
       await Promise.resolve();
     });
 
@@ -489,7 +414,7 @@ describe("useWizardState", () => {
       configurationId: "created-configuration",
       expectedRevision: 3,
     });
-    expect(result.current.wizardData).toEqual(getInitialWizardData("local-openai"));
+    expect(result.current.wizardData).toEqual(getInitialWizardData("gemini"));
     expect(JSON.stringify(result.current.wizardData.configurationInput)).not.toMatch(
       /workspace|credential|region/,
     );
@@ -513,13 +438,13 @@ describe("useWizardState", () => {
     });
     const retainedDraft = result.current.wizardData;
 
-    act(() => result.current.setProduct("local-openai"));
+    act(() => result.current.setProduct("gemini"));
     expect(result.current.isReconciling).toBe(true);
 
     await vi.waitFor(() => expect(result.current.isReconciling).toBe(false));
 
     expect(result.current.wizardData).toBe(retainedDraft);
-    expect(result.current.wizardData.plan.productId).toBe("deepseek");
+    expect(result.current.wizardData.plan.productId).toBe("zai");
     expect(result.current.draftConfiguration?.configurationId).toBe("created-configuration");
     expect(result.current.error).toContain("Failed to remove the incomplete configuration");
     expect(result.current.error).toContain("[REDACTED]");
@@ -550,9 +475,9 @@ describe("useWizardState", () => {
       completion = result.current.complete();
     });
     await createStarted.promise;
-    act(() => result.current.setProduct("local-openai"));
+    act(() => result.current.setProduct("gemini"));
     expect(result.current.isReconciling).toBe(true);
-    expect(result.current.wizardData.plan.productId).toBe("deepseek");
+    expect(result.current.wizardData.plan.productId).toBe("zai");
 
     createResponse.resolve({
       action: "create",
@@ -568,7 +493,7 @@ describe("useWizardState", () => {
       configurationId: "created-configuration",
       expectedRevision: 3,
     });
-    expect(result.current.wizardData).toEqual(getInitialWizardData("local-openai"));
+    expect(result.current.wizardData).toEqual(getInitialWizardData("gemini"));
     expect(result.current.isReconciling).toBe(false);
   });
 
@@ -667,63 +592,6 @@ describe("useWizardState", () => {
       expect.objectContaining({ action: "delete" }),
     );
     unmount();
-  });
-
-  it("scrubs a literal bearer token after completion succeeds", async () => {
-    const secret = "literal-local-value-9a";
-    const base = readyDraft("local-openai");
-    if (base.configurationInput.transportFamily !== "local-http") {
-      throw new Error("Expected local HTTP configuration");
-    }
-    const data = {
-      ...base,
-      configurationInput: {
-        ...base.configurationInput,
-        authentication: "optional-local-bearer" as const,
-        bearerToken: { kind: "literal", value: secret },
-      },
-      selectedModelId: "local-model",
-    } satisfies OnboardingDraft;
-    const callbacks = makeCallbacks(undefined, data);
-    const { result } = renderHook(() => useWizardState({ initial: data, callbacks }));
-
-    await act(async () => {
-      expect(await result.current.complete()).toBe(true);
-    });
-
-    expect(JSON.stringify(result.current.wizardData)).not.toContain(secret);
-    expect(result.current.error).toBeNull();
-  });
-
-  it("redacts literal bearer tokens from completion failures", async () => {
-    const secret = "literal-local-value-9a";
-    const base = readyDraft("local-openai");
-    if (base.configurationInput.transportFamily !== "local-http") {
-      throw new Error("Expected local HTTP configuration");
-    }
-    const data = {
-      ...base,
-      configurationInput: {
-        ...base.configurationInput,
-        authentication: "optional-local-bearer" as const,
-        bearerToken: { kind: "literal", value: secret },
-      },
-      selectedModelId: "local-model",
-    } satisfies OnboardingDraft;
-    const callbacks = makeCallbacks(undefined, data);
-    callbacks.saveSettings = vi
-      .fn()
-      .mockRejectedValue(new Error(`Cannot persist ${secret} from /Users/voitz/.config`));
-    const { result } = renderHook(() => useWizardState({ initial: data, callbacks }));
-
-    await act(async () => {
-      expect(await result.current.complete()).toBe(false);
-    });
-
-    const message = result.current.error ?? "";
-    expect(message).toContain("[REDACTED]");
-    expect(message).not.toContain(secret);
-    expect(message).not.toContain("/Users/voitz");
   });
 
   it("re-prepares after back/edit/next during a slow draft create", async () => {
@@ -884,8 +752,8 @@ describe("useWizardState", () => {
       result.current.updateData({
         configurationInput: {
           transportFamily: "hosted-api",
-          productId: "deepseek",
-          endpoint: "https://api.deepseek.com/v1",
+          productId: "zai",
+          endpoint: "https://api.z.ai/api/paas/v4",
           credential: { kind: "literal", value: "a-different-credential" },
         },
       });
@@ -948,7 +816,7 @@ describe("useWizardState", () => {
   it("keeps an in-flight save valid when React discards a render that saw a new initial", async () => {
     const settingsStarted = createDeferred<void>();
     const draft = readyDraft();
-    const discarded = getInitialWizardData("local-openai");
+    const discarded = getInitialWizardData("gemini");
     const callbacks = makeCallbacks();
     callbacks.saveSettings = vi.fn(async () => {
       await settingsStarted.promise;
@@ -982,7 +850,7 @@ describe("useWizardState", () => {
     });
 
     expect(onComplete).toHaveBeenCalledTimes(1);
-    expect(result.current.wizardData.plan.productId).toBe("deepseek");
+    expect(result.current.wizardData.plan.productId).toBe("zai");
     expect(callbacks.runConfigurationAction).not.toHaveBeenCalledWith(
       expect.objectContaining({ action: "delete" }),
     );
@@ -1001,7 +869,7 @@ describe("useWizardState", () => {
     const runConfigurationAction = vi.mocked(callbacks.runConfigurationAction);
     const callsAfterSave = runConfigurationAction.mock.calls.length;
 
-    act(() => result.current.setProduct("deepseek"));
+    act(() => result.current.setProduct("zai"));
     expect(callbacks.runConfigurationAction).not.toHaveBeenCalledWith(
       expect.objectContaining({ action: "delete" }),
     );
@@ -1041,7 +909,7 @@ describe("useWizardState", () => {
     let explicitCleanup!: Promise<void>;
     act(() => {
       explicitCleanup = result.current.cleanupCreatedConfiguration();
-      result.current.setProduct("local-openai");
+      result.current.setProduct("gemini");
     });
     expect(result.current.isReconciling).toBe(true);
 
@@ -1056,13 +924,13 @@ describe("useWizardState", () => {
         .mocked(callbacks.runConfigurationAction)
         .mock.calls.filter(([action]) => action.action === "delete"),
     ).toHaveLength(1);
-    expect(result.current.wizardData).toEqual(getInitialWizardData("local-openai"));
+    expect(result.current.wizardData).toEqual(getInitialWizardData("gemini"));
     expect(result.current.isReconciling).toBe(false);
   });
 
   it("applies the latest initial state after an in-flight cleanup", async () => {
     const initial = readyDraft();
-    const replacement = getInitialWizardData("local-openai");
+    const replacement = getInitialWizardData("gemini");
     const deleteResponse = createDeferred<unknown>();
     const callbacks = makeCallbacks(async (action) => {
       if (action.action === "create") {

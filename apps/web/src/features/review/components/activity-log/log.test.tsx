@@ -483,6 +483,267 @@ describe("ActivityLog streaming", () => {
   });
 });
 
+describe("ActivityLog pinned scroll contract", () => {
+  it("keeps a catch-up rewindow unpinned instead of teleporting past unread entries", () => {
+    let state = createTaggedState(makeLogEvents(401));
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+    setScrollMetrics(log, 0);
+    dispatchScroll(log);
+    expect(screen.getByText("event-2")).toBeInTheDocument();
+
+    for (let offset = 0; offset < 3; offset += 1) {
+      state = appendEvent(state, makeEvent(401 + offset));
+    }
+    rerender(<ActivityLog events={state.events} />);
+    expect(screen.getByRole("button", { name: "Jump to 3 new entries" })).toBeInTheDocument();
+
+    log.scrollTop = 900;
+    dispatchScroll(log);
+    log.scrollTop = 900;
+    // This catch-up reaches the live end of the row range.
+    dispatchScroll(log);
+
+    // The anchor restore keeps the reader's offset; no tail snap to scrollHeight.
+    expect(log.scrollTop).toBe(900);
+    expect(screen.queryByRole("button", { name: /jump to/i })).not.toBeInTheDocument();
+
+    state = appendEvent(state, makeEvent(404));
+    state = appendEvent(state, makeEvent(405));
+    rerender(<ActivityLog events={state.events} />);
+
+    expect(log.scrollTop).toBe(900);
+    expect(screen.getByRole("button", { name: "Jump to 2 new entries" })).toBeInTheDocument();
+  });
+
+  it("keeps the unseen count while paging back into history", async () => {
+    const user = userEvent.setup();
+    let state = createTaggedState(makeLogEvents(401));
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+    setScrollMetrics(log, 200);
+    dispatchScroll(log);
+
+    for (let offset = 0; offset < 3; offset += 1) {
+      state = appendEvent(state, makeEvent(401 + offset));
+    }
+    rerender(<ActivityLog events={state.events} />);
+    expect(screen.getByRole("button", { name: "Jump to 3 new entries" })).toBeInTheDocument();
+
+    log.focus();
+    await user.keyboard("{PageUp}");
+
+    expect(screen.getByRole("button", { name: "Jump to 3 new entries" })).toBeInTheDocument();
+  });
+
+  it("never writes scrollTop from arrivals while unpinned during an event burst", () => {
+    let state = createTaggedState(makeLogEvents(3));
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+    setScrollMetrics(log, 200);
+    dispatchScroll(log);
+
+    for (let offset = 0; offset < 20; offset += 1) {
+      state = appendEvent(state, makeEvent(3 + offset));
+      rerender(<ActivityLog events={state.events} />);
+    }
+
+    expect(log.scrollTop).toBe(200);
+    expect(screen.getByText("event-22")).toBeInTheDocument();
+  });
+
+  it("pins on a scroll gesture reaching the true bottom so the tail follows again", async () => {
+    let state = createTaggedState(makeLogEvents(3));
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+    setScrollMetrics(log, 200);
+    dispatchScroll(log);
+    state = appendEvent(state, makeEvent(3));
+    rerender(<ActivityLog events={state.events} />);
+    expect(log.scrollTop).toBe(200);
+
+    log.scrollTop = 900;
+    dispatchScroll(log);
+    state = appendEvent(state, makeEvent(4));
+    rerender(<ActivityLog events={state.events} />);
+
+    await waitFor(() => expect(log.scrollTop).toBe(1_000));
+  });
+
+  it("shows the new entries affordance while unpinned and jumps to the live end on click", async () => {
+    const user = userEvent.setup();
+    let state = createTaggedState(makeLogEvents(3));
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+    expect(screen.queryByRole("button", { name: /jump to/i })).not.toBeInTheDocument();
+
+    setScrollMetrics(log, 200);
+    dispatchScroll(log);
+    state = appendEvent(state, makeEvent(3));
+    state = appendEvent(state, makeEvent(4));
+    rerender(<ActivityLog events={state.events} />);
+
+    const jump = screen.getByRole("button", { name: "Jump to 2 new entries" });
+    expect(jump).toHaveTextContent("↓ 2 new entries · End");
+
+    await user.click(jump);
+
+    expect(screen.queryByRole("button", { name: /jump to/i })).not.toBeInTheDocument();
+    expect(log.scrollTop).toBe(1_000);
+    expect(screen.getByText("event-4")).toBeInTheDocument();
+  });
+
+  it("pins with the End key and clears the new entries affordance", async () => {
+    const user = userEvent.setup();
+    let state = createTaggedState(makeLogEvents(3));
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+    setScrollMetrics(log, 200);
+    dispatchScroll(log);
+    state = appendEvent(state, makeEvent(3));
+    rerender(<ActivityLog events={state.events} />);
+    expect(screen.getByRole("button", { name: /jump to/i })).toBeInTheDocument();
+
+    log.focus();
+    await user.keyboard("{End}");
+
+    expect(screen.queryByRole("button", { name: /jump to/i })).not.toBeInTheDocument();
+    state = appendEvent(state, makeEvent(4));
+    rerender(<ActivityLog events={state.events} />);
+    await waitFor(() => expect(log.scrollTop).toBe(1_000));
+  });
+
+  it("force-pins on a source filter change so the tail follows the filtered live end", async () => {
+    let state = createTaggedState(makeLogEvents(3));
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+    setScrollMetrics(log, 200);
+    dispatchScroll(log);
+    state = appendEvent(state, makeEvent(3));
+    rerender(<ActivityLog events={state.events} />);
+    expect(log.scrollTop).toBe(200);
+
+    rerender(<ActivityLog events={state.events} sourceFilter="Detective" />);
+    // The switch itself lands at the live end: no parked-at-top state waiting
+    // for the next arrival to teleport the reader.
+    expect(log.scrollTop).toBe(1_000);
+
+    state = appendEvent(state, makeEvent(4));
+    rerender(<ActivityLog events={state.events} sourceFilter="Detective" />);
+
+    await waitFor(() => expect(log.scrollTop).toBe(1_000));
+  });
+
+  it("ignores the echo of its own scroll write instead of paging the window", () => {
+    let state = createTaggedState(makeLogEvents(401));
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+    setScrollMetrics(log, 900);
+
+    // Pinned on mount: the appended tail writes scrollTop programmatically.
+    state = appendEvent(state, makeEvent(401));
+    rerender(<ActivityLog events={state.events} />);
+    expect(log.scrollTop).toBe(1_000);
+
+    // A clamped restore can land the echo at the top edge; it must not page
+    // the window back, or the re-window loop re-ignites.
+    log.scrollTop = 0;
+    dispatchScroll(log);
+    expect(screen.queryByText("event-3")).not.toBeInTheDocument();
+
+    // The next scroll is a user gesture again and pages back normally.
+    dispatchScroll(log);
+    expect(screen.getByText("event-3")).toBeInTheDocument();
+  });
+
+  it("stays pinned when its tail write's echo arrives after the content already grew", () => {
+    let state = createTaggedState(makeLogEvents(3));
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+    setScrollMetrics(log, 0);
+
+    // Pinned: the appended tail writes scrollTop programmatically.
+    state = appendEvent(state, makeEvent(3));
+    rerender(<ActivityLog events={state.events} />);
+    expect(log.scrollTop).toBe(1_000);
+
+    // Before the echo is processed, another arrival grows the content, so the
+    // echo reads "away from the bottom". It carries no user intent and must
+    // not unpin the follower.
+    setScrollMetrics(log, 1_000, 2_000);
+    dispatchScroll(log);
+
+    state = appendEvent(state, makeEvent(4));
+    rerender(<ActivityLog events={state.events} />);
+    expect(screen.queryByRole("button", { name: /jump to/i })).not.toBeInTheDocument();
+    expect(log.scrollTop).toBe(2_000);
+  });
+
+  it("re-pins a replaced event array to the live end", () => {
+    const { rerender } = render(<ActivityLog events={makeLogEvents(3)} />);
+    const log = screen.getByRole("log");
+    setScrollMetrics(log, 200);
+    dispatchScroll(log);
+
+    // Untagged arrays carry no sequence, so the replacement bumps the revision:
+    // a new stream, in which the old reading position is meaningless.
+    let state = createTaggedState(makeLogEvents(5));
+    rerender(<ActivityLog events={state.events} />);
+    expect(screen.getByText("event-4")).toBeInTheDocument();
+    expect(log.scrollTop).toBe(1_000);
+
+    // Re-pinned: a later arrival follows the tail instead of feeding the
+    // new-entries affordance.
+    state = appendEvent(state, makeEvent(5));
+    rerender(<ActivityLog events={state.events} />);
+    expect(screen.queryByRole("button", { name: /jump to/i })).not.toBeInTheDocument();
+    expect(log.scrollTop).toBe(1_000);
+  });
+});
+
+describe("ActivityLog FILE row grouping", () => {
+  function fileEvent(completed: number, total: number): ReviewEvent {
+    return {
+      type: "file_progress",
+      agent: "detective",
+      file: `src/file-${completed}.ts`,
+      completed,
+      total,
+      timestamp,
+    };
+  }
+
+  it("renders a same-lens FILE burst as one grouped row with surrounding rows intact", () => {
+    let state = createTaggedState([makeEvent(0)]);
+    for (let completed = 1; completed <= 3; completed += 1) {
+      state = appendEvent(state, fileEvent(completed, 3));
+    }
+    state = appendEvent(state, makeEvent(1));
+    render(<ActivityLog events={state.events} />);
+
+    expect(screen.getByText("Included 3 files in prompt (3/3)")).toBeInTheDocument();
+    expect(screen.queryByText(/Included src\//)).not.toBeInTheDocument();
+    expect(screen.getByText("event-0")).toBeInTheDocument();
+    expect(screen.getByText("event-1")).toBeInTheDocument();
+  });
+
+  it("counts underlying rows, not grouped rows, in the new entries affordance", () => {
+    let state = createTaggedState(makeLogEvents(3));
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+    setScrollMetrics(log, 200);
+    dispatchScroll(log);
+
+    for (let completed = 1; completed <= 5; completed += 1) {
+      state = appendEvent(state, fileEvent(completed, 5));
+    }
+    rerender(<ActivityLog events={state.events} />);
+
+    expect(screen.getByText("Included 5 files in prompt (5/5)")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Jump to 5 new entries" })).toBeInTheDocument();
+  });
+});
+
 describe("ActivityLog heartbeats and live tail row", () => {
   function heartbeat(progress: number): ReviewEvent {
     return {
@@ -539,7 +800,7 @@ describe("ActivityLog heartbeats and live tail row", () => {
         />,
       );
 
-      expect(screen.getByText("Detective · waiting for model response · 46.0s")).toBeVisible();
+      expect(screen.getByText("Detective · waiting for model response · 46s")).toBeVisible();
     } finally {
       vi.useRealTimers();
     }
@@ -585,7 +846,7 @@ describe("ActivityLog heartbeats and live tail row", () => {
 
       act(() => vi.advanceTimersByTime(3_000));
 
-      expect(screen.getByText("Detective · waiting for model response · 49.0s")).toBeVisible();
+      expect(screen.getByText("Detective · waiting for model response · 49s")).toBeVisible();
     } finally {
       vi.useRealTimers();
     }
@@ -606,7 +867,7 @@ describe("ActivityLog heartbeats and live tail row", () => {
         />,
       );
 
-      expect(screen.getByText("Detective · waiting for model response · 12.0s")).toBeVisible();
+      expect(screen.getByText("Detective · waiting for model response · 12s")).toBeVisible();
     } finally {
       vi.useRealTimers();
     }
@@ -627,7 +888,7 @@ describe("ActivityLog heartbeats and live tail row", () => {
         />,
       );
 
-      expect(screen.getByText("stream stalled · last event 51.0s ago")).toBeVisible();
+      expect(screen.getByText("stream stalled · last event 51s ago")).toBeVisible();
       expect(container.querySelector("[data-log-tail]")).toHaveAttribute(
         "data-log-tail",
         "stalled",

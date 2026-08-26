@@ -973,7 +973,7 @@ describe("HomePagePresentation — file picker entry", () => {
     await user.keyboard("f");
 
     const picker = await screen.findByRole("dialog", { name: "Review Specific Files" });
-    await within(picker).findByRole("checkbox", { name: "src/a.ts" });
+    await within(picker).findByRole("checkbox", { name: /src\/a\.ts/ });
     await user.click(within(picker).getByRole("button", { name: "Review 1 File" }));
 
     // The whole scope is picked, so the start carries no pathspecs: this is the
@@ -981,6 +981,17 @@ describe("HomePagePresentation — file picker entry", () => {
     await waitFor(() =>
       expect(createReview).toHaveBeenCalledWith({ mode: "unstaged", files: undefined }),
     );
+  });
+
+  it("reaches the picker from the Review Specific Files menu row", async () => {
+    const user = userEvent.setup();
+    renderWithGitStatus(buildProps());
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Specific Files" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Review Specific Files" }),
+    ).toBeInTheDocument();
   });
 
   it("reaches the picker from the sidebar's Review Scope row", async () => {

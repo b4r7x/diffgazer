@@ -362,7 +362,7 @@ describe("ReviewResultsView (TUI)", () => {
       ]),
     );
     await flush();
-    expect(lastFrame() ?? "").toContain("j/k Navigate");
+    expect(lastFrame() ?? "").toContain("↑/↓ Navigate");
 
     stdin.write("\t");
     await flush();

@@ -26,6 +26,9 @@ interface InteractiveSubjectOptions {
   currentModel?: string;
   models?: ModelInfo[];
   discoveryStatus?: "loading" | "passed" | "error";
+  /** Mirrors the dialog's discovery-warning callout: renders a Retry button between the filter row and the list. */
+  retryVisible?: boolean;
+  onRetry?: () => void;
   /** Exposes the hook result so tests can drive the RadioGroup boundary path. */
   captureKeyboard?: (keyboard: ReturnType<typeof useModelDialogKeyboard>) => void;
 }
@@ -37,6 +40,8 @@ function TestInteractiveModelDialogKeyboard({
   currentModel,
   models = DEFAULT_INTERACTIVE_MODELS,
   discoveryStatus,
+  retryVisible = false,
+  onRetry,
   captureKeyboard,
 }: InteractiveSubjectOptions) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,6 +60,7 @@ function TestInteractiveModelDialogKeyboard({
     models,
     filteredModels: models,
     discoveryStatus: resolvedDiscoveryStatus,
+    retryVisible,
     cycleTierFilter: vi.fn(),
     resetFilters: vi.fn(),
     searchInputRef,
@@ -64,6 +70,7 @@ function TestInteractiveModelDialogKeyboard({
   });
   captureKeyboard?.(keyboard);
   const closeButtonProps = keyboard.getCloseButtonProps();
+  const retryProps = keyboard.getRetryButtonProps();
   const cancelProps = keyboard.getFooterButtonProps(0);
   const confirmProps = keyboard.getFooterButtonProps(1);
 
@@ -104,6 +111,18 @@ function TestInteractiveModelDialogKeyboard({
       // Mirrors the dialog: the tier row is disabled unless discovery passed.
       disabled: resolvedDiscoveryStatus !== "passed",
     }),
+    retryVisible
+      ? createElement(
+          "button",
+          {
+            type: "button",
+            ref: retryProps.ref,
+            onFocus: retryProps.onFocus,
+            onClick: onRetry,
+          },
+          "Retry",
+        )
+      : null,
     // Mirrors the dialog: the container ref sits on the scroll wrapper while
     // the rows' owning radiogroup is nested inside it.
     createElement(
@@ -245,6 +264,67 @@ describe("useModelDialogKeyboard navigation", () => {
 
     expect(screen.getByRole("radio", { name: "all" })).not.toHaveFocus();
     expect(screen.getByRole("textbox", { name: /search models/i })).toHaveFocus();
+  });
+
+  it("stops on Retry between search and the footer with ArrowDown when the discovery warning is shown", async () => {
+    const { user } = renderInteractiveSubject(vi.fn(), { models: [], retryVisible: true });
+
+    await user.keyboard("/");
+    await user.keyboard("{ArrowDown}");
+
+    const retryButton = screen.getByRole("button", { name: "Retry" });
+    expect(retryButton).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+  });
+
+  it("reaches Retry when leaving the footer upward and returns to search with ArrowUp", async () => {
+    const { user } = renderInteractiveSubject(vi.fn(), { models: [], retryVisible: true });
+
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    await user.click(cancel);
+    expect(cancel).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("textbox", { name: /search models/i })).toHaveFocus();
+  });
+
+  it("moves through the Retry stop with j and k exactly like the arrow keys", async () => {
+    const { user } = renderInteractiveSubject(vi.fn(), { models: [], retryVisible: true });
+
+    await user.keyboard("/");
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus();
+
+    await user.keyboard("k");
+    expect(screen.getByRole("textbox", { name: /search models/i })).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("j");
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+  });
+
+  it("triggers retry with Enter and Space on the focused Retry button", async () => {
+    const onRetry = vi.fn();
+    const { user } = renderInteractiveSubject(vi.fn(), {
+      models: [],
+      retryVisible: true,
+      onRetry,
+    });
+
+    await user.keyboard("/");
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(onRetry).toHaveBeenCalledTimes(1);
+
+    await user.keyboard(" ");
+    expect(onRetry).toHaveBeenCalledTimes(2);
   });
 
   it("restores native close focus during open to the current model", async () => {

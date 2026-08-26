@@ -35,10 +35,11 @@ interface ModelSelectDialogProps {
 
 // The legend teaches the list keys only, so it shares one footer row with the
 // actions; Enter/Esc are already taught by the visible [Confirm]/[Cancel]
-// buttons. OverlayHints owns the coarse-pointer collapse, so nothing here
-// hides the bar on touch.
+// buttons, and r by the visible [Retry] button in the discovery strip (which
+// carries aria-keyshortcuts). OverlayHints owns the coarse-pointer collapse,
+// so nothing here hides the bar on touch.
 const FOOTER_HINTS: KeyboardHint[] = [
-  { key: "↑/↓ j/k", label: "Navigate" },
+  { key: "↑/↓", label: "Navigate" },
   { key: "/", label: "Search" },
   { key: "f", label: "Filter" },
   { key: "Space", label: "Select" },
@@ -78,6 +79,8 @@ export function ModelSelectDialog({
   const emptyLabel =
     source.models.length === 0 ? "No models available" : "No models match your search";
 
+  const showRetry = Boolean(discoveryMessage) && !isSaving;
+
   const {
     focusZone,
     focusedModelId,
@@ -94,6 +97,7 @@ export function ModelSelectDialog({
     getCloseButtonProps,
     getFooterButtonProps,
     getFilterButtonProps,
+    getRetryButtonProps,
   } = useModelDialogKeyboard({
     open,
     isSaving,
@@ -101,6 +105,7 @@ export function ModelSelectDialog({
     models: source.models,
     filteredModels,
     discoveryStatus,
+    retryVisible: showRetry,
     cycleTierFilter,
     resetFilters,
     searchInputRef,
@@ -111,15 +116,21 @@ export function ModelSelectDialog({
 
   // The TUI answers r with a fresh discovery run; the search box keeps the
   // letter for typing, so the binding stands down there like f does.
-  const showRetry = Boolean(discoveryMessage) && !isSaving;
   useKey("r", source.retry, { enabled: open && showRetry && focusZone !== "search" });
 
+  // The bundled snapshot's data age is unknowable at runtime, so its tier
+  // names the data instead of claiming a checked date.
   const checkedAtLabel = source.checkedAt ? getDateLabel(source.checkedAt) : null;
+  const freshnessLabel =
+    source.source === "snapshot"
+      ? "bundled catalog"
+      : checkedAtLabel && `checked ${checkedAtLabel}`;
   const retainedModelNotice = isSaving ? null : getRetainedModelNotice(currentModel, source.models);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
+        height="stable"
         className="overflow-hidden"
         // The dialog's zone navigation owns the [x], so it is composed below
         // instead of being rendered by DialogContent's default.
@@ -136,7 +147,7 @@ export function ModelSelectDialog({
           <p className="min-w-0 truncate text-xs text-muted-foreground">
             {configuration.productId}
             {source.models.length > 0 ? ` · ${pluralize(source.models.length, "model")}` : ""}
-            {checkedAtLabel ? ` · checked ${checkedAtLabel}` : ""}
+            {freshnessLabel ? ` · ${freshnessLabel}` : ""}
           </p>
         </DialogHeader>
 
@@ -170,10 +181,12 @@ export function ModelSelectDialog({
               <Callout.Content className="flex items-center justify-between gap-3">
                 <span>{discoveryMessage}</span>
                 <Button
+                  {...getRetryButtonProps()}
                   type="button"
                   size="sm"
                   variant="secondary"
                   onClick={source.retry}
+                  aria-keyshortcuts="r"
                   className="shrink-0"
                 >
                   Retry
@@ -206,9 +219,7 @@ export function ModelSelectDialog({
           />
         </DialogBody>
 
-        <DialogFooter
-          hints={showRetry ? [...FOOTER_HINTS, { key: "r", label: "Retry" }] : FOOTER_HINTS}
-        >
+        <DialogFooter hints={FOOTER_HINTS}>
           <DialogClose
             {...getFooterButtonProps(0)}
             variant="ghost"

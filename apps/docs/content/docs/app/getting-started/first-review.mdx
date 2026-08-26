@@ -24,7 +24,7 @@ Before you press Review Unstaged or Review Staged, make sure:
 
 - A git repository with changes to review.
 - Node.js 22 or newer, and a `git` binary on your PATH.
-- A supported product configuration. The wizard lists all twelve selectable products from the [providers reference](/app/reference/providers).
+- A supported product configuration. The wizard lists all nine selectable products from the [providers reference](/app/reference/providers).
 
 ## Steps
 
@@ -58,7 +58,7 @@ It prints a banner, starts a local server at `http://localhost:3000`, and opens 
 
 <Step title="Complete the setup wizard">
 
-Pick a product, then work through that product's setup plan: **Endpoint**, **Authentication**, **Model**, and **Consent**. Local CLI products skip the endpoint step. See [What the first run looks like](#what-the-first-run-looks-like) below.
+Pick a product, then work through that product's setup plan: **Endpoint**, **Authentication**, **Model**, and **Consent**. See [What the first run looks like](#what-the-first-run-looks-like) below.
 
 </Step>
 
@@ -88,9 +88,9 @@ Skim the summary, press Enter to open the full review, then move through the iss
 
 On first launch Diffgazer has no saved configuration, so the browser opens into the setup wizard. The steps come from the selected product's setup plan: product selection, endpoint binding, authentication, exact model selection, and the provider consent.
 
-### Hosted API setup (Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Ollama Cloud)
+### Hosted API setup
 
-1. Pick the product from the twelve selectable entries.
+1. Pick the product from the nine selectable entries.
 2. Bind the allowed endpoint.
 3. Choose how the credential is supplied: **Enter credential now** for a write-only literal, or **Use environment reference** to bind the product's environment variable. The variable name is fixed per product — there is nothing to type.
 4. Select an exact discovered model ID.
@@ -106,38 +106,6 @@ diffgazer
 ```
 
 In the wizard, choose **Use environment reference**. Diffgazer records the reference, resolves `GOOGLE_API_KEY` on the server side, and never stores the value. See [Environment variables](/app/reference/environment-variables) for each product's name.
-
-### Local HTTP setup (Ollama, Local OpenAI-compatible)
-
-Local HTTP products cannot be finished end-to-end in the setup wizard today. The wizard **Model** step shows **Catalog observations are unavailable for this configuration product.** with **Retry** only, offers no model list, and **Next** stays disabled because the UI does not accept an external `select`. Finish the configuration outside the wizard instead.
-
-Follow the [local HTTP sequence in Configuration](/app/reference/configuration#local-http-products-ollama-local-openai-compatible):
-
-1. `create` the configuration and bind the validated loopback endpoint (`http://127.0.0.1:11434` for Ollama, `http://127.0.0.1:1234/v1` for LM Studio, or `http://127.0.0.1:8080/v1` for llama.cpp). Start your local server there.
-2. Add an optional bearer token with `update` when your server requires one.
-3. Look up the exact model ID from your server tooling (for example `ollama list`, or the LM Studio / llama.cpp UI).
-4. `select` that exact ID through the [local API](/app/reference/api).
-5. `update` again to accept the product notice.
-6. Optionally `test` (**Verify** in the UI) to check structured review support up front; otherwise the first review verifies it and records the result. Remediation tells you when to start the server, use a loopback endpoint, or install a review-capable model.
-
-You can also drive the same actions from **Configure Provider** in Settings after `select` makes the configuration globally selected. Reloading the app after `select` lands on Home rather than reopening the wizard.
-
-There is no API key step: local HTTP products never store hosted credentials.
-
-### Local CLI setup (OpenAI Codex CLI, GitHub Copilot CLI)
-
-Local CLI products cannot be finished end-to-end in the setup wizard today for the same reason: the **Model** step has no picker and **Next** stays disabled after an external `select`. Finish outside the wizard.
-
-Follow the [local CLI sequence in Configuration](/app/reference/configuration#local-cli-products-openai-codex-cli-github-copilot-cli):
-
-1. `create` the configuration.
-2. Install and sign in with the vendor CLI using its own tooling. Diffgazer uses **vendor-managed local auth** and does not ask for CLI tokens or auth file paths.
-3. Look up the exact model ID from the installed CLI or vendor docs.
-4. `select` that exact ID through the [local API](/app/reference/api).
-5. `update` to accept the account notice.
-6. Optionally `inspect` and `test` (**Verify** in the UI); readiness reports **unsupported** with explicit remediation if the installed CLI version, account, or policy does not satisfy the pinned review profile.
-
-As with local HTTP, **Configure Provider** in Settings can run the remaining actions after `select`.
 
 ## Trust the directory
 

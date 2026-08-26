@@ -20,53 +20,27 @@ describe("family-specific onboarding defaults", () => {
     });
   });
 
-  it("uses local HTTP defaults without hosted or CLI credential fields", () => {
-    expect(getInitialWizardData("local-openai").configurationInput).toEqual({
-      transportFamily: "local-http",
-      productId: "local-openai",
-      endpoint: "http://127.0.0.1:1234/v1",
-      authentication: "none",
-      presetId: "lm-studio",
-    });
-    expect(getInitialWizardData("ollama").configurationInput).toEqual({
-      transportFamily: "local-http",
-      productId: "ollama",
-      endpoint: "http://127.0.0.1:11434",
-      authentication: "none",
-    });
-  });
-
-  it("starts local CLI setup with no credential or inferred installation", () => {
-    expect(getInitialWizardData("codex-cli").configurationInput).toEqual({
-      transportFamily: "local-cli",
-      productId: "codex-cli",
-    });
-  });
-
   it("resets every tuple-bound gate when the product changes", () => {
-    const deepseek = getInitialWizardData("deepseek");
-    if (deepseek.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
+    const zai = getInitialWizardData("zai");
     const configured = {
-      ...deepseek,
+      ...zai,
       configurationInput: {
-        ...deepseek.configurationInput,
+        ...zai.configurationInput,
         credential: { kind: "environment" },
       },
-      selectedModelId: "deepseek-v4-flash",
+      selectedModelId: "glm-4.7",
       acknowledgement: {
         status: "accepted",
-        noticeId: PRODUCT_REGISTRY.deepseek.notice.id,
-        noticeVersion: PRODUCT_REGISTRY.deepseek.notice.noticeVersion,
+        noticeId: PRODUCT_REGISTRY.zai.notice.id,
+        noticeVersion: PRODUCT_REGISTRY.zai.notice.noticeVersion,
         acceptedAt: "2026-07-31T12:00:00.000Z",
       },
       defaultLenses: ["security"],
       agentExecution: "parallel",
     } satisfies OnboardingDraft;
 
-    expect(resetWizardProduct(configured, "local-openai")).toEqual({
-      ...getInitialWizardData("local-openai"),
+    expect(resetWizardProduct(configured, "gemini")).toEqual({
+      ...getInitialWizardData("gemini"),
       defaultLenses: ["security"],
       agentExecution: "parallel",
     });

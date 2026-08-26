@@ -7,7 +7,7 @@ import {
   computeProviderReadinessResult,
   type ProviderReadinessInput,
 } from "./readiness.js";
-import { createEnvironmentSecretBinding, createNoneSecretBinding } from "./secret-bindings.js";
+import { createEnvironmentSecretBinding } from "./secret-bindings.js";
 
 const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 const NOW = "2026-07-31T12:05:00.000Z";
@@ -51,36 +51,6 @@ function hostedRecord(
       acceptedAt: CHECKED_AT,
     },
     evidenceReference: "evidence-gemini-3",
-    budget: BUDGET,
-    createdAt: "2026-07-31T11:00:00.000Z",
-    updatedAt: CHECKED_AT,
-    ...patch,
-  };
-}
-
-function localRecord(
-  patch: Partial<SupportedProviderConfigurationRecord> = {},
-): SupportedProviderConfigurationRecord {
-  return {
-    schemaVersion: 2,
-    status: "supported",
-    configurationId: "ollama-local",
-    revision: 2,
-    productId: "ollama",
-    transportFamily: "local-http",
-    input: {
-      transportFamily: "local-http",
-      productId: "ollama",
-      endpoint: "http://127.0.0.1:11434",
-      authentication: "none",
-    },
-    selectedModelId: "llama3.2",
-    acknowledgement: {
-      noticeId: "ollama-loopback",
-      noticeVersion: 1,
-      acceptedAt: CHECKED_AT,
-    },
-    evidenceReference: "evidence-ollama-2",
     budget: BUDGET,
     createdAt: "2026-07-31T11:00:00.000Z",
     updatedAt: CHECKED_AT,
@@ -236,33 +206,6 @@ describe("server V2 readiness calculation", () => {
       now: NOW,
     });
     expect(failed).toMatchObject({ status: "acknowledgement-required", evidenceStatus: "failed" });
-  });
-
-  it("names a recorded conformance failure by the transport that produced it", () => {
-    const record = localRecord();
-    const runtime = { identity: "ollama", version: "0.5.0" } as const;
-    const binding = createNoneSecretBinding(record.configurationId, record.revision);
-    const evidenceKey = buildExpectedEvidenceKey({
-      record,
-      runtime,
-      structuredOutputSchemaSha256: SCHEMA_SHA256,
-      credentialReferenceIdentity: null,
-    });
-
-    expect(
-      computeProviderReadiness({
-        configuration: record,
-        binding,
-        evidence: createAdmissionEvidence({
-          evidenceKey,
-          checkedAt: CHECKED_AT,
-          status: "failed",
-        }),
-        runtime,
-        structuredOutputSchemaSha256: SCHEMA_SHA256,
-        now: NOW,
-      }).status,
-    ).toBe("local-conformance-failed");
   });
 
   it("invalidates material tuple, model, runtime, schema, notice, and budget changes", () => {

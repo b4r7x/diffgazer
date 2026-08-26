@@ -638,6 +638,59 @@ describe("runLensAnalysis", () => {
     expect(result.value.droppedOverLensCap).toBe(10);
   });
 
+  it("records one dispatch entry per batch with completed outcomes", async () => {
+    const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
+    const client = makeSequencedAIClient([ok({ issues: [] }), ok({ issues: [] })]);
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.dispatches).toHaveLength(2);
+    for (const [index, dispatch] of result.value.dispatches.entries()) {
+      expect(dispatch.batchIndex).toBe(index);
+      expect(dispatch.outcome).toBe("completed");
+      expect(Date.parse(dispatch.startedAt)).not.toBeNaN();
+      expect(Date.parse(dispatch.finishedAt)).toBeGreaterThanOrEqual(
+        Date.parse(dispatch.startedAt),
+      );
+    }
+  });
+
+  it("records the failing batch's dispatch entry with its error code", async () => {
+    const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
+    const client = makeSequencedAIClient([
+      ok({ issues: [makeLensIssue("kept", "file-1", "high")] }),
+      err({ code: "MODEL_ERROR", message: "Model failed" }),
+    ]);
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.dispatches.map((dispatch) => dispatch.outcome)).toEqual([
+      "completed",
+      "MODEL_ERROR",
+    ]);
+    expect(result.value.dispatches[1]?.batchIndex).toBe(1);
+  });
+
   it("stops dispatching batches once one of them fails", async () => {
     const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
     const client = makeSequencedAIClient([
@@ -657,6 +710,10 @@ describe("runLensAnalysis", () => {
     const result = await promise;
 
     expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.dispatches).toEqual([
+      expect.objectContaining({ batchIndex: 0, outcome: "MODEL_ERROR" }),
+    ]);
     expect(client.calls()).toBe(1);
     expect(events.filter((event) => event.type === "agent_error")).toHaveLength(1);
     expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(0);
@@ -737,6 +794,9 @@ describe("runSynthesisAnalysis", () => {
     expect(result.value.lensId).toBe("synthesis");
     expect(result.value.issues.map((issue) => issue.id)).toEqual(["synthesis:cross-1"]);
     expect(result.value.issues.map((issue) => issue.file)).toEqual(["src/two.ts"]);
+    expect(result.value.dispatches).toEqual([
+      expect.objectContaining({ batchIndex: 0, outcome: "completed" }),
+    ]);
 
     const starts = events.filter((event) => event.type === "agent_start");
     const completes = events.filter((event) => event.type === "agent_complete");
@@ -766,6 +826,9 @@ describe("runSynthesisAnalysis", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("MODEL_ERROR");
+    expect(result.error.dispatches).toEqual([
+      expect.objectContaining({ batchIndex: 0, outcome: "MODEL_ERROR" }),
+    ]);
     expect(events.some((event) => event.type === "agent_error")).toBe(true);
     expect(events.some((event) => event.type === "agent_complete")).toBe(false);
   });

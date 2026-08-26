@@ -15,11 +15,12 @@ import {
   STRUCTURED_OUTPUT_FAILURE_GUIDANCE,
 } from "../admission/service.js";
 import { estimateUsageCostUsd, resolveModelPricing } from "../budget/cost.js";
-import type { AttemptActual, BudgetLimitKey } from "../budget/ledger.js";
+import type { AttemptActual, BudgetLimitKey, BudgetLimits } from "../budget/ledger.js";
 import {
   type BoundedDiagnostic,
   type DiagnosticCapture,
   type DiagnosticSensitiveContext,
+  MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE,
   serializeCancelDiagnostic,
   serializeFailureDiagnostic,
   serializeSuccessDiagnostic,
@@ -70,20 +71,20 @@ function sensitiveContextFromPlan(plan: AdmittedExecutionPlan): DiagnosticSensit
 }
 
 /**
- * Settles measured wall time, provider-reported tokens, and the dollars those
- * tokens cost at the admitted model's pinned catalog price. Response bytes are a
- * transport-measured fact a receipt that omits them leaves unsettled, and a
- * model the catalog does not price settles no cost rather than an invented one.
+ * Settles provider-reported tokens and the dollars those tokens cost at the
+ * admitted model's pinned catalog price. Response bytes are a transport-measured
+ * fact a receipt that omits them leaves unsettled, and a model the catalog does
+ * not price settles no cost rather than an invented one. Wall time is never
+ * settled: the review wall budget is an elapsed clock the ledger consults, so a
+ * dispatch's own duration must not drain its siblings' time.
  */
 function actualFromReceipt(receipt: ExecutionResult["receipt"]): AttemptActual {
-  const wallTimeMs = Math.max(0, Date.parse(receipt.finishedAt) - Date.parse(receipt.startedAt));
   const usage = receipt.usageAvailability === "reported" ? receipt.usage : undefined;
   const inputTokens = usage?.inputTokens ?? 0;
   const outputTokens = usage?.outputTokens ?? 0;
   const pricing = resolveModelPricing(receipt.productId, receipt.modelId);
   return {
     inputTokens,
-    wallTimeMs,
     ...(pricing ? { costUsd: estimateUsageCostUsd(pricing, { inputTokens, outputTokens }) } : {}),
   };
 }
@@ -96,6 +97,8 @@ function buildPlanReceipt(
       attemptCount: number;
       startedAt: string;
       finishedAt: string;
+      scope?: "dispatch" | "review";
+      dispatchCount?: number;
     } & ExecutionReceiptUsageState
   >,
 ) {
@@ -137,6 +140,8 @@ function buildPlanReceipt(
     attemptCount: input.attemptCount,
     startedAt: input.startedAt,
     finishedAt: input.finishedAt,
+    ...(input.scope !== undefined ? { scope: input.scope } : {}),
+    ...(input.dispatchCount !== undefined ? { dispatchCount: input.dispatchCount } : {}),
     ...(usageAvailability === "reported" && input.usage !== undefined
       ? { usage: input.usage }
       : {}),
@@ -158,6 +163,8 @@ export function buildExecutionResult(
       attemptCount?: number;
       startedAt?: string;
       finishedAt?: string;
+      scope?: "dispatch" | "review";
+      dispatchCount?: number;
       issues?: ExecutionResult["result"]["issues"];
     } & BuildExecutionUsageInput
   > = {},
@@ -171,10 +178,31 @@ export function buildExecutionResult(
       attemptCount: input.attemptCount ?? 1,
       startedAt,
       finishedAt,
+      ...(input.scope !== undefined ? { scope: input.scope } : {}),
+      ...(input.dispatchCount !== undefined ? { dispatchCount: input.dispatchCount } : {}),
       ...usageState,
     }),
     result: { issues: outcome === "completed" ? (input.issues ?? []) : [] },
   });
+}
+
+/**
+ * User-facing budget exhaustion prose built from the operative ledger limit,
+ * never the unscaled configured base. The wall dimension is an elapsed clock,
+ * so callers that measured the review's elapsed time render it alongside the
+ * limit; every other dimension prints the limit alone.
+ */
+export function budgetExhaustedMessage(
+  limit: BudgetLimitKey,
+  limitValue: number,
+  elapsedMs?: number,
+): string {
+  if (limit === "wallTimeMs" && elapsedMs !== undefined) {
+    const elapsedSeconds = Math.round(elapsedMs / 1000);
+    const limitSeconds = Math.round(limitValue / 1000);
+    return `Review wall-clock budget exhausted: ${elapsedSeconds}s elapsed of ${limitSeconds}s allowed.`;
+  }
+  return `Review budget exhausted at ${limit} (${limitValue}).`;
 }
 
 function diagnosticForOutcome(
@@ -182,6 +210,7 @@ function diagnosticForOutcome(
   outcome: TerminalOutcome,
   input: Readonly<{
     limit?: BudgetLimitKey;
+    limits?: BudgetLimits;
     message?: string;
     capture?: DiagnosticCapture;
   }> = {},
@@ -202,16 +231,19 @@ function diagnosticForOutcome(
     return serializeFailureDiagnostic({
       code: "budget-exhausted",
       message:
-        input.message ?? `Review budget exhausted at ${limitLabel} (${plan.limits[limitLabel]}).`,
+        input.message ??
+        budgetExhaustedMessage(limitLabel, (input.limits ?? plan.limits)[limitLabel]),
       remediation: "Reduce review scope or increase configured limits.",
       sensitive,
       capture: input.capture,
     });
   }
+  // No STRUCTURED_OUTPUT_FAILURE_GUIDANCE here: a schema failure without an
+  // adapter diagnostic never arms the fail-fast memo, so the "fail immediately"
+  // sentence would be a false promise. Memo-class failures get it below.
   return serializeFailureDiagnostic({
     code: outcome,
     message: input.message ?? `Execution ended with outcome ${outcome}.`,
-    ...(outcome === "schema-failed" ? { remediation: STRUCTURED_OUTPUT_FAILURE_GUIDANCE } : {}),
     sensitive,
     capture: input.capture,
   });
@@ -297,19 +329,19 @@ export async function executeReviewGeneration(
   } catch {
     // An adapter that throws — including one whose result breaks the bounded
     // execution contract — settles as a transport failure with no findings.
-    // Only the measured wall time is committed; the per-review reservation
-    // stays open so every later lens dispatch keeps drawing down the same
-    // admitted envelope instead of no-op settling against a deleted record.
+    // No usage is committed; the per-review reservation stays open so every
+    // later lens dispatch keeps drawing down the same admitted envelope
+    // instead of no-op settling against a deleted record.
     const finishedAt = new Date().toISOString();
     const settleFailure = budgetLedger.commitAttemptUsage(budgetReservation, {
       inputTokens: 0,
-      wallTimeMs: Math.max(0, Date.parse(finishedAt) - Date.parse(startedAt)),
     });
     if (!settleFailure.ok) {
       return {
         execution: buildExecutionResult(plan, "budget-exhausted", { startedAt, finishedAt }),
         diagnostic: diagnosticForOutcome(plan, "budget-exhausted", {
           limit: settleFailure.error.limit,
+          limits: budgetLedger.limits,
         }),
       };
     }
@@ -343,13 +375,26 @@ export async function executeReviewGeneration(
       execution,
       diagnostic: diagnosticForOutcome(plan, "budget-exhausted", {
         limit: settle.error.limit,
+        limits: budgetLedger.limits,
       }),
     };
   }
 
   // The adapter's own account of a refused request beats the generic outcome message.
   if (adapterDiagnostic) {
-    return { execution, diagnostic: adapterDiagnostic };
+    // The fail-fast memo arms only on malformed content the corrective retry
+    // could not fix (service.ts conformanceEvidenceStatus), so only that class
+    // carries the memo's "fail immediately until it changes" sentence. The
+    // adapter names that class with its own code: an attempt count cannot tell
+    // a corrective retry from a blind one.
+    const isMemoClassFailure =
+      adapterDiagnostic.code === MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE;
+    return {
+      execution,
+      diagnostic: isMemoClassFailure
+        ? { ...adapterDiagnostic, remediation: STRUCTURED_OUTPUT_FAILURE_GUIDANCE }
+        : adapterDiagnostic,
+    };
   }
   return {
     execution,

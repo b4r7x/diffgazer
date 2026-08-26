@@ -21,7 +21,6 @@ const CHECKED_AT = "2026-07-31T10:00:00.000Z";
 const HOSTED_ENDPOINTS = {
   gemini: "https://generativelanguage.googleapis.com/v1beta",
   zai: "https://api.z.ai/api/paas/v4",
-  groq: "https://api.groq.com/openai/v1",
 } as const;
 
 type TestedReadinessStatus = "ready" | "conformance-failed" | "unsupported";
@@ -68,7 +67,7 @@ function readiness(status: TestedReadinessStatus): Readiness {
 
 function hostedConfiguration(
   configurationId: string,
-  productId: "gemini" | "zai" | "groq",
+  productId: "gemini" | "zai",
 ): ClientConfigurationSummary {
   return {
     configurationId,
@@ -111,10 +110,10 @@ describe("mapProviderList", () => {
   });
 
   it("maps products without configurations as unconfigured create rows", () => {
-    const row = mapProviderList([]).find(({ product }) => product.productId === "local-openai");
+    const row = mapProviderList([]).find(({ product }) => product.productId === "opencode-zen");
 
     expect(row).toMatchObject({
-      product: { productId: "local-openai", transportFamily: "local-http" },
+      product: { productId: "opencode-zen", transportFamily: "hosted-api" },
       configuration: null,
       readiness: { status: "unconfigured", ready: false, action: "create" },
       actions: ["create"],
@@ -126,23 +125,23 @@ describe("mapProviderList", () => {
     "unsupported",
   ] as const)("preserves the %s readiness and remediation", (readinessStatus) => {
     const rows = mapProviderList([
-      status(hostedConfiguration(`groq-${readinessStatus}`, "groq"), readiness(readinessStatus)),
+      status(hostedConfiguration(`zai-${readinessStatus}`, "zai"), readiness(readinessStatus)),
     ]);
     const row = rows.find(
-      ({ configuration }) => configuration?.configurationId === `groq-${readinessStatus}`,
+      ({ configuration }) => configuration?.configurationId === `zai-${readinessStatus}`,
     );
 
     expect(row?.readiness).toEqual(readiness(readinessStatus));
     expect(row?.actions).toEqual(["inspect", "select", "test", "update", "delete"]);
   });
 
-  it("derives exactly the 12 selectable products from the product registry", () => {
+  it("derives exactly the 9 selectable products from the product registry", () => {
     const selectableRows = mapProviderList([]).filter(({ product }) => product.selectable);
 
     expect(selectableRows.map(({ product }) => product.productId)).toEqual(
       SELECTABLE_PRODUCTS.map(({ productId }) => productId),
     );
-    expect(selectableRows).toHaveLength(12);
+    expect(selectableRows).toHaveLength(9);
   });
 
   it("does not serialize the legacy key-presence field", () => {

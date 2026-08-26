@@ -1,8 +1,5 @@
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import {
-  LOCAL_OPENAI_PRESET_ENDPOINTS,
-  type RunnableProductId,
-} from "@diffgazer/core/schemas/config";
+import type { RunnableProductId } from "@diffgazer/core/schemas/config";
 import {
   type EvidenceKey,
   type ExecutionLimits,
@@ -19,7 +16,6 @@ import type { Adapter, AdapterExecuteRequest } from "../ai/types.js";
 
 const CLIENT_TEST_SCHEMA_SHA256 = "1".repeat(64);
 export const CLIENT_TEST_CREDENTIAL_REFERENCE_IDENTITY = "3".repeat(64);
-const CLIENT_TEST_INSTALLATION_ID = "codex-installation-1";
 export const CLIENT_TEST_SECRET_LITERAL = "sk-live-provider-secret-value";
 
 const DEFAULT_CLIENT_TEST_LIMITS: ExecutionLimits = Object.freeze({
@@ -37,9 +33,6 @@ export function suggestedClientTestModelId(productId: RunnableProductId): string
     return policy.suggestedModelId;
   }
   if (productId === "openrouter") return "openai/gpt-4.1-mini";
-  if (productId === "ollama") return "llama3.2";
-  if (productId === "codex-cli") return "gpt-5-codex";
-  if (productId === "copilot-cli") return "gpt-5";
   return "model-1";
 }
 
@@ -58,67 +51,21 @@ export function clientTestEvidenceKey(
   const endpoint = product.configuration.endpoints[0];
   const noticeVersion = product.notice.noticeVersion;
 
-  // Switching on the product id (not the registry transport family) is what
-  // narrows `productId` to the member of the EvidenceKey union being built.
-  switch (productId) {
-    case "ollama":
-    case "local-openai":
-      return {
-        authentication: "none",
-        credentialReferenceIdentity: null,
-        installationId: null,
-        productId,
-        transportFamily: "local-http",
-        normalizedEndpoint:
-          productId === "local-openai"
-            ? LOCAL_OPENAI_PRESET_ENDPOINTS["llama-cpp"]
-            : (endpoint?.endpoint ?? "http://127.0.0.1:11434"),
-        region: null,
-        workspaceAccountReference: null,
-        modelId,
-        runtime:
-          productId === "local-openai"
-            ? { identity: "llama-cpp", version: "b-version-2026-07" }
-            : { identity: "ollama", version: "0.6.0" },
-        structuredOutputSchemaSha256: CLIENT_TEST_SCHEMA_SHA256,
-        noticeVersion,
-        limits,
-      };
-    case "codex-cli":
-    case "copilot-cli":
-      return {
-        authentication: null,
-        credentialReferenceIdentity: null,
-        installationId:
-          productId === "codex-cli" ? CLIENT_TEST_INSTALLATION_ID : "copilot-installation",
-        productId,
-        transportFamily: "local-cli",
-        normalizedEndpoint: null,
-        region: null,
-        workspaceAccountReference: null,
-        modelId,
-        runtime: { identity: productId, version: "0.1.0" },
-        structuredOutputSchemaSha256: CLIENT_TEST_SCHEMA_SHA256,
-        noticeVersion,
-        limits,
-      };
-    default:
-      return {
-        authentication: null,
-        credentialReferenceIdentity: CLIENT_TEST_CREDENTIAL_REFERENCE_IDENTITY,
-        installationId: null,
-        productId,
-        transportFamily: "hosted-api",
-        normalizedEndpoint: endpoint?.endpoint ?? "https://example.invalid/v1",
-        region: null,
-        workspaceAccountReference: null,
-        modelId,
-        runtime: { identity: "diffgazer-server", version: "1.2.3" },
-        structuredOutputSchemaSha256: CLIENT_TEST_SCHEMA_SHA256,
-        noticeVersion,
-        limits,
-      };
-  }
+  return {
+    authentication: null,
+    credentialReferenceIdentity: CLIENT_TEST_CREDENTIAL_REFERENCE_IDENTITY,
+    installationId: null,
+    productId,
+    transportFamily: "hosted-api",
+    normalizedEndpoint: endpoint?.endpoint ?? "https://example.invalid/v1",
+    region: null,
+    workspaceAccountReference: null,
+    modelId,
+    runtime: { identity: "diffgazer-server", version: "1.2.3" },
+    structuredOutputSchemaSha256: CLIENT_TEST_SCHEMA_SHA256,
+    noticeVersion,
+    limits,
+  };
 }
 
 export function clientTestAdmittedPlan(

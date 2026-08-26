@@ -5,6 +5,8 @@ import type { FullReviewStreamEvent, LensStat } from "@diffgazer/core/schemas/ev
 import {
   type EvidenceKey,
   type ExecutionLimits,
+  ExecutionReceiptSchema,
+  REVIEW_WALL_CEILING_SLACK,
   ReviewErrorCode,
   SELECTABLE_LENS_IDS,
   type SelectableLensId,
@@ -15,7 +17,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AdmittedExecutionPlan } from "../../shared/lib/ai/admission/service.js";
 import {
   ExecutionLeaseRegistry,
-  STRUCTURED_OUTPUT_FAILURE_GUIDANCE,
   toClientSafeAdmittedPlanJson,
 } from "../../shared/lib/ai/admission/service.js";
 import { createBudgetLedger } from "../../shared/lib/ai/budget/ledger.js";
@@ -165,7 +166,9 @@ describe("executeReview", () => {
   });
 
   it("preserves a classified orchestration error instead of collapsing it to AI_ERROR", async () => {
-    orchestrateReview.mockResolvedValue(err({ code: "NO_DIFF", message: "No files changed" }));
+    orchestrateReview.mockResolvedValue(
+      err({ code: "NO_DIFF", message: "No files changed", lensStats: [] }),
+    );
     const result = await executeReview({
       aiClient: {
         provider: "openrouter",
@@ -305,8 +308,8 @@ const ENVELOPE_BASE_LIMITS: ExecutionLimits = Object.freeze({
   maxCostUsd: 5,
 });
 
-function authorizeAtBaseEnvelope(modelId?: string) {
-  const base = pipelineAdmittedPlan();
+function authorizeAtBaseEnvelope(modelId?: string, productId: HostedApiProductId = "gemini") {
+  const base = pipelineAdmittedPlan(productId);
   const plan: AdmittedExecutionPlan = Object.freeze({
     ...base,
     evidenceKey: Object.freeze({
@@ -338,7 +341,7 @@ function authorizeAtBaseEnvelope(modelId?: string) {
     authorization: Object.freeze({
       plan,
       adapter: {
-        productId: "gemini" as const,
+        productId,
         transportFamily: "hosted-api" as const,
         execute: vi.fn(),
       },
@@ -390,12 +393,13 @@ describe("batched review budget envelope", () => {
 
     const snapshot = ledger.snapshot();
     expect(snapshot.limits.maxInputTokens).toBe(1_200_000);
-    expect(snapshot.limits.wallTimeMs).toBe(1_800_000);
+    // One lens over two batches plus synthesis, sequentially, under the slack.
+    expect(snapshot.limits.wallTimeMs).toBe(Math.ceil(300_000 * 3 * REVIEW_WALL_CEILING_SLACK));
     expect(snapshot.reserved.inputTokens).toBe(1_200_000);
-    expect(snapshot.reserved.wallTimeMs).toBe(1_800_000);
+    expect(snapshot.reserved.wallTimeMs).toBe(snapshot.limits.wallTimeMs);
   });
 
-  it("leaves the configured base untouched for a single-batch plan", async () => {
+  it("raises only the wall clock for a single-batch plan", async () => {
     const { authorization, ledger } = authorizeAtBaseEnvelope();
     orchestrationSuccess();
 
@@ -414,9 +418,11 @@ describe("batched review budget envelope", () => {
 
     const snapshot = ledger.snapshot();
     expect(snapshot.limits.maxInputTokens).toBe(200_000);
-    expect(snapshot.limits.wallTimeMs).toBe(300_000);
+    // The size axes stay at the configured base, but the wall dimension is the
+    // whole-review elapsed clock: one call for the single lens, under the slack.
+    expect(snapshot.limits.wallTimeMs).toBe(Math.ceil(300_000 * REVIEW_WALL_CEILING_SLACK));
     expect(snapshot.reserved.inputTokens).toBe(200_000);
-    expect(snapshot.reserved.wallTimeMs).toBe(300_000);
+    expect(snapshot.reserved.wallTimeMs).toBe(snapshot.limits.wallTimeMs);
   });
 
   it("refuses a batched plan whose worst case runs past the per-review spend cap", async () => {
@@ -463,6 +469,196 @@ describe("batched review budget envelope", () => {
     });
 
     expect(orchestrateReview.mock.calls[0]?.[4]).toMatchObject({ batches: capacity.batches });
+  });
+});
+
+function fiveLensConfig(concurrency: number) {
+  return {
+    ...pipelineConfig(),
+    activeLenses: [...SELECTABLE_LENS_IDS],
+    concurrency,
+  };
+}
+
+describe("review wall clock sizing and concurrency clamp", () => {
+  afterEach(() => {
+    orchestrateReview.mockReset();
+    vi.useRealTimers();
+  });
+
+  it("sizes the wall clock for every call of a multi-batch plan at sequential concurrency", async () => {
+    const { authorization, ledger } = authorizeAtBaseEnvelope();
+    orchestrationSuccess();
+
+    await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      capacity: capacityPlan(2, 100_000),
+      config: fiveLensConfig(1),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    // Five lenses over two batches plus one synthesis = 11 sequential calls.
+    expect(ledger.snapshot().limits.wallTimeMs).toBe(
+      Math.ceil(300_000 * 11 * REVIEW_WALL_CEILING_SLACK),
+    );
+  });
+
+  it("sizes the single-batch wall clock at one call per lens, without synthesis", async () => {
+    const { authorization, ledger } = authorizeAtBaseEnvelope();
+    orchestrationSuccess();
+
+    await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      capacity: capacityPlan(1, 100_000),
+      config: fiveLensConfig(1),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(ledger.snapshot().limits.wallTimeMs).toBe(
+      Math.ceil(300_000 * 5 * REVIEW_WALL_CEILING_SLACK),
+    );
+  });
+
+  it("clamps parallel execution to the provider profile and reports the requested concurrency", async () => {
+    const { authorization, ledger } = authorizeAtBaseEnvelope("glm-4.5-flash", "zai");
+    orchestrationSuccess();
+
+    await executeReview({
+      aiClient: {
+        provider: "zai",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      capacity: capacityPlan(2, 100_000),
+      config: fiveLensConfig(5),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(orchestrateReview.mock.calls[0]?.[4]).toMatchObject({
+      concurrency: 1,
+      requestedConcurrency: 5,
+    });
+    // The clamped-to-1 provider gets the full sequential clock.
+    expect(ledger.snapshot().limits.wallTimeMs).toBe(
+      Math.ceil(300_000 * 11 * REVIEW_WALL_CEILING_SLACK),
+    );
+  });
+
+  it("runs paid zai models parallel and still sizes the clock for the sequential worst case", async () => {
+    const { authorization, ledger } = authorizeAtBaseEnvelope("glm-5.2", "zai");
+    orchestrationSuccess();
+
+    await executeReview({
+      aiClient: {
+        provider: "zai",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      capacity: capacityPlan(2, 100_000),
+      config: fiveLensConfig(5),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(orchestrateReview.mock.calls[0]?.[4]).toMatchObject({ concurrency: 5 });
+    expect(orchestrateReview.mock.calls[0]?.[4]).not.toHaveProperty("requestedConcurrency");
+    expect(ledger.snapshot().limits.wallTimeMs).toBe(
+      Math.ceil(300_000 * 11 * REVIEW_WALL_CEILING_SLACK),
+    );
+  });
+
+  it("leaves parallel execution unclamped for a provider without pacing", async () => {
+    const { authorization } = authorizeAtBaseEnvelope();
+    orchestrationSuccess();
+
+    await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: fiveLensConfig(5),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(orchestrateReview.mock.calls[0]?.[4]).toMatchObject({ concurrency: 5 });
+    expect(orchestrateReview.mock.calls[0]?.[4]).not.toHaveProperty("requestedConcurrency");
+  });
+
+  it("forces the budget-exhausted outcome with the elapsed wall message when the clock expires", async () => {
+    vi.useFakeTimers();
+    const { authorization } = authorizeAtBaseEnvelope();
+    const cancelledDispatch = buildExecutionResult(authorization.plan, "cancelled", {
+      attemptCount: 1,
+    });
+    orchestrateReview.mockImplementation(async () => {
+      vi.advanceTimersByTime(400_000);
+      return err({ code: "CANCELLED", message: "Cancelled", lensStats: [] });
+    });
+
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [cancelledDispatch],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // The dispatch receipt honestly says cancelled (mechanism); the review-level
+    // outcome names the cause with the operative raised limit, not the 300s base.
+    expect(cancelledDispatch.receipt.outcome).toBe("cancelled");
+    expect(result.value.execution?.receipt.outcome).toBe("budget-exhausted");
+    expect(result.value.terminalDiagnostic?.code).toBe("budget-exhausted");
+    expect(result.value.terminalDiagnostic?.safeMessage).toBe(
+      "Review wall-clock budget exhausted: 400s elapsed of 360s allowed.",
+    );
+  });
+
+  it("disposes the review clock after a completed run", async () => {
+    vi.useFakeTimers();
+    const { authorization } = authorizeAtBaseEnvelope();
+    orchestrationSuccess();
+
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.outcome).toBe("completed");
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
 
@@ -540,7 +736,7 @@ describe("admitted execution lifecycle", () => {
       transportFamily: "hosted-api",
       execute: vi.fn(),
     });
-    orchestrateReview.mockResolvedValue(err(error));
+    orchestrateReview.mockResolvedValue(err({ ...error, lensStats: [] }));
     const result = await executeReview({
       aiClient: {
         provider: "gemini",
@@ -594,7 +790,9 @@ describe("admitted execution lifecycle", () => {
       transportFamily: "hosted-api",
       execute: vi.fn(),
     });
-    orchestrateReview.mockResolvedValue(err({ code: "PARSE_ERROR", message: "schema mismatch" }));
+    orchestrateReview.mockResolvedValue(
+      err({ code: "PARSE_ERROR", message: "schema mismatch", lensStats: [] }),
+    );
     const result = await executeReview({
       aiClient: {
         provider: "gemini",
@@ -613,9 +811,9 @@ describe("admitted execution lifecycle", () => {
     if (!result.ok) return;
     expect(result.value.execution?.receipt.outcome).toBe("schema-failed");
     expect(result.value.terminalDiagnostic).toEqual(schemaDiagnostic);
-    expect(result.value.execution?.receipt.startedAt).toBe(schemaFailed.receipt.startedAt);
-    expect(result.value.execution?.receipt.finishedAt).toBe(schemaFailed.receipt.finishedAt);
-    expect(result.value.execution?.receipt.attemptCount).toBe(2);
+    expect(result.value.execution?.receipt.scope).toBe("review");
+    expect(result.value.execution?.receipt.dispatchCount).toBe(2);
+    expect(result.value.execution?.receipt.attemptCount).toBe(3);
     expect(result.value.execution?.receipt.usage).toEqual({
       inputTokens: 12,
       outputTokens: 5,
@@ -656,7 +854,9 @@ describe("admitted execution lifecycle", () => {
       transportFamily: "hosted-api",
       execute: vi.fn(),
     });
-    orchestrateReview.mockResolvedValue(err({ code: "PARSE_ERROR", message: "schema mismatch" }));
+    orchestrateReview.mockResolvedValue(
+      err({ code: "PARSE_ERROR", message: "schema mismatch", lensStats: [] }),
+    );
     const result = await executeReview({
       aiClient: {
         provider: "gemini",
@@ -675,8 +875,7 @@ describe("admitted execution lifecycle", () => {
     if (!result.ok) return;
     expect(result.value.execution?.receipt.outcome).toBe("schema-failed");
     expect(result.value.terminalDiagnostic).toEqual(schemaDiagnostic);
-    expect(result.value.execution?.receipt.startedAt).toBe(schemaFailed.receipt.startedAt);
-    expect(result.value.execution?.receipt.attemptCount).toBe(2);
+    expect(result.value.execution?.receipt.attemptCount).toBe(3);
   });
 
   it("reports a bridge schema rejection as schema-failed when no dispatch receipt carries it", async () => {
@@ -692,7 +891,9 @@ describe("admitted execution lifecycle", () => {
       transportFamily: "hosted-api",
       execute: vi.fn(),
     });
-    orchestrateReview.mockResolvedValue(err({ code: "PARSE_ERROR", message: "schema mismatch" }));
+    orchestrateReview.mockResolvedValue(
+      err({ code: "PARSE_ERROR", message: "schema mismatch", lensStats: [] }),
+    );
     const result = await executeReview({
       aiClient: {
         provider: "gemini",
@@ -730,7 +931,9 @@ describe("admitted execution lifecycle", () => {
       transportFamily: "hosted-api",
       execute: vi.fn(),
     });
-    orchestrateReview.mockResolvedValue(err({ code: "PARSE_ERROR", message: "schema mismatch" }));
+    orchestrateReview.mockResolvedValue(
+      err({ code: "PARSE_ERROR", message: "schema mismatch", lensStats: [] }),
+    );
     const result = await executeReview({
       aiClient: {
         provider: "gemini",
@@ -771,7 +974,9 @@ describe("admitted execution lifecycle", () => {
       transportFamily: "hosted-api",
       execute: vi.fn(),
     });
-    orchestrateReview.mockResolvedValue(err({ code: "STREAM_ERROR", message: "unused" }));
+    orchestrateReview.mockResolvedValue(
+      err({ code: "STREAM_ERROR", message: "unused", lensStats: [] }),
+    );
     const result = await executeReview({
       aiClient: {
         provider: "gemini",
@@ -847,13 +1052,13 @@ describe("admitted execution lifecycle", () => {
     expect(execution.receipt.executionFingerprint).toHaveLength(64);
   });
 
-  it("uses per-dispatch receipt timing instead of the orchestration wall clock", async () => {
+  it("stamps the review's own span and dispatch count on the completed receipt", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-31T10:00:00.000Z"));
     const plan = pipelineAdmittedPlan();
-    const dispatchStarted = "2026-07-31T10:00:00.000Z";
-    const dispatchFinished = "2026-07-31T10:00:04.000Z";
     const dispatchExecution = buildExecutionResult(plan, "completed", {
-      startedAt: dispatchStarted,
-      finishedAt: dispatchFinished,
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:04.000Z",
       usageAvailability: "reported",
       usage: { inputTokens: 12, outputTokens: 4, totalTokens: 16 },
       issues: [makePipelineIssue("1", "a.ts", "high")],
@@ -863,7 +1068,15 @@ describe("admitted execution lifecycle", () => {
       transportFamily: "hosted-api",
       execute: vi.fn(),
     });
-    orchestrationSuccess([makePipelineIssue("1", "a.ts", "high")]);
+    orchestrateReview.mockImplementation(async () => {
+      vi.setSystemTime(new Date("2026-07-31T10:00:10.000Z"));
+      return ok({
+        issues: [makePipelineIssue("1", "a.ts", "high")],
+        lensStats: [],
+        droppedDuplicates: 0,
+        droppedBelowThreshold: 0,
+      });
+    });
     const result = await executeReview({
       aiClient: {
         provider: "gemini",
@@ -876,15 +1089,18 @@ describe("admitted execution lifecycle", () => {
       emit: async () => undefined,
       executionContext: createReviewExecutionContext(authorization),
     });
+    vi.useRealTimers();
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.execution?.receipt.startedAt).toBe(dispatchStarted);
-    expect(result.value.execution?.receipt.finishedAt).toBe(dispatchFinished);
+    expect(result.value.execution?.receipt.startedAt).toBe("2026-07-31T10:00:00.000Z");
+    expect(result.value.execution?.receipt.finishedAt).toBe("2026-07-31T10:00:10.000Z");
+    expect(result.value.execution?.receipt.scope).toBe("review");
+    expect(result.value.execution?.receipt.dispatchCount).toBe(1);
     expect(result.value.execution?.receipt.outcome).toBe("completed");
   });
 
-  it("keeps retry counts per dispatch across the five default lenses", async () => {
+  it("sums retry counts across the five default lenses", async () => {
     const plan = pipelineAdmittedPlan();
     const dispatches = SELECTABLE_LENS_IDS.map((_, index) =>
       buildExecutionResult(plan, "completed", {
@@ -919,9 +1135,164 @@ describe("admitted execution lifecycle", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.execution?.receipt.attemptCount).toBe(2);
-    expect(result.value.execution?.receipt.startedAt).toBe("2026-07-31T10:00:04.000Z");
-    expect(result.value.execution?.receipt.finishedAt).toBe("2026-07-31T10:00:05.000Z");
+    expect(result.value.execution?.receipt.attemptCount).toBe(10);
+    expect(result.value.execution?.receipt.dispatchCount).toBe(5);
+  });
+
+  it("parses the 6-dispatch incident receipt whose summed usage exceeds the per-call input limit", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-31T10:00:00.000Z"));
+    const plan = pipelineAdmittedPlan();
+    const dispatches = Array.from({ length: 6 }, (_, index) =>
+      buildExecutionResult(plan, "completed", {
+        startedAt: `2026-07-31T10:00:0${index}.000Z`,
+        finishedAt: `2026-07-31T10:00:0${index + 1}.000Z`,
+        attemptCount: index === 5 ? 2 : 1,
+        usageAvailability: "reported",
+        usage: { inputTokens: 39_000, outputTokens: 500, totalTokens: 39_500 },
+      }),
+    );
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrateReview.mockImplementation(async () => {
+      vi.setSystemTime(new Date("2026-07-31T10:05:00.000Z"));
+      return ok({
+        issues: [makePipelineIssue("1", "a.ts", "high")],
+        lensStats: [],
+        droppedDuplicates: 0,
+        droppedBelowThreshold: 0,
+      });
+    });
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: dispatches,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+    vi.useRealTimers();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const receipt = result.value.execution?.receipt;
+    expect(() => ExecutionReceiptSchema.parse(receipt)).not.toThrow();
+    expect(receipt?.outcome).toBe("completed");
+    expect(receipt?.scope).toBe("review");
+    expect(receipt?.dispatchCount).toBe(6);
+    expect(receipt?.attemptCount).toBe(7);
+    expect(receipt?.usage?.inputTokens).toBe(234_000);
+    expect(receipt?.startedAt).toBe("2026-07-31T10:00:00.000Z");
+    expect(receipt?.finishedAt).toBe("2026-07-31T10:05:00.000Z");
+  });
+
+  it("keeps the timed-out outcome decisive when four completed dispatches sum past the per-call input limit", async () => {
+    const plan = pipelineAdmittedPlan();
+    const completedDispatches = Array.from({ length: 4 }, (_, index) =>
+      buildExecutionResult(plan, "completed", {
+        startedAt: `2026-07-31T10:00:0${index}.000Z`,
+        finishedAt: `2026-07-31T10:00:0${index + 1}.000Z`,
+        attemptCount: 1,
+        usageAvailability: "reported",
+        usage: { inputTokens: 39_000, outputTokens: 500, totalTokens: 39_500 },
+      }),
+    );
+    const timedOut = buildExecutionResult(plan, "timed-out", {
+      startedAt: "2026-07-31T10:00:04.000Z",
+      finishedAt: "2026-07-31T10:00:44.000Z",
+      attemptCount: 1,
+      usageAvailability: "unavailable",
+    });
+    const timedOutDiagnostic = {
+      code: "timed-out",
+      safeMessage: "Lens dispatch timed out after 40s",
+      retryable: true,
+      remediation: "Retry the review.",
+      correlationId: "timed-out-correlation",
+    };
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrateReview.mockResolvedValue(
+      err({ code: "STREAM_ERROR", message: "lens timed out", lensStats: [] }),
+    );
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [...completedDispatches, timedOut],
+        terminalDiagnostics: [timedOutDiagnostic],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const receipt = result.value.execution?.receipt;
+    expect(() => ExecutionReceiptSchema.parse(receipt)).not.toThrow();
+    expect(receipt?.outcome).toBe("timed-out");
+    expect(receipt?.scope).toBe("review");
+    expect(receipt?.dispatchCount).toBe(5);
+    expect(receipt?.attemptCount).toBe(5);
+    expect(receipt?.usage?.inputTokens).toBe(156_000);
+    expect(result.value.terminalDiagnostic).toEqual(timedOutDiagnostic);
+  });
+
+  it("persists per-lens stats in the failure outcome when every lens failed", async () => {
+    const plan = pipelineAdmittedPlan();
+    const lensStats: LensStat[] = [
+      {
+        lensId: "correctness",
+        issueCount: 0,
+        status: "failed",
+        errorCode: "STREAM_ERROR",
+        errorMessage: "provider stream dropped",
+        dispatches: [
+          {
+            batchIndex: 0,
+            startedAt: "2026-07-31T10:00:00.000Z",
+            finishedAt: "2026-07-31T10:00:40.000Z",
+            outcome: "STREAM_ERROR",
+          },
+        ],
+      },
+    ];
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrateReview.mockResolvedValue(
+      err({ code: "STREAM_ERROR", message: "provider stream dropped", lensStats }),
+    );
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.lensStats).toEqual(lensStats);
   });
 
   it("makes a budget-exhausted dispatch terminal and retains known usage from every dispatch", async () => {
@@ -1144,7 +1515,7 @@ describe("admitted execution lifecycle", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.execution?.receipt.attemptCount).toBe(2);
+    expect(result.value.execution?.receipt.attemptCount).toBe(3);
     expect(result.value.execution?.receipt.usageAvailability).toBe("reported");
     expect(result.value.execution?.receipt.usage).toEqual({
       inputTokens: 12,
@@ -1189,9 +1560,9 @@ describe("admitted execution lifecycle", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.execution?.receipt.outcome).toBe("completed");
-    expect(result.value.execution?.receipt.startedAt).toBe(completed.receipt.startedAt);
-    expect(result.value.execution?.receipt.finishedAt).toBe(completed.receipt.finishedAt);
-    expect(result.value.execution?.receipt.attemptCount).toBe(completed.receipt.attemptCount);
+    expect(result.value.execution?.receipt.scope).toBe("review");
+    expect(result.value.execution?.receipt.dispatchCount).toBe(2);
+    expect(result.value.execution?.receipt.attemptCount).toBe(2);
     expect(result.value.execution?.receipt.usage).toEqual({
       inputTokens: 12,
       outputTokens: 5,
@@ -1199,7 +1570,7 @@ describe("admitted execution lifecycle", () => {
     });
   });
 
-  it("clamps orchestration wall clock to the admitted limit and keeps completed findings", async () => {
+  it("keeps the honest orchestration span past the per-dispatch limit and keeps completed findings", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-31T10:00:00.000Z"));
     const plan = pipelineAdmittedPlan();
@@ -1209,7 +1580,8 @@ describe("admitted execution lifecycle", () => {
       execute: vi.fn(),
     });
     orchestrateReview.mockImplementation(async () => {
-      vi.setSystemTime(new Date("2026-07-31T10:10:00.000Z"));
+      // Longer than the 5-minute per-dispatch wallTimeMs, inside the review ceiling.
+      vi.setSystemTime(new Date("2026-07-31T10:05:30.000Z"));
       return ok({
         issues: [makePipelineIssue("1", "a.ts", "high")],
         lensStats: [],
@@ -1235,14 +1607,12 @@ describe("admitted execution lifecycle", () => {
     if (!result.ok) return;
     expect(result.value.execution?.receipt.outcome).toBe("completed");
     expect(result.value.execution?.receipt.startedAt).toBe("2026-07-31T10:00:00.000Z");
-    expect(result.value.execution?.receipt.finishedAt).toBe("2026-07-31T10:05:00.000Z");
+    expect(result.value.execution?.receipt.finishedAt).toBe("2026-07-31T10:05:30.000Z");
     expect(result.value.issues).toHaveLength(1);
   });
 
-  it("uses the last completed dispatch timing when usage is unavailable", async () => {
+  it("marks usage unavailable when no completed dispatch reported it", async () => {
     const plan = pipelineAdmittedPlan();
-    const dispatchStarted = "2026-07-31T10:00:00.000Z";
-    const dispatchFinished = "2026-07-31T10:00:03.000Z";
     const firstDispatch = buildExecutionResult(plan, "completed", {
       startedAt: "2026-07-31T10:00:00.000Z",
       finishedAt: "2026-07-31T10:00:01.000Z",
@@ -1250,8 +1620,8 @@ describe("admitted execution lifecycle", () => {
       issues: [],
     });
     const lastDispatch = buildExecutionResult(plan, "completed", {
-      startedAt: dispatchStarted,
-      finishedAt: dispatchFinished,
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:03.000Z",
       usageAvailability: "unavailable",
       issues: [],
     });
@@ -1276,9 +1646,8 @@ describe("admitted execution lifecycle", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.execution?.receipt.startedAt).toBe(dispatchStarted);
-    expect(result.value.execution?.receipt.finishedAt).toBe(dispatchFinished);
     expect(result.value.execution?.receipt.outcome).toBe("completed");
+    expect(result.value.execution?.receipt.dispatchCount).toBe(2);
     expect(result.value.execution?.receipt.usageAvailability).toBe("unavailable");
     expect(result.value.issues).toHaveLength(1);
   });
@@ -1453,12 +1822,12 @@ describe("finalizeReview", () => {
     expect(result.error).toMatchObject({
       kind: "review_abort",
       code: "AI_ERROR",
-      message: "Hosted adapter timed out after handshake",
+      message: "Hosted adapter timed out after handshake Retry after checking provider status.",
     });
     expect(saveReview).toHaveBeenCalledWith(expect.objectContaining({ execution }));
   });
 
-  it("reports the structured-output guidance when a schema failure carries no diagnostic", async () => {
+  it("names the schema failure and the way out, without the fail-fast memo sentence, when it carries no diagnostic", async () => {
     saveReview.mockResolvedValue(ok({ id: "review-1" }));
     const execution = buildExecutionResult(pipelineAdmittedPlan(), "schema-failed", {
       startedAt: "2026-07-31T10:00:00.000Z",
@@ -1474,7 +1843,8 @@ describe("finalizeReview", () => {
     expect(result.error).toMatchObject({
       kind: "review_abort",
       code: "MODEL_INCOMPATIBLE",
-      message: STRUCTURED_OUTPUT_FAILURE_GUIDANCE,
+      message:
+        "This model could not produce Diffgazer's structured review output. Change the model or update the configuration.",
     });
   });
 
@@ -1505,8 +1875,43 @@ describe("finalizeReview", () => {
     expect(result.error).toMatchObject({
       kind: "review_abort",
       code: "PROVIDER_REJECTED",
-      message: "Groq rejected the credential (HTTP 401).",
+      message:
+        "Groq rejected the credential (HTTP 401). Update the configuration with a valid API key.",
     });
+  });
+
+  it("names Sequential mode in the abort message when every lens died rate-limited", async () => {
+    saveReview.mockResolvedValue(ok({ id: "review-1" }));
+    const execution = buildExecutionResult(pipelineAdmittedPlan(), "transport-failed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:02.000Z",
+      attemptCount: 1,
+      usageAvailability: "unavailable",
+    });
+    const terminalDiagnostic = {
+      code: "provider-rejected",
+      safeMessage: "Z.AI rate limited the request (HTTP 429).",
+      retryable: true,
+      remediation:
+        "Wait and retry. If Agent Execution is set to Parallel, switching it to Sequential can help.",
+      correlationId: "rate-limited-correlation",
+    };
+
+    const result = await runFinalize([], undefined, undefined, {
+      issues: [],
+      execution,
+      terminalDiagnostic,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatchObject({
+      kind: "review_abort",
+      code: "PROVIDER_REJECTED",
+      message:
+        "Z.AI rate limited the request (HTTP 429). Wait and retry. If Agent Execution is set to Parallel, switching it to Sequential can help.",
+    });
+    expect(result.error.message).toContain("Sequential");
   });
 
   it("completes the report step only after a successful save", async () => {

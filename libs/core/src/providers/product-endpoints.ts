@@ -25,24 +25,25 @@ export const PRODUCT_ENDPOINT_TUPLES = {
     },
   ],
   openrouter: [{ id: "api", label: "OpenRouter API", endpoint: "https://openrouter.ai/api/v1" }],
-  groq: [{ id: "global", label: "Global", endpoint: "https://api.groq.com/openai/v1" }],
-  cerebras: [{ id: "global", label: "Global", endpoint: "https://api.cerebras.ai/v1" }],
   deepseek: [{ id: "payg", label: "Open Platform PAYG", endpoint: "https://api.deepseek.com/v1" }],
-  "ollama-cloud": [{ id: "cloud", label: "Ollama Cloud", endpoint: "https://ollama.com/v1" }],
-  "opencode-zen": [{ id: "zen", label: "OpenCode Zen", endpoint: "https://opencode.ai/zen/v1" }],
-  ollama: [{ id: "default", label: "Default loopback", endpoint: "http://127.0.0.1:11434" }],
-  "local-openai": [
+  qwen: [
     {
-      id: "lm-studio",
-      label: "LM Studio",
-      endpoint: "http://127.0.0.1:1234/v1",
-    },
-    {
-      id: "llama-cpp",
-      label: "llama.cpp",
-      endpoint: "http://127.0.0.1:8080/v1",
+      id: "international",
+      label: "International",
+      endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
     },
   ],
-  "codex-cli": [],
-  "copilot-cli": [],
+  // International first: the quick-setup default binds `endpoints[0]`.
+  moonshot: [
+    { id: "international", label: "International", endpoint: "https://api.moonshot.ai/v1" },
+    { id: "mainland", label: "Mainland China", endpoint: "https://api.moonshot.cn/v1" },
+  ],
+  minimax: [{ id: "international", label: "International", endpoint: "https://api.minimax.io/v1" }],
+  "ollama-cloud": [{ id: "cloud", label: "Ollama Cloud", endpoint: "https://ollama.com/v1" }],
+  // Zen first: the quick-setup default binds `endpoints[0]`, and pay-as-you-go
+  // credits are the tier every key can bill; Go serves only subscribers.
+  "opencode-zen": [
+    { id: "zen", label: "OpenCode Zen", endpoint: "https://opencode.ai/zen/v1" },
+    { id: "go", label: "OpenCode Go", endpoint: "https://opencode.ai/zen/go/v1" },
+  ],
 } as const satisfies ProductEndpointTupleRegistry;

@@ -80,8 +80,7 @@ function buildRunnablePlan(
 ): RunnableSetupPlan {
   const endpointFields = product.configuration.fields.filter((field) => field === "endpoint");
   const authenticationFields = product.configuration.fields.filter(
-    (field) =>
-      field === "credential" || field === "local-authentication" || field === "installation",
+    (field) => field === "credential",
   );
   const steps: RunnableSetupStep[] = [{ id: "product", label: product.presentation.setupLabel }];
 

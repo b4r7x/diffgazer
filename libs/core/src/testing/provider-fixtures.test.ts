@@ -3,9 +3,9 @@ import { ConfigurationInitResponseSchema } from "../schemas/config/index.js";
 import {
   configurationStatus,
   GEMINI_CONFIGURATION,
-  LOCAL_OPENAI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeReadyInitResponse,
+  OPENROUTER_CONFIGURATION,
 } from "./provider-fixtures.js";
 
 describe("provider fixtures", () => {
@@ -26,7 +26,7 @@ describe("provider fixtures", () => {
   it("keeps custom status lists schema-valid", () => {
     const init = makeConfigurationInitResponse([
       configurationStatus(GEMINI_CONFIGURATION, "ready"),
-      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
+      configurationStatus(OPENROUTER_CONFIGURATION, "model-missing"),
     ]);
 
     expect(ConfigurationInitResponseSchema.parse(init)).toEqual(init);

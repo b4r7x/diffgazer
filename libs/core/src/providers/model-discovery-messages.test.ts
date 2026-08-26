@@ -1,10 +1,29 @@
 import { describe, expect, it } from "vitest";
 import type { ModelInfo } from "../schemas/config/models.js";
-import { getRetainedModelNotice } from "./model-discovery-messages.js";
+import { CATALOG_EMPTY_MODELS_REASON } from "./catalog-discovery-reasons.js";
+import {
+  getRetainedModelNotice,
+  MODEL_DISCOVERY_SKIPPED_FALLBACK,
+  toClientSafeMessage,
+} from "./model-discovery-messages.js";
 
 const MODELS: ModelInfo[] = [
   { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "", tier: "paid" },
 ];
+
+describe("toClientSafeMessage", () => {
+  it("passes the catalog empty-models reason through to the client verbatim", () => {
+    expect(toClientSafeMessage(CATALOG_EMPTY_MODELS_REASON, MODEL_DISCOVERY_SKIPPED_FALLBACK)).toBe(
+      CATALOG_EMPTY_MODELS_REASON,
+    );
+  });
+
+  it("replaces an unlisted reason with the fallback", () => {
+    expect(toClientSafeMessage("provider stack trace", MODEL_DISCOVERY_SKIPPED_FALLBACK)).toBe(
+      MODEL_DISCOVERY_SKIPPED_FALLBACK,
+    );
+  });
+});
 
 describe("getRetainedModelNotice", () => {
   it("says nothing while the selection is one of the offered models", () => {

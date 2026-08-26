@@ -4,6 +4,7 @@ import {
   containsActiveElement,
   findNavigationItemByValue,
   useActionRowNavigation,
+  useKey,
   useScopedNavigation,
 } from "@diffgazer/keys";
 import {
@@ -19,7 +20,7 @@ import { useModelDialogZones } from "./use-dialog-zones";
 import { useModelFilters } from "./use-filter-row-keyboard";
 import { useModelSearchFocus } from "./use-search-focus";
 
-type FocusZone = "close" | "search" | "filters" | "list" | "footer";
+type FocusZone = "close" | "search" | "filters" | "retry" | "list" | "footer";
 type DiscoveryStatus = "idle" | "loading" | "passed" | "skipped" | "error";
 
 interface ModelDialogKeyboardOptions {
@@ -29,6 +30,8 @@ interface ModelDialogKeyboardOptions {
   models: ModelInfo[];
   filteredModels: ModelInfo[];
   discoveryStatus: DiscoveryStatus;
+  /** Whether the discovery-warning Retry button is rendered; it then joins vertical navigation between the filter row and the list. */
+  retryVisible?: boolean;
   cycleTierFilter: () => void;
   resetFilters: () => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
@@ -48,6 +51,10 @@ interface ModelDialogKeyboardReturn {
     onFocus: () => void;
   };
   getFilterButtonProps: (index: number) => {
+    ref: RefCallback<HTMLButtonElement>;
+    onFocus: () => void;
+  };
+  getRetryButtonProps: () => {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
   };
@@ -85,6 +92,7 @@ export function useModelDialogKeyboard({
   models,
   filteredModels,
   discoveryStatus,
+  retryVisible = false,
   cycleTierFilter,
   resetFilters,
   searchInputRef,
@@ -97,6 +105,7 @@ export function useModelDialogKeyboard({
   const hasHandledInitialFocusRef = useRef(false);
   const hadFilteredModelsRef = useRef(false);
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
+  const retryButtonRef = useRef<HTMLButtonElement | null>(null);
   const listInteractive = !isSaving && discoveryStatus === "passed" && filteredModels.length > 0;
   const canConfirm = listInteractive;
   // The filter row is disabled unless discovery passed and the search box is
@@ -199,9 +208,26 @@ export function useModelDialogKeyboard({
     else filterButtonRefs.current.delete(index);
   };
 
-  // The first enabled zone above the model list, so leaving the list or the
-  // footer upward always lands on an element that can hold focus.
-  const focusZoneAboveList = () => {
+  // The discovery-warning Retry button sits between the filter row and the
+  // list, so it is a vertical stop there whenever the callout renders.
+  const focusRetryButton = () => {
+    setFocusZone("retry");
+    retryButtonRef.current?.focus();
+  };
+
+  const getRetryButtonProps = () => ({
+    ref: (node: HTMLButtonElement | null) => {
+      retryButtonRef.current = node;
+    },
+    onFocus: () => {
+      if (!hasHandledInitialFocusRef.current) return;
+      setFocusZone("retry");
+    },
+  });
+
+  // The first enabled zone above the Retry stop, so leaving it upward always
+  // lands on an element that can hold focus.
+  const focusZoneAboveRetry = () => {
     if (filtersInteractive) {
       focusFilterButton(filterIndex);
       return;
@@ -211,6 +237,16 @@ export function useModelDialogKeyboard({
       return;
     }
     focusCloseButton();
+  };
+
+  // The first enabled zone above the model list, so leaving the list or the
+  // footer upward always lands on an element that can hold focus.
+  const focusZoneAboveList = () => {
+    if (retryVisible) {
+      focusRetryButton();
+      return;
+    }
+    focusZoneAboveRetry();
   };
 
   const handleListBoundaryReached = (direction: "previous" | "next") => {
@@ -298,12 +334,36 @@ export function useModelDialogKeyboard({
       focusFilterButton(filterIndex);
       return;
     }
+    if (retryVisible) {
+      focusRetryButton();
+      return;
+    }
     if (listInteractive) {
       enterListFromBoundary("first");
       return;
     }
     enterFooter(0);
   };
+
+  // The footer teaches arrows only, but j/k stays the vim alias the shared
+  // Help table promises, so j/k must move through the Retry stop exactly like
+  // the arrow keys. Enter/Space activate the focused native button, so no
+  // binding is needed for them.
+  useKey(["ArrowUp", "k"], focusZoneAboveRetry, {
+    enabled: open && retryVisible && isZone("retry"),
+    preventDefault: true,
+  });
+  useKey(
+    ["ArrowDown", "j"],
+    () => {
+      if (listInteractive) {
+        enterListFromBoundary("first");
+        return;
+      }
+      enterFooter(0);
+    },
+    { enabled: open && retryVisible && isZone("retry"), preventDefault: true },
+  );
 
   const search = useModelSearchFocus({
     // Quiet during the save window: / would flip the zone to search while the
@@ -359,10 +419,11 @@ export function useModelDialogKeyboard({
     enterFooter(0);
   });
 
-  // The save window unmounts the model rows and disables every other control,
-  // so nothing in the open dialog can hold focus. Park it on the list
-  // container (tabIndex -1 while saving) beside the Saving status; when the
-  // dialog closes instead, the unmount focus restore takes over.
+  // The save window keeps the model rows on screen but disables every dialog
+  // control. A focused row keeps its DOM focus (aria-disabled rows stay
+  // focusable), but focus that was on a now-disabled button drops to body, so
+  // park it on the list container (tabIndex -1 while saving); when the dialog
+  // closes instead, the unmount focus restore takes over.
   const parkSavingFocus = useEffectEvent(() => {
     const container = listContainerRef.current;
     if (!container || containsActiveElement(container)) return;
@@ -409,6 +470,19 @@ export function useModelDialogKeyboard({
     repairListFocus();
   }, [open, focusZone, filteredIdsKey, isSaving, discoveryStatus]);
 
+  const exitRemovedRetryZone = useEffectEvent(() => {
+    if (!isZone("retry")) return;
+    focusZoneAboveRetry();
+  });
+
+  // Activating Retry unmounts the callout while its button holds focus, which
+  // would drop focus to the body with the zone stuck on "retry"; hand it to
+  // the nearest zone above instead.
+  useEffect(() => {
+    if (!open || retryVisible) return;
+    exitRemovedRetryZone();
+  }, [open, retryVisible]);
+
   const handleListSelect = (modelId: string) => {
     setFocusZone("list");
     focusModelElement(modelId);
@@ -437,6 +511,7 @@ export function useModelDialogKeyboard({
     getCloseButtonProps,
     getFooterButtonProps,
     getFilterButtonProps: filters.getFilterButtonProps,
+    getRetryButtonProps,
     handleFilterKeyDown: filters.handleFilterKeyDown,
     handleConfirm,
     handleSearchFocus,

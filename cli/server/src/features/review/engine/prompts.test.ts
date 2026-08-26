@@ -82,6 +82,14 @@ describe("buildReviewPrompt", () => {
     expect(user).toContain(CORRECTNESS_SEVERITY_RUBRIC.nit);
   });
 
+  it("spells out the suggested_patch unified-diff format contract", () => {
+    const { user } = buildReviewPrompt(makeLens(), makeParsedDiff());
+
+    expect(user).toContain(
+      '- suggested_patch: a minimal unified diff ("--- a/<file>", "+++ b/<file>", numbered hunk headers like "@@ -2,3 +2,8 @@", "+"/"-" line prefixes), with a real newline character between every line (JSON "\\n" escapes) — never flattened onto one line; null if a correct diff is impractical',
+    );
+  });
+
   it.each([
     { label: "undefined", context: undefined },
     { label: "blank", context: "   " },
@@ -210,8 +218,12 @@ describe("buildSynthesisPrompt", () => {
     const { system, user } = buildSynthesisPrompt(SYNTHESIS_LENS, twoFileDiff(), []);
 
     expect(system).toContain("Report ONLY problems that span more than one changed file");
-    expect(system).toContain("Restate, rephrase, merge, or re-grade any issue already in the digest");
-    expect(user).toContain("Do NOT restate, rephrase, merge, or re-grade any issue already in the digest");
+    expect(system).toContain(
+      "Restate, rephrase, merge, or re-grade any issue already in the digest",
+    );
+    expect(user).toContain(
+      "Do NOT restate, rephrase, merge, or re-grade any issue already in the digest",
+    );
     expect(user).toContain('Respond with JSON: { "issues": [...] }');
     expect(user).toContain("(the per-batch calls reported no issues)");
   });

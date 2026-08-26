@@ -71,6 +71,22 @@ describe("structured output schema dialect", () => {
     );
   });
 
+  it("carries the suggested_patch format contract into every wire dialect", () => {
+    for (const schema of [
+      canonical,
+      buildProviderLensReviewResultJsonSchema("openai-compatible"),
+      buildProviderLensReviewResultJsonSchema("google"),
+    ]) {
+      const properties = issueSchema(schema as Record<string, unknown>).properties as Record<
+        string,
+        unknown
+      >;
+      const patch = properties.suggested_patch as Record<string, unknown>;
+      expect(patch.description).toContain('numbered hunk headers like "@@ -2,3 +2,8 @@"');
+      expect(patch.description).toContain("never flattened onto one line");
+    }
+  });
+
   it("selects the wire dialect for hosted provider families", () => {
     const openAi = buildProviderLensReviewResultJsonSchema("openai-compatible");
     const google = buildProviderLensReviewResultJsonSchema("google");

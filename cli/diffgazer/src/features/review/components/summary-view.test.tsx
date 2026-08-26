@@ -99,6 +99,18 @@ describe("ReviewSummaryView (TUI)", () => {
     expect(frame).toContain("failed (CANCELLED)");
   });
 
+  test("headlines a partial run honestly when a lens failed but the run completed", () => {
+    const { lastFrame } = renderSummary({
+      lensStats: [
+        { lensId: "correctness", issueCount: 2, status: "success" },
+        { lensId: "security", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
+      ],
+    });
+
+    // The section header renders the headline uppercased.
+    expect(lastFrame() ?? "").toMatch(/review partially complete/i);
+  });
+
   test("renders the synthesis lens row with its display label like any other lens", () => {
     const { lastFrame } = renderSummary({
       lensStats: [

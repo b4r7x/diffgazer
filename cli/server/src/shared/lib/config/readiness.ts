@@ -30,23 +30,6 @@ import {
 } from "./secret-bindings.js";
 
 /**
- * A local probe is intentionally separate from admission evidence.  Evidence
- * records say whether a review conformance observation passed; this probe says
- * which local boundary failed before a review could be attempted.
- */
-const LOCAL_READINESS_OBSERVATION_STATUSES = [
-  "passed",
-  "endpoint-unreachable",
-  "endpoint-forbidden",
-  "api-incompatible",
-  "no-review-capable-model",
-  "selected-model-missing",
-  "conformance-failed",
-  "cancellation-failed",
-] as const;
-export type LocalReadinessObservationStatus = (typeof LOCAL_READINESS_OBSERVATION_STATUSES)[number];
-
-/**
  * Values needed to recompute readiness are all server-owned.  Readiness derives
  * the tuple it expects from the record itself, so `runtime` and
  * `structuredOutputSchemaSha256` must be this server's own identity — reading
@@ -149,15 +132,7 @@ function isActiveBindingFor(
     return false;
   }
 
-  if (record.transportFamily === "hosted-api") {
-    return parsed.data.kind !== "none";
-  }
-  if (record.input.transportFamily === "local-http") {
-    return record.input.authentication === "none"
-      ? parsed.data.kind === "none"
-      : parsed.data.kind === "optional-local-bearer";
-  }
-  return parsed.data.kind === "none";
+  return parsed.data.kind !== "none";
 }
 
 /**
@@ -285,9 +260,7 @@ export function computeProviderReadinessResult(
   }
 
   if (evidenceStatus === "failed") {
-    const status =
-      record.transportFamily === "hosted-api" ? "conformance-failed" : "local-conformance-failed";
-    const readiness = buildReadiness(status, checkedAt, "failed", acknowledgement);
+    const readiness = buildReadiness("conformance-failed", checkedAt, "failed", acknowledgement);
     return { readiness, details: detailsFor(readiness, input.evidence) };
   }
 

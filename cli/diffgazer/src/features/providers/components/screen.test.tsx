@@ -17,11 +17,11 @@ import { requireValue } from "@diffgazer/core/testing/assertions";
 import {
   configurationStatus,
   GEMINI_CONFIGURATION,
-  LOCAL_OPENAI_CONFIGURATION,
   makeAllConfigurationsListResponse,
   makeConfigurationInitResponse,
   makeConfigurationListResponse,
   makeReadiness,
+  OPENROUTER_CONFIGURATION,
   ZAI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -174,14 +174,22 @@ function makeApi(): BoundApi {
   } satisfies BoundApi;
 }
 
-function Wrapper({ children, api }: { children: ReactNode; api?: BoundApi }) {
+function Wrapper({
+  children,
+  api,
+  initialRoute = { screen: "settings/providers" },
+}: {
+  children: ReactNode;
+  api?: BoundApi;
+  initialRoute?: Parameters<typeof NavigationProvider>[0]["initialRoute"];
+}) {
   const boundApi = api ?? makeApi();
   return (
     <QueryClientProvider client={createTestQueryClient()}>
       <ApiProvider value={boundApi}>
         <CliThemeProvider initialTheme="dark">
           <TerminalKeyboardProvider>
-            <NavigationProvider initialRoute={{ screen: "settings/providers" }}>
+            <NavigationProvider initialRoute={initialRoute}>
               <FooterProvider initialShortcuts={[]}>{children}</FooterProvider>
             </NavigationProvider>
           </TerminalKeyboardProvider>
@@ -239,6 +247,23 @@ describe("ProvidersScreen V2 products and readiness", () => {
     expect(frame).not.toContain("API Key Status");
     // Consent is on record, so nothing asks for it.
     expect(frame).not.toContain("Consent required");
+  });
+
+  test("opens the model dialog for the active configuration on a select-model deep link, once", async () => {
+    const { lastFrame, stdin } = render(
+      <Wrapper initialRoute={{ screen: "settings/providers", intent: "select-model" }}>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    // "Change model" on the review error screen lands in the dialog itself.
+    await flushUntil(() => lastFrame()?.includes("Select Model") ?? false);
+
+    // Closing it stays closed: the intent is one-shot, not a sticky reopen.
+    stdin.write(ESCAPE);
+    await flushUntil(() => !(lastFrame()?.includes("Select Model") ?? true));
+    await flush();
+    expect(lastFrame()).not.toContain("Select Model");
   });
 
   test("gates Verify behind the provider consent: Not now cancels, Enter accepts and continues", async () => {
@@ -385,7 +410,7 @@ describe("ProvidersScreen V2 products and readiness", () => {
       .mockResolvedValue(
         makeConfigurationListResponse(
           makeConfigurationInitResponse([
-            configurationStatus(LOCAL_OPENAI_CONFIGURATION, "model-missing"),
+            configurationStatus(OPENROUTER_CONFIGURATION, "model-missing"),
           ]),
         ),
       );
@@ -397,8 +422,8 @@ describe("ProvidersScreen V2 products and readiness", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Local OpenAI") ?? false);
-    // Walk the highlight down to the local record; the details pane follows it.
+    await flushUntil(() => lastFrame()?.includes("OpenRouter") ?? false);
+    // Walk the highlight down to the stored record; the details pane follows it.
     await flushUntil(() => {
       if (lastFrame()?.includes("[Enter] Select model")) return true;
       stdin.write(ARROW_DOWN);
@@ -436,17 +461,6 @@ describe("ProvidersScreen V2 products and readiness", () => {
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
     expect(lastFrame()).toContain(PRODUCT_REGISTRY.zai.presentation.name);
-  });
-
-  test("shows CLI unsupported evidence in the provider list", async () => {
-    const { lastFrame } = render(
-      <Wrapper>
-        <ProvidersScreen />
-      </Wrapper>,
-    );
-
-    await flushUntil(() => lastFrame()?.includes("CLI unsupported") ?? false);
-    expect(lastFrame()).toContain("CLI unsupported");
   });
 
   // Retiring a product turns its stored record into bytes this build cannot
@@ -491,11 +505,16 @@ describe("ProvidersScreen V2 products and readiness", () => {
     await flushUntil(() => lastFrame()?.includes("Delete configuration?") ?? false);
     expect(lastFrame()).toContain(`Removes ${UNRECOGNIZED_CONFIGURATION_COPY.label}`);
     expect(api.deleteConfiguration).not.toHaveBeenCalled();
+    // A successful delete invalidates the config caches; the refetched list no
+    // longer carries the record, so its row leaves the frame.
+    vi.mocked(api.listConfigurations).mockResolvedValue(makeAllConfigurationsListResponse());
     stdin.write(ARROW_LEFT);
     await flush();
     stdin.write(ENTER);
     await flushUntil(() => vi.mocked(api.deleteConfiguration).mock.calls.length === 1);
     expect(api.deleteConfiguration).toHaveBeenCalledWith("cfg-retired", undefined);
+    await flushUntil(() => !(lastFrame()?.includes(UNRECOGNIZED_CONFIGURATION_COPY.label) ?? true));
+    expect(lastFrame()).not.toContain("cfg-retired");
   });
 });
 
@@ -546,19 +565,20 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
-    stdin.write(ARROW_DOWN);
-    await flush();
-    stdin.write(ARROW_DOWN);
+    for (let step = 0; step < 3; step += 1) {
+      stdin.write(ARROW_DOWN);
+      await flush();
+    }
     await flushUntil(
-      () => lastFrame()?.includes(PRODUCT_REGISTRY.openrouter.presentation.name) ?? false,
+      () => lastFrame()?.includes(PRODUCT_REGISTRY.deepseek.presentation.name) ?? false,
     );
-    expect(lastFrame()).toContain("[ Configure ]");
+    await flushUntil(() => lastFrame()?.includes("[ Configure ]") ?? false);
     stdin.write(TAB);
     await flush();
     stdin.write(ARROW_RIGHT);
     await flush();
     stdin.write(ENTER);
-    await flushUntil(() => lastFrame()?.includes("More actions — OpenRouter") ?? false);
+    await flushUntil(() => lastFrame()?.includes("More actions — DeepSeek") ?? false);
 
     const frame = lastFrame() ?? "";
     for (const label of [
@@ -891,9 +911,10 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
-    stdin.write(ARROW_DOWN);
-    await flush();
-    stdin.write(ARROW_DOWN);
+    for (let step = 0; step < 3; step += 1) {
+      stdin.write(ARROW_DOWN);
+      await flush();
+    }
     await flushUntil(() => lastFrame()?.includes("[ Configure ]") ?? false);
     await flushUntil(
       () => lastFrame()?.includes("FOOTER [Esc] Back [Enter] Configure [e] Edit |") ?? false,

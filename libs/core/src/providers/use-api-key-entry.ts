@@ -15,14 +15,8 @@ export interface UseApiKeyEntryResult {
   isSubmitting: boolean;
   /** Last failed-submit message, cleared on input/method change and reset. */
   error: string | null;
-  /**
-   * Runs onSubmit; clears the value only when the caller commits the save.
-   * Local HTTP/CLI setup must use the same path via `submitCredentialless` so
-   * rejections and duplicate submits stay on this error channel.
-   */
+  /** Runs onSubmit; clears the value only when the caller commits the save. */
   submit: (submitMethod?: InputMethod) => Promise<boolean>;
-  /** Credential-free save path for local transports; aliases `submit("env")`. */
-  submitCredentialless: () => Promise<boolean>;
   reset: () => void;
 }
 
@@ -71,8 +65,6 @@ export function useApiKeyEntry({ onSubmit }: UseApiKeyEntryOptions): UseApiKeyEn
     }
   };
 
-  const submitCredentialless = () => submit("env");
-
   const reset = () => {
     setMethodState("paste");
     setValueState("");
@@ -88,7 +80,6 @@ export function useApiKeyEntry({ onSubmit }: UseApiKeyEntryOptions): UseApiKeyEn
     isSubmitting,
     error,
     submit,
-    submitCredentialless,
     reset,
   };
 }

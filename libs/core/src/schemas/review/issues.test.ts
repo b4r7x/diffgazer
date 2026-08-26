@@ -128,10 +128,19 @@ describe("LensReviewResultSchema", () => {
     expect(ReviewIssueSchema.safeParse(parsed.issues[0]).success).toBe(false);
   });
 
-  it("rejects the removed summary field in provider and final results", () => {
-    expect(LensReviewResultSchema.safeParse({ summary: "Paid prose", issues: [] }).success).toBe(
-      false,
-    );
+  it("accepts and strips unknown top-level keys instead of voiding the lens response", () => {
+    const parsed = LensReviewResultSchema.parse({
+      summary: "Paid prose",
+      overall: "fine",
+      issues: [createIssueInput()],
+    });
+
+    expect(parsed).not.toHaveProperty("summary");
+    expect(parsed).not.toHaveProperty("overall");
+    expect(parsed.issues).toHaveLength(1);
+  });
+
+  it("rejects the removed summary field in the final result contract", () => {
     expect(ReviewResultSchema.safeParse({ summary: "Persisted prose", issues: [] }).success).toBe(
       false,
     );

@@ -4,13 +4,16 @@ import type { ModelsDevCatalog, ModelsDevModel } from "./schema.js";
 const dropUndefined = <T extends object>(obj: T): T =>
   Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined)) as T;
 
-// Keep only the fields the transform layer reads. knowledge, the release/update
-// dates, and the cache_read/cache_write prices have no production consumers, so
-// they stay out of the bundled snapshot. `modalities` survives only where it
-// withholds the model (no text output): the transform still refuses the row,
+// Keep only the fields the transform layer reads. knowledge, last_updated, and
+// the cache_read/cache_write prices have no production consumers, so they stay
+// out of the bundled snapshot. release_date survives on rows the transform can
+// offer: the picker sorts newest first on it. `modalities` survives only where
+// it withholds the model (output that cannot carry a review object): the
+// transform still refuses the row,
 // and the id stays known offline, so a provider's live list cannot resurrect a
 // model the catalog deliberately withheld when models.dev is out of reach.
 function trimModel(model: ModelsDevModel): ModelsDevModel {
+  const offerable = producesTextOutput(model);
   return dropUndefined({
     id: model.id,
     name: model.name,
@@ -21,7 +24,8 @@ function trimModel(model: ModelsDevModel): ModelsDevModel {
     // An explicit upstream null is the same "unknown" as an absent field, so it
     // collapses to one spelling instead of shipping two in the snapshot.
     structured_output: model.structured_output ?? undefined,
-    modalities: producesTextOutput(model) ? undefined : { output: model.modalities?.output },
+    release_date: offerable ? model.release_date : undefined,
+    modalities: offerable ? undefined : { output: model.modalities?.output },
   });
 }
 

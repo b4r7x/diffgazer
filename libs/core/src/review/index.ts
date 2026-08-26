@@ -62,6 +62,7 @@ export {
 } from "./lifecycle.js";
 export {
   type AgentStatusBadgeVariant,
+  buildCompletionHeadline,
   buildDroppedFindingsNotice,
   buildLensFailureNotice,
   buildMissingLensIssuesNotice,
@@ -70,6 +71,7 @@ export {
   getLensCoverage,
   getPartialFailureWarning,
   hasCompletedLens,
+  hasFailedLenses,
   isAgentHeartbeatEvent,
   type LogStreamState,
   type PartialFailureWarning,
@@ -97,6 +99,7 @@ export {
   isCredentialReconnectReadiness,
   isCredentialSetupError,
   isProviderRecoveryError,
+  looksLikeSerializedDiagnostic,
   type ReviewStartErrorDescription,
   type ReviewStreamErrorGuidance,
   sanitizePresentationText,

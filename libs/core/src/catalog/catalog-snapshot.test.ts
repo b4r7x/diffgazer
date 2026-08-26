@@ -188,14 +188,15 @@ describe("CATALOG_SNAPSHOT", () => {
   it("keeps only the model fields consumed by observation transforms", () => {
     for (const provider of Object.values(CATALOG_SNAPSHOT)) {
       for (const [modelId, model] of Object.entries(provider.models)) {
-        // A withheld model keeps the output modality that withholds it, and only that.
+        // A withheld model keeps the output modality that withholds it, and only
+        // that; an offerable one keeps the release date the picker sorts on.
         if (producesTextOutput(model)) {
           expect(model, `${modelId} must drop modalities`).not.toHaveProperty("modalities");
         } else {
           expect(Object.keys(model.modalities ?? {}), `${modelId} modalities`).toEqual(["output"]);
+          expect(model, `${modelId} must drop release_date`).not.toHaveProperty("release_date");
         }
         expect(model, `${modelId} must drop knowledge`).not.toHaveProperty("knowledge");
-        expect(model, `${modelId} must drop release_date`).not.toHaveProperty("release_date");
         expect(model, `${modelId} must drop last_updated`).not.toHaveProperty("last_updated");
         if (model.cost) {
           expect(model.cost, `${modelId} cost must drop cache_read`).not.toHaveProperty(
@@ -207,6 +208,13 @@ describe("CATALOG_SNAPSHOT", () => {
         }
       }
     }
+  });
+
+  // The picker's newest-first order reads the bundled release dates, so a trim
+  // regression that drops them all would silently flatten the sort.
+  it("bundles release dates for the models the picker sorts", () => {
+    const google = CATALOG_SNAPSHOT.google;
+    expect(google?.models["gemini-2.5-flash"]?.release_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   // The offered set is the model-policy-admitted set. Measuring it by anything
@@ -237,9 +245,10 @@ describe("CATALOG_SNAPSHOT", () => {
     }
   });
 
-  // Owner evidence: OpenRouter's zero-priced `:free` entries are pinned catalog
-  // identities and must reach the picker, while its `openrouter/*` routers name
-  // no downstream model and must not. Both halves are asserted on the real
+  // Owner evidence: OpenRouter's zero-priced pinned entries — including routes
+  // whose catalog row declares `structured_output: false`, which the gateway
+  // routes anyway — must reach the picker, while its `openrouter/*` routers
+  // name no downstream model and must not. Both halves are asserted on the real
   // snapshot so the free half of the badge is backed by selectable models.
   it("offers OpenRouter's pinned free variants while refusing its routers", () => {
     const openrouter = snapshotObservations().find(({ productId }) => productId === "openrouter");
@@ -249,15 +258,25 @@ describe("CATALOG_SNAPSHOT", () => {
     expect(
       offered.filter(({ billing }) => billing === "free").map(({ modelId }) => String(modelId)),
     ).toEqual([
+      "cohere/north-mini-code:free",
       "dots-studio/dots-3-note-preview:free",
       "google/gemma-4-26b-a4b-it:free",
+      "google/gemma-4-31b-it:free",
       "liquid/lfm-2.5-2.6b:free",
+      "minimax/minimax-m2.7:free",
+      "minimax/minimax-m3:free",
+      "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
-      "nvidia/nemotron-nano-9b-v2:free",
-      "openai/gpt-oss-20b:free",
+      "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "nvidia/nemotron-3.5-content-safety:free",
+      "nvidia/nemotron-3.5-lightning:free",
+      "poolside/laguna-s-2.1:free",
+      "poolside/laguna-xs-2.1:free",
+      "stealth/ox-alpha",
+      "thinkingmachines/inkling-small:free",
+      "thinkingmachines/inkling:free",
       "z-ai/glm-5.2:free",
     ]);
-    expect(offeredIds).toContain("qwen/qwen-plus-2025-07-28:thinking");
     expect(offeredIds).not.toContain("openrouter/auto");
     expect(offeredIds).not.toContain("openrouter/free");
     expect(PROVIDER_DERIVED.openrouter.billing).toBe("mixed");
@@ -278,11 +297,7 @@ describe("CATALOG_SNAPSHOT", () => {
     expect(offeredIds.get("zai")).toEqual(
       expect.arrayContaining(["glm-4.5-flash", "glm-4.7-flash", "glm-4.7", "glm-5-turbo"]),
     );
-    expect(offeredIds.get("groq")).toContain("allam-2-7b");
-    expect(offeredIds.get("deepseek")).toEqual(["deepseek-v4-flash", "deepseek-v4-pro"]);
-    for (const productId of ["zai", "groq"] as const) {
-      expect(PROVIDER_DERIVED[productId].billing, productId).toBe("mixed");
-    }
+    expect(PROVIDER_DERIVED.zai.billing).toBe("mixed");
   });
 
   it("derives every product's billing range from the models it can offer", () => {

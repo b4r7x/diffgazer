@@ -1,20 +1,11 @@
 import { type RefinementCtx, z } from "zod";
-import { PRODUCT_REGISTRY } from "../../providers/product-registry.js";
 import { sha256CanonicalJsonSync } from "../canonical-json.js";
 import {
   ConfigurationIdSchema,
   ConfigurationRevisionSchema,
   ExactModelIdSchema,
 } from "../config/provider-config.js";
-import {
-  HostedApiEndpointSchema,
-  LocalCliInstallationIdSchema,
-  LocalHttpAuthenticationModeSchema,
-  LoopbackHttpEndpointSchema,
-  RunnableProductIdSchema,
-  type TransportFamily,
-  TransportFamilySchema,
-} from "../config/transports.js";
+import { HostedApiEndpointSchema, RunnableProductIdSchema } from "../config/transports.js";
 import {
   addExecutionIdentityIssues,
   addModelIdentityIssue,
@@ -44,15 +35,17 @@ import { ReviewResultSchema } from "./issues.js";
  */
 export const ExecutionReceiptFingerprintInputSchema = z
   .strictObject({
-    authentication: LocalHttpAuthenticationModeSchema.nullable(),
+    // `authentication` and `installationId` were the local transports' slots;
+    // the nulls stay in the input so persisted fingerprints hash the same tuple.
+    authentication: z.null(),
     configurationId: ConfigurationIdSchema,
     configurationRevision: ConfigurationRevisionSchema,
     credentialReferenceIdentity: Sha256HexSchema.nullable(),
-    installationId: LocalCliInstallationIdSchema.nullable(),
+    installationId: z.null(),
     productId: RunnableProductIdSchema,
-    transportFamily: TransportFamilySchema,
+    transportFamily: z.literal("hosted-api"),
     modelId: ExactModelIdSchema,
-    normalizedEndpoint: z.union([HostedApiEndpointSchema, LoopbackHttpEndpointSchema]).nullable(),
+    normalizedEndpoint: HostedApiEndpointSchema.nullable(),
     region: ExecutionSafeIdentitySchema.nullable(),
     workspaceAccountReference: Sha256HexSchema.nullable(),
     runtime: RuntimeIdentitySchema.nullable(),
@@ -71,6 +64,14 @@ export function hashExecutionReceiptFingerprintSync(
   return sha256CanonicalJsonSync(ExecutionReceiptFingerprintInputSchema.parse(input));
 }
 
+/**
+ * Shared upper bound for any review-clock headroom. The elapsed review clock
+ * is sized `perDispatchWallTimeMs × callCount × headroom` (sequential worst
+ * case, so provider queueing can never expire it early); that headroom must be
+ * ≤ this constant or honest review spans re-trigger the wall-ceiling rejection.
+ */
+export const REVIEW_WALL_CEILING_SLACK = 1.2;
+
 const FAILED_TERMINAL_OUTCOMES = [
   "cancelled",
   "timed-out",
@@ -87,16 +88,13 @@ const ExecutionReceiptBaseShape = {
   executionFingerprint: Sha256HexSchema,
   configurationId: ConfigurationIdSchema,
   configurationRevision: ConfigurationRevisionSchema,
-  authentication: LocalHttpAuthenticationModeSchema.nullable().optional(),
+  authentication: z.null().optional(),
   credentialReferenceIdentity: Sha256HexSchema.nullable().optional(),
-  installationId: LocalCliInstallationIdSchema.nullable().optional(),
+  installationId: z.null().optional(),
   productId: RunnableProductIdSchema,
-  transportFamily: TransportFamilySchema,
+  transportFamily: z.literal("hosted-api"),
   modelId: ExactModelIdSchema,
-  normalizedEndpoint: z
-    .union([HostedApiEndpointSchema, LoopbackHttpEndpointSchema])
-    .nullable()
-    .optional(),
+  normalizedEndpoint: HostedApiEndpointSchema.nullable().optional(),
   region: ExecutionSafeIdentitySchema.nullable().optional(),
   workspaceAccountReference: Sha256HexSchema.nullable().optional(),
   runtime: RuntimeIdentitySchema.nullable().optional(),
@@ -106,24 +104,32 @@ const ExecutionReceiptBaseShape = {
   attemptCount: ExecutionNonnegativeIntegerSchema,
   startedAt: z.iso.datetime(),
   finishedAt: z.iso.datetime(),
+  // Review-scope annotation, deliberately outside the fingerprint input: a
+  // review receipt aggregates N dispatches under one admitted plan, so its
+  // ceilings scale ×N while every pre-scope receipt keeps its fingerprint.
+  scope: z.enum(["dispatch", "review"]).optional(),
+  dispatchCount: ExecutionPositiveIntegerSchema.optional(),
 } as const;
+
+type ReceiptScope = {
+  dispatchCount?: number;
+  scope?: "dispatch" | "review";
+};
 
 type ReceiptUsage = {
   limits: ExecutionLimits;
   outcome: TerminalOutcome;
   productId: z.infer<typeof RunnableProductIdSchema>;
-} & ExecutionReceiptUsageState;
+} & ReceiptScope &
+  ExecutionReceiptUsageState;
 
 type ReceiptIdentity = {
-  authentication: z.infer<typeof LocalHttpAuthenticationModeSchema> | null;
   credentialReferenceIdentity: string | null;
-  installationId: z.infer<typeof LocalCliInstallationIdSchema> | null;
   modelId: z.infer<typeof ExactModelIdSchema>;
   normalizedEndpoint: string | null;
   productId: z.infer<typeof RunnableProductIdSchema>;
   region: string | null;
   runtime: RuntimeIdentity | null;
-  transportFamily: TransportFamily;
   workspaceAccountReference: string | null;
 };
 
@@ -135,6 +141,8 @@ function validateReceiptIdentity(
   addExecutionIdentityIssues(receipt, context);
 }
 
+// The ×N ceilings below are tamper-evidence sanity bounds on persisted
+// receipts; the runtime ledger is the budget authority.
 function validateReceiptUsage(
   receipt: ReceiptUsage,
   context: Pick<RefinementCtx<unknown>, "addIssue">,
@@ -142,7 +150,7 @@ function validateReceiptUsage(
   if (receipt.usageAvailability === "reported" && receipt.outcome !== "budget-exhausted") {
     if (
       receipt.usage.inputTokens !== undefined &&
-      receipt.usage.inputTokens > receipt.limits.maxInputTokens
+      receipt.usage.inputTokens > receipt.limits.maxInputTokens * (receipt.dispatchCount ?? 1)
     ) {
       context.addIssue({
         code: "custom",
@@ -158,17 +166,6 @@ function validateReceiptUsage(
       path: ["usageAvailability"],
     });
   }
-  if (
-    receipt.outcome === "completed" &&
-    PRODUCT_REGISTRY[receipt.productId].admission.usage === "required-terminal" &&
-    receipt.usageAvailability !== "reported"
-  ) {
-    context.addIssue({
-      code: "custom",
-      message: "This product requires a reported terminal usage record",
-      path: ["usageAvailability"],
-    });
-  }
 }
 
 function validateReceiptTiming(
@@ -178,9 +175,10 @@ function validateReceiptTiming(
     limits: ExecutionLimits;
     outcome: TerminalOutcome;
     startedAt: string;
-  },
+  } & ReceiptScope,
   context: Pick<RefinementCtx<unknown>, "addIssue">,
 ) {
+  const dispatchCount = receipt.dispatchCount ?? 1;
   const startedAtMs = Date.parse(receipt.startedAt);
   const finishedAtMs = Date.parse(receipt.finishedAt);
   if (
@@ -194,7 +192,7 @@ function validateReceiptTiming(
       path: ["finishedAt"],
     });
   }
-  if (receipt.attemptCount > receipt.limits.maxRetries + 1) {
+  if (receipt.attemptCount > (receipt.limits.maxRetries + 1) * dispatchCount) {
     context.addIssue({
       code: "custom",
       message: "Attempt count exceeds the retry limit",
@@ -208,11 +206,15 @@ function validateReceiptTiming(
       path: ["attemptCount"],
     });
   }
+  const wallCeilingMs =
+    receipt.scope === "review"
+      ? receipt.limits.wallTimeMs * dispatchCount * REVIEW_WALL_CEILING_SLACK
+      : receipt.limits.wallTimeMs * dispatchCount;
   if (
     receipt.outcome === "completed" &&
     Number.isFinite(startedAtMs) &&
     Number.isFinite(finishedAtMs) &&
-    finishedAtMs - startedAtMs > receipt.limits.wallTimeMs
+    finishedAtMs - startedAtMs > wallCeilingMs
   ) {
     context.addIssue({
       code: "custom",
@@ -245,6 +247,26 @@ function getReceiptFingerprintInput(receipt: ReceiptBase): ExecutionReceiptFinge
   };
 }
 
+function validateReceiptScope(
+  receipt: ReceiptScope,
+  context: Pick<RefinementCtx<unknown>, "addIssue">,
+) {
+  if (receipt.scope === "review" && receipt.dispatchCount === undefined) {
+    context.addIssue({
+      code: "custom",
+      message: "Review-scope receipt requires a dispatch count",
+      path: ["dispatchCount"],
+    });
+  }
+  if (receipt.dispatchCount !== undefined && receipt.scope !== "review") {
+    context.addIssue({
+      code: "custom",
+      message: "Dispatch count is only valid on a review-scope receipt",
+      path: ["dispatchCount"],
+    });
+  }
+}
+
 function validateReceipt(
   receipt: ReceiptUsageBase & { outcome: TerminalOutcome },
   context: Pick<RefinementCtx<unknown>, "addIssue">,
@@ -262,19 +284,17 @@ function validateReceipt(
       });
     }
   }
+  validateReceiptScope(receipt, context);
   validateReceiptUsage(receipt, context);
   validateReceiptTiming(receipt, context);
   validateReceiptIdentity(
     {
-      authentication: receipt.authentication ?? null,
       credentialReferenceIdentity: receipt.credentialReferenceIdentity ?? null,
-      installationId: receipt.installationId ?? null,
       modelId: receipt.modelId,
       normalizedEndpoint: receipt.normalizedEndpoint ?? null,
       productId: receipt.productId,
       region: receipt.region ?? null,
       runtime: receipt.runtime ?? null,
-      transportFamily: receipt.transportFamily,
       workspaceAccountReference: receipt.workspaceAccountReference ?? null,
     },
     context,

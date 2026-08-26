@@ -8,9 +8,9 @@ import {
   type CreateReviewOutcome,
   ReviewErrorCode,
   type ReviewMode,
-  type TerminalOutcome,
 } from "@diffgazer/core/schemas/review";
 import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
+import { MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE } from "../../shared/lib/ai/diagnostics.js";
 import type { AIClient } from "../../shared/lib/ai/types.js";
 import { createAdmissionEvidence } from "../../shared/lib/config/admission-evidence.js";
 import { getStore } from "../../shared/lib/config/store.js";
@@ -79,7 +79,7 @@ async function handleReviewFailure(
   }
 
   if (isReviewAbort(error)) {
-    const normalized = normalizeReviewStreamError(error);
+    const normalized = normalizeReviewStreamError(error, undefined, { reviewId });
     if (error.step) {
       await emit(stepError(error.step, normalized.message));
     }
@@ -88,7 +88,7 @@ async function handleReviewFailure(
     return;
   }
 
-  const normalized = normalizeReviewStreamError(error);
+  const normalized = normalizeReviewStreamError(error, undefined, { reviewId });
   await emit(reviewStreamError(normalized.message, normalized.code));
   markComplete(reviewId);
 }
@@ -99,7 +99,7 @@ function handleDetachedReviewSessionError(reviewId: string, error: unknown): voi
     return;
   }
 
-  const normalized = normalizeReviewStreamError(error);
+  const normalized = normalizeReviewStreamError(error, undefined, { reviewId });
   addEvent(reviewId, reviewStreamError(normalized.message, normalized.code));
   markComplete(reviewId);
 }
@@ -373,19 +373,36 @@ export async function createReviewSession(
 }
 
 function conformanceEvidenceStatus(
-  receiptOutcome: TerminalOutcome | undefined,
+  outcome: ReviewOutcome,
   evidenceState: "proven" | "unproven",
 ): "failed" | "passed" | null {
-  if (receiptOutcome === "schema-failed") return "failed";
-  if (receiptOutcome === "completed" && evidenceState === "unproven") return "passed";
+  const receipt = outcome.execution?.receipt;
+  if (receipt === undefined) return null;
+  if (receipt.outcome === "completed" && evidenceState === "unproven") return "passed";
+  // `schema-failed` on a review receipt already means every lens schema-failed
+  // (the orchestration's unanimous verdict); on top of that the memo demands
+  // the decisive dispatch prove incapacity — malformed content the corrective
+  // re-ask replayed and the model still could not fix. Only the adapter knows
+  // whether a retry carried a correction, so it names that class with its own
+  // diagnostic code; an attempt count also rises on blind retries. Truncation
+  // and reasoning burn are geometry failures this setup can survive on the next
+  // run, so they never arm the memo.
+  if (
+    receipt.outcome === "schema-failed" &&
+    outcome.terminalDiagnostic?.code === MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE
+  ) {
+    return "failed";
+  }
   return null;
 }
 
 /**
- * The review is the conformance check. A schema failure caches the fast-fail
- * for this exact tuple; a completed review records the proof an unproven
- * admission went without. Recording is best effort: a tuple edited mid-review
- * loses the cache entry, never the review the user is watching.
+ * The review is the conformance check. Proven incapacity — every lens
+ * schema-failed on malformed content the corrective retry could not fix —
+ * caches the fast-fail for this exact tuple; a completed review records the
+ * proof an unproven admission went without. Recording is best effort: a tuple
+ * edited mid-review loses the cache entry, never the review the user is
+ * watching.
  */
 async function recordConformanceEvidence(
   executionContext: ReviewExecutionContext,
@@ -393,10 +410,7 @@ async function recordConformanceEvidence(
   reviewId: string,
 ): Promise<void> {
   const { authorization } = executionContext;
-  const status = conformanceEvidenceStatus(
-    outcome.execution?.receipt.outcome,
-    authorization.evidenceState,
-  );
+  const status = conformanceEvidenceStatus(outcome, authorization.evidenceState);
   if (!status) return;
 
   const { plan } = authorization;

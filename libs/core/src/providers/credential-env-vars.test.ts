@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HOSTED_API_PRODUCT_IDS } from "../schemas/config/transports.js";
-import {
-  CREDENTIAL_ENV_VARS,
-  resolveCredentialEnvironmentVariable,
-} from "./credential-env-vars.js";
+import { CREDENTIAL_ENV_VARS } from "./credential-env-vars.js";
 
 const UPPER_SNAKE = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/;
 
@@ -14,13 +11,9 @@ describe("credential environment variables", () => {
     }
   });
 
-  it("resolves the canonical name for hosted products and fails closed otherwise", () => {
-    expect(resolveCredentialEnvironmentVariable("gemini")).toBe("GOOGLE_API_KEY");
-    expect(resolveCredentialEnvironmentVariable("deepseek")).toBe("DEEPSEEK_API_KEY");
-    expect(resolveCredentialEnvironmentVariable("ollama-cloud")).toBe("OLLAMA_API_KEY");
-    expect(resolveCredentialEnvironmentVariable("opencode-zen")).toBe("OPENCODE_API_KEY");
-    expect(() => resolveCredentialEnvironmentVariable("ollama")).toThrow(
-      /No credential environment variable mapped for ollama/,
-    );
+  it("carries the canonical name for hosted products", () => {
+    expect(CREDENTIAL_ENV_VARS.gemini).toBe("GOOGLE_API_KEY");
+    expect(CREDENTIAL_ENV_VARS["ollama-cloud"]).toBe("OLLAMA_API_KEY");
+    expect(CREDENTIAL_ENV_VARS["opencode-zen"]).toBe("OPENCODE_API_KEY");
   });
 });

@@ -5,7 +5,7 @@ function noticeFingerprint(notices: ClientConfigurationSummary["notices"]) {
 }
 
 function configurationFingerprintInput(configuration: ClientConfigurationSummary) {
-  const base = {
+  return {
     configurationId: configuration.configurationId,
     revision: configuration.revision,
     status: configuration.status,
@@ -14,27 +14,7 @@ function configurationFingerprintInput(configuration: ClientConfigurationSummary
     selectedModelId: configuration.selectedModelId,
     notices: noticeFingerprint(configuration.notices),
     availableActions: configuration.availableActions,
-  };
-
-  if (configuration.transportFamily === "hosted-api") {
-    return {
-      ...base,
-      endpoint: configuration.endpoint,
-    };
-  }
-
-  if (configuration.transportFamily === "local-http") {
-    return {
-      ...base,
-      endpoint: configuration.endpoint,
-      authentication: configuration.authentication,
-      presetId: configuration.presetId ?? null,
-    };
-  }
-
-  return {
-    ...base,
-    installationId: configuration.installationId,
+    endpoint: configuration.endpoint,
   };
 }
 

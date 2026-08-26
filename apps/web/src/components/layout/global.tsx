@@ -103,7 +103,6 @@ function toShellProviderState(config: {
   return {
     status: "configured",
     readiness: selectedReadiness,
-    transportFamily: selectedConfiguration.transportFamily,
     productId: selectedConfiguration.productId,
     modelId: selectedConfiguration.selectedModelId,
   };

@@ -1,10 +1,4 @@
-import {
-  type HostedApiProductId,
-  type LocalCliProductId,
-  type LocalHttpProductId,
-  RUNNABLE_PRODUCT_IDS,
-  type RunnableProductId,
-} from "../schemas/config/product-ids.js";
+import { RUNNABLE_PRODUCT_IDS, type RunnableProductId } from "../schemas/config/product-ids.js";
 import type { ReadinessAcknowledgement } from "../schemas/config/readiness.js";
 import type {
   AdmissionCheck,
@@ -41,40 +35,23 @@ export function acceptNotice(
 
 export interface ProductAdmissionPolicy {
   readonly requiredChecks: readonly AdmissionCheck[];
-  readonly structuredOutput:
-    | "strict-json-schema"
-    | "json-object-local-validation"
-    | "pinned-cli-terminal-schema";
-  readonly usage: "required-terminal" | "optional";
+  readonly structuredOutput: "strict-json-schema" | "json-object-local-validation";
 }
-
-type ProductTransportFamily<ProductId extends RunnableProductId> =
-  ProductId extends HostedApiProductId
-    ? "hosted-api"
-    : ProductId extends LocalHttpProductId
-      ? "local-http"
-      : ProductId extends LocalCliProductId
-        ? "local-cli"
-        : never;
 
 export interface RunnableProductDescriptor<ProductId extends RunnableProductId> {
   readonly id: ProductId;
   readonly kind: "runnable";
   readonly selectable: true;
-  readonly transportFamily: ProductTransportFamily<ProductId>;
+  readonly transportFamily: "hosted-api";
   readonly presentation: {
     readonly name: string;
     readonly description: string;
     readonly setupLabel: string;
   };
   readonly configuration: {
-    readonly credentialKind:
-      | "hosted-api-key-reference"
-      | "none-or-optional-local-bearer"
-      | "vendor-managed-local-auth";
+    readonly credentialKind: "hosted-api-key-reference";
     readonly fields: readonly ConfigurationField[];
     readonly endpoints: readonly EndpointProfile[];
-    readonly customLoopbackEndpoint?: true;
   };
   readonly modelPolicy: ModelPolicy;
   readonly admission: ProductAdmissionPolicy;
@@ -95,27 +72,6 @@ const HOSTED_CHECKS = [
   "model-discovery",
   "structured-output",
   "usage",
-  "acknowledgement",
-] as const satisfies readonly AdmissionCheck[];
-
-const LOCAL_HTTP_CHECKS = [
-  "endpoint",
-  "loopback",
-  "model-discovery",
-  "server-version",
-  "structured-output",
-  "cancellation",
-  "acknowledgement",
-] as const satisfies readonly AdmissionCheck[];
-
-const LOCAL_CLI_CHECKS = [
-  "installation",
-  "runtime-version",
-  "account-plan",
-  "model-discovery",
-  "negative-capabilities",
-  "structured-output",
-  "cancellation",
   "acknowledgement",
 ] as const satisfies readonly AdmissionCheck[];
 
@@ -151,7 +107,6 @@ export const PRODUCT_REGISTRY = {
     admission: {
       requiredChecks: HOSTED_CHECKS,
       structuredOutput: "strict-json-schema",
-      usage: "optional",
     },
     billing: {
       modes: ["free-tier", "pay-as-you-go"],
@@ -190,7 +145,6 @@ export const PRODUCT_REGISTRY = {
     admission: {
       requiredChecks: HOSTED_CHECKS,
       structuredOutput: "json-object-local-validation",
-      usage: "optional",
     },
     billing: {
       modes: ["pay-as-you-go"],
@@ -232,7 +186,6 @@ export const PRODUCT_REGISTRY = {
     admission: {
       requiredChecks: [...HOSTED_CHECKS, "downstream-route"],
       structuredOutput: "strict-json-schema",
-      usage: "optional",
     },
     billing: {
       modes: ["route-specific"],
@@ -248,84 +201,6 @@ export const PRODUCT_REGISTRY = {
       privacy: [
         "Provider, region, license, and retention facts come from the pinned route, not the aggregator brand.",
       ],
-    },
-  },
-  groq: {
-    id: "groq",
-    kind: "runnable",
-    selectable: true,
-    transportFamily: "hosted-api",
-    presentation: {
-      name: "Groq",
-      description: "Groq's hosted API with exact discovered model admission.",
-      setupLabel: "Configure Groq",
-    },
-    configuration: {
-      credentialKind: "hosted-api-key-reference",
-      fields: ["credential"],
-      endpoints: PRODUCT_ENDPOINT_TUPLES.groq,
-    },
-    modelPolicy: {
-      kind: "discovered-exact",
-      suggestedModelId: "openai/gpt-oss-120b",
-      aliases: "forbidden",
-    },
-    admission: {
-      requiredChecks: HOSTED_CHECKS,
-      structuredOutput: "strict-json-schema",
-      usage: "optional",
-    },
-    billing: {
-      modes: ["free-tier", "pay-as-you-go"],
-      posture: "Quota, availability, and pricing are checked observations, not guarantees.",
-    },
-    notice: {
-      id: "groq-hosted-api",
-      noticeVersion: 1,
-      acknowledgement: "required",
-      acknowledgeBefore: "first-context-send",
-      renewAcknowledgementOn: "material-notice-change",
-      billing: ["Current account and model limits are verified during setup."],
-      privacy: ["Data handling follows the selected Groq API account and model terms."],
-    },
-  },
-  cerebras: {
-    id: "cerebras",
-    kind: "runnable",
-    selectable: true,
-    transportFamily: "hosted-api",
-    presentation: {
-      name: "Cerebras",
-      description: "Cerebras hosted inference with exact discovered model admission.",
-      setupLabel: "Configure Cerebras",
-    },
-    configuration: {
-      credentialKind: "hosted-api-key-reference",
-      fields: ["credential"],
-      endpoints: PRODUCT_ENDPOINT_TUPLES.cerebras,
-    },
-    modelPolicy: {
-      kind: "discovered-exact",
-      suggestedModelId: "gpt-oss-120b",
-      aliases: "forbidden",
-    },
-    admission: {
-      requiredChecks: HOSTED_CHECKS,
-      structuredOutput: "strict-json-schema",
-      usage: "optional",
-    },
-    billing: {
-      modes: ["pay-as-you-go"],
-      posture: "Quota, availability, and pricing are checked observations, not guarantees.",
-    },
-    notice: {
-      id: "cerebras-hosted-api",
-      noticeVersion: 1,
-      acknowledgement: "required",
-      acknowledgeBefore: "first-context-send",
-      renewAcknowledgementOn: "material-notice-change",
-      billing: ["Current account and model limits are verified during setup."],
-      privacy: ["Data handling follows the selected Cerebras API account and model terms."],
     },
   },
   deepseek: {
@@ -344,16 +219,13 @@ export const PRODUCT_REGISTRY = {
       endpoints: PRODUCT_ENDPOINT_TUPLES.deepseek,
     },
     modelPolicy: {
-      kind: "discovered-allowlist",
-      modelIds: ["deepseek-v4-flash", "deepseek-v4-pro"],
+      kind: "discovered-exact",
       suggestedModelId: "deepseek-v4-flash",
-      higherCostModelIds: ["deepseek-v4-pro"],
       aliases: "forbidden",
     },
     admission: {
       requiredChecks: HOSTED_CHECKS,
       structuredOutput: "json-object-local-validation",
-      usage: "required-terminal",
     },
     billing: {
       modes: ["pay-as-you-go"],
@@ -370,6 +242,141 @@ export const PRODUCT_REGISTRY = {
         "Inputs and outputs may be processed and stored in the PRC.",
         "Retention duration is uncertain and the service-improvement setting provides an opt-out.",
         "DeepSeek is not presented as zero retention.",
+      ],
+    },
+  },
+  qwen: {
+    id: "qwen",
+    kind: "runnable",
+    selectable: true,
+    transportFamily: "hosted-api",
+    presentation: {
+      name: "Qwen International",
+      description: "Alibaba Model Studio international pay-as-you-go API.",
+      setupLabel: "Configure Qwen International PAYG",
+    },
+    configuration: {
+      credentialKind: "hosted-api-key-reference",
+      fields: ["credential"],
+      endpoints: PRODUCT_ENDPOINT_TUPLES.qwen,
+    },
+    modelPolicy: {
+      kind: "discovered-exact",
+      suggestedModelId: "qwen3-coder-flash",
+      aliases: "forbidden",
+    },
+    admission: {
+      requiredChecks: HOSTED_CHECKS,
+      structuredOutput: "json-object-local-validation",
+    },
+    billing: {
+      modes: ["pay-as-you-go"],
+      posture: "International PAYG only; no international free quota is promised.",
+    },
+    // noticeVersion 2: the pre-removal v1 notice bound region and workspace
+    // claims that the simplified configuration no longer makes, so a stale v1
+    // acknowledgement must not silently cover this reworded notice.
+    notice: {
+      id: "qwen-international-payg",
+      noticeVersion: 2,
+      acknowledgement: "required",
+      acknowledgeBefore: "first-context-send",
+      renewAcknowledgementOn: "material-notice-change",
+      billing: [
+        "The international endpoint and the owning account determine billing and availability.",
+        "No international free quota is promised.",
+        "Subscription plan credentials are excluded.",
+      ],
+      privacy: [
+        "Requests go only to the international endpoint; mainland accounts and keys are separate.",
+        "Provider material permits retention where required by law and gives no fixed retention period.",
+      ],
+    },
+  },
+  moonshot: {
+    id: "moonshot",
+    kind: "runnable",
+    selectable: true,
+    transportFamily: "hosted-api",
+    presentation: {
+      name: "Moonshot Open Platform",
+      description: "Moonshot/Kimi Open Platform pay-as-you-go API with isolated regions.",
+      setupLabel: "Configure Moonshot PAYG",
+    },
+    configuration: {
+      credentialKind: "hosted-api-key-reference",
+      fields: ["credential"],
+      endpoints: PRODUCT_ENDPOINT_TUPLES.moonshot,
+    },
+    modelPolicy: {
+      kind: "discovered-exact",
+      suggestedModelId: "kimi-k2.6",
+      aliases: "forbidden",
+    },
+    admission: {
+      requiredChecks: HOSTED_CHECKS,
+      structuredOutput: "strict-json-schema",
+    },
+    billing: {
+      modes: ["pay-as-you-go"],
+      posture: "Balance, price, and limits belong to the selected regional PAYG account.",
+    },
+    notice: {
+      id: "moonshot-open-platform-payg",
+      noticeVersion: 1,
+      acknowledgement: "required",
+      acknowledgeBefore: "first-context-send",
+      renewAcknowledgementOn: "material-notice-change",
+      billing: ["Mainland and international accounts, balances, and endpoints are isolated."],
+      privacy: [
+        "API no-training claims apply only to the selected Open Platform PAYG route.",
+        "Consumer and Kimi Code products have different terms and are not substituted.",
+      ],
+    },
+  },
+  minimax: {
+    id: "minimax",
+    kind: "runnable",
+    selectable: true,
+    transportFamily: "hosted-api",
+    presentation: {
+      name: "MiniMax International",
+      description: "MiniMax open platform international pay-as-you-go API.",
+      setupLabel: "Configure MiniMax International PAYG",
+    },
+    configuration: {
+      credentialKind: "hosted-api-key-reference",
+      fields: ["credential"],
+      endpoints: PRODUCT_ENDPOINT_TUPLES.minimax,
+    },
+    modelPolicy: {
+      kind: "discovered-exact",
+      suggestedModelId: "MiniMax-M2.7",
+      aliases: "forbidden",
+    },
+    admission: {
+      requiredChecks: HOSTED_CHECKS,
+      structuredOutput: "json-object-local-validation",
+    },
+    billing: {
+      modes: ["pay-as-you-go"],
+      posture: "International PAYG only; no free quota is promised.",
+    },
+    notice: {
+      id: "minimax-international-payg",
+      noticeVersion: 1,
+      acknowledgement: "required",
+      acknowledgeBefore: "first-context-send",
+      renewAcknowledgementOn: "material-notice-change",
+      billing: [
+        "The international endpoint and the owning account determine billing and availability.",
+        "No free quota is promised.",
+        "Token Plan and subscription keys draw on separate account resources and are excluded.",
+      ],
+      privacy: [
+        "Requests go only to the international endpoint; mainland accounts and keys are separate.",
+        "Provider material permits retention as long as necessary or permitted by law and gives no fixed retention period.",
+        "MiniMax is not presented as zero retention.",
       ],
     },
   },
@@ -396,7 +403,6 @@ export const PRODUCT_REGISTRY = {
     admission: {
       requiredChecks: HOSTED_CHECKS,
       structuredOutput: "json-object-local-validation",
-      usage: "optional",
     },
     billing: {
       modes: ["free-tier", "subscription-credit"],
@@ -434,9 +440,10 @@ export const PRODUCT_REGISTRY = {
       fields: ["credential"],
       endpoints: PRODUCT_ENDPOINT_TUPLES["opencode-zen"],
     },
-    // Zen publishes no stable allowlist and rotates stealth models, so the live
-    // `/models` list is the only admissible identity source; no model is suggested
-    // because a pinned guess would outlive the route it names.
+    // Zen publishes no stable allowlist and rotates stealth models, so every id
+    // comes from discovery — the live `/models` list, or the models.dev catalog
+    // when that list cannot be fetched; no model is suggested because a pinned
+    // guess would outlive the route it names.
     modelPolicy: {
       kind: "discovered-exact",
       aliases: "forbidden",
@@ -444,189 +451,31 @@ export const PRODUCT_REGISTRY = {
     admission: {
       requiredChecks: HOSTED_CHECKS,
       structuredOutput: "json-object-local-validation",
-      usage: "optional",
     },
-    // One key and one endpoint serve two purchases, so both are named: a user on
-    // OpenCode Go must not read a credit-only posture and assume a second bill.
+    // One key serves two purchases on separate endpoints, so both are named: a
+    // user on OpenCode Go must not read a credit-only posture and assume a
+    // second bill.
     billing: {
       modes: ["pay-as-you-go", "subscription-credit"],
       posture:
-        "The same key and endpoint bill either way: Zen pay-as-you-go credits, or an OpenCode Go subscription.",
+        "One key serves two purchases on separate endpoints: Zen pay-as-you-go credits at /zen/v1, or the OpenCode Go subscription at /zen/go/v1.",
     },
+    // noticeVersion 2: the v1 notice claimed one endpoint served both
+    // purchases; Go now has its own endpoint, so a stale v1 acknowledgement
+    // must not silently cover the corrected billing wording.
     notice: {
       id: "opencode-zen-hosted-api",
-      noticeVersion: 1,
+      noticeVersion: 2,
       acknowledgement: "required",
       acknowledgeBefore: "first-context-send",
       renewAcknowledgementOn: "material-notice-change",
       billing: [
-        "Zen pay-as-you-go credits: each request is charged per token against the account's Zen credit balance.",
-        "OpenCode Go subscription: the same key and endpoint draw on the subscription's included usage instead of credits.",
+        "Zen pay-as-you-go credits: each request on the Zen endpoint is charged per token against the account's Zen credit balance.",
+        "OpenCode Go subscription: the same key on the Go endpoint draws on the subscription's included usage instead of credits.",
       ],
       privacy: [
         "Free and stealth Zen models may retain prompts and train on them.",
         "Paid routes are mostly zero-retention; OpenAI- and Anthropic-backed models retain data for 30 days.",
-      ],
-    },
-  },
-  ollama: {
-    id: "ollama",
-    kind: "runnable",
-    selectable: true,
-    transportFamily: "local-http",
-    presentation: {
-      name: "Ollama",
-      description: "An Ollama runtime reached through a verified loopback first hop.",
-      setupLabel: "Configure local Ollama",
-    },
-    configuration: {
-      credentialKind: "none-or-optional-local-bearer",
-      fields: ["endpoint", "local-authentication"],
-      endpoints: PRODUCT_ENDPOINT_TUPLES.ollama,
-      customLoopbackEndpoint: true,
-    },
-    modelPolicy: { kind: "discovered-exact", aliases: "forbidden" },
-    admission: {
-      requiredChecks: LOCAL_HTTP_CHECKS,
-      structuredOutput: "strict-json-schema",
-      usage: "optional",
-    },
-    billing: {
-      modes: ["local-resource"],
-      posture: "Operation uses local hardware and may still incur hardware or operating costs.",
-    },
-    notice: {
-      id: "ollama-loopback",
-      noticeVersion: 1,
-      acknowledgement: "required",
-      acknowledgeBefore: "first-context-send",
-      renewAcknowledgementOn: "material-notice-change",
-      billing: ["No zero-cost or adequate-hardware claim is inferred from local operation."],
-      privacy: [
-        "Diffgazer verifies only that the first network hop is loopback.",
-        "Any downstream routing, data residency, storage, or telemetry is the selected server operator's responsibility.",
-        "Ollama Cloud is not this transport; the separate Ollama Cloud product reaches ollama.com.",
-      ],
-    },
-  },
-  "local-openai": {
-    id: "local-openai",
-    kind: "runnable",
-    selectable: true,
-    transportFamily: "local-http",
-    presentation: {
-      name: "Local OpenAI-compatible",
-      description: "One provider reached through a verified loopback first hop.",
-      setupLabel: "Configure local OpenAI-compatible server",
-    },
-    configuration: {
-      credentialKind: "none-or-optional-local-bearer",
-      fields: ["endpoint", "local-authentication"],
-      endpoints: PRODUCT_ENDPOINT_TUPLES["local-openai"],
-      customLoopbackEndpoint: true,
-    },
-    modelPolicy: { kind: "discovered-exact", aliases: "forbidden" },
-    admission: {
-      requiredChecks: LOCAL_HTTP_CHECKS,
-      structuredOutput: "strict-json-schema",
-      usage: "optional",
-    },
-    billing: {
-      modes: ["local-resource"],
-      posture: "Operation uses local hardware and may still incur hardware or operating costs.",
-    },
-    notice: {
-      id: "local-openai-loopback",
-      noticeVersion: 1,
-      acknowledgement: "required",
-      acknowledgeBefore: "first-context-send",
-      renewAcknowledgementOn: "material-notice-change",
-      billing: ["No zero-cost or adequate-hardware claim is inferred from local operation."],
-      privacy: [
-        "Diffgazer verifies only that the first network hop is loopback.",
-        "Any downstream routing, data residency, storage, or telemetry is the selected server operator's responsibility.",
-      ],
-    },
-  },
-  "codex-cli": {
-    id: "codex-cli",
-    kind: "runnable",
-    selectable: true,
-    transportFamily: "local-cli",
-    presentation: {
-      name: "OpenAI Codex CLI",
-      description:
-        "A user-owned Codex CLI installation with vendor-managed local auth; support requires matching exact compatibility evidence.",
-      setupLabel: "Configure Codex CLI",
-    },
-    configuration: {
-      credentialKind: "vendor-managed-local-auth",
-      fields: ["installation"],
-      endpoints: PRODUCT_ENDPOINT_TUPLES["codex-cli"],
-    },
-    modelPolicy: { kind: "discovered-exact", aliases: "forbidden" },
-    admission: {
-      requiredChecks: LOCAL_CLI_CHECKS,
-      structuredOutput: "pinned-cli-terminal-schema",
-      usage: "optional",
-    },
-    billing: {
-      modes: ["subscription-credit", "pay-as-you-go"],
-      posture: "The active auth and plan class determine subscription-credit or API billing.",
-    },
-    notice: {
-      id: "codex-cli-account",
-      noticeVersion: 1,
-      acknowledgement: "required",
-      acknowledgeBefore: "first-context-send",
-      renewAcknowledgementOn: "material-notice-change",
-      billing: [
-        "The active account and plan class determine credits, rate limits, or API billing.",
-      ],
-      privacy: [
-        "Consumer and business/API data handling differ and must match the active account posture.",
-        "Diffgazer uses existing vendor-managed local auth and does not import or proxy credentials.",
-      ],
-    },
-  },
-  "copilot-cli": {
-    id: "copilot-cli",
-    kind: "runnable",
-    selectable: true,
-    transportFamily: "local-cli",
-    presentation: {
-      name: "GitHub Copilot CLI",
-      description:
-        "A user-owned Copilot CLI installation with vendor-managed local auth; support requires matching exact compatibility evidence.",
-      setupLabel: "Configure Copilot CLI",
-    },
-    configuration: {
-      credentialKind: "vendor-managed-local-auth",
-      fields: ["installation"],
-      endpoints: PRODUCT_ENDPOINT_TUPLES["copilot-cli"],
-    },
-    modelPolicy: { kind: "discovered-exact", aliases: "forbidden" },
-    admission: {
-      requiredChecks: LOCAL_CLI_CHECKS,
-      structuredOutput: "pinned-cli-terminal-schema",
-      usage: "optional",
-    },
-    billing: {
-      modes: ["subscription-credit"],
-      posture: "The active Copilot plan and policy determine model access, credits, and limits.",
-    },
-    notice: {
-      id: "copilot-cli-account",
-      noticeVersion: 1,
-      acknowledgement: "required",
-      acknowledgeBefore: "first-context-send",
-      renewAcknowledgementOn: "material-notice-change",
-      billing: [
-        "The active plan and policy determine model entitlement, credits, and rate limits.",
-      ],
-      privacy: [
-        "Individual and business/enterprise data protections differ and must match the active plan.",
-        "Diffgazer uses existing vendor-managed local auth and does not import or proxy credentials.",
       ],
     },
   },

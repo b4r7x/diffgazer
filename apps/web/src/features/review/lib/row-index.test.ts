@@ -199,4 +199,34 @@ describe("event row index", () => {
       expect.objectContaining({ tag: "DET", source: "Detective" }),
     ]);
   });
+
+  it("keeps file_progress rows under their agent's source filter", () => {
+    const events: ReviewEvent[] = [
+      {
+        type: "file_progress",
+        agent: "detective",
+        file: "src/a.ts",
+        completed: 1,
+        total: 2,
+        timestamp,
+      },
+      {
+        type: "file_progress",
+        agent: "guardian",
+        file: "src/b.ts",
+        completed: 1,
+        total: 2,
+        timestamp,
+      },
+      thinkingEvent("detective-thought"),
+    ];
+
+    const index = deriveEventRowIndex(null, events, "Detective");
+    const bounds = getEventRowBounds(index);
+
+    expect(convertEventRowWindow(index, bounds.start, bounds.end)).toEqual([
+      expect.objectContaining({ tag: "FILE", message: expect.stringContaining("src/a.ts") }),
+      expect.objectContaining({ tag: "DET", message: "detective-thought" }),
+    ]);
+  });
 });

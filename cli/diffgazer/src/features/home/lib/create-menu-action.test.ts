@@ -67,6 +67,18 @@ describe("createHomeMenuAction", () => {
     expect(h.routes).toEqual([{ screen: "review", mode: "staged" }]);
   });
 
+  test("review-files navigates to the review screen with the picker open", () => {
+    const h = buildHarness();
+    h.dispatch("review-files");
+    expect(h.routes).toEqual([{ screen: "review", pickFiles: true }]);
+  });
+
+  test("review-files is gated when not trusted", () => {
+    const h = buildHarness({ isTrusted: false });
+    h.dispatch("review-files");
+    expect(h.routes).toEqual([]);
+  });
+
   test("review-start actions wait for the provider consent gate to run them", () => {
     const held: Array<() => void> = [];
     const h = buildHarness({ requireProviderConsent: (action) => held.push(action) });

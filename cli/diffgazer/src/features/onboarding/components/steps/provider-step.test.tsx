@@ -31,13 +31,13 @@ describe("ProviderStep (TUI)", () => {
     cleanup();
   });
 
-  test("lists all 12 selectable products with shared names and descriptions", async () => {
+  test("lists every selectable product with shared names and descriptions", async () => {
     terminalDimensions.current = { columns: 80, rows: 60 };
     const onChange = vi.fn();
     const { lastFrame, stdin } = renderStep(onChange);
 
     const frame = lastFrame() ?? "";
-    expect(SELECTABLE_PRODUCT_IDS).toHaveLength(12);
+    expect(SELECTABLE_PRODUCT_IDS).toHaveLength(9);
     for (const productId of SELECTABLE_PRODUCT_IDS) {
       expect(frame).toContain(PRODUCT_REGISTRY[productId].presentation.name);
     }

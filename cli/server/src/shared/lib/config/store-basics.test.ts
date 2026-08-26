@@ -22,8 +22,6 @@ import {
 
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
 const ZAI_ENDPOINT = "https://api.z.ai/api/paas/v4";
-const OLLAMA_ENDPOINT = "http://127.0.0.1:11434";
-const LM_STUDIO_ENDPOINT = "http://127.0.0.1:1234/v1";
 const CREATED_AT = "2026-01-01T00:00:00.000Z";
 
 const DEFAULT_BUDGET = {
@@ -252,17 +250,17 @@ describe("config store actions", () => {
       v2Config(
         [
           supportedRecord({
-            configurationId: "cfg-v1-groq",
-            productId: "groq",
+            configurationId: "cfg-v1-zai",
+            productId: "zai",
             input: {
               transportFamily: "hosted-api",
-              productId: "groq",
-              endpoint: "https://api.groq.com/openai/v1",
+              productId: "zai",
+              endpoint: "https://api.z.ai/api/paas/v4",
             },
             acknowledgement: { noticeVersion: 1, acceptedAt: null },
           }),
         ],
-        "cfg-v1-groq",
+        "cfg-v1-zai",
       ),
     );
     writeJson(secretsPath(), v2Secrets());
@@ -276,10 +274,10 @@ describe("config store actions", () => {
     const snapshot = await store.readConfigurationSnapshot();
     expect(snapshot.ok).toBe(true);
     if (!snapshot.ok) return;
-    expect(snapshot.value.selectedConfigurationId).toBe("cfg-v1-groq");
+    expect(snapshot.value.selectedConfigurationId).toBe("cfg-v1-zai");
     expect(
       snapshot.value.configurations.map((entry) => entry.configuration.configurationId),
-    ).toContain("cfg-v1-groq");
+    ).toContain("cfg-v1-zai");
   });
 
   it("inspects a supported configuration and reports a missing one as not found", async () => {
@@ -462,59 +460,66 @@ describe("config store actions", () => {
     ]);
   });
 
-  it("creates local-http and local-cli configurations with family-specific bindings", async () => {
+  it("keeps a config whose selected configuration names a removed product readable as an unknown row", async () => {
+    // A user who last ran a build that still shipped groq: the record is
+    // schema-valid V2 bytes whose productId this build no longer supports.
+    const removedProductRecord = supportedRecord({
+      configurationId: "cfg-groq",
+      productId: "groq",
+      input: {
+        transportFamily: "hosted-api",
+        productId: "groq",
+        endpoint: "https://api.groq.com/openai/v1",
+      },
+      acknowledgement: {
+        noticeId: "groq-hosted-api",
+        noticeVersion: 1,
+        acceptedAt: CREATED_AT,
+      },
+    });
+    writeJson(configPath(), v2Config([supportedRecord(), removedProductRecord], "cfg-groq"));
+    writeJson(secretsPath(), v2Secrets());
     const store = await loadStore();
 
-    const ollama = await store.runConfigurationAction({
-      action: "create",
-      input: {
-        transportFamily: "local-http",
-        productId: "ollama",
-        endpoint: OLLAMA_ENDPOINT,
-        authentication: "none",
-      },
+    const snapshot = await store.readConfigurationSnapshot();
+    expect(snapshot.ok).toBe(true);
+    if (!snapshot.ok) return;
+    expect(snapshot.value.selectedConfigurationId).toBe("cfg-groq");
+    expect(snapshot.value.unrecognizedConfigurations).toEqual([{ configurationId: "cfg-groq" }]);
+    expect(
+      snapshot.value.configurations.map((entry) => entry.configuration.configurationId),
+    ).toEqual(["cfg-existing"]);
+
+    // The retired record answers CONFIGURATION_UNSUPPORTED instead of crashing…
+    const inspected = await store.runConfigurationAction({
+      action: "inspect",
+      configurationId: "cfg-groq",
     });
-    expect(ollama.ok).toBe(true);
-    if (!ollama.ok) return;
-    expect(ollama.value.configuration).toMatchObject({
-      status: "supported",
-      transportFamily: "local-http",
-      productId: "ollama",
-      authentication: "none",
+    expect(inspected).toMatchObject({
+      ok: false,
+      error: { code: "CONFIGURATION_UNSUPPORTED" },
     });
 
-    const localOpenAi = await store.runConfigurationAction({
-      action: "create",
-      input: {
-        transportFamily: "local-http",
-        productId: "local-openai",
-        endpoint: LM_STUDIO_ENDPOINT,
-        authentication: "optional-local-bearer",
-        presetId: "lm-studio",
-        bearerToken: { kind: "literal", value: "lm-studio-bearer-token" },
-      },
-    });
-    expect(localOpenAi.ok).toBe(true);
-    if (!localOpenAi.ok) return;
-    const secrets = readJson<{ bindings: Array<{ kind: string }> }>(secretsPath());
-    expect(secrets.bindings.some((binding) => binding.kind === "optional-local-bearer")).toBe(true);
+    // …its exact bytes stay on disk until the user removes it…
+    const persistedBefore = readJson<{ configurations: Array<{ productId?: string }> }>(
+      configPath(),
+    );
+    expect(persistedBefore.configurations.map((record) => record.productId)).toEqual([
+      "gemini",
+      "groq",
+    ]);
 
-    const codex = await store.runConfigurationAction({
-      action: "create",
-      input: {
-        transportFamily: "local-cli",
-        productId: "codex-cli",
-        installationId: "codex-installation-1",
-      },
+    // …and removal needs no revision match, because no build can describe one.
+    const deleted = await store.runConfigurationAction({
+      action: "delete",
+      configurationId: "cfg-groq",
+      expectedRevision: 1,
     });
-    expect(codex.ok).toBe(true);
-    if (!codex.ok) return;
-    expect(codex.value.configuration).toMatchObject({
-      status: "supported",
-      transportFamily: "local-cli",
-      productId: "codex-cli",
-      installationId: "codex-installation-1",
-    });
+    expect(deleted.ok).toBe(true);
+    const persistedAfter = readJson<{ configurations: Array<{ productId?: string }> }>(
+      configPath(),
+    );
+    expect(persistedAfter.configurations.map((record) => record.productId)).toEqual(["gemini"]);
   });
 
   it("serializes no secret values, environment names, paths, or evidence in responses", async () => {
@@ -820,30 +825,5 @@ describe("config store actions", () => {
     expect(keyring.deleteKeyringSecret).not.toHaveBeenCalled();
     const inspected = await store.runConfigurationAction({ action: "inspect", configurationId });
     expect(inspected).toMatchObject({ ok: true, value: { status: "succeeded" } });
-  });
-
-  it("binds an environment bearer reference for optional local bearer authentication", async () => {
-    writeJson(configPath(), v2Config([], null, { secretsStorage: "keyring" }));
-    const store = await loadStore();
-
-    const result = await store.runConfigurationAction({
-      action: "create",
-      input: {
-        transportFamily: "local-http",
-        productId: "local-openai",
-        endpoint: LM_STUDIO_ENDPOINT,
-        authentication: "optional-local-bearer",
-        presetId: "lm-studio",
-        bearerToken: { kind: "environment" },
-      },
-    });
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    const secrets = readJson<{ bindings: Array<{ kind: string; storage: string }> }>(secretsPath());
-    expect(secrets.bindings[0]).toMatchObject({
-      kind: "optional-local-bearer",
-      storage: "environment-reference",
-    });
   });
 });

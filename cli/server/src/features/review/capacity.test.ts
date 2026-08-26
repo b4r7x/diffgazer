@@ -5,7 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 // here would break on every regeneration, so the windows this gate reasons about
 // are fixtures with the three shapes that matter — a small window with its own
 // output ceiling, a huge window, and a model the catalog states no window for.
-vi.mock("@diffgazer/core/catalog", () => ({
+vi.mock("@diffgazer/core/catalog", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@diffgazer/core/catalog")>()),
   PROVIDER_OVERLAY: { gemini: { modelsDevIds: ["google"] } },
   CATALOG_SNAPSHOT: {
     google: {

@@ -2,13 +2,11 @@ import "./terminal-mock";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { escapeRegExp } from "@diffgazer/core/redaction";
 import type {
   ClientConfigurationSummary,
   ConfigurationModelsResponse,
   ModelInfo,
-  RunnableProductId,
 } from "@diffgazer/core/schemas/config";
 import {
   GEMINI_CONFIGURATION,
@@ -25,11 +23,6 @@ export const ARROW_DOWN = "\u001b[B";
 
 const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 
-export function copyNotice(productId: RunnableProductId) {
-  const notice = PRODUCT_REGISTRY[productId].notice;
-  return { ...notice, billing: [...notice.billing], privacy: [...notice.privacy] };
-}
-
 const GEMINI_MODELS: ModelInfo[] = [
   {
     id: "gemini-2.5-flash",
@@ -42,6 +35,7 @@ const GEMINI_MODELS: ModelInfo[] = [
 export function catalogModelsResponse(
   configuration: ClientConfigurationSummary,
   models: ModelInfo[] = GEMINI_MODELS,
+  source: "snapshot" | "provider-live" = "snapshot",
 ): ConfigurationModelsResponse {
   return {
     status: "passed",
@@ -50,7 +44,7 @@ export function catalogModelsResponse(
     transportFamily: configuration.transportFamily,
     models,
     checkedAt: CHECKED_AT,
-    source: "snapshot",
+    source,
     cached: false,
   };
 }

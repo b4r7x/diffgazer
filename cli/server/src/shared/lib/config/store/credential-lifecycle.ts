@@ -10,7 +10,6 @@ import type { DecodedSecretBinding } from "../persistence/secrets.js";
 import {
   bindWriteOnlySecret,
   createEnvironmentSecretBinding,
-  createLocalBearerBinding,
   createNoneSecretBinding,
   deleteSecretBinding,
   markSecretBindingRemoved,
@@ -86,7 +85,6 @@ export function createCredentialLifecycle(deps: CredentialLifecycleDependencies)
     productId: string,
     configurationId: ConfigurationId,
     revision: ConfigurationRevision,
-    localBearer: boolean,
   ): Result<SecretBinding, ConfigurationActionError> => {
     const varName = deps.canonicalEnv(productId);
     if (varName === null) {
@@ -97,11 +95,7 @@ export function createCredentialLifecycle(deps: CredentialLifecycleDependencies)
         ),
       );
     }
-    return ok(
-      localBearer
-        ? createLocalBearerBinding(configurationId, revision, "environment-reference", varName)
-        : createEnvironmentSecretBinding(configurationId, revision, varName),
-    );
+    return ok(createEnvironmentSecretBinding(configurationId, revision, varName));
   };
 
   const secretBindingFailure = (cause: unknown): ConfigurationActionError => {
@@ -124,52 +118,20 @@ export function createCredentialLifecycle(deps: CredentialLifecycleDependencies)
     configurationId: ConfigurationId,
     revision: ConfigurationRevision,
     input: {
-      readonly transportFamily: string;
       readonly productId: string;
       readonly credential?:
-        | { readonly kind: "literal"; readonly value: string }
-        | { readonly kind: "environment" };
-      readonly authentication?: string;
-      readonly bearerToken?:
         | { readonly kind: "literal"; readonly value: string }
         | { readonly kind: "environment" };
     },
   ): Promise<Result<SecretBinding, ConfigurationActionError>> => {
     try {
-      if (input.transportFamily === "local-cli")
-        return ok(createNoneSecretBinding(configurationId, revision));
-      if (input.transportFamily === "hosted-api") {
-        if (!input.credential) return ok(createNoneSecretBinding(configurationId, revision));
-        if (input.credential.kind === "environment") {
-          return bindEnvironmentSecret(input.productId, configurationId, revision, false);
-        }
-        const storage = deps.getStorage();
-        return ok(
-          await bindWriteOnlySecret(configurationId, revision, input.credential, {
-            keyring: deps.secretIO.keyring,
-            ...(storage === "keyring"
-              ? { keyId: deps.keyringSecretName(configurationId, revision) }
-              : { filePath: deps.literalSecretPath(configurationId, revision) }),
-          }),
-        );
-      }
-      if (input.authentication === "none")
-        return ok(createNoneSecretBinding(configurationId, revision));
-      if (!input.bearerToken) {
-        return err(
-          configurationActionFailure(
-            "SECRET_BINDING_FAILED",
-            "Bearer credential is required for optional local bearer authentication",
-          ),
-        );
-      }
-      if (input.bearerToken.kind === "environment") {
-        return bindEnvironmentSecret(input.productId, configurationId, revision, true);
+      if (!input.credential) return ok(createNoneSecretBinding(configurationId, revision));
+      if (input.credential.kind === "environment") {
+        return bindEnvironmentSecret(input.productId, configurationId, revision);
       }
       const storage = deps.getStorage();
       return ok(
-        await bindWriteOnlySecret(configurationId, revision, input.bearerToken, {
-          localBearer: true,
+        await bindWriteOnlySecret(configurationId, revision, input.credential, {
           keyring: deps.secretIO.keyring,
           ...(storage === "keyring"
             ? { keyId: deps.keyringSecretName(configurationId, revision) }

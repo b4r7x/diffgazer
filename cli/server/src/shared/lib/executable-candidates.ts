@@ -1,7 +1,7 @@
 const WINDOWS_DEFAULT_PATHEXT = ".COM;.EXE;.BAT;.CMD";
 
 /**
- * Windows binaries are `codex.exe`/`pnpm.cmd`, never the bare name, so a
+ * Windows binaries are `node.exe`/`pnpm.cmd`, never the bare name, so a
  * PATHEXT-free search can never resolve on win32. The bare name stays as the
  * last candidate for an extensionless executable on a POSIX-style win32 PATH.
  */

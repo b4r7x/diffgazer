@@ -1,16 +1,15 @@
 import type { OnboardingConfigurationDraft } from "@diffgazer/core/onboarding";
-import { type ConfigurationField, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import type { LocalHttpProductId, WriteOnlySecretInput } from "@diffgazer/core/schemas/config";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import type { WriteOnlySecretInput } from "@diffgazer/core/schemas/config";
 import {
   findNavigationItemByValue,
   getVerticalArrowDirection,
   toVerticalBoundaryDirection,
 } from "@diffgazer/keys";
-import { Checkbox } from "@diffgazer/ui/components/checkbox";
 import { Field } from "@diffgazer/ui/components/field";
 import { InputGroup } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useRef, useState } from "react";
 
 type CredentialMethod = "literal" | "environment";
 type CredentialFocus = CredentialMethod | "input";
@@ -27,17 +26,6 @@ function resolveCredentialMethod(credential: WriteOnlySecretInput | undefined): 
   return credential?.kind === "environment" ? "environment" : "literal";
 }
 
-/**
- * Whether the setup plan for this product offers an optional local bearer. The
- * plan's authentication step is built from these configuration fields, so this
- * is the same authority rather than a second opinion about the transport.
- */
-function offersLocalBearer(productId: LocalHttpProductId): boolean {
-  const configuration: { fields: readonly ConfigurationField[] } =
-    PRODUCT_REGISTRY[productId].configuration;
-  return configuration.fields.includes("local-authentication");
-}
-
 export function ApiKeyStep({
   configurationInput,
   onChange,
@@ -47,38 +35,13 @@ export function ApiKeyStep({
 }: ApiKeyStepProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const methodGroupRef = useRef<HTMLDivElement>(null);
-  const localCheckboxRef = useRef<HTMLDivElement>(null);
-  const localInputRef = useRef<HTMLInputElement>(null);
-  const bearerInputRef = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState<CredentialFocus>("literal");
-  const isHosted = configurationInput.transportFamily === "hosted-api";
-  const method = isHosted ? resolveCredentialMethod(configurationInput.credential) : "literal";
+  const method = resolveCredentialMethod(configurationInput.credential);
   const secretValue =
-    isHosted && configurationInput.credential?.kind === "literal"
-      ? configurationInput.credential.value
-      : "";
-
-  // The hosted branch enters through RadioGroup autoFocus; the local branches
-  // render a bare checkbox or input, so step entry has to focus them here or
-  // arrows only reach the wizard footer.
-  useEffect(() => {
-    if (!enabled) return;
-    const target = localCheckboxRef.current ?? localInputRef.current;
-    target?.focus();
-  }, [enabled]);
+    configurationInput.credential?.kind === "literal" ? configurationInput.credential.value : "";
 
   const setCredential = (credential: WriteOnlySecretInput) => {
-    if (configurationInput.transportFamily !== "hosted-api") return;
     onChange({ ...configurationInput, credential });
-  };
-
-  const setLocalBearerEnabled = (bearerEnabled: boolean) => {
-    if (configurationInput.transportFamily !== "local-http") return;
-    onChange({
-      ...configurationInput,
-      authentication: bearerEnabled ? "optional-local-bearer" : "none",
-      bearerToken: undefined,
-    });
   };
 
   // Focus and the visible highlight are moved together, always from the element
@@ -129,113 +92,6 @@ export function ApiKeyStep({
     event.preventDefault();
     focusMethod(event.key === "ArrowDown" ? "environment" : "literal");
   };
-
-  const handleFieldBoundaryKeyDown = (event: KeyboardEvent) => {
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      onBoundaryReached?.("down");
-    }
-  };
-
-  if (configurationInput.transportFamily === "local-http") {
-    const bearerEnabled = configurationInput.authentication === "optional-local-bearer";
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-muted-foreground font-mono">
-          Configure the local endpoint at {configurationInput.endpoint} without storing hosted
-          credentials.
-        </p>
-        {offersLocalBearer(configurationInput.productId) ? (
-          <Checkbox
-            ref={localCheckboxRef}
-            checked={bearerEnabled}
-            onChange={setLocalBearerEnabled}
-            onKeyDown={(event) => {
-              if (event.key !== "ArrowDown" || !bearerEnabled) return;
-              event.preventDefault();
-              bearerInputRef.current?.focus();
-            }}
-            value="local-bearer"
-            label="This server requires a bearer token"
-          />
-        ) : null}
-        {bearerEnabled ? (
-          <Field>
-            <Field.Label>Bearer token (write-only)</Field.Label>
-            <Field.Control>
-              <InputGroup
-                ref={bearerInputRef}
-                type="password"
-                autoComplete="off"
-                value={
-                  configurationInput.bearerToken?.kind === "literal"
-                    ? configurationInput.bearerToken.value
-                    : ""
-                }
-                onChange={(event) =>
-                  onChange({
-                    ...configurationInput,
-                    bearerToken: { kind: "literal", value: event.target.value },
-                  })
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    onCommit?.();
-                    return;
-                  }
-                  if (event.key === "ArrowUp") {
-                    event.preventDefault();
-                    localCheckboxRef.current?.focus();
-                    return;
-                  }
-                  handleFieldBoundaryKeyDown(event);
-                }}
-                prefix="TOKEN:"
-                aria-label="Local bearer token"
-              />
-            </Field.Control>
-          </Field>
-        ) : null}
-      </div>
-    );
-  }
-
-  if (configurationInput.transportFamily === "local-cli") {
-    const product = PRODUCT_REGISTRY[configurationInput.productId];
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-muted-foreground font-mono">
-          Configure the local CLI installation without storing hosted credentials.
-        </p>
-        <Field>
-          <Field.Label>{product.presentation.name} installation</Field.Label>
-          <Field.Control>
-            <InputGroup
-              ref={localInputRef}
-              value={configurationInput.installationId ?? ""}
-              onChange={(event) =>
-                onChange({
-                  ...configurationInput,
-                  installationId: event.target.value,
-                })
-              }
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  onCommit?.();
-                  return;
-                }
-                handleFieldBoundaryKeyDown(event);
-              }}
-              prefix="ID:"
-              aria-label={`${product.presentation.name} installation ID`}
-            />
-          </Field.Control>
-        </Field>
-      </div>
-    );
-  }
 
   const product = PRODUCT_REGISTRY[configurationInput.productId];
 

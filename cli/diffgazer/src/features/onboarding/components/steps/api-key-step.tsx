@@ -8,7 +8,6 @@ import { useTheme } from "../../../../theme/provider";
 
 interface ApiKeyStepProps {
   productId: RunnableProductId;
-  transportFamily: "hosted-api" | "local-http" | "local-cli";
   method: InputMethod;
   onMethodChange: (method: InputMethod) => void;
   apiKey: string;
@@ -20,7 +19,6 @@ interface ApiKeyStepProps {
 
 export function ApiKeyStep({
   productId,
-  transportFamily,
   method,
   onMethodChange,
   apiKey,
@@ -31,29 +29,6 @@ export function ApiKeyStep({
 }: ApiKeyStepProps): ReactElement {
   const { tokens } = useTheme();
   const productName = PRODUCT_REGISTRY[productId].presentation.name;
-
-  if (transportFamily === "local-http") {
-    const endpoint = PRODUCT_REGISTRY[productId].configuration.endpoints[0]?.endpoint;
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color={tokens.muted}>
-          Configure the local endpoint at {endpoint ?? "the selected loopback URL"} without storing
-          hosted credentials.
-        </Text>
-      </Box>
-    );
-  }
-
-  if (transportFamily === "local-cli") {
-    return (
-      <Box flexDirection="column" gap={1}>
-        <Text color={tokens.muted}>
-          {productName} uses ambient CLI authentication on this machine. No API key or token is
-          stored in Diffgazer.
-        </Text>
-      </Box>
-    );
-  }
 
   return (
     <Box flexDirection="column" gap={1}>

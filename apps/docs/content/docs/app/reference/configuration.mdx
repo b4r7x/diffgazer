@@ -50,11 +50,11 @@ Every action returns a client-safe summary. A configuration becomes **ready** on
 
 ## Setup and readiness by product family
 
-Setup always ends in an observable **ready**, **unsupported**, or **skipped** state. Diffgazer never assumes a hosted API key for local HTTP or local CLI products.
+Setup always ends in an observable **ready**, **unsupported**, or **skipped** state.
 
 ### Hosted API products
 
-For Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, and Ollama Cloud:
+For Google Gemini, Z.AI, OpenRouter, DeepSeek, Qwen International, Moonshot Open Platform, MiniMax International, Ollama Cloud, and OpenCode Zen:
 
 1. `create` a configuration for the product.
 2. `update` it with either a stored literal credential or an environment reference. The reference carries no name: the server binds the canonical variable for that product, for example `GOOGLE_API_KEY` for Google Gemini.
@@ -63,24 +63,6 @@ For Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, and Ollama Cloud:
 5. Optionally `test` (**Verify** in the UI) to check structured-output conformance up front. Skipping it leaves readiness at `conformance-pending`, which still selects and starts reviews; the first review verifies conformance and records the result, and the UI shows the last verification beside the configuration.
 
 Hosted examples never embed literal secrets. Use an environment reference or the setup UI's write-only credential field instead.
-
-### Local HTTP products (Ollama, Local OpenAI-compatible)
-
-1. `create` the configuration and choose the loopback endpoint preset (Ollama default, LM Studio, or llama.cpp).
-2. Start the local server on the validated loopback address.
-3. Look up the exact model ID from your local server (for example `ollama list`, or the LM Studio / llama.cpp UI). The setup wizard **Model** step does not list local-server models yet — it shows **Catalog observations are unavailable for this configuration product.** with **Retry** only, and **Next** stays disabled because the wizard does not read back an external `select`.
-4. `select` that exact model ID through the [local API](/app/reference/api). `test` (**Verify** in the UI) checks structured-output conformance up front; the first review verifies it otherwise.
-5. `update` to accept the product notice.
-
-Optional bearer tokens are supported only when your local server requires them. Diffgazer does not accept remote URLs, tunnels, or LAN addresses.
-
-### Local CLI products (OpenAI Codex CLI, GitHub Copilot CLI)
-
-1. `create` the configuration.
-2. Install and authenticate the CLI with the vendor's own tooling. Diffgazer uses **vendor-managed local auth** and does not import CLI tokens or auth files.
-3. Look up the exact model ID from the installed CLI or vendor docs. The setup wizard **Model** step does not list CLI models yet — it shows **Catalog observations are unavailable for this configuration product.** with **Retry** only, and **Next** stays disabled because the wizard does not read back an external `select`.
-4. `select` that exact model ID through the [local API](/app/reference/api). `inspect` and the optional `test` (**Verify** in the UI) report whether the pinned CLI profile passes negative-capability, schema, and cancellation checks, or readiness reports **unsupported** with remediation to review support requirements.
-5. `update` to accept the account notice.
 
 ## Exact-model, conformance, and consent gates
 

@@ -4,10 +4,9 @@ import type { RunnableProductId, TransportFamily } from "../schemas/config/index
 import { getInitialWizardData, type OnboardingDraft } from "./defaults.js";
 import { areDraftsEqual } from "./draft-equality.js";
 
-const TRANSPORT_REPRESENTATIVES: ReadonlyArray<readonly [TransportFamily, RunnableProductId]> = [
+const PRODUCT_REPRESENTATIVES: ReadonlyArray<readonly [TransportFamily, RunnableProductId]> = [
   ["hosted-api", "gemini"],
-  ["local-http", "local-openai"],
-  ["local-cli", "codex-cli"],
+  ["hosted-api", "zai"],
 ];
 
 function acceptDraftNotice(draft: OnboardingDraft): OnboardingDraft {
@@ -24,21 +23,21 @@ function acceptDraftNotice(draft: OnboardingDraft): OnboardingDraft {
 }
 
 describe("areDraftsEqual", () => {
-  it.each(TRANSPORT_REPRESENTATIVES)("treats unchanged %s drafts as equal", (family, productId) => {
+  it.each(PRODUCT_REPRESENTATIVES)("treats unchanged %s drafts as equal", (family, productId) => {
     const draft = getInitialWizardData(productId);
 
     expect(draft.configurationInput.transportFamily).toBe(family);
     expect(areDraftsEqual(draft, getInitialWizardData(productId))).toBe(true);
   });
 
-  it.each(TRANSPORT_REPRESENTATIVES)("treats accepted %s drafts as equal", (_family, productId) => {
+  it.each(PRODUCT_REPRESENTATIVES)("treats accepted %s drafts as equal", (_family, productId) => {
     const draft = acceptDraftNotice(getInitialWizardData(productId));
 
     expect(draft.acknowledgement.status).toBe("accepted");
     expect(areDraftsEqual(draft, acceptDraftNotice(getInitialWizardData(productId)))).toBe(true);
   });
 
-  it.each(TRANSPORT_REPRESENTATIVES)("treats a changed %s model as unequal", (_f, productId) => {
+  it.each(PRODUCT_REPRESENTATIVES)("treats a changed %s model as unequal", (_f, productId) => {
     const draft = getInitialWizardData(productId);
 
     expect(areDraftsEqual(draft, { ...draft, selectedModelId: "some-other-model" })).toBe(false);

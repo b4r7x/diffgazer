@@ -56,10 +56,19 @@ export const dialogContentVariants = cva(
         border: "border border-border",
         none: "",
       },
+      height: {
+        auto: "",
+        // Stable list-dialog height: the panel keeps one height regardless of
+        // how much content it holds (loading, filtered, empty), so the frame
+        // never jumps as a list resolves. The body's flex-1 region absorbs the
+        // slack; the dvh term caps it on short viewports.
+        stable: "h-[min(40rem,85dvh)]",
+      },
     },
     defaultVariants: {
       size: "md",
       frame: "border",
+      height: "auto",
     },
   },
 );
@@ -185,6 +194,7 @@ export function DialogContent(props: DialogContentProps) {
     className,
     size,
     frame,
+    height,
     corners,
     "aria-label": ariaLabel,
     "aria-labelledby": ariaLabelledBy,
@@ -261,6 +271,7 @@ export function DialogContent(props: DialogContentProps) {
       className: _className,
       size: _size,
       frame: _frame,
+      height: _height,
       corners: _corners,
       role: _role,
       closeIcon: _closeIcon,
@@ -284,7 +295,7 @@ export function DialogContent(props: DialogContentProps) {
         ref={setContainer}
         id={contentId}
         role="group"
-        className={cn(dialogContentVariants({ size, frame }), className)}
+        className={cn(dialogContentVariants({ size, frame, height }), className)}
         data-slot="dialog-content"
         data-frame={resolvedFrame}
         data-corners={resolvedCorners}
@@ -305,6 +316,7 @@ export function DialogContent(props: DialogContentProps) {
     className: _className,
     size: _size,
     frame: _frame,
+    height: _height,
     corners: _corners,
     closeIcon = true,
     closeOnBackdropClick = true,
@@ -336,7 +348,7 @@ export function DialogContent(props: DialogContentProps) {
       onBeforeShowModal={focusRestore.capture}
       onExitComplete={handleClose}
       onAnimationEnd={modalOnAnimationEnd}
-      className={cn(dialogContentVariants({ size, frame }), className)}
+      className={cn(dialogContentVariants({ size, frame, height }), className)}
       data-slot="dialog-content"
       data-frame={resolvedFrame}
       data-corners={resolvedCorners}

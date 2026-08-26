@@ -470,4 +470,42 @@ describe("reviewStore", () => {
     expect(detailed.value.diagnostics?.droppedExecution).toBe(true);
     expect(detailed.value.item.execution).toBeUndefined();
   });
+
+  it("keeps a saved review readable when its receipt names a removed provider", async () => {
+    // A run recorded by a build that still shipped deepseek: the receipt no
+    // longer parses, but the review's findings must survive the retirement.
+    const { reviewStore } = await loadStore();
+    const review = makeReviewWithExecution(REVIEW_ID, "completed", "a");
+    const snapshot = review.executionSnapshot;
+    expect(snapshot).toBeDefined();
+    if (!snapshot) return;
+    const { execution: _runtimeView, ...durable } = review;
+    await writeRawReview(
+      REVIEW_ID,
+      JSON.stringify({
+        ...durable,
+        executionSnapshot: {
+          ...snapshot,
+          receipt: {
+            ...snapshot.receipt,
+            productId: "deepseek",
+            modelId: "deepseek-v4-flash",
+            normalizedEndpoint: "https://api.deepseek.com/v1",
+          },
+        },
+      }),
+    );
+
+    const readResult = await reviewStore.read(REVIEW_ID);
+    expect(readResult.ok).toBe(true);
+    if (!readResult.ok) return;
+    expect(readResult.value.result.issues).toHaveLength(1);
+    expect(readResult.value.execution).toBeUndefined();
+
+    const detailed = await reviewStore.readDetailed(REVIEW_ID);
+    expect(detailed.ok).toBe(true);
+    if (!detailed.ok) return;
+    expect(detailed.value.salvaged).toBe(true);
+    expect(detailed.value.diagnostics?.droppedExecution).toBe(true);
+  });
 });

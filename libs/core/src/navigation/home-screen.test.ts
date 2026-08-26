@@ -86,6 +86,16 @@ describe("resolveHomeMenuActivation", () => {
     ).toEqual({ kind: "blocked-untrusted" });
   });
 
+  it("opens the file picker when trusted", () => {
+    expect(resolveHomeMenuActivation("review-files", trusted)).toEqual({ kind: "pick-files" });
+  });
+
+  it("blocks the file picker when untrusted", () => {
+    expect(
+      resolveHomeMenuActivation("review-files", { isTrusted: false, hasResumableSession: true }),
+    ).toEqual({ kind: "blocked-untrusted" });
+  });
+
   it("resumes when trusted with a resumable session", () => {
     expect(resolveHomeMenuActivation("resume-review", trusted)).toEqual({ kind: "resume" });
   });

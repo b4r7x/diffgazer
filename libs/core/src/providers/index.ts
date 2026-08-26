@@ -30,7 +30,6 @@ export {
 } from "./candidate-verdicts.js";
 export {
   CATALOG_EMPTY_MODELS_REASON,
-  CATALOG_SKIPPED_REASON,
   LIVE_ONLY_MODEL_DESCRIPTION,
 } from "./catalog-discovery-reasons.js";
 export {
@@ -42,10 +41,7 @@ export {
   projectClientMetadata,
 } from "./client-metadata.js";
 export { configurationFingerprint } from "./configuration-fingerprint.js";
-export {
-  CREDENTIAL_ENV_VARS,
-  resolveCredentialEnvironmentVariable,
-} from "./credential-env-vars.js";
+export { CREDENTIAL_ENV_VARS } from "./credential-env-vars.js";
 export {
   DELETE_CONFIGURATION_CONFIRM,
   PROVIDER_ACTION_LABELS,

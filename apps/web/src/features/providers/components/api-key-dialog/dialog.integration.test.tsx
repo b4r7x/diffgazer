@@ -2,11 +2,9 @@ import { FooterProvider } from "@diffgazer/core/footer";
 import type { ProviderListRow } from "@diffgazer/core/providers";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { ProviderManagementOutcome } from "@diffgazer/core/providers/hooks";
-import type { ClientConfigurationSummary } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import {
   buildProviderRows,
-  LOCAL_OPENAI_CONFIGURATION,
   makeReadiness,
   unconfiguredRow,
 } from "@diffgazer/core/testing/provider-fixtures";
@@ -33,28 +31,6 @@ function requireProviderRow(predicate: (row: ProviderListRow) => boolean): Provi
     throw new Error("Expected provider row fixture was not found");
   }
   return row;
-}
-
-function localHttpRow(): ProviderListRow {
-  return requireProviderRow((row) => row.configuration?.configurationId === "local-openai-1");
-}
-
-function localHttpBearerRow(): ProviderListRow {
-  const row = localHttpRow();
-  if (row.configuration?.transportFamily !== "local-http") {
-    throw new Error("Expected a local-http configuration row");
-  }
-  return {
-    ...row,
-    configuration: {
-      ...row.configuration,
-      authentication: "optional-local-bearer",
-    },
-  };
-}
-
-function localCliRow(): ProviderListRow {
-  return requireProviderRow((row) => row.product.productId === "codex-cli");
 }
 
 const SUCCEEDED = { status: "succeeded" } as const;
@@ -84,7 +60,7 @@ function renderSetupDialog(
   return { onCreate, onUpdate, onOpenChange };
 }
 
-describe("ApiKeyDialog family-specific setup controls", () => {
+describe("ApiKeyDialog setup controls", () => {
   it("shows hosted credential methods for hosted-api setup", () => {
     renderSetupDialog(unconfiguredRow("gemini"));
 
@@ -92,35 +68,6 @@ describe("ApiKeyDialog family-specific setup controls", () => {
     expect(within(dialog).getByRole("radio", { name: "Paste Key Now" })).toBeInTheDocument();
     expect(within(dialog).getByRole("radio", { name: "Import from Env" })).toBeInTheDocument();
     expect(within(dialog).getByLabelText(/Google Gemini API Key/i)).toBeInTheDocument();
-  });
-
-  it("forbids credential controls for local-http setup", () => {
-    renderSetupDialog(localHttpRow());
-
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText(/without storing hosted credentials/i)).toBeInTheDocument();
-    expect(within(dialog).queryByRole("radio", { name: "Paste Key Now" })).not.toBeInTheDocument();
-    expect(within(dialog).queryByLabelText(/api key/i)).not.toBeInTheDocument();
-  });
-
-  it("forbids credential controls for local-cli setup", () => {
-    renderSetupDialog(localCliRow());
-
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText(/without storing hosted credentials/i)).toBeInTheDocument();
-    expect(
-      within(dialog).queryByRole("radio", { name: "Import from Env" }),
-    ).not.toBeInTheDocument();
-    expect(within(dialog).queryByLabelText(/api key/i)).not.toBeInTheDocument();
-  });
-
-  it("forbids CLI credential, token, and path inputs for local-cli setup", () => {
-    renderSetupDialog(localCliRow());
-
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).queryByLabelText(/token/i)).not.toBeInTheDocument();
-    expect(within(dialog).queryByLabelText(/path/i)).not.toBeInTheDocument();
-    expect(within(dialog).queryByLabelText(/credential/i)).not.toBeInTheDocument();
   });
 });
 
@@ -158,15 +105,16 @@ describe("ApiKeyDialog acknowledgement and write-only secrets", () => {
   it("asks for an explicit acceptance when the row's notice needs accepting again", async () => {
     const user = userEvent.setup();
     const row = requireProviderRow(
-      (candidate) => candidate.configuration?.configurationId === "local-openai-1",
+      (candidate) => candidate.configuration?.configurationId === "gemini-primary",
     );
     const { onUpdate } = renderSetupDialog({
       ...row,
-      readiness: makeReadiness("acknowledgement-required", "local-openai"),
+      readiness: makeReadiness("acknowledgement-required", "gemini"),
     });
 
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText(/needs your acceptance/i)).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/Google Gemini API Key/i), "sk-rotated-key");
     const save = within(dialog).getByRole("button", { name: "Save" });
     expect(save).toBeDisabled();
     await user.click(within(dialog).getByRole("checkbox", { name: /i accept/i }));
@@ -387,41 +335,6 @@ describe("ApiKeyDialog accessible submit, cancel, and focus", () => {
     await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"));
   });
 
-  it("renders a rejected local-http save inline and keeps the dialog open", async () => {
-    const user = userEvent.setup();
-    const onUpdate = vi
-      .fn()
-      .mockResolvedValue({ status: "failed", message: "Local endpoint rejected the write" });
-    const onOpenChange = vi.fn();
-
-    render(
-      <FooterProvider>
-        <KeyboardProvider>
-          <ApiKeyDialog
-            open
-            row={localHttpRow()}
-            onOpenChange={onOpenChange}
-            onCreate={vi.fn().mockResolvedValue(SUCCEEDED)}
-            onUpdate={onUpdate}
-          />
-        </KeyboardProvider>
-      </FooterProvider>,
-    );
-
-    const dialog = screen.getByRole("dialog");
-    // The row's notice is accepted, so there is no checkbox to tick: the save
-    // only needs the button.
-    expect(within(dialog).queryByRole("checkbox")).not.toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce());
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-      "Local endpoint rejected the write",
-    );
-    expect(onOpenChange).not.toHaveBeenCalled();
-    expect(dialog).toBeInTheDocument();
-  });
-
   it("returns focus to the trigger button after the dialog closes", async () => {
     const user = userEvent.setup();
 
@@ -463,48 +376,5 @@ describe("ApiKeyDialog accessible submit, cancel, and focus", () => {
     if (dialogElement) fireEvent.animationEnd(dialogElement);
 
     await waitFor(() => expect(trigger).toHaveFocus());
-  });
-
-  it("completes local-http setup without key or env controls", async () => {
-    const user = userEvent.setup();
-    const { onUpdate } = renderSetupDialog(localHttpRow());
-
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).queryByRole("checkbox")).not.toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce());
-    expect(onUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        input: expect.objectContaining({
-          transportFamily: "local-http",
-          productId: "local-openai",
-          endpoint: (
-            LOCAL_OPENAI_CONFIGURATION as Extract<
-              ClientConfigurationSummary,
-              { transportFamily: "local-http" }
-            >
-          ).endpoint,
-          authentication: "none",
-          presetId: "lm-studio",
-        }),
-        acknowledgement: expect.objectContaining({ status: "accepted" }),
-      }),
-      expect.anything(),
-    );
-    expect(dialog.textContent).not.toContain("sk-");
-  });
-
-  it("blocks update for local-http configurations with persisted bearer authentication", async () => {
-    const user = userEvent.setup();
-    const { onUpdate } = renderSetupDialog(localHttpBearerRow());
-
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByText(/uses local bearer authentication/i)).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
-
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-
-    expect(onUpdate).not.toHaveBeenCalled();
   });
 });

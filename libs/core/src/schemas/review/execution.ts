@@ -16,6 +16,7 @@ export {
   type ExecutionResult,
   ExecutionResultSchema,
   hashExecutionReceiptFingerprintSync,
+  REVIEW_WALL_CEILING_SLACK,
   TERMINAL_OUTCOMES,
   type TerminalOutcome,
   TerminalOutcomeSchema,

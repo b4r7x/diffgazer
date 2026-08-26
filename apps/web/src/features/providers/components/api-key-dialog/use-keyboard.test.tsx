@@ -12,14 +12,12 @@ function Subject({
   onClose = vi.fn(),
   canSubmit = false,
   isSubmitting = false,
-  isHosted = true,
   hasAcknowledgement = true,
 }: {
   onSubmit?: () => void;
   onClose?: () => void;
   canSubmit?: boolean;
   isSubmitting?: boolean;
-  isHosted?: boolean;
   hasAcknowledgement?: boolean;
 }) {
   const [method, setMethod] = useState<InputMethod>("paste");
@@ -37,7 +35,6 @@ function Subject({
     handleMethodCommit,
   } = useApiKeyDialogKeyboard({
     open: true,
-    isHosted,
     hasAcknowledgement,
     method,
     setMethod,
@@ -55,22 +52,20 @@ function Subject({
 
   return (
     <>
-      {isHosted ? (
-        <ApiKeyMethodSelector
-          value={method}
-          onChange={setMethod}
-          keyValue=""
-          onKeyValueChange={vi.fn()}
-          providerName="Gemini"
-          inputRef={inputRef}
-          focused={focused}
-          onFocus={setFocused}
-          onKeySubmit={onSubmit}
-          onMethodCommit={handleMethodCommit}
-          onInputMethodKeyDown={handleMethodKeyDown}
-          getMethodOptionProps={getMethodOptionProps}
-        />
-      ) : null}
+      <ApiKeyMethodSelector
+        value={method}
+        onChange={setMethod}
+        keyValue=""
+        onKeyValueChange={vi.fn()}
+        providerName="Gemini"
+        inputRef={inputRef}
+        focused={focused}
+        onFocus={setFocused}
+        onKeySubmit={onSubmit}
+        onMethodCommit={handleMethodCommit}
+        onInputMethodKeyDown={handleMethodKeyDown}
+        getMethodOptionProps={getMethodOptionProps}
+      />
       {hasAcknowledgement ? (
         <button type="button" ref={acknowledgementProps.ref} onFocus={acknowledgementProps.onFocus}>
           Accept notice
@@ -295,55 +290,5 @@ describe("useApiKeyDialogKeyboard without an acceptance control", () => {
 
     await user.keyboard("{ArrowUp}");
     expect(env).toHaveFocus();
-  });
-
-  it("starts a local row on the footer when there is nothing else to focus", async () => {
-    render(
-      <KeyboardProvider>
-        <Subject canSubmit isHosted={false} hasAcknowledgement={false} />
-      </KeyboardProvider>,
-    );
-
-    await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toHaveFocus());
-  });
-});
-
-describe("useApiKeyDialogKeyboard local setup", () => {
-  it("starts on acknowledgement and reaches save without credential controls", async () => {
-    const user = userEvent.setup();
-    const onSubmit = vi.fn();
-
-    render(
-      <KeyboardProvider>
-        <Subject onSubmit={onSubmit} canSubmit isHosted={false} />
-      </KeyboardProvider>,
-    );
-
-    const acknowledgement = screen.getByRole("button", { name: "Accept notice" });
-    await waitFor(() => expect(acknowledgement).toHaveFocus());
-
-    expect(screen.queryByRole("radio", { name: "Paste Key Now" })).not.toBeInTheDocument();
-
-    await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("button", { name: "Save" })).toHaveFocus();
-  });
-
-  it("reaches the [x] with ArrowUp from the acknowledgement and returns with ArrowDown", async () => {
-    const user = userEvent.setup();
-
-    render(
-      <KeyboardProvider>
-        <Subject canSubmit isHosted={false} />
-      </KeyboardProvider>,
-    );
-
-    const acknowledgement = screen.getByRole("button", { name: "Accept notice" });
-    await waitFor(() => expect(acknowledgement).toHaveFocus());
-
-    await user.keyboard("{ArrowUp}");
-    expect(screen.getByRole("button", { name: "Close dialog" })).toHaveFocus();
-
-    await user.keyboard("{ArrowDown}");
-    expect(acknowledgement).toHaveFocus();
   });
 });

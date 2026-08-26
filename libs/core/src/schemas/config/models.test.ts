@@ -11,8 +11,6 @@ describe("schemas/config/models", () => {
   it.each([
     "free",
     "paid",
-    "local",
-    "ambient",
   ] as const)("accepts the %s model tier without inferring billing", (tier) => {
     expect(ModelTierSchema.safeParse(tier).success).toBe(true);
     const result = ProviderModelsResponseSchema.safeParse({
@@ -111,12 +109,13 @@ describe("ConfigurationModelsResponseSchema", () => {
   };
   const skipped = {
     status: "skipped",
-    configurationId: "ollama-loopback",
-    productId: "ollama",
-    transportFamily: "local-http",
+    configurationId: "opencode-zen-primary",
+    productId: "opencode-zen",
+    transportFamily: "hosted-api",
     models: [],
     checkedAt: "2026-08-02T00:00:00.000Z",
-    reason: "Catalog observations are unavailable for this configuration product.",
+    reason:
+      "The catalog lists no model this product's model policy admits. Configure a different provider to run reviews.",
   };
 
   it.each([

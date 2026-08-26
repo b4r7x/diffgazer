@@ -283,6 +283,9 @@ export function HomePagePresentation({
         requireProviderConsent(() => void startReview(decision.mode, id));
         return;
       }
+      case "pick-files":
+        openFilePicker();
+        return;
       case "resume":
         resumeReview();
         return;
@@ -390,7 +393,7 @@ export function HomePagePresentation({
       R: () => activateShortcut("review-staged"),
       l: () => activateShortcut("resume-review"),
       o: openLastRun,
-      f: openFilePicker,
+      f: () => activateShortcut("review-files"),
       p: () => openSettingsRow("/settings/providers"),
       t: () => {
         if (isTrusted) return DECLINE;

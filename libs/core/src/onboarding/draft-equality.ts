@@ -14,32 +14,11 @@ export function areConfigurationInputsEqual(
   left: OnboardingConfigurationDraft,
   right: OnboardingConfigurationDraft,
 ): boolean {
-  if (left.transportFamily !== right.transportFamily || left.productId !== right.productId) {
-    return false;
-  }
-
-  switch (left.transportFamily) {
-    case "hosted-api":
-      return (
-        right.transportFamily === "hosted-api" &&
-        left.endpoint === right.endpoint &&
-        areSecretsEqual(left.credential, right.credential)
-      );
-    case "local-http":
-      return (
-        right.transportFamily === "local-http" &&
-        left.endpoint === right.endpoint &&
-        left.authentication === right.authentication &&
-        left.presetId === right.presetId &&
-        areSecretsEqual(left.bearerToken, right.bearerToken)
-      );
-    case "local-cli":
-      return right.transportFamily === "local-cli" && left.installationId === right.installationId;
-    default: {
-      const _exhaustive: never = left;
-      return _exhaustive;
-    }
-  }
+  return (
+    left.productId === right.productId &&
+    left.endpoint === right.endpoint &&
+    areSecretsEqual(left.credential, right.credential)
+  );
 }
 
 function isSameConfigurationGeneration(left: OnboardingDraft, right: OnboardingDraft): boolean {

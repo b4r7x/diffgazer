@@ -48,15 +48,8 @@ function redactClientError(value: string, sensitiveValues: readonly string[]): s
 }
 
 function getWizardSensitiveValues(data: OnboardingDraft): readonly string[] {
-  const values: string[] = [];
-  const input = data.configurationInput;
-  if (input.transportFamily === "hosted-api" && input.credential?.kind === "literal") {
-    values.push(input.credential.value);
-  }
-  if (input.transportFamily === "local-http" && input.bearerToken?.kind === "literal") {
-    values.push(input.bearerToken.value);
-  }
-  return values;
+  const credential = data.configurationInput.credential;
+  return credential?.kind === "literal" ? [credential.value] : [];
 }
 
 export function getClientSafeError(

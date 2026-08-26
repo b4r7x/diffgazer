@@ -1,10 +1,12 @@
 import { formatDuration, formatRunId } from "@diffgazer/core/format";
 import {
+  buildCompletionHeadline,
   buildMissingLensIssuesNotice,
   buildTerminalCoverageLine,
   describeTerminalOutcome,
   type FailedTerminalOutcome,
   getLensCoverage,
+  hasFailedLenses,
 } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { CategoryStats } from "@diffgazer/core/schemas/presentation";
@@ -40,6 +42,27 @@ export interface ReviewCompleteSummaryProps {
   className?: string;
 }
 
+type RunStatusTone = "error" | "warning" | "success";
+
+/**
+ * The frame's tone follows the headline: a terminal failure is the error frame,
+ * a completed run with failed lenses headlines "Partially Complete" and must
+ * not wear success-green — it takes the warning frame instead.
+ */
+function getRunStatusTone(hasFailure: boolean, isPartial: boolean): RunStatusTone {
+  if (hasFailure) return "error";
+  return isPartial ? "warning" : "success";
+}
+
+// tone repaints border-color only, so the corner chip — which tracks the
+// enclosure through --panel-border-color — would keep the neutral edge;
+// lifting --panel-border puts chip and frame on the same colour.
+const RUN_STATUS_STYLES: Record<RunStatusTone, { panel: string; headline: string }> = {
+  error: { panel: "[--panel-border:var(--error-border)]", headline: "text-error-text" },
+  warning: { panel: "[--panel-border:var(--warning-border)]", headline: "text-warning-text" },
+  success: { panel: "[--panel-border:var(--success-border)]", headline: "text-success-text" },
+};
+
 /**
  * The one fact line the run earns: counts and elapsed time, separated by the
  * middle dot the rest of the app already uses. A clean run says so in words
@@ -71,22 +94,12 @@ export function ReviewCompleteSummary({
   // names-only half - the same fact twice in opposite polarity reads as padding.
   const failure = outcome ? describeTerminalOutcome(outcome) : null;
   const missingFindings = failure ? buildMissingLensIssuesNotice(lensStats) : "";
+  const runTone = getRunStatusTone(failure !== null, hasFailedLenses(lensStats));
+  const runStyles = RUN_STATUS_STYLES[runTone];
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
-      {/* tone repaints border-color only, so the corner chip - which tracks the
-          enclosure through --panel-border-color - would keep the neutral edge;
-          lifting --panel-border puts chip and frame on the same colour. */}
-      <Panel
-        tone={failure ? "error" : "success"}
-        density="compact"
-        aria-label="Run status"
-        className={
-          failure
-            ? "[--panel-border:var(--error-border)]"
-            : "[--panel-border:var(--success-border)]"
-        }
-      >
+      <Panel tone={runTone} density="compact" aria-label="Run status" className={runStyles.panel}>
         <Panel.Label variant="border" aria-hidden="true">
           Run Status
         </Panel.Label>
@@ -97,12 +110,8 @@ export function ReviewCompleteSummary({
           <div role={failure ? "alert" : undefined}>
             {/* The run headline stays at terminal scale below sm: at display size it
                 wraps to two lines at 375 and dwarfs the panels underneath it. */}
-            <Typography
-              as="h1"
-              size="lg"
-              className={cn("mb-2 sm:text-2xl", failure ? "text-error-text" : "text-success-text")}
-            >
-              {failure ? failure.title : "Review Complete"} {runLabel}
+            <Typography as="h1" size="lg" className={cn("mb-2 sm:text-2xl", runStyles.headline)}>
+              {failure ? failure.title : buildCompletionHeadline(lensStats)} {runLabel}
             </Typography>
             <p
               className={cn(

@@ -7,10 +7,7 @@ import type { ConfigurationModelsResponse, ModelInfo } from "../schemas/config/m
 import type { ClientConfigurationSummary } from "../schemas/config/provider-config.js";
 import { createDeferred } from "../testing/deferred.js";
 import { createTestQueryWrapper } from "../testing/query-wrapper.js";
-import {
-  CATALOG_EMPTY_MODELS_REASON,
-  CATALOG_SKIPPED_REASON,
-} from "./catalog-discovery-reasons.js";
+import { CATALOG_EMPTY_MODELS_REASON } from "./catalog-discovery-reasons.js";
 import { useModelSource } from "./use-model-source.js";
 
 const configurations = {
@@ -25,25 +22,13 @@ const configurations = {
     notices: [],
     availableActions: ["inspect", "select", "test", "update", "delete"],
   },
-  localHttp: {
+  gemini: {
     status: "supported",
-    configurationId: "ollama-loopback",
+    configurationId: "gemini-primary",
     revision: 2,
-    transportFamily: "local-http",
-    productId: "ollama",
-    endpoint: "http://127.0.0.1:11434",
-    authentication: "none",
-    selectedModelId: null,
-    notices: [],
-    availableActions: ["inspect", "select", "test", "update", "delete"],
-  },
-  localCli: {
-    status: "supported",
-    configurationId: "codex-installation",
-    revision: 1,
-    transportFamily: "local-cli",
-    productId: "codex-cli",
-    installationId: "codex-default",
+    transportFamily: "hosted-api",
+    productId: "gemini",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta",
     selectedModelId: null,
     notices: [],
     availableActions: ["inspect", "select", "test", "update", "delete"],
@@ -98,9 +83,8 @@ describe("useModelSource", () => {
 
   it.each([
     { configuration: configurations.hosted, modelId: "anthropic/claude-sonnet-4" },
-    { configuration: configurations.localHttp, modelId: "qwen3-coder:30b" },
-    { configuration: configurations.localCli, modelId: "gpt-5-codex" },
-  ])("surfaces discovered models for $configuration.transportFamily", async ({
+    { configuration: configurations.gemini, modelId: "gemini-2.5-flash" },
+  ])("surfaces discovered models for $configuration.productId", async ({
     configuration,
     modelId,
   }) => {
@@ -115,6 +99,7 @@ describe("useModelSource", () => {
       productId: configuration.productId,
       transportFamily: configuration.transportFamily,
       checkedAt,
+      source: "snapshot",
       reason: null,
       error: null,
     });
@@ -125,13 +110,11 @@ describe("useModelSource", () => {
     );
   });
 
-  it.each([
-    CATALOG_SKIPPED_REASON,
-    CATALOG_EMPTY_MODELS_REASON,
-  ])("reports a skipped discovery without models for %j", async (reason) => {
-    getConfigurationModels.mockResolvedValue(skippedResponse(configurations.localCli, reason));
+  it("reports a skipped discovery without models", async () => {
+    const reason = CATALOG_EMPTY_MODELS_REASON;
+    getConfigurationModels.mockResolvedValue(skippedResponse(configurations.gemini, reason));
     const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
-    const { result } = renderHook(() => useModelSource(true, configurations.localCli), {
+    const { result } = renderHook(() => useModelSource(true, configurations.gemini), {
       wrapper: Wrapper,
     });
 
@@ -147,7 +130,7 @@ describe("useModelSource", () => {
       ),
     );
     const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
-    const { result } = renderHook(() => useModelSource(true, configurations.localHttp), {
+    const { result } = renderHook(() => useModelSource(true, configurations.gemini), {
       wrapper: Wrapper,
     });
 
@@ -162,12 +145,12 @@ describe("useModelSource", () => {
   it("bounds an untrusted skipped reason to neutral client copy", async () => {
     getConfigurationModels.mockResolvedValue(
       skippedResponse(
-        configurations.localHttp,
+        configurations.gemini,
         "provider output /Users/alice/.config/auth token=untrusted-value",
       ),
     );
     const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
-    const { result } = renderHook(() => useModelSource(true, configurations.localHttp), {
+    const { result } = renderHook(() => useModelSource(true, configurations.gemini), {
       wrapper: Wrapper,
     });
 
@@ -185,7 +168,7 @@ describe("useModelSource", () => {
     getConfigurationModels.mockResolvedValue({
       status: "passed",
       configurationId: configurations.hosted.configurationId,
-      productId: "groq",
+      productId: "gemini",
       transportFamily: "hosted-api",
       models: [model("anthropic/claude-sonnet-4")],
       checkedAt,
@@ -233,9 +216,9 @@ describe("useModelSource", () => {
   it("retries the same configuration discovery after an error", async () => {
     getConfigurationModels
       .mockRejectedValueOnce(new Error("Model discovery unavailable"))
-      .mockResolvedValueOnce(passedResponse(configurations.localHttp, ["qwen3-coder:30b"]));
+      .mockResolvedValueOnce(passedResponse(configurations.gemini, ["qwen3-coder:30b"]));
     const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
-    const { result } = renderHook(() => useModelSource(true, configurations.localHttp), {
+    const { result } = renderHook(() => useModelSource(true, configurations.gemini), {
       wrapper: Wrapper,
     });
 
@@ -245,9 +228,63 @@ describe("useModelSource", () => {
 
     expect(result.current.models.map(({ id }) => id)).toEqual(["qwen3-coder:30b"]);
     expect(getConfigurationModels.mock.calls.map(([configurationId]) => configurationId)).toEqual([
-      "ollama-loopback",
-      "ollama-loopback",
+      "gemini-primary",
+      "gemini-primary",
     ]);
+  });
+
+  it("keeps discovered models while the same configuration refetches under a new fingerprint", async () => {
+    const pending = createDeferred<ConfigurationModelsResponse>();
+    getConfigurationModels
+      .mockResolvedValueOnce(passedResponse(configurations.hosted, ["anthropic/claude-sonnet-4"]))
+      .mockReturnValueOnce(pending.promise);
+    const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
+    const { result, rerender } = renderHook(
+      ({ configuration }: { configuration: ClientConfigurationSummary }) =>
+        useModelSource(true, configuration),
+      {
+        wrapper: Wrapper,
+        initialProps: { configuration: configurations.hosted as ClientConfigurationSummary },
+      },
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("passed"));
+
+    // Saving a selection bumps revision and selectedModelId, rotating the
+    // query key; the list must not blank to loading while the refetch runs.
+    rerender({
+      configuration: {
+        ...configurations.hosted,
+        revision: 5,
+        selectedModelId: "anthropic/claude-sonnet-4",
+      },
+    });
+
+    await waitFor(() => expect(getConfigurationModels).toHaveBeenCalledTimes(2));
+    expect(result.current.status).toBe("passed");
+    expect(result.current.models.map(({ id }) => id)).toEqual(["anthropic/claude-sonnet-4"]);
+  });
+
+  it("never carries one configuration's models into another configuration's load", async () => {
+    getConfigurationModels
+      .mockResolvedValueOnce(passedResponse(configurations.hosted, ["anthropic/claude-sonnet-4"]))
+      .mockReturnValueOnce(createDeferred<ConfigurationModelsResponse>().promise);
+    const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
+    const { result, rerender } = renderHook(
+      ({ configuration }: { configuration: ClientConfigurationSummary }) =>
+        useModelSource(true, configuration),
+      {
+        wrapper: Wrapper,
+        initialProps: { configuration: configurations.hosted as ClientConfigurationSummary },
+      },
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("passed"));
+
+    rerender({ configuration: configurations.gemini });
+
+    await waitFor(() => expect(result.current.status).toBe("loading"));
+    expect(result.current.models).toEqual([]);
   });
 
   it("stays idle without fetching while the picker is closed", () => {

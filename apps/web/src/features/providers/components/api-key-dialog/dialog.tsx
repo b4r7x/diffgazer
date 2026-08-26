@@ -63,15 +63,11 @@ export function ApiKeyDialog({
   const inputRef = useRef<HTMLInputElement>(null);
   const acknowledgementRef = useRef<HTMLElement>(null);
   const errorId = useId();
-  const isHosted = row.product.transportFamily === "hosted-api";
   // The server never sends the variable name it will read, so the preview comes from
   // core's client-safe mirror. A product that binds no variable has no entry and the
   // selector falls back to its generic copy.
   const envVarName = CREDENTIAL_ENV_VARS[row.product.productId];
   const isUpdating = row.configuration != null;
-  const hasPersistedLocalBearer =
-    row.configuration?.transportFamily === "local-http" &&
-    row.configuration.authentication === "optional-local-bearer";
   const continueToModelSelection = requiresExplicitModelSelection(row.product.productId);
   // The provider consent is gated before this dialog opens and covers every
   // product notice; an explicit tick is asked for only when this product's
@@ -86,17 +82,12 @@ export function ApiKeyDialog({
       ? `Keys are stored in your OS keychain. Context is only sent to ${row.product.name}.`
       : `Keys are stored in a local file with OS permissions. Context is only sent to ${row.product.name}.`;
 
-  // Every save family -- hosted credential, local HTTP, local CLI -- runs through
-  // this one guarded machine, so a rejected save reports in place instead of
-  // escaping the click handler as an unhandled rejection.
+  // Every save runs through this one guarded machine, so a rejected save
+  // reports in place instead of escaping the click handler as an unhandled
+  // rejection.
   const entry = useApiKeyEntry({
     onSubmit: async (method, value) => {
       if (!acknowledged) return false;
-      if (hasPersistedLocalBearer) {
-        throw new Error(
-          "This configuration uses local bearer authentication. Recreate it from onboarding to replace the bearer token.",
-        );
-      }
       const input = buildSetupInput(row, toSetupCredential(method, value));
 
       const outcome =
@@ -125,15 +116,12 @@ export function ApiKeyDialog({
   };
 
   const handleSubmit = async (method?: "paste" | "env") => {
-    // Local transports carry no typed credential, so they submit in the mode
-    // that does not require an entry value.
-    const saved = await entry.submit(isHosted ? method : "env");
+    const saved = await entry.submit(method);
     if (saved) handleOpenChange(false);
   };
 
-  const canConfirm = isHosted
-    ? (entry.method === "env" || entry.value.length > 0) && acknowledged && !entry.isSubmitting
-    : acknowledged && !entry.isSubmitting && !hasPersistedLocalBearer;
+  const canConfirm =
+    (entry.method === "env" || entry.value.length > 0) && acknowledged && !entry.isSubmitting;
 
   const {
     focused,
@@ -150,7 +138,6 @@ export function ApiKeyDialog({
     acknowledgementHighlighted,
   } = useApiKeyDialogKeyboard({
     open,
-    isHosted,
     hasAcknowledgement: needsAcceptance,
     method: entry.method,
     setMethod: entry.setMethod,
@@ -197,27 +184,25 @@ export function ApiKeyDialog({
         <DialogBody className="space-y-6">
           <p className="text-sm text-muted-foreground leading-relaxed">{layoutCopy}</p>
 
-          {isHosted ? (
-            <ApiKeyMethodSelector
-              value={entry.method}
-              onChange={entry.setMethod}
-              keyValue={entry.value}
-              onKeyValueChange={entry.setValue}
-              envVarName={envVarName}
-              providerName={row.product.name}
-              inputRef={inputRef}
-              focused={focused}
-              onFocus={setFocused}
-              onKeySubmit={() => {
-                void handleSubmit();
-              }}
-              onMethodCommit={handleMethodCommit}
-              onInputMethodKeyDown={handleMethodKeyDown}
-              getMethodOptionProps={getMethodOptionProps}
-              invalid={entry.error !== null}
-              errorId={errorId}
-            />
-          ) : null}
+          <ApiKeyMethodSelector
+            value={entry.method}
+            onChange={entry.setMethod}
+            keyValue={entry.value}
+            onKeyValueChange={entry.setValue}
+            envVarName={envVarName}
+            providerName={row.product.name}
+            inputRef={inputRef}
+            focused={focused}
+            onFocus={setFocused}
+            onKeySubmit={() => {
+              void handleSubmit();
+            }}
+            onMethodCommit={handleMethodCommit}
+            onInputMethodKeyDown={handleMethodKeyDown}
+            getMethodOptionProps={getMethodOptionProps}
+            invalid={entry.error !== null}
+            errorId={errorId}
+          />
 
           <div className="space-y-1 text-xs text-muted-foreground leading-relaxed">
             {row.product.notice.billing.map((line) => (
@@ -255,20 +240,9 @@ export function ApiKeyDialog({
             </Callout>
           )}
 
-          {hasPersistedLocalBearer ? (
-            <Callout tone="warning">
-              <Callout.Content>
-                This configuration uses local bearer authentication. Recreate it from onboarding to
-                replace the bearer token.
-              </Callout.Content>
-            </Callout>
-          ) : null}
-
-          {isHosted ? (
-            <div className="text-xs text-muted-foreground border-t border-border/40 pt-3 leading-relaxed">
-              Note: {storageNote}
-            </div>
-          ) : null}
+          <div className="text-xs text-muted-foreground border-t border-border/40 pt-3 leading-relaxed">
+            Note: {storageNote}
+          </div>
         </DialogBody>
 
         <ApiKeyFooter

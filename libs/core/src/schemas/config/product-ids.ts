@@ -15,30 +15,21 @@ export const HOSTED_API_PRODUCT_IDS = [
   "gemini",
   "zai",
   "openrouter",
-  "groq",
-  "cerebras",
   "deepseek",
+  "qwen",
+  "moonshot",
+  "minimax",
   "ollama-cloud",
   "opencode-zen",
 ] as const;
 export const HostedApiProductIdSchema = z.enum(HOSTED_API_PRODUCT_IDS);
 export type HostedApiProductId = z.infer<typeof HostedApiProductIdSchema>;
 
-export const LOCAL_HTTP_PRODUCT_IDS = ["ollama", "local-openai"] as const;
-export const LocalHttpProductIdSchema = z.enum(LOCAL_HTTP_PRODUCT_IDS);
-export type LocalHttpProductId = z.infer<typeof LocalHttpProductIdSchema>;
-
-export const LOCAL_CLI_PRODUCT_IDS = ["codex-cli", "copilot-cli"] as const;
-export const LocalCliProductIdSchema = z.enum(LOCAL_CLI_PRODUCT_IDS);
-export type LocalCliProductId = z.infer<typeof LocalCliProductIdSchema>;
-
-export const RUNNABLE_PRODUCT_IDS = [
-  ...HOSTED_API_PRODUCT_IDS,
-  ...LOCAL_HTTP_PRODUCT_IDS,
-  ...LOCAL_CLI_PRODUCT_IDS,
-] as const;
-export const RunnableProductIdSchema = z.enum(RUNNABLE_PRODUCT_IDS);
-export type RunnableProductId = z.infer<typeof RunnableProductIdSchema>;
+// Every runnable product is hosted today; the local-http and local-cli family
+// strings survive only as candidate metadata (`candidate-verdicts.ts`).
+export const RUNNABLE_PRODUCT_IDS = HOSTED_API_PRODUCT_IDS;
+export const RunnableProductIdSchema = HostedApiProductIdSchema;
+export type RunnableProductId = HostedApiProductId;
 
 export const EXPERIMENTAL_PRODUCT_IDS = [
   "xiaomi-mimo",
@@ -52,7 +43,6 @@ export const EXPERIMENTAL_PRODUCT_IDS = [
 ] as const;
 
 export const DEFERRED_PRODUCT_IDS = [
-  "minimax-payg",
   "tencent-hunyuan-tokenhub",
   "opencode-cli",
   "hugging-face-inference-providers",
