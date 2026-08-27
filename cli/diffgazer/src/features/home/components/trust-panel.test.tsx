@@ -65,9 +65,43 @@ function FooterConsumer() {
   return <Footer shortcuts={footer.shortcuts} rightShortcuts={footer.rightShortcuts} />;
 }
 
+const ARROW_DOWN = "\u001b[B";
+const ARROW_UP = "\u001b[A";
+
 describe("TrustPanel", () => {
   afterEach(() => {
     cleanup();
+  });
+
+  test("moves between the permission list and the accept button with the arrows", async () => {
+    const loadConfigurationInit = vi
+      .fn<BoundApi["loadConfigurationInit"]>()
+      .mockResolvedValue(makeInitResponse());
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      loadConfigurationInit,
+    } satisfies BoundApi;
+
+    const view = render(
+      <Wrapper api={api}>
+        <TrustPanel onAccept={() => {}} />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => /currently unavailable/i.test(view.lastFrame() ?? ""));
+    expect(view.lastFrame()).toContain("[↓/Tab] Focus Actions");
+
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    expect(view.lastFrame()).toContain("[↑/Tab] Focus Permissions");
+
+    view.stdin.write(ARROW_UP);
+    await flush();
+    expect(view.lastFrame()).toContain("[↓/Tab] Focus Actions");
+
+    view.stdin.write(" ");
+    await flush();
+    expect(view.lastFrame()).toContain("[ ]");
   });
 
   test("marks runCommands unavailable and never submits it when accepting trust", async () => {
@@ -108,22 +142,23 @@ describe("TrustPanel", () => {
     const frame = view.lastFrame() ?? "";
     expect(frame).toMatch(/currently unavailable/i);
     expect(frame).not.toContain("First-Time Setup");
-    expect(frame).toContain("[Tab] Focus Actions");
+    expect(frame).toContain("[\u2193/Tab] Focus Actions");
     expect(frame).toContain("[Enter/Space] Toggle");
 
     view.stdin.write("\t");
     await flush();
     expect(view.lastFrame()).toContain("[Enter] Trust & Continue");
-    expect(view.lastFrame()).toContain("[Tab] Focus Permissions");
+    expect(view.lastFrame()).toContain("[\u2191/Tab] Focus Permissions");
     view.stdin.write("\r");
     await flushUntil(() => {
       const pendingFrame = view.lastFrame() ?? "";
       return (
-        pendingFrame.includes("Saving...") && !pendingFrame.includes("[Tab] Focus Permissions")
+        pendingFrame.includes("Saving...") &&
+        !pendingFrame.includes("[\u2191/Tab] Focus Permissions")
       );
     });
 
-    expect(view.lastFrame()).not.toContain("[Tab] Focus Permissions");
+    expect(view.lastFrame()).not.toContain("[\u2191/Tab] Focus Permissions");
     expect(view.lastFrame()).not.toContain("[Enter] Saving...");
 
     resolveSaveTrust(saveResponse);

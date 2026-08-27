@@ -21,12 +21,14 @@ interface ProviderStepProps {
   value?: RunnableProductId;
   onChange: (productId: RunnableProductId) => void;
   isActive?: boolean;
+  onDownBoundary?: () => void;
 }
 
 export function ProviderStep({
   value,
   onChange,
   isActive = true,
+  onDownBoundary,
 }: ProviderStepProps): ReactElement {
   const { tokens } = useTheme();
   const { rows } = useTerminalDimensions();
@@ -38,6 +40,10 @@ export function ProviderStep({
         value={value}
         onChange={(next) => onChange(next as RunnableProductId)}
         isActive={isActive}
+        wrap={!onDownBoundary}
+        onNavigationBoundaryReached={(direction) => {
+          if (direction === 1) onDownBoundary?.();
+        }}
         maxVisibleItems={Math.max(
           1,
           Math.floor((rows - PROVIDER_STEP_RESERVED_ROWS) / PROVIDER_ROW_LINES),

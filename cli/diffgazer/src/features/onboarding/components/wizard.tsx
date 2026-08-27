@@ -39,6 +39,10 @@ function EndpointBindingStep({ wizard }: WizardStepBodyProps): ReactElement | nu
         value={input.endpoint}
         onChange={(endpoint) => wizard.updateData({ configurationInput: { ...input, endpoint } })}
         isActive={isActive}
+        wrap={false}
+        onNavigationBoundaryReached={(direction) => {
+          if (direction === 1) wizard.enterNav();
+        }}
       >
         {step.endpoints.map((endpoint) => (
           <RadioGroup.Item
@@ -55,6 +59,15 @@ function EndpointBindingStep({ wizard }: WizardStepBodyProps): ReactElement | nu
 
 function AcknowledgementStep({ wizard }: WizardStepBodyProps): ReactElement | null {
   const { tokens } = useTheme();
+  const isActive = wizard.focusArea === "step";
+
+  useInput(
+    (_input, key) => {
+      if (key.downArrow) wizard.enterNav();
+    },
+    { isActive },
+  );
+
   const step = wizard.wizardData.plan.steps.find((candidate) => candidate.id === "acknowledgement");
   if (!step || step.id !== "acknowledgement") return null;
   const notice = step.notice;
@@ -76,7 +89,7 @@ function AcknowledgementStep({ wizard }: WizardStepBodyProps): ReactElement | nu
       <Button
         variant="secondary"
         onPress={wizard.handleAcknowledgementAccept}
-        isActive={wizard.focusArea === "step"}
+        isActive={isActive}
         disabled={accepted}
       >
         {accepted ? "Accepted" : "Accept"}
@@ -94,6 +107,7 @@ function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
           value={wizard.wizardData.configurationInput.productId}
           onChange={wizard.handleProductChange}
           isActive={isStepFocused}
+          onDownBoundary={wizard.enterNav}
         />
       );
     case "endpoint-binding":
@@ -103,10 +117,11 @@ function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
         <ApiKeyStep
           productId={wizard.wizardData.configurationInput.productId}
           method={wizard.inputMethod}
+          highlightedMethod={wizard.focusArea === "step" ? wizard.methodHighlight : null}
           onMethodChange={wizard.handleInputMethodChange}
           apiKey={wizard.apiKey}
           onApiKeyChange={wizard.handleApiKeyChange}
-          isActive={isStepFocused}
+          isActive={isStepFocused && wizard.apiKeyInputFocused}
           inputFocused={wizard.apiKeyInputFocused}
           onInputFocusedChange={wizard.setApiKeyInputFocused}
         />
@@ -120,6 +135,7 @@ function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
           value={wizard.wizardData.selectedModelId}
           onChange={wizard.handleModelChange}
           isActive={isStepFocused}
+          onDownBoundary={wizard.enterNav}
         />
       );
     case "acknowledgement":
@@ -145,6 +161,8 @@ export function OnboardingWizard(): ReactElement {
       if (index > wizard.navIndex) wizard.moveNavIndex(1);
       if (index < wizard.navIndex) wizard.moveNavIndex(-1);
     },
+    verticalNavigation: true,
+    onExitUp: wizard.exitNav,
   });
 
   usePageFooter({

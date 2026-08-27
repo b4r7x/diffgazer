@@ -113,6 +113,60 @@ describe("SearchInput", () => {
     expect(escapeEvent.defaultPrevented).toBe(false);
   });
 
+  it("moves focus to the clear button with ArrowRight at the caret end and clears with Enter", async () => {
+    const user = userEvent.setup();
+    renderSearchInput({ defaultValue: "query" });
+    const input = screen.getByRole("searchbox");
+    await user.click(input);
+    (input as HTMLInputElement).setSelectionRange(5, 5);
+
+    await user.keyboard("{ArrowRight}");
+    const clearButton = screen.getByRole("button", { name: "Clear search" });
+    expect(clearButton).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(input).toHaveValue("");
+    expect(input).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "Clear search" })).not.toBeInTheDocument();
+  });
+
+  it("returns focus to the input with ArrowLeft from the clear button", async () => {
+    const user = userEvent.setup();
+    renderSearchInput({ defaultValue: "query" });
+    const input = screen.getByRole("searchbox");
+    await user.click(input);
+    (input as HTMLInputElement).setSelectionRange(5, 5);
+
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "Clear search" })).toHaveFocus();
+
+    await user.keyboard("{ArrowLeft}");
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue("query");
+  });
+
+  it("keeps ArrowRight native while the caret is inside the value", async () => {
+    const user = userEvent.setup();
+    renderSearchInput({ defaultValue: "query" });
+    const input = screen.getByRole("searchbox");
+    await user.click(input);
+    (input as HTMLInputElement).setSelectionRange(1, 1);
+
+    await user.keyboard("{ArrowRight}");
+    expect(input).toHaveFocus();
+  });
+
+  it("keeps modified ArrowRight native at the caret end", async () => {
+    const user = userEvent.setup();
+    renderSearchInput({ defaultValue: "query" });
+    const input = screen.getByRole("searchbox");
+    await user.click(input);
+    (input as HTMLInputElement).setSelectionRange(5, 5);
+
+    await user.keyboard("{Shift>}{ArrowRight}{/Shift}");
+    expect(input).toHaveFocus();
+  });
+
   it("calls onEnter when Enter is pressed", async () => {
     const user = userEvent.setup();
     const onEnter = vi.fn();

@@ -15,6 +15,7 @@ interface TabsProps {
 
 interface TabsListProps {
   isActive?: boolean;
+  wrap?: boolean;
   children: ReactNode;
 }
 
@@ -69,7 +70,7 @@ function TabsRoot({ value, onChange, children }: TabsProps) {
   );
 }
 
-function TabsList({ isActive = true, children }: TabsListProps) {
+function TabsList({ isActive = true, wrap = true, children }: TabsListProps) {
   const ctx = useTabsContext();
   const { tokens } = useTheme();
   const triggers = collectChildItems(children, extractTabsTrigger);
@@ -77,7 +78,7 @@ function TabsList({ isActive = true, children }: TabsListProps) {
     items: triggers.map((trigger) => ({ id: trigger.value, disabled: trigger.disabled })),
     highlightedId: ctx.activeValue,
     onHighlightChange: ctx.setActiveValue,
-    wrap: true,
+    wrap,
   });
 
   useListNavigationInput({ navigation, isActive, orientation: "horizontal" });

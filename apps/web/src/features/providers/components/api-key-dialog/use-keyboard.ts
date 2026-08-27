@@ -19,6 +19,8 @@ import type { ApiKeyFocusTarget } from "@/types/api-key-focus-target";
 
 type FocusZone = "close" | "radios" | "input" | "acknowledgement" | "footer";
 
+type StoredFocusTarget = Exclude<ApiKeyFocusTarget, "cancel" | "confirm">;
+
 interface ApiKeyDialogKeyboardOptions {
   open: boolean;
   /** Whether the dialog renders an acceptance control between the credential controls and the footer. */
@@ -63,38 +65,17 @@ interface ApiKeyDialogKeyboardReturn {
   handleMethodCommit: (method: InputMethod) => void;
 }
 
-function getZoneForElement(element: ApiKeyFocusTarget): FocusZone {
+function getZoneForElement(element: StoredFocusTarget): FocusZone {
   if (element === "close") return "close";
   if (element === "paste" || element === "env") return "radios";
   if (element === "input") return "input";
-  if (element === "acknowledgement") return "acknowledgement";
-  return "footer";
+  return "acknowledgement";
 }
 
 function getZones(hasAcknowledgement: boolean): readonly [FocusZone, ...FocusZone[]] {
   return hasAcknowledgement
     ? ["radios", "input", "acknowledgement", "footer", "close"]
     : ["radios", "input", "footer", "close"];
-}
-
-function getEffectiveFocused({
-  inFooter,
-  footerIndex,
-  canSubmit,
-  focused,
-}: {
-  inFooter: boolean;
-  footerIndex: number;
-  canSubmit: boolean;
-  focused: ApiKeyFocusTarget;
-}): ApiKeyFocusTarget {
-  if (inFooter) {
-    if (focused === "confirm") return canSubmit ? "confirm" : "cancel";
-    if (focused === "cancel") return "cancel";
-    return footerIndex === 1 && canSubmit ? "confirm" : "cancel";
-  }
-  if (!canSubmit && focused === "confirm") return "cancel";
-  return focused;
 }
 
 export function useApiKeyDialogKeyboard({
@@ -112,7 +93,7 @@ export function useApiKeyDialogKeyboard({
   const methodOptionRefs = useRef(new Map<InputMethod, HTMLDivElement>());
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const zones = getZones(hasAcknowledgement);
-  const [focused, setFocusedInternal] = useState<ApiKeyFocusTarget>("paste");
+  const [focused, setFocusedInternal] = useState<StoredFocusTarget>("paste");
 
   useDialogScope("api-key-dialog", { enabled: open });
 
@@ -145,7 +126,11 @@ export function useApiKeyDialogKeyboard({
   // Downward from the credential controls lands on the acceptance control when
   // there is one, else straight on the footer; upward from the footer mirrors it.
   const setFocused = (element: ApiKeyFocusTarget) => {
-    if (element === "acknowledgement" && !hasAcknowledgement) {
+    if (element === "cancel") {
+      enterFooter(0);
+      return;
+    }
+    if (element === "confirm" || (element === "acknowledgement" && !hasAcknowledgement)) {
       enterFooter();
       return;
     }
@@ -186,7 +171,6 @@ export function useApiKeyDialogKeyboard({
       ref: actionProps.ref,
       onFocus: () => {
         setZone("footer");
-        setFocusedInternal(index === 0 ? "cancel" : "confirm");
         actionProps.onFocus();
       },
     };
@@ -230,12 +214,10 @@ export function useApiKeyDialogKeyboard({
     resetDialogFocus();
   }, [open]);
 
-  const effectiveFocused = getEffectiveFocused({
-    inFooter: isZone("footer"),
-    footerIndex: footerActionRow.focusedIndex,
-    canSubmit,
-    focused,
-  });
+  const inFooter = isZone("footer");
+  const footerFocused: ApiKeyFocusTarget =
+    footerActionRow.focusedIndex === 1 && canSubmit ? "confirm" : "cancel";
+  const effectiveFocused = inFooter ? footerFocused : focused;
 
   // The [x] tops the arrow cycle like the model dialog's close zone: ArrowUp
   // from the first control reaches it, ArrowDown returns below.
@@ -309,7 +291,6 @@ export function useApiKeyDialogKeyboard({
     { enabled: open && isZone("input"), allowInInput: true },
   );
 
-  const inFooter = isZone("footer");
   const cancelHighlighted = inFooter && effectiveFocused === "cancel";
   const confirmHighlighted = inFooter && effectiveFocused === "confirm";
   const acknowledgementHighlighted =

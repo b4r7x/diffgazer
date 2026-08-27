@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { flush } from "../../../testing/flush";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
+import { FooterProbe } from "../testing/progress-view";
 import { ReviewSummaryView, type ReviewSummaryViewProps } from "./summary-view";
 
 vi.mock("@diffgazer/core/api/hooks", () => ({
@@ -149,6 +150,24 @@ describe("ReviewSummaryView (TUI)", () => {
     await new Promise((resolve) => setImmediate(resolve));
 
     expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
+  test("advertises scrolling in the shortcut bar alongside View Results", async () => {
+    const { lastFrame } = render(
+      <FooterProvider initialShortcuts={[]}>
+        <CliThemeProvider initialTheme="dark">
+          <ReviewSummaryView
+            issues={[makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
+            reviewId="review-1"
+            durationMs={1200}
+            onContinue={vi.fn()}
+          />
+          <FooterProbe />
+        </CliThemeProvider>
+      </FooterProvider>,
+    );
+
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("↑/↓ Scroll, Enter View Results"));
   });
 
   test("formats a full review id with the shared compact label", () => {

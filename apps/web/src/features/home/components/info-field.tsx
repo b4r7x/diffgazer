@@ -18,6 +18,7 @@ export interface InfoFieldProps {
   className?: string;
   onClick?: () => void;
   ariaLabel?: string;
+  value?: string;
 }
 
 const toneClasses: Record<InfoFieldTone, string> = {
@@ -35,6 +36,7 @@ export function InfoField({
   className,
   onClick,
   ariaLabel,
+  value,
 }: InfoFieldProps) {
   const labelClassName = cn("mb-1", toneClasses[tone]);
 
@@ -51,6 +53,7 @@ export function InfoField({
         )}
         onClick={onClick}
         aria-label={ariaLabel ?? `${label} settings`}
+        data-value={value}
       >
         <div className="w-full min-w-0">
           {/* A span, not the SectionHeader element: <button> takes phrasing content only,

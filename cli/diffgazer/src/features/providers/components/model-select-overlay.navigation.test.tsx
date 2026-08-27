@@ -5,6 +5,8 @@ import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures"
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
+  ARROW_DOWN,
+  ARROW_UP,
   catalogModelsResponse,
   countPrefixes,
   flush,
@@ -78,6 +80,126 @@ describe("ModelSelectOverlay list navigation", () => {
   });
 });
 
+describe("ModelSelectOverlay zone arrow chain", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  test("arrows move down into the filter tabs and back up into search", async () => {
+    const { stdin, lastFrame } = renderTwoModelOverlay();
+
+    await flushUntil(() => lastFrame()?.includes("jet-pro") ?? false);
+    stdin.write("/");
+    await flush();
+    expect(lastFrame()).toContain("Search models...█");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(lastFrame()).toContain("<-/->");
+    expect(lastFrame()).not.toContain("Search models...█");
+
+    stdin.write(ARROW_UP);
+    await flush();
+    expect(lastFrame()).toContain("Search models...█");
+    expect(lastFrame()).not.toContain("<-/->");
+  });
+
+  test("arrows move down from the filter tabs into the model list", async () => {
+    const { stdin, lastFrame } = renderTwoModelOverlay();
+
+    await flushUntil(() => lastFrame()?.includes("jet-pro") ?? false);
+    stdin.write("\t");
+    await flush();
+    stdin.write("\t");
+    await flush();
+    expect(lastFrame()).toContain("<-/->");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(lastFrame()).not.toContain("<-/->");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(countPrefixes(lastFrame(), "jet-pro").highlighted).toBe(1);
+  });
+
+  test("the populated list stops at both ends instead of wrapping, exiting up into the filters", async () => {
+    const { stdin, lastFrame } = renderTwoModelOverlay();
+
+    await flushUntil(() => lastFrame()?.includes("jet-pro") ?? false);
+    expect(countPrefixes(lastFrame(), "jet-flash").highlighted).toBe(1);
+
+    stdin.write(ARROW_UP);
+    await flush();
+    expect(lastFrame()).toContain("<-/->");
+    expect(countPrefixes(lastFrame(), "jet-flash").highlighted).toBe(0);
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(countPrefixes(lastFrame(), "jet-pro").highlighted).toBe(1);
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(countPrefixes(lastFrame(), "jet-pro").highlighted).toBe(1);
+    expect(countPrefixes(lastFrame(), "jet-flash").highlighted).toBe(0);
+  });
+});
+
+describe("ModelSelectOverlay retry control", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  function renderFailedDiscovery() {
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockRejectedValueOnce(new Error("Model discovery failed. Test the configuration again."))
+      .mockResolvedValue(catalogModelsResponse(GEMINI_CONFIGURATION));
+    const api = { ...makeGeminiApi(), getConfigurationModels } satisfies BoundApi;
+    const view = render(
+      <Wrapper api={api}>
+        <ModelSelectOverlay open onOpenChange={() => {}} configuration={GEMINI_CONFIGURATION} />
+      </Wrapper>,
+    );
+    return { ...view, getConfigurationModels };
+  }
+
+  test("renders Retry as a control and runs discovery when Enter activates it", async () => {
+    const { stdin, lastFrame, getConfigurationModels } = renderFailedDiscovery();
+
+    await flushUntil(() => lastFrame()?.includes("Model discovery failed") ?? false);
+    expect(lastFrame()).toContain("[ Retry ]");
+
+    stdin.write(ARROW_UP);
+    await flush();
+    stdin.write("\r");
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+
+    expect(getConfigurationModels).toHaveBeenCalledTimes(2);
+    expect(lastFrame()).not.toContain("[ Retry ]");
+  });
+
+  test("reaches Retry by arrowing down from the search and filter zones", async () => {
+    const { stdin, lastFrame, getConfigurationModels } = renderFailedDiscovery();
+
+    await flushUntil(() => lastFrame()?.includes("Model discovery failed") ?? false);
+    stdin.write("/");
+    await flush();
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(lastFrame()).toContain("<-/->");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    stdin.write("\r");
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+
+    expect(getConfigurationModels).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("ModelSelectOverlay search input mode", () => {
   afterEach(() => {
     cleanup();
@@ -102,7 +224,7 @@ describe("ModelSelectOverlay search input mode", () => {
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
-  test("Escape clears a populated search before closing the dialog", async () => {
+  test("one Escape closes the dialog even with a populated search", async () => {
     const onOpenChange = vi.fn();
     const { stdin, lastFrame } = render(
       <Wrapper>
@@ -116,13 +238,6 @@ describe("ModelSelectOverlay search input mode", () => {
     stdin.write("pro");
     await flush();
     expect(lastFrame()).toContain("pro");
-
-    stdin.write("\u001B");
-    await flushUntil(() => lastFrame()?.includes("Search models...") ?? false);
-
-    expect(lastFrame()).toContain("Select Model");
-    expect(lastFrame()).toContain("Search models...");
-    expect(onOpenChange).not.toHaveBeenCalled();
 
     stdin.write("\u001B");
     await flushUntil(() => onOpenChange.mock.calls.length > 0);

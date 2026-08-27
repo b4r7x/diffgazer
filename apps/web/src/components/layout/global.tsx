@@ -4,7 +4,7 @@ import { resolveShellProviderIdentity, type ShellProviderState } from "@diffgaze
 import type { ClientConfigurationSummary, Readiness } from "@diffgazer/core/schemas/config";
 import { useKey, useKeyboardContext } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
-import { toast } from "@diffgazer/ui/components/toast";
+import { focusToastRegion, toast, useHasPersistentToast } from "@diffgazer/ui/components/toast";
 import { useCanGoBack, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useConfigData } from "@/hooks/use-config";
@@ -153,6 +153,7 @@ export function GlobalShortcuts() {
   const dialogOpen = isDialogScope(activeScope);
   const quitScope = dialogOpen ? null : activeScope;
   const sectionScope = dialogOpen || pathname === "/onboarding" ? null : activeScope;
+  const hasPersistentToast = useHasPersistentToast();
 
   const navigateUnlessCurrent = (to: "/settings" | "/history" | "/help") => {
     if (pathname === to) return;
@@ -174,6 +175,13 @@ export function GlobalShortcuts() {
   useKey("s", () => navigateUnlessCurrent("/settings"), { scope: sectionScope });
   useKey("h", () => navigateUnlessCurrent("/history"), { scope: sectionScope });
   useKey("shift+?", () => navigateUnlessCurrent("/help"), { scope: sectionScope });
+  useKey(
+    "n",
+    () => {
+      focusToastRegion();
+    },
+    { scope: dialogOpen ? null : activeScope, enabled: hasPersistentToast },
+  );
 
   return null;
 }

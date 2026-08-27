@@ -369,6 +369,7 @@ export function useActionRowNavigation({
   };
 
   const stepAction = (direction: -1 | 1, boundary: "previous" | "next") => {
+    if (!isRegisteredActionFocused()) return DECLINE;
     const nextIndex = getNextIndex(focusedIndex, direction, actionCount, wrap, disabledKey);
     if (nextIndex !== null && nextIndex !== focusedIndex) {
       focusAction(nextIndex);
@@ -396,7 +397,7 @@ export function useActionRowNavigation({
   useKey(
     "ArrowUp",
     () => {
-      if (canExitActions) {
+      if (canExitActions && isRegisteredActionFocused()) {
         exitActions();
         return;
       }

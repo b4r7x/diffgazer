@@ -9,8 +9,10 @@ import { SectionHeader } from "../../../../components/ui/section-header";
 import { useTheme } from "../../../../theme/provider";
 import { ActivityLog } from "../activity-log";
 
-// [ and ] step the log's agent filter, mirroring the web progress pane; f keeps its forward step.
+// [ and ] step the log's agent filter, mirroring the web progress pane; f steps
+// forward too, except while the view has claimed f for Filter Files.
 const SOURCE_FILTER_STEPS: Record<string, 1 | -1> = { f: 1, "]": 1, "[": -1 };
+const BRACKET_FILTER_STEPS: Record<string, 1 | -1> = { "]": 1, "[": -1 };
 
 export interface ReviewProgressActivityProps {
   width: string;
@@ -20,6 +22,7 @@ export interface ReviewProgressActivityProps {
   agents: AgentState[];
   error: string | null;
   lensStats?: LensStat[];
+  filterFilesKeyActive?: boolean;
 }
 
 export function ReviewProgressActivity({
@@ -30,9 +33,11 @@ export function ReviewProgressActivity({
   agents,
   error,
   lensStats,
+  filterFilesKeyActive = false,
 }: ReviewProgressActivityProps): ReactElement {
   const { tokens } = useTheme();
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
+  const [zone, setZone] = useState<"log" | "filters">("log");
 
   // A log source is always an agent name, and every agent that can emit one is
   // already on the board, so the agent list is the option set — no rescan of the
@@ -40,24 +45,45 @@ export function ReviewProgressActivity({
   const sourceOptions = agents.map((agent) => agent.meta.name);
   const activeSourceFilter =
     sourceFilter && sourceOptions.includes(sourceFilter) ? sourceFilter : null;
+  const hasFilters = sourceOptions.length > 0;
+  const activeZone = hasFilters ? zone : "log";
+
+  const stepSourceFilter = (step: 1 | -1) => {
+    const positions = sourceOptions.length + 1; // "All agents" at 0, then one slot per agent
+    const currentIndex = activeSourceFilter ? sourceOptions.indexOf(activeSourceFilter) + 1 : 0;
+    const nextIndex = clampIndex(currentIndex, step, positions, true);
+    setSourceFilter(nextIndex === 0 ? null : (sourceOptions[nextIndex - 1] ?? null));
+  };
+
+  const filterSteps = filterFilesKeyActive ? BRACKET_FILTER_STEPS : SOURCE_FILTER_STEPS;
 
   useInput(
     (input) => {
-      const step = SOURCE_FILTER_STEPS[input];
+      const step = filterSteps[input];
       if (step !== 1 && step !== -1) return;
-      const positions = sourceOptions.length + 1; // "All agents" at 0, then one slot per agent
-      const currentIndex = activeSourceFilter ? sourceOptions.indexOf(activeSourceFilter) + 1 : 0;
-      const nextIndex = clampIndex(currentIndex, step, positions, true);
-      setSourceFilter(nextIndex === 0 ? null : (sourceOptions[nextIndex - 1] ?? null));
+      stepSourceFilter(step);
     },
-    { isActive: sourceOptions.length > 0 },
+    { isActive: hasFilters },
+  );
+
+  useInput(
+    (_input, key) => {
+      if (key.downArrow) {
+        setZone("log");
+      } else if (key.leftArrow) {
+        stepSourceFilter(-1);
+      } else if (key.rightArrow) {
+        stepSourceFilter(1);
+      }
+    },
+    { isActive: activeZone === "filters" },
   );
 
   const partialFailure = getPartialFailureWarning(agents, error, lensStats);
   const activityLogHeight = Math.max(
     height -
       2 -
-      (sourceOptions.length > 0 ? 1 : 0) -
+      (hasFilters ? 1 : 0) -
       (notices.length > 0 ? notices.length + 1 : 0) -
       (partialFailure.hasPartialFailure ? 5 : 0),
     1,
@@ -70,9 +96,9 @@ export function ReviewProgressActivity({
         <Text color={tokens.muted}>tail -f agent.log</Text>
       </Box>
 
-      {sourceOptions.length > 0 ? (
-        <Text color={tokens.muted} wrap="truncate-end">
-          Filter [f] [/]: {activeSourceFilter ?? "All agents"}
+      {hasFilters ? (
+        <Text color={activeZone === "filters" ? tokens.accent : tokens.muted} wrap="truncate-end">
+          Filter ({filterFilesKeyActive ? "[, ]" : "f, [, ]"}): {activeSourceFilter ?? "All agents"}
         </Text>
       ) : null}
 
@@ -100,7 +126,8 @@ export function ReviewProgressActivity({
         <ActivityLog
           events={events}
           height={activityLogHeight}
-          isActive
+          isActive={activeZone === "log"}
+          onTopBoundary={hasFilters ? () => setZone("filters") : undefined}
           sourceFilter={activeSourceFilter ?? undefined}
         />
       </Box>

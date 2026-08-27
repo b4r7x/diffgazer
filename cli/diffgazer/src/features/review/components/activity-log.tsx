@@ -3,7 +3,7 @@ import { convertReviewEventsToLogEntries, type ReviewEvent } from "@diffgazer/co
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { type LogEntryData, TAG_BADGE_VARIANTS } from "@diffgazer/core/schemas/presentation";
 import { Box, type DOMElement, Text, useBoxMetrics } from "ink";
-import { useLayoutEffect, useRef } from "react";
+import { useRef, useState } from "react";
 import { Badge } from "../../../components/ui/badge";
 import { ScrollArea } from "../../../components/ui/scroll-area";
 import type { CliColorTokens } from "../../../theme/palettes";
@@ -20,6 +20,7 @@ export interface ActivityLogProps {
   height?: number;
   isActive?: boolean;
   sourceFilter?: string;
+  onTopBoundary?: () => void;
 }
 
 function getLogEntryColor(
@@ -36,20 +37,17 @@ export function ActivityLog({
   height = 10,
   isActive = false,
   sourceFilter,
+  onTopBoundary,
 }: ActivityLogProps) {
   const { tokens } = useTheme();
   const containerRef = useRef<DOMElement>(null);
   const { width, hasMeasured } = useBoxMetrics(containerRef);
   const contentWidth = hasMeasured ? Math.max(width, 1) : undefined;
-  const committedVisibleEventsRef = useRef<VisibleEvents | null>(null);
-  const visibleEvents = deriveVisibleEvents(
-    committedVisibleEventsRef.current,
-    events,
-    sourceFilter,
-  );
-  useLayoutEffect(() => {
-    committedVisibleEventsRef.current = visibleEvents;
-  }, [visibleEvents]);
+  const [committedVisibleEvents, setCommittedVisibleEvents] = useState<VisibleEvents | null>(null);
+  const visibleEvents = deriveVisibleEvents(committedVisibleEvents, events, sourceFilter);
+  if (visibleEvents !== committedVisibleEvents) {
+    setCommittedVisibleEvents(visibleEvents);
+  }
   const contentIdentity = sourceFilter ?? visibleEvents.sequence?.stream;
 
   return (
@@ -59,6 +57,7 @@ export function ActivityLog({
         isActive={isActive}
         autoTail
         contentIdentity={contentIdentity}
+        onTopBoundary={onTopBoundary}
         totalRows={visibleEvents.visible.length}
       >
         {(range) => {

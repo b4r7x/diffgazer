@@ -13,6 +13,7 @@ export interface NavigationListProps {
   highlightedId?: string | null;
   onSelect?: (id: string) => void;
   onHighlightChange?: (id: string) => void;
+  onNavigationBoundaryReached?: (direction: 1 | -1) => void;
   wrap?: boolean;
   isActive?: boolean;
   navigationItems?: ListNavigationItem[];
@@ -116,6 +117,7 @@ function NavigationListRoot({
   highlightedId: controlledHighlightedId = null,
   onSelect,
   onHighlightChange,
+  onNavigationBoundaryReached,
   wrap = true,
   isActive = true,
   navigationItems,
@@ -128,6 +130,7 @@ function NavigationListRoot({
     items,
     highlightedId: controlledHighlightedId,
     onHighlightChange,
+    onNavigationBoundaryReached,
     wrap,
   });
 

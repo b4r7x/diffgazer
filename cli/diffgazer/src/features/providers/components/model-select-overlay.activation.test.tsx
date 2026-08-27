@@ -187,7 +187,7 @@ describe("ModelSelectOverlay stale discovery", () => {
       () =>
         lastFrame()?.includes("Model discovery returned a different configuration tuple.") ?? false,
     );
-    expect(lastFrame()).toContain("Press r to retry");
+    expect(lastFrame()).toContain("[ Retry ]");
   });
 
   test("clears discovery errors when the configuration changes while open", async () => {

@@ -1,4 +1,5 @@
-import { KeyboardProvider, useScope } from "@diffgazer/keys";
+import { KeyboardProvider, useKey, useScope } from "@diffgazer/keys";
+import { Toaster, toast } from "@diffgazer/ui/components/toast";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -7,11 +8,12 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useDialogScope } from "@/hooks/use-dialog-scope";
 import { shutdown } from "@/lib/shutdown";
+import { drainToasts } from "@/testing/toast-fixtures";
 import { GlobalShortcuts } from "./global";
 
 vi.mock("@/lib/shutdown", () => ({
@@ -31,12 +33,20 @@ function ConventionNamedPage() {
   return <dialog open>Convention-named dialog page</dialog>;
 }
 
+const onTrustJump = vi.fn();
+
+function TrustJumpPage() {
+  useKey("t", onTrustJump);
+  return <p>Trust jump page</p>;
+}
+
 function createShortcutRouter(initialPath: string) {
   const rootRoute = createRootRoute({
     component: () => (
       <KeyboardProvider>
         <GlobalShortcuts />
         <Outlet />
+        <Toaster />
       </KeyboardProvider>
     ),
   });
@@ -75,6 +85,11 @@ function createShortcutRouter(initialPath: string) {
     path: "/unregistered-dialog",
     component: ConventionNamedPage,
   });
+  const trustJumpRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/trust-jump",
+    component: TrustJumpPage,
+  });
   return createRouter({
     routeTree: rootRoute.addChildren([
       helpRoute,
@@ -84,12 +99,14 @@ function createShortcutRouter(initialPath: string) {
       scopedDialogRoute,
       unscopedDialogRoute,
       conventionNamedRoute,
+      trustJumpRoute,
     ]),
     history: createMemoryHistory({ initialEntries: [initialPath] }),
   });
 }
 
-afterEach(() => {
+afterEach(async () => {
+  await drainToasts();
   vi.clearAllMocks();
 });
 
@@ -164,6 +181,68 @@ describe("GlobalShortcuts", () => {
     await user.keyboard("q");
 
     expect(shutdown).toHaveBeenCalledTimes(1);
+  });
+
+  it("enters the toast region with n while a persistent toast is mounted, arrows to its action", async () => {
+    const user = userEvent.setup();
+    const router = createShortcutRouter("/settings");
+    render(<RouterProvider router={router} />);
+    act(() => {
+      toast.error("Server not responding", { action: <button type="button">Retry</button> });
+    });
+
+    await user.keyboard("n");
+
+    const region = screen.getByRole("region", { name: "Notifications" });
+    await waitFor(() => expect(region).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus();
+  });
+
+  it("keeps n inert while only a timed toast is mounted", async () => {
+    const user = userEvent.setup();
+    const router = createShortcutRouter("/settings");
+    render(<RouterProvider router={router} />);
+    act(() => {
+      toast.info("Opened the Running Review");
+    });
+
+    await user.keyboard("n");
+
+    const region = screen.getByRole("region", { name: "Notifications" });
+    expect(region.contains(document.activeElement)).toBe(false);
+    expect(region).not.toHaveFocus();
+  });
+
+  it("suppresses the toast entry while a dialog scope is active", async () => {
+    const user = userEvent.setup();
+    const router = createShortcutRouter("/dialog");
+    render(<RouterProvider router={router} />);
+    act(() => {
+      toast.error("Server not responding", { action: <button type="button">Retry</button> });
+    });
+
+    await user.keyboard("n");
+
+    const region = screen.getByRole("region", { name: "Notifications" });
+    expect(region.contains(document.activeElement)).toBe(false);
+    expect(region).not.toHaveFocus();
+  });
+
+  it("leaves a screen's t accelerator unshadowed while a persistent toast is mounted", async () => {
+    const user = userEvent.setup();
+    const router = createShortcutRouter("/trust-jump");
+    render(<RouterProvider router={router} />);
+    act(() => {
+      toast.error("Repository Not Trusted", { action: <button type="button">Retry</button> });
+    });
+
+    await user.keyboard("t");
+
+    expect(onTrustJump).toHaveBeenCalledTimes(1);
+    const region = screen.getByRole("region", { name: "Notifications" });
+    expect(region).not.toHaveFocus();
   });
 
   it("suppresses shutdown while a dialog scope is active", async () => {

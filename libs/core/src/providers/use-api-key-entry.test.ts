@@ -139,6 +139,66 @@ describe("useApiKeyEntry", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it("reset clears the submitting flag while a save is pending", async () => {
+    let resolveSubmit!: (committed: boolean) => void;
+    const onSubmit = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveSubmit = resolve;
+        }),
+    );
+    const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
+
+    act(() => result.current.setValue("sk-test"));
+    let submitPromise!: Promise<boolean>;
+    act(() => {
+      submitPromise = result.current.submit();
+    });
+    expect(result.current.isSubmitting).toBe(true);
+
+    act(() => result.current.reset());
+    expect(result.current.isSubmitting).toBe(false);
+
+    await act(async () => {
+      resolveSubmit(true);
+      await submitPromise;
+    });
+    expect(result.current.isSubmitting).toBe(false);
+  });
+
+  it("clears a previous error while the next submit is in flight", async () => {
+    let resolveSubmit!: (committed: boolean) => void;
+    const onSubmit = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("save boom"))
+      .mockImplementationOnce(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolveSubmit = resolve;
+          }),
+      );
+    const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
+
+    act(() => result.current.setValue("sk-test"));
+    await act(async () => {
+      await result.current.submit();
+    });
+    expect(result.current.error).toBe("save boom");
+
+    let submitPromise!: Promise<boolean>;
+    act(() => {
+      submitPromise = result.current.submit();
+    });
+    expect(result.current.isSubmitting).toBe(true);
+    expect(result.current.error).toBeNull();
+
+    await act(async () => {
+      resolveSubmit(true);
+      await submitPromise;
+    });
+    expect(result.current.error).toBeNull();
+  });
+
   it("routes env-method saves through the same guard and error channel", async () => {
     const onSubmit = vi.fn().mockRejectedValueOnce(new Error("env save failed"));
     const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));

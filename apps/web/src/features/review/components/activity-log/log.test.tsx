@@ -593,6 +593,52 @@ describe("ActivityLog pinned scroll contract", () => {
     expect(screen.getByText("event-4")).toBeInTheDocument();
   });
 
+  it("walks ArrowDown at the rendered bottom onto the new entries row and ArrowUp back", async () => {
+    const user = userEvent.setup();
+    let state = createTaggedState(makeLogEvents(3));
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+    setScrollMetrics(log, 200);
+    dispatchScroll(log);
+    state = appendEvent(state, makeEvent(3));
+    rerender(<ActivityLog events={state.events} />);
+    const jump = screen.getByRole("button", { name: "Jump to 1 new entry" });
+
+    log.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(log).toHaveFocus();
+
+    setScrollMetrics(log, 900);
+    await user.keyboard("{ArrowDown}");
+    expect(jump).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(log).toHaveFocus();
+  });
+
+  it("jumps from the new entries row with Enter and hands focus back to the log", async () => {
+    const user = userEvent.setup();
+    let state = createTaggedState(makeLogEvents(3));
+    const { rerender } = render(<ActivityLog events={state.events} />);
+    const log = screen.getByRole("log");
+    setScrollMetrics(log, 200);
+    dispatchScroll(log);
+    state = appendEvent(state, makeEvent(3));
+    rerender(<ActivityLog events={state.events} />);
+
+    log.focus();
+    setScrollMetrics(log, 900);
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Jump to 1 new entry" })).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+
+    expect(screen.queryByRole("button", { name: /jump to/i })).not.toBeInTheDocument();
+    expect(log).toHaveFocus();
+    expect(log.scrollTop).toBe(1_000);
+    expect(screen.getByText("event-3")).toBeInTheDocument();
+  });
+
   it("pins with the End key and clears the new entries affordance", async () => {
     const user = userEvent.setup();
     let state = createTaggedState(makeLogEvents(3));

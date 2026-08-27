@@ -67,4 +67,55 @@ describe("useActionRow", () => {
     });
     expect(result.current.activeIndex).toBe(0);
   });
+
+  test("with verticalNavigation, vertical arrows exit or stop instead of moving the row", () => {
+    useInputMock.mockReset();
+    const onExitUp = vi.fn();
+    const { result } = renderHook(() =>
+      useActionRow({
+        actionCount: 2,
+        onAction: vi.fn(),
+        verticalNavigation: true,
+        onExitUp,
+      }),
+    );
+
+    act(() => {
+      getActiveHandler()?.("", { downArrow: true });
+    });
+    expect(result.current.activeIndex).toBe(0);
+
+    act(() => {
+      getActiveHandler()?.("", { upArrow: true });
+    });
+    expect(onExitUp).toHaveBeenCalledTimes(1);
+    expect(result.current.activeIndex).toBe(0);
+
+    act(() => {
+      getActiveHandler()?.("", { rightArrow: true });
+    });
+    expect(result.current.activeIndex).toBe(1);
+  });
+
+  test("with verticalNavigation and no exit handler, vertical arrows are boundary stops", () => {
+    useInputMock.mockReset();
+    const { result } = renderHook(() =>
+      useActionRow({
+        actionCount: 2,
+        onAction: vi.fn(),
+        verticalNavigation: true,
+        defaultIndex: 1,
+      }),
+    );
+
+    act(() => {
+      getActiveHandler()?.("", { upArrow: true });
+    });
+    expect(result.current.activeIndex).toBe(1);
+
+    act(() => {
+      getActiveHandler()?.("", { downArrow: true });
+    });
+    expect(result.current.activeIndex).toBe(1);
+  });
 });

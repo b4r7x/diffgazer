@@ -9,7 +9,7 @@ import {
 import type { ReviewIssue, ReviewMetadata, SeverityCounts } from "@diffgazer/core/schemas/review";
 import { useState } from "react";
 import { getAvailableHistoryZones, nextHistoryZone } from "../lib/focus-zones";
-import type { HistoryFocusZone, HistoryInteractionMode } from "../types";
+import type { HistoryFocusZone, HistoryInteractionMode, HistoryRunsSubZone } from "../types";
 
 export interface UseHistoryScreenResult {
   reviewsQuery: ReturnType<typeof useReviews>;
@@ -19,9 +19,12 @@ export interface UseHistoryScreenResult {
   retainedError: HistoryScreenState["retainedError"];
 
   focusZone: HistoryFocusZone;
+  availableZones: HistoryFocusZone[];
   interactionMode: HistoryInteractionMode;
   setFocusZone: (zone: HistoryFocusZone) => void;
   cycleFocusZone: () => void;
+  runsSubZone: HistoryRunsSubZone;
+  setRunsSubZone: (zone: HistoryRunsSubZone) => void;
 
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -58,6 +61,7 @@ export function useHistoryScreen({
   const history = useHistoryScreenState();
 
   const [focusZone, setFocusZoneState] = useState<HistoryFocusZone>("runs");
+  const [runsSubZone, setRunsSubZoneState] = useState<HistoryRunsSubZone>("list");
   const hasNavigableRuns = history.mappedRuns.length > 0 || history.hasMoreReviews;
   const availableZones = getAvailableHistoryZones({
     hasRuns: hasNavigableRuns,
@@ -69,15 +73,22 @@ export function useHistoryScreen({
     !history.reviewsQuery.isLoading &&
     history.reviewsQuery.data !== undefined &&
     (history.hasReviews || history.hasMoreReviews);
-  const interactionMode: HistoryInteractionMode = rendersHistoryControls
-    ? activeFocusZone
-    : "route";
+  const activeRunsSubZone: HistoryRunsSubZone =
+    activeFocusZone === "runs" && (history.hasMoreReviews || history.isLoadingMoreReviews)
+      ? runsSubZone
+      : "list";
+  let interactionMode: HistoryInteractionMode = "route";
+  if (rendersHistoryControls) {
+    interactionMode = activeRunsSubZone === "load-more" ? "load-more" : activeFocusZone;
+  }
 
   const setFocusZone = (zone: HistoryFocusZone) => {
+    setRunsSubZoneState("list");
     setFocusZoneState(availableZones.includes(zone) ? zone : activeFocusZone);
   };
 
   const cycleFocusZone = () => {
+    setRunsSubZoneState("list");
     setFocusZoneState((z) => {
       const currentZone = availableZones.includes(z) ? z : fallbackFocusZone;
       return nextHistoryZone(currentZone, availableZones);
@@ -100,9 +111,12 @@ export function useHistoryScreen({
     runIdLookup: history.runIdLookup,
     retainedError: history.retainedError,
     focusZone: activeFocusZone,
+    availableZones,
     interactionMode,
     setFocusZone,
     cycleFocusZone,
+    runsSubZone: activeRunsSubZone,
+    setRunsSubZone: setRunsSubZoneState,
     searchQuery: history.searchQuery,
     setSearchQuery: history.setSearchQuery,
     clearSearchAndFocusRuns,

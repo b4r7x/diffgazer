@@ -39,6 +39,7 @@ export interface ProviderDetailsProps {
   /** True until the provider consent is on record; the pane then offers to review it. */
   consentRequired?: boolean;
   onReviewConsent?: () => void;
+  consentLinkRef?: RefObject<HTMLButtonElement | null>;
   /** Keyboard focus parks here while a pending mutation disables every action button. */
   focusFallbackRef?: RefObject<HTMLDivElement | null>;
   /** The action row container: the Tab cycle's action-row target. */
@@ -174,6 +175,7 @@ export function ProviderDetails({
   isPending = false,
   consentRequired = false,
   onReviewConsent,
+  consentLinkRef,
   focusFallbackRef,
   actionRowRef,
   detailsPaneRef,
@@ -272,6 +274,7 @@ export function ProviderDetails({
             <span>Consent required to run reviews</span>
             <span aria-hidden="true">·</span>
             <Button
+              ref={consentLinkRef}
               variant="link"
               size="sm"
               className="h-auto min-h-0 px-0 py-0 text-2xs"

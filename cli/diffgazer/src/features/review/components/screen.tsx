@@ -144,25 +144,29 @@ export function ReviewScreen(): ReactElement {
   const isLiveRoute = route.screen === "review" && route.live === true;
   const pickFiles = route.screen === "review" && route.pickFiles === true;
 
-  const [streamNotFound, setStreamNotFound] = useState(false);
   // The run a failed live stream handed over: its record is read on this screen
   // instead of on a pushed review route, which Back would replay as a new run.
-  const [openedRunId, setOpenedRunId] = useState<string | null>(null);
+  const [streamHandoff, setStreamHandoff] = useState<
+    null | { kind: "not-found" } | { kind: "opened-run"; runId: string }
+  >(null);
   const routeKey = `${reviewId ?? ""}:${isLiveRoute}`;
   const [savedRouteKey, setSavedRouteKey] = useState(routeKey);
   if (savedRouteKey !== routeKey) {
     setSavedRouteKey(routeKey);
-    setStreamNotFound(false);
-    setOpenedRunId(null);
+    setStreamHandoff(null);
   }
 
   // One discriminant carries both facts the saved-review path needs: whether to
   // load it, and which id to load.
-  const savedReviewId =
-    openedRunId ?? (reviewId && (!isLiveRoute || streamNotFound) ? reviewId : null);
+  let savedReviewId: string | null = null;
+  if (streamHandoff?.kind === "opened-run") {
+    savedReviewId = streamHandoff.runId;
+  } else if (reviewId && (!isLiveRoute || streamHandoff !== null)) {
+    savedReviewId = reviewId;
+  }
   // A 404'd stream and a terminally failed one are equally dead: the saved
   // record is all there is, so neither may fall back to the stream.
-  const streamGone = streamNotFound || openedRunId !== null;
+  const streamGone = streamHandoff !== null;
   const savedReview = useReview(savedReviewId);
   const savedOutcome = savedReviewId
     ? resolveSavedReviewOutcome(toSavedReviewQueryState(savedReview), streamGone)
@@ -170,7 +174,7 @@ export function ReviewScreen(): ReactElement {
   const allowResumeWithoutSetup = isLiveRoute || savedOutcome?.kind === "fallback-to-stream";
 
   const handleStreamNotFound = () => {
-    setStreamNotFound(true);
+    setStreamHandoff({ kind: "not-found" });
   };
 
   if (savedOutcome) {
@@ -226,7 +230,7 @@ export function ReviewScreen(): ReactElement {
       reviewId={reviewId}
       allowResumeWithoutSetup={allowResumeWithoutSetup}
       onStreamNotFound={handleStreamNotFound}
-      onViewRunDetails={setOpenedRunId}
+      onViewRunDetails={(runId) => setStreamHandoff({ kind: "opened-run", runId })}
     />
   );
 }

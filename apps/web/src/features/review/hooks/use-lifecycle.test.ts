@@ -271,6 +271,36 @@ describe("useReviewLifecycle no-diff alternate start", () => {
     expect(result.current.isTransitionPending).toBe(false);
   });
 
+  it("clears the start failure while a retried mode switch is pending", async () => {
+    const created = createDeferred<ReturnType<typeof makeCreateReviewResponse>>();
+    mockCreateReview
+      .mockRejectedValueOnce(
+        Object.assign(new Error("API key not found"), { code: "API_KEY_MISSING", status: 400 }),
+      )
+      .mockReturnValueOnce(created.promise);
+
+    const { result } = await renderLoadedReviewLifecycle("unstaged");
+
+    act(() => result.current.handleSwitchMode());
+    await waitFor(() => expect(result.current.startError).not.toBeNull());
+
+    act(() => result.current.handleSwitchMode());
+    await waitFor(() => expect(mockCreateReview).toHaveBeenCalledTimes(2));
+    expect(result.current.startError).toBeNull();
+    expect(result.current.isTransitionPending).toBe(true);
+
+    created.resolve(
+      makeCreateReviewResponse({
+        reviewId: "22222222-2222-4222-8222-222222222222",
+        session: { mode: "staged" },
+      }),
+    );
+    await act(async () => created.promise);
+
+    expect(result.current.startError).toBeNull();
+    expect(result.current.isTransitionPending).toBe(false);
+  });
+
   it("asks for the provider consent before the alternate review and starts it once accepted", async () => {
     const user = userEvent.setup();
     const init = makeReadyInitResponse();

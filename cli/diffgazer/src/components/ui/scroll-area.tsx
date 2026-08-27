@@ -9,6 +9,7 @@ interface BaseScrollAreaProps {
   isActive?: boolean;
   autoTail?: boolean;
   contentIdentity?: unknown;
+  onTopBoundary?: () => void;
 }
 
 interface ScrollRange {
@@ -71,6 +72,7 @@ export function ScrollArea({
   isActive = false,
   autoTail = false,
   contentIdentity,
+  onTopBoundary,
   children,
   totalRows,
 }: ScrollAreaProps) {
@@ -151,7 +153,10 @@ export function ScrollArea({
   useInput(
     (_input, key) => {
       if (key.upArrow) {
-        if (!canNavigateUp) return;
+        if (!canNavigateUp) {
+          onTopBoundary?.();
+          return;
+        }
         const next = Math.max(0, window.start - 1);
         updateScrollState(next);
       } else if (key.downArrow) {

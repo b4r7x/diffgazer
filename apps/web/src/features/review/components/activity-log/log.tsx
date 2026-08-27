@@ -36,7 +36,8 @@ export interface ActivityLogProps extends React.HTMLAttributes<HTMLDivElement> {
    * Fired when ArrowUp asks for more log above the top of the history: the
    * view is at scroll offset 0 and no earlier window is left to page back to.
    * Left out, ArrowUp is left to the scroller instead of being claimed for nobody.
-   * The bottom edge is owned by PageDown/End, so there is no second direction.
+   * The bottom edge stays inside the log: PageDown/End page it, and while the
+   * new-entries row is up ArrowDown at the rendered bottom walks onto it.
    */
   onTopBoundaryReached?: () => void;
 }
@@ -94,20 +95,16 @@ export function ActivityLog({
   ...props
 }: ActivityLogProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const newEntriesRowRef = useRef<HTMLButtonElement>(null);
   const programmaticScrollRef = useRef(false);
   const pendingScrollAlignmentRef = useRef<ScrollAlignment | null>(null);
   const pendingWindowAnchorRef = useRef<ScrollWindowAnchor | null>(null);
-  const committedRowIndexRef = useRef<EventRowIndex | null>(null);
+  const [committedRowIndex, setCommittedRowIndex] = useState<EventRowIndex | null>(null);
   const normalizedSourceFilter = sourceFilter || undefined;
-  const rowIndex = deriveEventRowIndex(
-    committedRowIndexRef.current,
-    events,
-    normalizedSourceFilter,
-  );
-
-  useLayoutEffect(() => {
-    committedRowIndexRef.current = rowIndex;
-  }, [rowIndex]);
+  const rowIndex = deriveEventRowIndex(committedRowIndex, events, normalizedSourceFilter);
+  if (rowIndex !== committedRowIndex) {
+    setCommittedRowIndex(rowIndex);
+  }
 
   const cacheRevision = rowIndex.revision;
   const rowBounds = getEventRowBounds(rowIndex);
@@ -346,6 +343,22 @@ export function ActivityLog({
       return;
     }
 
+    if (
+      event.key === "ArrowDown" &&
+      unseenCount > 0 &&
+      !hasModifierKey(event) &&
+      event.target === event.currentTarget &&
+      scrollRef.current != null &&
+      scrollRef.current.scrollHeight -
+        scrollRef.current.scrollTop -
+        scrollRef.current.clientHeight <=
+        1
+    ) {
+      event.preventDefault();
+      newEntriesRowRef.current?.focus();
+      return;
+    }
+
     if (event.key === "Home") {
       event.preventDefault();
       pendingScrollAlignmentRef.current = "start";
@@ -401,7 +414,21 @@ export function ActivityLog({
       </ScrollArea>
       {/* Outside the scrolling content: the tail row is pinned to the pane so
           "is it alive?" stays answerable without scrolling to the bottom. */}
-      {unseenCount > 0 && <NewEntriesRow count={unseenCount} onJump={jumpToLatest} />}
+      {unseenCount > 0 && (
+        <NewEntriesRow
+          ref={newEntriesRowRef}
+          count={unseenCount}
+          onJump={() => {
+            jumpToLatest();
+            scrollRef.current?.focus({ preventScroll: true });
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "ArrowUp" || hasModifierKey(event)) return;
+            event.preventDefault();
+            scrollRef.current?.focus({ preventScroll: true });
+          }}
+        />
+      )}
       {tailRowProps && <LiveTailRow {...tailRowProps} />}
       <ActivityLogAnnouncement
         tailEvent={tailEvent}

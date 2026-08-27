@@ -1,6 +1,11 @@
 "use client";
 
-import { getRestorableFocusTarget, isEditableElement, restoreFocus } from "@diffgazer/keys";
+import {
+  getRestorableFocusTarget,
+  getTabbableElements,
+  isEditableElement,
+  restoreFocus,
+} from "@diffgazer/keys";
 import { type FocusEvent, useEffect, useEffectEvent, useRef, useState } from "react";
 import { useTopLayerPosition } from "@/hooks/use-top-layer-position";
 import { FOCUS_OUTLINE } from "@/lib/focus-outline";
@@ -44,13 +49,29 @@ interface ToastAnnouncement {
 
 const toasterStack = createTopLayerStack();
 
+let activeRegionEntry: (() => boolean) | null = null;
+
+/**
+ * Moves DOM focus into the active toast region, remembering the opener so
+ * Escape or an arrow past the region's edge returns focus where it was.
+ * Returns false while no toast is mounted. This is the entry persistent toasts
+ * are wired to; timed toasts stay on the hotkey (focus arriving around a timer
+ * unmount would strand the user).
+ */
+export function focusToastRegion(): boolean {
+  return activeRegionEntry?.() ?? false;
+}
+
 export interface ToasterProps {
   /** Corner where toasts stack. Drives positioning classes and slide-in direction. */
   position?: ToastPosition;
   /**
-   * Key that moves DOM focus to the toast region so keyboard users can reach action/close
-   * buttons before a timed toast disappears. Matched against `KeyboardEvent.key` and ignored
-   * while an editable element has focus. Defaults to F8, the Radix viewport hotkey.
+   * Key that moves DOM focus to the toast region. For timed toasts this hotkey (or Tab)
+   * is the intended keyboard route — they are exempt from arrow entry because focus on a
+   * timer-unmounted element would strand the user; persistent toasts are additionally
+   * entered through `focusToastRegion`, and inside the region ArrowUp/ArrowDown walk the
+   * controls either way. Matched against `KeyboardEvent.key` and ignored while an editable
+   * element has focus. Defaults to F8, the Radix viewport hotkey.
    */
   hotkey?: string;
   /** Accessible name for the toast region landmark. */
@@ -82,6 +103,19 @@ export function Toaster({
     inspectionOpener.current = null;
     return restore && restoreFocus(opener);
   };
+
+  const enterRegion = useEffectEvent((): boolean => {
+    const region = containerRef.current;
+    if (!region) return false;
+    const ownerDocument = region.ownerDocument;
+    // A repeated entry while focus is already inside the region must not
+    // clobber the original opener with the region itself.
+    if (!region.contains(ownerDocument.activeElement)) {
+      inspectionOpener.current = getRestorableFocusTarget(ownerDocument);
+    }
+    region.focus();
+    return ownerDocument.activeElement === region;
+  });
 
   const visibleToasts = isTopToaster ? toasts : [];
   useToastContainer(visibleToasts, dismissingIds, containerRef, isTopToaster);
@@ -155,19 +189,22 @@ export function Toaster({
       // an open shadow tree still defers the shortcut.
       const target = event.composedPath()[0] ?? event.target;
       if (isEditableElement(target)) return;
-      const region = containerRef.current;
-      if (!region) return;
+      if (!containerRef.current) return;
       event.preventDefault();
-      // A repeated hotkey press while focus is already inside the region must
-      // not clobber the original opener with the region itself.
-      if (!region.contains(ownerDocument.activeElement)) {
-        inspectionOpener.current = getRestorableFocusTarget(ownerDocument);
-      }
-      region.focus();
+      enterRegion();
     };
     ownerDocument.addEventListener("keydown", onKeyDown);
     return () => ownerDocument.removeEventListener("keydown", onKeyDown);
   }, [hotkey, isTopToaster]);
+
+  useEffect(() => {
+    if (!isTopToaster || !hasToasts) return;
+    const entry = () => enterRegion();
+    activeRegionEntry = entry;
+    return () => {
+      if (activeRegionEntry === entry) activeRegionEntry = null;
+    };
+  }, [isTopToaster, hasToasts]);
 
   // The always-mounted region would otherwise keep focus parked on an empty
   // live-region container after the last toast is removed. Restore only while
@@ -255,15 +292,27 @@ export function Toaster({
         resume("focus");
       }}
       onKeyDown={(event) => {
-        // Escape exits the hotkey inspection: it returns focus to where it was
-        // before the hotkey and consumes the key, so app-level Escape handlers
-        // (back navigation) cannot also fire from inside the region. Consuming
-        // it also skips the overlay-dismiss layer for this press — toasts stay
+        if (event.defaultPrevented || event.nativeEvent.isComposing) return;
+        // Escape exits the inspection: it returns focus to where it was before
+        // the entry and consumes the key, so app-level Escape handlers (back
+        // navigation) cannot also fire from inside the region. Consuming it
+        // also skips the overlay-dismiss layer for this press — toasts stay
         // visible; dismissal stays on the close buttons and timeouts.
-        if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing)
+        if (event.key === "Escape") {
+          event.preventDefault();
+          endInspection(true);
           return;
+        }
+        if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+        if (isEditableElement(event.target)) return;
+        const region = event.currentTarget;
+        const chain: HTMLElement[] = [region, ...getTabbableElements(region)];
+        const index = chain.indexOf(region.ownerDocument.activeElement as HTMLElement);
+        if (index === -1) return;
         event.preventDefault();
-        endInspection(true);
+        const next = chain[index + (event.key === "ArrowDown" ? 1 : -1)];
+        if (next) next.focus();
+        else endInspection(true);
       }}
       className={cn(
         // Override the UA [popover] stylesheet (inset:0, margin:auto, fit-content,

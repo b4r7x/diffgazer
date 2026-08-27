@@ -68,6 +68,7 @@ function Subject({
   dialogOpen = false,
   activeConfigurationId = null,
   runControl = vi.fn(),
+  hasConsentLink = false,
 }: {
   filteredProviders?: ProviderListRow[];
   onSelectedId?: (id: string | null) => void;
@@ -77,6 +78,7 @@ function Subject({
   dialogOpen?: boolean;
   activeConfigurationId?: string | null;
   runControl?: (control: ProviderRowControl) => void;
+  hasConsentLink?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(
     getProviderRowId(GEMINI_ROW as ProviderListRow),
@@ -165,10 +167,16 @@ function Subject({
               getButtonProps={keyboard.getActionButtonProps}
             />
           </div>
+          {hasConsentLink ? (
+            <button type="button" ref={keyboard.consentLinkRef}>
+              Review the provider data notice
+            </button>
+          ) : null}
         </div>
       </div>
       {/* Mirrors the page layer's parked footer hint, which names this zone. */}
       <p>{`chrome return: ${keyboard.chromeReturnZone ?? "none"}`}</p>
+      <p>{`zone: ${keyboard.focusZone}`}</p>
     </>
   );
 }
@@ -372,6 +380,42 @@ describe("useProvidersKeyboard", () => {
     expect(screen.getByRole("button", { name: "More" })).toHaveFocus();
     await user.keyboard("{Enter}");
     expect(runControl).toHaveBeenCalledWith(expect.objectContaining({ id: "more" }));
+  });
+
+  it("arrows from the action row's bottom onto the consent Review link and back", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <Subject hasConsentLink />
+      </KeyboardProvider>,
+    );
+
+    const providerList = screen.getByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(providerList).toHaveFocus());
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: /Select configuration/i })).toHaveFocus();
+
+    const link = screen.getByRole("button", { name: "Review the provider data notice" });
+    let lastAction: Element | null = null;
+    for (let i = 0; i < 8 && document.activeElement !== link; i += 1) {
+      lastAction = document.activeElement;
+      await user.keyboard("{ArrowDown}");
+    }
+    expect(link).toHaveFocus();
+    expect(screen.getByText("zone: details")).toBeInTheDocument();
+
+    await user.keyboard("{ArrowDown}");
+    expect(link).toHaveFocus();
+
+    await user.keyboard("{ArrowLeft}");
+    expect(link).toHaveFocus();
+    await user.keyboard("{ArrowRight}");
+    expect(link).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(lastAction).not.toBeNull();
+    expect(lastAction).toHaveFocus();
   });
 
   it("cycles Tab through the list, the details pane, and the action row like the TUI panes", async () => {
@@ -835,5 +879,30 @@ describe("useProvidersKeyboard", () => {
     // ...and Enter must activate again without an arrow press first.
     await user.keyboard("{Enter}");
     expect(runAction).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps ArrowDown on the parked fallback instead of hopping to the consent link", async () => {
+    const user = userEvent.setup();
+
+    const { rerender } = render(
+      <KeyboardProvider>
+        <Subject hasConsentLink />
+      </KeyboardProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByRole("listbox", { name: "Providers" })).toHaveFocus());
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: /Select configuration/i })).toHaveFocus();
+
+    rerender(
+      <KeyboardProvider>
+        <Subject hasConsentLink isPending />
+      </KeyboardProvider>,
+    );
+    const park = screen.getByTestId("details-focus-park");
+    await waitFor(() => expect(park).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+    expect(park).toHaveFocus();
   });
 });

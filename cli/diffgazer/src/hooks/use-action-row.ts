@@ -16,6 +16,7 @@ export interface UseActionRowOptions {
   onNavigate?: (index: number) => void;
   verticalNavigation?: boolean;
   onExitUp?: () => void;
+  onExitLeft?: () => void;
 }
 
 export interface ActionRow {
@@ -69,6 +70,7 @@ export function useActionRow({
   onNavigate,
   verticalNavigation = false,
   onExitUp,
+  onExitLeft,
 }: UseActionRowOptions): ActionRow {
   const [internalIndex, setInternalIndex] = useState(defaultIndex);
   const rawIndex = controlledIndex ?? internalIndex;
@@ -81,10 +83,16 @@ export function useActionRow({
     onNavigate?.(index);
   }
 
-  function move(direction: 1 | -1) {
-    setActiveIndex(
-      getNextEnabledAction({ current: activeIndex, direction, actionCount, disabledActions }),
-    );
+  function move(direction: 1 | -1): boolean {
+    const next = getNextEnabledAction({
+      current: activeIndex,
+      direction,
+      actionCount,
+      disabledActions,
+    });
+    if (next === activeIndex) return false;
+    setActiveIndex(next);
+    return true;
   }
 
   function activate(index = activeIndex) {
@@ -98,15 +106,15 @@ export function useActionRow({
 
   useInput(
     (_input, key) => {
-      if (key.leftArrow || (verticalNavigation && key.upArrow)) {
-        if (verticalNavigation && key.upArrow && onExitUp) {
-          onExitUp();
-          return;
-        }
-        move(-1);
+      if (verticalNavigation && (key.upArrow || key.downArrow)) {
+        if (key.upArrow) onExitUp?.();
         return;
       }
-      if (key.rightArrow || (verticalNavigation && key.downArrow)) move(1);
+      if (key.leftArrow) {
+        if (!move(-1)) onExitLeft?.();
+        return;
+      }
+      if (key.rightArrow) move(1);
     },
     { isActive },
   );

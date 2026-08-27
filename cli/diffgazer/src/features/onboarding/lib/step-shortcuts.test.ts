@@ -37,6 +37,21 @@ describe("getStepShortcuts", () => {
     );
   });
 
+  test("labels the arrows as leaving the field while the api key input is focused", () => {
+    const shortcuts = getStepShortcuts({
+      currentStep: "authentication",
+      focusArea: "step",
+      navIndex: 0,
+      isFirstStep: false,
+      isLastStep: false,
+      canProceed: true,
+      inputMethod: "paste",
+      apiKeyInputFocused: true,
+    });
+    expect(shortcuts).toContainEqual({ key: "↑/↓", label: "Leave Field" });
+    expect(shortcuts.map((shortcut) => shortcut.label)).not.toContain("Navigate Methods");
+  });
+
   test("describes the hosted authentication Tab destination for paste vs env", () => {
     const pasteTab = getStepShortcuts({
       currentStep: "authentication",

@@ -65,6 +65,9 @@ export interface ReviewProgressViewProps {
 }
 
 const STREAMING_SHORTCUTS: Shortcut[] = [{ key: "c", label: "Cancel" }];
+const SCROLL_SHORTCUT: Shortcut = { key: "↑/↓", label: "Scroll" };
+const LOG_FILTER_SHORTCUT: Shortcut = { key: "f [ ]", label: "Filter Log" };
+const LOG_FILTER_BRACKETS_SHORTCUT: Shortcut = { key: "[ ]", label: "Filter Log" };
 const FILTER_FILES_KEY = "f";
 const FILTER_FILES_SHORTCUT: Shortcut = { key: FILTER_FILES_KEY, label: "Filter Files" };
 const SIZE_WARNING_TITLE = "Large Review";
@@ -222,8 +225,10 @@ export function ReviewProgressView({
     providerRecoveryLabel,
   });
 
+  const logFilterShortcut = canFilterFiles ? LOG_FILTER_BRACKETS_SHORTCUT : LOG_FILTER_SHORTCUT;
+
   usePageFooter({
-    shortcuts,
+    shortcuts: [SCROLL_SHORTCUT, ...shortcuts, ...(agents.length > 0 ? [logFilterShortcut] : [])],
     rightShortcuts: onBack ? BACK_SHORTCUTS : [],
   });
 
@@ -290,6 +295,7 @@ export function ReviewProgressView({
           agents={agents}
           error={error}
           lensStats={lensStats}
+          filterFilesKeyActive={canFilterFiles}
         />
       </Box>
       {sanitizedSizeWarning ? (

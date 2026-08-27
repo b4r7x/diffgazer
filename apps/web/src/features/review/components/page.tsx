@@ -27,6 +27,8 @@ type LiveReviewState =
   | { phase: Extract<ReviewScreenPhase, "streaming">; reviewId: string }
   | { phase: Extract<ReviewScreenPhase, "summary" | "results">; reviewData: ReviewData };
 
+type ReviewPageLiveState = LiveReviewState | { phase: "stream-not-found" };
+
 const REVIEW_ROUTE = "/review/{-$reviewId}" as const;
 
 /**
@@ -42,8 +44,8 @@ function resolveValidIssueId(
   return issues.some((issue) => issue.id === issueId) ? issueId : null;
 }
 
-function getLiveReviewId(state: LiveReviewState | null): string | null {
-  if (!state) return null;
+function getLiveReviewId(state: ReviewPageLiveState | null): string | null {
+  if (!state || state.phase === "stream-not-found") return null;
   if (state.phase === "streaming") return state.reviewId;
   return state.reviewData.reviewId;
 }
@@ -55,10 +57,9 @@ export function ReviewPage() {
   const isLiveNavigation = search.live === true;
   const initialIssueId = search.issueId ?? null;
   const reviewId = params.reviewId ?? null;
-  const [liveState, setLiveState] = useState<LiveReviewState | null>(
+  const [liveState, setLiveState] = useState<ReviewPageLiveState | null>(
     reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null,
   );
-  const [streamNotFound, setStreamNotFound] = useState(false);
   // Which of a saved run's two screens is showing. "auto" defers to the run and
   // the route (resolved in one place below). Only an explicit move out of the
   // summary lands here as "results", so the back grammar can tell a
@@ -75,7 +76,6 @@ export function ReviewPage() {
   if (routeKey !== nextRouteKey) {
     setRouteKey(nextRouteKey);
     setLiveState(reviewId && isLiveNavigation ? { phase: "streaming", reviewId } : null);
-    setStreamNotFound(false);
     setSavedScreen("auto");
   }
 
@@ -87,10 +87,13 @@ export function ReviewPage() {
 
   const liveReviewId = getLiveReviewId(liveState);
   const isLiveReviewRoute = Boolean(reviewId && liveReviewId === reviewId);
-  const shouldLoadSavedReview = Boolean(reviewId && !isLiveReviewRoute && !liveState);
+  const streamGone = liveState?.phase === "stream-not-found";
+  const shouldLoadSavedReview = Boolean(
+    reviewId && !isLiveReviewRoute && (!liveState || streamGone),
+  );
   const savedReviewQuery = useReview(shouldLoadSavedReview ? (reviewId ?? null) : null);
   const savedOutcome = shouldLoadSavedReview
-    ? resolveSavedReviewOutcome(toSavedReviewQueryState(savedReviewQuery), streamNotFound)
+    ? resolveSavedReviewOutcome(toSavedReviewQueryState(savedReviewQuery), streamGone)
     : null;
   const savedOutcomeKind = savedOutcome?.kind ?? null;
   const savedErrorForReport = savedOutcome?.kind === "report-error" ? savedOutcome.error : null;
@@ -102,8 +105,7 @@ export function ReviewPage() {
   };
 
   const handleStreamNotFound = () => {
-    setStreamNotFound(true);
-    setLiveState(null);
+    setLiveState({ phase: "stream-not-found" });
   };
 
   const handleBack = () => {
@@ -191,7 +193,10 @@ export function ReviewPage() {
     return <ReviewLoadingMessage message="Redirecting..." />;
   }
 
-  const currentLiveState = liveState ?? { phase: "streaming" as const, reviewId };
+  const currentLiveState =
+    liveState && liveState.phase !== "stream-not-found"
+      ? liveState
+      : { phase: "streaming" as const, reviewId };
 
   switch (currentLiveState.phase) {
     case "streaming":

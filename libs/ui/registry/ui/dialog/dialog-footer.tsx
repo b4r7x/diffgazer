@@ -45,7 +45,7 @@ function DialogFooterActions({ className, ...props }: DialogFooterActionsProps) 
     <div
       data-slot="dialog-footer-actions"
       className={cn(
-        "flex min-w-0 max-w-full basis-full flex-col items-stretch justify-end gap-3 sm:basis-auto sm:flex-row sm:flex-wrap sm:items-center",
+        "flex min-w-0 max-w-full basis-full flex-col items-stretch justify-end gap-3 sm:ml-auto sm:basis-auto sm:flex-row sm:flex-wrap sm:items-center",
         className,
       )}
       {...props}

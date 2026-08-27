@@ -159,7 +159,7 @@ describe("FailureView", () => {
     expect(panel).toHaveAttribute("data-state", "focused");
   });
 
-  it("centres the panel between two collapsing spacers with its tone tint", () => {
+  it("bands the panel between two collapsing spacers with its tone tint", () => {
     const { container } = renderFailure();
 
     // Panel data attributes are the documented contract: the failure tone tints
@@ -168,10 +168,10 @@ describe("FailureView", () => {
     expect(panel).toHaveAttribute("data-tone", "error");
     expect(panel).not.toHaveAttribute("data-frame", "viewfinder");
 
-    // A boxed dead end dead-centres between two equal spacers that collapse
-    // once the panel outgrows the viewport. jsdom has no layout, so the
-    // placement itself is pinned in desktop-contracts.e2e.ts; what it needs from
-    // the markup is the pair of spacers.
+    // A boxed dead end sits in the app-wide 1:2 band between two spacers that
+    // collapse once the panel outgrows the viewport. jsdom has no layout, so
+    // the placement itself is pinned in desktop-contracts.e2e.ts; what it needs
+    // from the markup is the pair of spacers.
     expect(panel?.previousElementSibling).toHaveAttribute("aria-hidden");
     expect(panel?.nextElementSibling).toHaveAttribute("aria-hidden");
   });

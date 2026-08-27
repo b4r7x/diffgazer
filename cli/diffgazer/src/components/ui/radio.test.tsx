@@ -82,6 +82,20 @@ describe("RadioGroup navigation", () => {
     expect(onHighlightChange).toHaveBeenCalledTimes(1);
   });
 
+  test("ignores navigation and selection while highlighted is null", async () => {
+    const onChange = vi.fn();
+    const onHighlightChange = vi.fn();
+    const { stdin } = renderGroup({ highlighted: null, onChange, onHighlightChange });
+    await flush();
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    stdin.write(RETURN);
+    await flush();
+    expect(onHighlightChange).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   test("does not respond to input when the group is disabled", async () => {
     const onChange = vi.fn();
     const { stdin } = renderGroup({ disabled: true, onChange });

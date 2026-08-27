@@ -27,6 +27,7 @@ import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { paneBorder, SURFACE_BORDER } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 import { useHistoryScreen } from "../hooks/use-screen";
+import { adjacentHistoryZone } from "../lib/focus-zones";
 import { getHistoryFooter } from "../lib/footer";
 import {
   computePaneLayout,
@@ -165,6 +166,15 @@ export function HistoryScreen(): ReactElement {
       if (screen.interactionMode === "search") return;
       if (key.tab) {
         screen.cycleFocusZone();
+        return;
+      }
+      if (key.leftArrow || key.rightArrow) {
+        const zone = adjacentHistoryZone(
+          screen.focusZone,
+          key.rightArrow ? 1 : -1,
+          screen.availableZones,
+        );
+        if (zone) screen.setFocusZone(zone);
       }
     },
     {
@@ -409,6 +419,9 @@ export function HistoryScreen(): ReactElement {
                 screen.setSelectedDateId(id);
               }}
               onHighlightChange={screen.setSelectedDateId}
+              onNavigationBoundaryReached={(direction) => {
+                if (direction === -1) screen.setFocusZone("search");
+              }}
               isActive={interactionMode === "timeline"}
               height={listHeight}
               width={Math.max(sectionsPaneWidth - 2, 1)}
@@ -431,12 +444,20 @@ export function HistoryScreen(): ReactElement {
               selectedId={screen.selectedRunId}
               onSelect={screen.handleRunActivate}
               onHighlightChange={screen.setSelectedRunId}
-              isActive={interactionMode === "runs"}
+              onNavigationBoundaryReached={(direction) => {
+                if (direction === -1) screen.setFocusZone("search");
+              }}
+              isActive={interactionMode === "runs" || interactionMode === "load-more"}
               emptyMessage={screen.emptyRunsMessage}
               height={listHeight}
               width={Math.max(runsPaneWidth - 2, 1)}
               hasMore={screen.hasMoreReviews}
               isLoadingMore={screen.isLoadingMoreReviews}
+              subZone={screen.runsSubZone}
+              onSubZoneChange={screen.setRunsSubZone}
+              onLoadMore={() => {
+                if (!screen.isLoadingMoreReviews) void screen.loadMoreReviews();
+              }}
             />
           </Box>
         ) : null}

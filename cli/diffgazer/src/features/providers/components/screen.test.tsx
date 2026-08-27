@@ -566,6 +566,47 @@ describe("ProvidersScreen keyboard zones", () => {
     expect(frame).toContain("d. Delete configuration");
   });
 
+  test("crosses into the details pane with ArrowRight, onto its action row", async () => {
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("[ Change model ]") ?? false);
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("More actions — Google Gemini") ?? false);
+
+    expect(lastFrame()).toContain("More actions — Google Gemini");
+  });
+
+  test("returns to the list row that sent focus only at the details pane's left edge", async () => {
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("[ Change model ]") ?? false);
+    for (const key of [ARROW_RIGHT, ARROW_RIGHT, ARROW_LEFT, ARROW_DOWN]) {
+      stdin.write(key);
+      await flush();
+    }
+    expect(lastFrame()).toContain("[ Change model ]");
+    expect(lastFrame()).not.toContain("[ Select configuration ]");
+
+    stdin.write(ARROW_LEFT);
+    await flush();
+    stdin.write(ARROW_DOWN);
+    await flushUntil(() => lastFrame()?.includes("[ Select configuration ]") ?? false);
+
+    expect(lastFrame()).toContain("[ Select configuration ]");
+  });
+
   test("keeps every menu entry in place and explains the ones the state cannot run", async () => {
     const { stdin, lastFrame } = render(
       <Wrapper>
@@ -881,7 +922,7 @@ describe("ProvidersScreen keyboard zones", () => {
       title: "Update Configuration",
       keys: [TAB, ARROW_RIGHT, ENTER, ENTER],
       expectedFooter:
-        "FOOTER [Tab] Focus Key Field [←/→] Switch Action [Enter] Confirm | [Esc] Close",
+        "FOOTER [Tab] Focus Key Field [↑/↓] Navigate [Space] Select Method [Enter] Confirm | [Esc] Close",
     },
   ])("hands the shortcut bar to the $title overlay while it is open", async ({
     title,
@@ -909,6 +950,43 @@ describe("ProvidersScreen keyboard zones", () => {
     await flushUntil(() => lastFrame()?.includes(title) ?? false);
     await flushUntil(() => lastFrame()?.includes(expectedFooter) ?? false);
     expect(lastFrame()).toContain(expectedFooter);
+  });
+
+  test("retells the setup footer as the key field takes and releases focus", async () => {
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <FooterProbe />
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    for (const key of [TAB, ARROW_RIGHT, ENTER, ENTER]) {
+      stdin.write(key);
+      await flush();
+    }
+    await flushUntil(() => lastFrame()?.includes("Update Configuration") ?? false);
+
+    stdin.write(TAB);
+    await flushUntil(
+      () =>
+        lastFrame()?.includes("FOOTER [↑/↓] Leave Field [Enter] Confirm | [Esc] Close") ?? false,
+    );
+
+    stdin.write(TAB);
+    await flushUntil(() => lastFrame()?.includes("[Tab] Focus Key Field") ?? false);
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    stdin.write(" ");
+    await flushUntil(
+      () =>
+        lastFrame()?.includes(
+          "FOOTER [↑/↓] Navigate [Space] Select Method [Enter] Confirm | [Esc] Close",
+        ) ?? false,
+    );
   });
 
   test("advertises only the accelerators an unconfigured product can run", async () => {

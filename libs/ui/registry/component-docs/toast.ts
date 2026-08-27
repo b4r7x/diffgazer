@@ -82,7 +82,7 @@ export const toastDoc: ComponentDoc = {
         required: false,
         defaultValue: '"F8"',
         description:
-          "Key (matched against KeyboardEvent.key) that moves focus into the toast region so action and close buttons stay reachable. Ignored while an editable element has focus.",
+          "Key that moves DOM focus to the toast region. For timed toasts this hotkey (or Tab) is the intended keyboard route — they are exempt from arrow entry because focus on a timer-unmounted element would strand the user; persistent toasts are additionally entered through focusToastRegion, and inside the region ArrowUp/ArrowDown walk the controls either way. Matched against KeyboardEvent.key and ignored while an editable element has focus. Defaults to F8, the Radix viewport hotkey.",
       },
       label: {
         type: "string",

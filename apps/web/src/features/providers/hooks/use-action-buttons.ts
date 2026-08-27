@@ -1,6 +1,6 @@
 import { isProviderControlDisabled, type ProviderRowControl } from "@diffgazer/core/providers";
-import { DECLINE, useActionRowNavigation, useKey } from "@diffgazer/keys";
-import type { RefCallback, RefObject } from "react";
+import { containsActiveElement, DECLINE, useActionRowNavigation, useKey } from "@diffgazer/keys";
+import { type RefCallback, type RefObject, useRef } from "react";
 import type { ProvidersFocusZone } from "./use-keyboard";
 
 interface UseProvidersActionButtonsOptions {
@@ -17,6 +17,7 @@ interface UseProvidersActionButtonsOptions {
   inButtons: boolean;
   /** Content element focus parks on while every action is disabled mid-mutation. */
   focusFallbackRef: RefObject<HTMLDivElement | null>;
+  consentLinkRef: RefObject<HTMLButtonElement | null>;
   setZone: (zone: ProvidersFocusZone) => void;
   focusProviderList: () => void;
   /** The page layer's single control dispatcher, shared with the rendered action row. */
@@ -39,10 +40,12 @@ export function useProvidersActionButtons({
   isPending,
   inButtons,
   focusFallbackRef,
+  consentLinkRef,
   setZone,
   focusProviderList,
   runControl,
 }: UseProvidersActionButtonsOptions): UseProvidersActionButtonsResult {
+  const actionElementsRef = useRef(new Map<number, HTMLElement>());
   // Shares isProviderControlDisabled with the rendered row so focus custody sees what the DOM does.
   const disabledActions = controls.map((control) => isProviderControlDisabled(control, isPending));
 
@@ -73,6 +76,11 @@ export function useProvidersActionButtons({
   // without a second copy of the index to keep in sync.
   const focusedIndex = Math.min(actionRow.focusedIndex, controls.length - 1);
 
+  const isRegisteredActionFocused = () => {
+    const action = actionElementsRef.current.get(focusedIndex);
+    return action ? containsActiveElement(action) : false;
+  };
+
   const enterButtons = (index: number = 0) => {
     if (!hasSelection || controls.length === 0) return;
     setZone("buttons");
@@ -84,8 +92,13 @@ export function useProvidersActionButtons({
   // button's accessible name instead.
   const getActionButtonProps = (index: number) => {
     const actionProps = actionRow.getActionProps(index);
+    const ref: RefCallback<HTMLElement> = (node) => {
+      if (node) actionElementsRef.current.set(index, node);
+      else actionElementsRef.current.delete(index);
+      actionProps.ref(node);
+    };
     return {
-      ref: actionProps.ref,
+      ref,
       onFocus: () => {
         setZone("buttons");
         actionProps.onFocus();
@@ -102,17 +115,40 @@ export function useProvidersActionButtons({
       }
       next += direction;
     }
+    if (direction === 1 && consentLinkRef.current) {
+      setZone("details");
+      consentLinkRef.current.focus();
+      return;
+    }
     return DECLINE;
   };
 
-  useKey("ArrowUp", () => navigateButtonsVertical(-1), {
+  const handleButtonsVertical = (direction: 1 | -1) => () => {
+    if (!isRegisteredActionFocused()) return DECLINE;
+    return navigateButtonsVertical(direction);
+  };
+
+  useKey("ArrowUp", handleButtonsVertical(-1), {
     enabled: !dialogOpen && inButtons,
     preventDefault: true,
   });
-  useKey("ArrowDown", () => navigateButtonsVertical(1), {
+  useKey("ArrowDown", handleButtonsVertical(1), {
     enabled: !dialogOpen && inButtons,
     preventDefault: true,
   });
+
+  useKey(
+    "ArrowUp",
+    (event) => {
+      const link = consentLinkRef.current;
+      if (!link || event.target !== link) return DECLINE;
+      const lastEnabled = disabledActions.lastIndexOf(false);
+      if (lastEnabled === -1) return DECLINE;
+      enterButtons(lastEnabled);
+      return;
+    },
+    { enabled: !dialogOpen, preventDefault: true },
+  );
 
   return {
     buttonIndex: focusedIndex,

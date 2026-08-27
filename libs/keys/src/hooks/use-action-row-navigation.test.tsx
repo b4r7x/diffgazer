@@ -726,6 +726,29 @@ describe("useActionRowNavigation", () => {
     expect(onAction).not.toHaveBeenCalled();
   });
 
+  it("declines arrow navigation and the ArrowUp exit when focus left the actions", async () => {
+    const { onBoundary } = renderActionRow();
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    const fallback = screen.getByLabelText("Content fallback");
+    act(() => fallback.focus());
+
+    let event!: KeyboardEvent;
+    act(() => {
+      event = fireKey("ArrowRight");
+    });
+    expect(event.defaultPrevented).toBe(false);
+    expectFocused(fallback);
+
+    act(() => {
+      event = fireKey("ArrowUp");
+    });
+    expect(event.defaultPrevented).toBe(false);
+    expect(onBoundary).not.toHaveBeenCalled();
+    expectFocused(fallback);
+  });
+
   describe("types", () => {
     it("indexes actions by position", () => {
       expectTypeOf<UseActionRowNavigationOptions["actionCount"]>().toEqualTypeOf<number>();

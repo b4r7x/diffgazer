@@ -52,7 +52,10 @@ export function getStepShortcuts({
       ];
     case "authentication":
       if (apiKeyInputFocused) {
-        return [{ key: "Tab", label: "Focus Actions" }];
+        return [
+          { key: "↑/↓", label: "Leave Field" },
+          { key: "Tab", label: "Focus Actions" },
+        ];
       }
       return [
         { key: "↑/↓", label: "Navigate Methods" },

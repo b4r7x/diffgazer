@@ -8,6 +8,7 @@ import { RadioGroup } from "../ui/radio";
 
 interface ApiKeyMethodSelectorProps {
   method: InputMethod;
+  highlightedMethod?: InputMethod | null;
   onMethodChange: (m: InputMethod) => void;
   apiKey: string;
   onApiKeyChange: (v: string) => void;
@@ -23,6 +24,7 @@ interface ApiKeyMethodSelectorProps {
 
 export function ApiKeyMethodSelector({
   method,
+  highlightedMethod,
   onMethodChange,
   apiKey,
   onApiKeyChange,
@@ -59,6 +61,7 @@ export function ApiKeyMethodSelector({
         value={method}
         onChange={selectMethod}
         onHighlightChange={selectMethod}
+        highlighted={highlightedMethod === undefined ? method : highlightedMethod}
         isActive={isActive && !inputFocused}
       >
         <RadioGroup.Item value="paste" label="Paste API key directly" />

@@ -5,6 +5,7 @@ import type { ClientConfigurationSummary, ModelInfo } from "@diffgazer/core/sche
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { Badge } from "../../../../components/ui/badge";
+import { Button } from "../../../../components/ui/button";
 import { RadioGroup } from "../../../../components/ui/radio";
 import { Spinner } from "../../../../components/ui/spinner";
 import { useTerminalDimensions } from "../../../../hooks/use-terminal-dimensions";
@@ -22,6 +23,7 @@ interface ModelStepProps {
   value?: string | null;
   onChange: (modelId: string) => void;
   isActive?: boolean;
+  onDownBoundary?: () => void;
 }
 
 /**
@@ -49,9 +51,30 @@ function ModelRowLabel({ model }: { model: ModelInfo }): ReactElement {
   );
 }
 
-function RetryHint(): ReactElement {
+interface RetryControlProps {
+  onRetry: () => void;
+  isActive: boolean;
+  onDownBoundary?: () => void;
+}
+
+function RetryControl({ onRetry, isActive, onDownBoundary }: RetryControlProps): ReactElement {
   const { tokens } = useTheme();
-  return <Text color={tokens.muted}>Press r to retry.</Text>;
+
+  useInput(
+    (_input, key) => {
+      if (key.downArrow) onDownBoundary?.();
+    },
+    { isActive: isActive && onDownBoundary !== undefined },
+  );
+
+  return (
+    <Box flexDirection="column">
+      <Button variant="secondary" onPress={onRetry} isActive={isActive}>
+        Retry
+      </Button>
+      <Text color={tokens.muted}>Press r to retry.</Text>
+    </Box>
+  );
 }
 
 interface DiscoveredModelsProps {
@@ -60,6 +83,7 @@ interface DiscoveredModelsProps {
   value?: string | null;
   onChange: (modelId: string) => void;
   isActive: boolean;
+  onDownBoundary?: () => void;
 }
 
 function DiscoveredModels({
@@ -68,6 +92,7 @@ function DiscoveredModels({
   value,
   onChange,
   isActive,
+  onDownBoundary,
 }: DiscoveredModelsProps): ReactElement {
   const { tokens } = useTheme();
   const { rows } = useTerminalDimensions();
@@ -102,7 +127,7 @@ function DiscoveredModels({
         <Text color={tokens.error}>
           {sanitizeTerminalText(source.error ?? "Model discovery failed.")}
         </Text>
-        <RetryHint />
+        <RetryControl onRetry={source.retry} isActive={isActive} onDownBoundary={onDownBoundary} />
       </Box>
     );
   }
@@ -112,7 +137,7 @@ function DiscoveredModels({
       <Box flexDirection="column" gap={1}>
         <Text color={tokens.muted}>{subtitle}</Text>
         <Text color={tokens.warning}>{sanitizeTerminalText(source.reason ?? "")}</Text>
-        <RetryHint />
+        <RetryControl onRetry={source.retry} isActive={isActive} onDownBoundary={onDownBoundary} />
       </Box>
     );
   }
@@ -122,7 +147,7 @@ function DiscoveredModels({
       <Box flexDirection="column" gap={1}>
         <Text color={tokens.muted}>{subtitle}</Text>
         <Text color={tokens.muted}>No models available for this configuration.</Text>
-        <RetryHint />
+        <RetryControl onRetry={source.retry} isActive={isActive} onDownBoundary={onDownBoundary} />
       </Box>
     );
   }
@@ -142,6 +167,10 @@ function DiscoveredModels({
         value={value ?? undefined}
         onChange={onChange}
         isActive={isActive}
+        wrap={!onDownBoundary}
+        onNavigationBoundaryReached={(direction) => {
+          if (direction === 1) onDownBoundary?.();
+        }}
         maxVisibleItems={Math.max(1, Math.floor((rows - MODEL_STEP_RESERVED_ROWS) / rowLines))}
       >
         {rowsWithDetail.map(({ model, detail }) => (
@@ -164,6 +193,7 @@ export function ModelStep({
   value,
   onChange,
   isActive = true,
+  onDownBoundary,
 }: ModelStepProps): ReactElement {
   const { tokens } = useTheme();
 
@@ -184,7 +214,7 @@ export function ModelStep({
             <Text color={tokens.muted}>
               Models are discovered from the saved configuration for this product.
             </Text>
-            <RetryHint />
+            <RetryControl onRetry={onRetry} isActive={isActive} onDownBoundary={onDownBoundary} />
           </>
         )}
       </Box>
@@ -200,6 +230,7 @@ export function ModelStep({
       value={value}
       onChange={onChange}
       isActive={isActive}
+      onDownBoundary={onDownBoundary}
     />
   );
 }

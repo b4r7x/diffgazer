@@ -91,6 +91,7 @@ export function useProvidersKeyboard({
   const detailsPaneRef = useRef<HTMLDivElement>(null);
   // Content element focus parks on while every action is disabled mid-mutation.
   const focusFallbackRef = useRef<HTMLDivElement>(null);
+  const consentLinkRef = useRef<HTMLButtonElement>(null);
 
   const { zone: internalZone, setZone } = useFocusZone({
     initial: "list",
@@ -174,6 +175,7 @@ export function useProvidersKeyboard({
     isPending,
     inButtons,
     focusFallbackRef,
+    consentLinkRef,
     setZone,
     focusProviderList,
     runControl,
@@ -303,6 +305,7 @@ export function useProvidersKeyboard({
     actionRowRef,
     detailsPaneRef,
     focusFallbackRef,
+    consentLinkRef,
     getActionButtonProps,
     handleNoticeFocus: () => setZone("notice"),
     ...list,

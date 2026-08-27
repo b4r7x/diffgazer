@@ -41,14 +41,14 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
 
   const actionLabel = getTrustButtonLabel(saving, hasRepoAccess);
   const actionShortcuts: Shortcut[] = [
-    { key: "Tab", label: "Focus Permissions", disabled: saving },
+    { key: "↑/Tab", label: "Focus Permissions", disabled: saving },
     { key: "Enter", label: actionLabel, disabled: saving },
     { key: "q", label: "Quit" },
   ];
 
   const permissionShortcuts: Shortcut[] = [
     ...TRUST_PERMISSION_SHORTCUTS,
-    { key: "Tab", label: "Focus Actions" },
+    { key: "↓/Tab", label: "Focus Actions" },
     { key: "q", label: "Quit" },
   ];
 
@@ -61,7 +61,9 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
       if (saving) return;
       if (key.tab) {
         setButtonActive((active) => !active);
+        return;
       }
+      if (buttonActive && key.upArrow) setButtonActive(false);
     },
     { isActive: !saving },
   );
@@ -87,6 +89,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
             onChange={setCapabilities}
             isActive={!saving && !buttonActive}
             compact={compact}
+            onDownBoundary={() => setButtonActive(true)}
           />
 
           <Box gap={1}>

@@ -1,4 +1,5 @@
 import { usePageFooter } from "@diffgazer/core/footer";
+import type { InputMethod } from "@diffgazer/core/onboarding";
 import type { ProviderListRow } from "@diffgazer/core/providers";
 import {
   buildSetupAcknowledgement,
@@ -14,7 +15,11 @@ import type {
   ClientConfigurationInput,
   ReadinessAcknowledgement,
 } from "@diffgazer/core/schemas/config";
-import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
+import {
+  BACK_SHORTCUT,
+  NAVIGATE_SHORTCUT,
+  type Shortcut,
+} from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useEffect, useEffectEvent, useState } from "react";
@@ -22,18 +27,43 @@ import { ApiKeyMethodSelector } from "../../../components/shared/api-key-method-
 import { Button } from "../../../components/ui/button";
 import { Dialog } from "../../../components/ui/dialog";
 import { Spinner } from "../../../components/ui/spinner";
-import { useActionRow } from "../../../hooks/use-action-row";
+import { getFirstEnabledAction, useActionRow } from "../../../hooks/use-action-row";
+import { selectionHue } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 
 type AcceptedAcknowledgement = Extract<ReadinessAcknowledgement, { status: "accepted" }>;
 
-const SETUP_SHORTCUTS: Shortcut[] = [
-  { key: "←/→", label: "Switch Action" },
-  { key: "Enter", label: "Confirm" },
-];
+type SetupZone = "method" | "input" | "acknowledgement" | "actions";
+
+function getSetupZones(needsAcceptance: boolean): SetupZone[] {
+  return ["method", ...(needsAcceptance ? (["acknowledgement"] as const) : []), "actions"];
+}
+
 const KEY_FIELD_SHORTCUT: Shortcut = { key: "Tab", label: "Focus Key Field" };
+const LEAVE_FIELD_SHORTCUT: Shortcut = { key: "↑/↓", label: "Leave Field" };
+const SELECT_METHOD_SHORTCUT: Shortcut = { key: "Space", label: "Select Method" };
+const SWITCH_ACTION_SHORTCUT: Shortcut = { key: "←/→", label: "Switch Action" };
+const CONFIRM_SHORTCUT: Shortcut = { key: "Enter", label: "Confirm" };
 const ACCEPT_SHORTCUT: Shortcut = { key: "a", label: "Accept" };
 const SETUP_RIGHT_SHORTCUTS: Shortcut[] = [{ ...BACK_SHORTCUT, label: "Close" }];
+
+function getSetupShortcuts(
+  zone: SetupZone,
+  needsAcceptance: boolean,
+  method: InputMethod,
+): Shortcut[] {
+  if (zone === "input") {
+    return [LEAVE_FIELD_SHORTCUT, CONFIRM_SHORTCUT];
+  }
+  return [
+    ...(method === "paste" ? [KEY_FIELD_SHORTCUT] : []),
+    NAVIGATE_SHORTCUT,
+    ...(zone === "method" ? [SELECT_METHOD_SHORTCUT] : []),
+    ...(zone === "actions" ? [SWITCH_ACTION_SHORTCUT] : []),
+    CONFIRM_SHORTCUT,
+    ...(needsAcceptance ? [ACCEPT_SHORTCUT] : []),
+  ];
+}
 
 interface ApiKeyOverlayProps {
   open: boolean;
@@ -63,7 +93,7 @@ export function ApiKeyOverlay({
   onUpdate,
 }: ApiKeyOverlayProps): ReactElement | null {
   const { tokens } = useTheme();
-  const [inputFocused, setInputFocused] = useState(false);
+  const [zone, setZone] = useState<SetupZone>("method");
   // The provider consent is gated before this overlay opens and covers every
   // product notice; an explicit acceptance is asked for only when this
   // product's notice needs accepting again (a notice bump, or a record upgraded
@@ -90,7 +120,40 @@ export function ApiKeyOverlay({
   });
 
   const { method, value, setMethod, setValue, canSubmit, isSubmitting: saving, error } = entry;
+  const [methodHighlight, setMethodHighlight] = useState<InputMethod>("paste");
   const canConfirm = canSubmit && acknowledged;
+  const zones = getSetupZones(needsAcceptance);
+  const disabledActions = [!canConfirm, false];
+
+  function selectMethod(next: InputMethod) {
+    setMethod(next);
+    setMethodHighlight(next);
+  }
+
+  function enterActions() {
+    actions.reset(getFirstEnabledAction(disabledActions.length, disabledActions));
+    setZone("actions");
+  }
+
+  function moveZone(direction: 1 | -1) {
+    const current = zone === "input" ? "method" : zone;
+    const next = zones[zones.indexOf(current) + direction];
+    if (next === undefined) return;
+    if (next === "actions") {
+      enterActions();
+      return;
+    }
+    if (next === "method" && direction === -1) {
+      if (method === "paste") {
+        setZone("input");
+      } else {
+        setZone("method");
+        setMethodHighlight("env");
+      }
+      return;
+    }
+    setZone(next);
+  }
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen && saving) return;
@@ -108,43 +171,71 @@ export function ApiKeyOverlay({
 
   useInput(
     (input) => {
-      if (input === "a") setAccepted((current) => !current);
+      if (input === "a" || (zone === "acknowledgement" && input === " ")) {
+        setAccepted((current) => !current);
+      }
     },
-    { isActive: open && !saving && !inputFocused && needsAcceptance },
+    { isActive: open && !saving && zone !== "input" && needsAcceptance },
   );
 
   useInput(
-    (_input, key) => {
+    (input, key) => {
       if (key.tab && method === "paste") {
-        setInputFocused((focused) => !focused);
+        setZone(zone === "input" ? "method" : "input");
         return;
       }
-      if (key.return && inputFocused) handleSave();
+      if (input === " " && zone === "method") {
+        selectMethod(methodHighlight);
+        return;
+      }
+      if (key.upArrow) {
+        if (zone === "input") {
+          setZone("method");
+          setMethodHighlight("env");
+        } else if (zone === "method" && methodHighlight === "env") {
+          setMethodHighlight("paste");
+        } else if (zone === "acknowledgement") {
+          moveZone(-1);
+        }
+        return;
+      }
+      if (key.downArrow) {
+        if (zone === "input") {
+          moveZone(1);
+        } else if (zone === "method" && methodHighlight === "paste") {
+          setMethodHighlight("env");
+        } else if (zone === "method" && method === "paste") {
+          setZone("input");
+        } else if (zone === "method" || zone === "acknowledgement") {
+          moveZone(1);
+        }
+        return;
+      }
+      if (key.return && zone !== "actions") handleSave();
     },
     { isActive: open && !saving },
   );
 
   usePageFooter({
-    shortcuts: [
-      KEY_FIELD_SHORTCUT,
-      ...SETUP_SHORTCUTS,
-      ...(needsAcceptance ? [ACCEPT_SHORTCUT] : []),
-    ],
+    shortcuts: getSetupShortcuts(zone, needsAcceptance, method),
     rightShortcuts: SETUP_RIGHT_SHORTCUTS,
   });
 
   const actions = useActionRow({
-    actionCount: 2,
-    disabledActions: [!canConfirm, false],
+    actionCount: disabledActions.length,
+    disabledActions,
     onAction: (index) => (index === 0 ? handleSave() : handleClose()),
-    isActive: open && !saving && !inputFocused,
+    isActive: open && !saving && zone === "actions",
+    verticalNavigation: true,
+    onExitUp: () => moveZone(-1),
   });
 
   const resetSecrets = useEffectEvent(() => {
     if (entry.isSubmitting) return;
     entry.reset();
     actions.reset();
-    setInputFocused(false);
+    setZone("method");
+    setMethodHighlight("paste");
     setAccepted(false);
   });
 
@@ -167,13 +258,14 @@ export function ApiKeyOverlay({
             <Text color={tokens.muted}>{layoutCopy}</Text>
             <ApiKeyMethodSelector
               method={method}
-              onMethodChange={setMethod}
+              highlightedMethod={zone === "method" || zone === "input" ? methodHighlight : null}
+              onMethodChange={selectMethod}
               apiKey={value}
               onApiKeyChange={setValue}
               envVar={CREDENTIAL_ENV_VARS[row.product.productId]}
-              isActive={open && !saving}
-              inputFocused={inputFocused}
-              onInputFocusedChange={setInputFocused}
+              isActive={open && !saving && zone === "input"}
+              inputFocused={zone === "input"}
+              onInputFocusedChange={(focused) => setZone(focused ? "input" : "method")}
             />
             <Box flexDirection="column">
               {[...row.product.notice.billing, ...row.product.notice.privacy].map((line) => (
@@ -185,7 +277,12 @@ export function ApiKeyOverlay({
             {needsAcceptance ? (
               <>
                 <Text>This product's notice needs your acceptance before saving.</Text>
-                <Text color={tokens.muted}>{accepted ? "[x]" : "[ ]"} I accept</Text>
+                <Text
+                  color={zone === "acknowledgement" ? selectionHue(tokens) : tokens.muted}
+                  bold={zone === "acknowledgement"}
+                >
+                  {accepted ? "[x]" : "[ ]"} I accept
+                </Text>
               </>
             ) : null}
             {error != null ? <Text color={tokens.error}>{sanitizeTerminalText(error)}</Text> : null}

@@ -11,6 +11,7 @@ import { SelectableItemRow } from "./selectable-item-row";
 export interface RadioGroupProps<T extends string = string> {
   value?: T;
   defaultValue?: T;
+  highlighted?: T | null;
   onChange?: (value: T) => void;
   onHighlightChange?: (value: T) => void;
   onNavigationBoundaryReached?: (direction: 1 | -1) => void;
@@ -75,6 +76,7 @@ function RadioGroupItem({ value, label, description, disabled = false }: RadioGr
 function RadioGroupRoot<T extends string = string>({
   value,
   defaultValue,
+  highlighted,
   onChange,
   onHighlightChange,
   onNavigationBoundaryReached,
@@ -94,13 +96,14 @@ function RadioGroupRoot<T extends string = string>({
   const [internalValue, setInternalValue] = useState(defaultValue ?? "");
   const navigation = useListNavigation({
     items: navigableItems,
+    highlightedId: highlighted,
     defaultHighlightedId: value ?? defaultValue,
     // Item ids are the group's own rendered values, the same provenance as `onChange`.
     onHighlightChange: onHighlightChange as ((value: string) => void) | undefined,
     onNavigationBoundaryReached,
     wrap,
   });
-  const highlightedValue = navigation.currentHighlightedId;
+  const highlightedValue = highlighted === null ? "" : navigation.currentHighlightedId;
 
   const selectedValue = value ?? internalValue;
   const highlightedIndex = Math.max(
@@ -118,7 +121,7 @@ function RadioGroupRoot<T extends string = string>({
 
   useListNavigationInput({
     navigation,
-    isActive: isActive && !disabled,
+    isActive: isActive && !disabled && highlighted !== null,
     orientation: "vertical",
     activateOnSpace: true,
     onActivate: (item) => {

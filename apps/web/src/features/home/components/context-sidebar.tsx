@@ -41,13 +41,15 @@ export function ContextSidebar({
   };
 
   return (
-    // Brackets mark the pane the keys drive, and this readout is in no focus
-    // cycle, so it identifies itself with the hairline box and its corner label
-    // instead of a second reticle beside the menu.
+    // Brackets follow real focus and stay on the menu pane; this readout
+    // identifies itself with the hairline box and its corner label instead of
+    // a second reticle. Its action rows are a roving vertical list the page
+    // reaches by Tab or by ArrowLeft from the menu (↑/↓ walk the clickable
+    // rows, ArrowRight hands focus back); the rows' jump keys (t/p/f/o) are
+    // one-keystroke complements to that route.
     // lg:order-first is a deliberate visual/Tab-order divergence at desktop:
     // the DOM keeps the menu first so Tab and reading order lead with the
-    // actionable pane, while the readout sits on the left like the TUI's; the
-    // rows' jump keys (t/p/o) reach the sidebar without Tab-walking to it.
+    // actionable pane, while the readout sits on the left like the TUI's.
     <Panel
       // Explicit for the ref's sake: the ARIA name already resolves the tag to
       // <section>, and `as` keys the ref type to the element actually rendered.
@@ -70,6 +72,7 @@ export function ContextSidebar({
             tone="warning"
             onClick={() => navigateUnlessPending("/settings/trust-permissions")}
             ariaLabel="Grant trust permissions"
+            value="trust"
           >
             <PathValue value={rows.trust.value} />
             {/* Like the [o] chip below: the binding shows where a keyboard has
@@ -87,6 +90,7 @@ export function ContextSidebar({
           tone="accent"
           onClick={() => navigateUnlessPending("/settings/providers")}
           ariaLabel="Configure provider settings"
+          value="provider"
         >
           <div className="flex items-center justify-between gap-2">
             <span className="truncate">{rows.provider.value}</span>
@@ -102,6 +106,7 @@ export function ContextSidebar({
           label="Review Scope"
           onClick={pending ? undefined : onChooseFiles}
           ariaLabel="Choose files to review"
+          value="scope"
         >
           <div className="flex items-center justify-between gap-2">
             {/* Named for what a run can actually read: the server reviews one
@@ -124,6 +129,7 @@ export function ContextSidebar({
           label={rows.lastRun.label}
           tone={rows.lastRun.status === "unavailable" ? "warning" : "success"}
           onClick={pending ? undefined : onOpenLastRun}
+          value="last-run"
           ariaLabel={
             rows.lastRun.meta === undefined
               ? `Open last review ${rows.lastRun.value}`

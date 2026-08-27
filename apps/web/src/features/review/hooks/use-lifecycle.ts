@@ -55,14 +55,19 @@ export function useReviewLifecycle({
   const reviewSessionCache = useReviewSessionCache();
   const queryClient = useQueryClient();
   const transitionRef = useRef<symbol | null>(null);
-  const [isTransitionPending, setIsTransitionPending] = useState(false);
-  const [startError, setStartError] = useState<ReviewStartErrorDescription | null>(null);
+  const [transition, setTransition] = useState<
+    | { status: "idle" }
+    | { status: "pending" }
+    | { status: "failed"; error: ReviewStartErrorDescription }
+  >({ status: "idle" });
+  const isTransitionPending = transition.status === "pending";
+  const startError = transition.status === "failed" ? transition.error : null;
 
   const beginTransition = (): symbol | null => {
     if (transitionRef.current) return null;
     const token = Symbol("review-navigation-transition");
     transitionRef.current = token;
-    setIsTransitionPending(true);
+    setTransition({ status: "pending" });
     return token;
   };
 
@@ -71,13 +76,13 @@ export function useReviewLifecycle({
   const finishTransition = (token: symbol): void => {
     if (!isCurrentTransition(token)) return;
     transitionRef.current = null;
-    setIsTransitionPending(false);
+    setTransition((current) => (current.status === "pending" ? { status: "idle" } : current));
   };
 
   const invalidateTransition = (): boolean => {
     if (!transitionRef.current) return false;
     transitionRef.current = null;
-    setIsTransitionPending(false);
+    setTransition({ status: "idle" });
     return true;
   };
 
@@ -271,7 +276,10 @@ export function useReviewLifecycle({
       (error, token) => {
         if (!isCurrentTransition(token)) return;
         const description = describeReviewStartError(error);
-        setStartError({ ...description, message: sanitizePresentationText(description.message) });
+        setTransition({
+          status: "failed",
+          error: { ...description, message: sanitizePresentationText(description.message) },
+        });
       },
     );
   };

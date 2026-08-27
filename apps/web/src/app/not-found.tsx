@@ -69,10 +69,9 @@ export function NotFoundPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-4 md:py-6 lg:py-8">
       {/* The interruption band keeps the app-wide 1:2 optical band (card.tsx,
-          centered-status.tsx) — boxed dead-end gates dead-centre instead, but
-          the 404 strip is banded by its own rule (D1), so loading → 404 lands
-          without a jump. The spacers collapse once the band outgrows the
-          viewport, so a short window scrolls from the top. */}
+          centered-status.tsx), so loading → 404 lands without a jump. The
+          spacers collapse once the band outgrows the viewport, so a short
+          window scrolls from the top. */}
       <div aria-hidden className="grow" />
       <section aria-labelledby={titleId} className="w-full shrink-0">
         {/* Top rule: full-bleed hairline with the status chip notched into it

@@ -233,7 +233,9 @@ export function ProvidersScreen(): ReactElement {
           return;
         }
         setZone(activeZone === "list" ? "details" : "list");
+        return;
       }
+      if (key.rightArrow && hasSelection && activeZone === "list") setZone("details");
     },
     { isActive: !isOverlayOpen },
   );
@@ -383,6 +385,7 @@ export function ProvidersScreen(): ReactElement {
             unrecognized={selectedUnrecognized}
             layout={layout}
             onAction={runAction}
+            onExitLeft={() => setZone("list")}
             isActive={isDetailsActive}
             isPending={management.isSubmitting}
             consentRequired={consent.consent === null}

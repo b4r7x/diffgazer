@@ -174,11 +174,14 @@ describe("OnboardingWizard", () => {
     stdin.write("\r");
     await waitUntil(() => showsStep("Configure Authentication"));
 
-    // Highlighting the environment method selects it, so the draft gains a
-    // credential without typing a literal key into the test.
+    // The arrow chain highlights the environment method, Space selects it, and
+    // the next arrow lands on the nav row, so the draft gains a credential
+    // without typing a literal key into the test.
     stdin.write("\u001b[B");
     await flushInk();
-    stdin.write("\t");
+    stdin.write(" ");
+    await flushInk();
+    stdin.write("\u001b[B");
     await flushInk();
     stdin.write("\r");
     await waitUntil(() => showsStep("Select Model"));
@@ -234,7 +237,9 @@ describe("OnboardingWizard", () => {
     await waitUntil(() => showsStep("Configure Authentication"));
     stdin.write("\u001b[B");
     await flushInk();
-    stdin.write("\t");
+    stdin.write(" ");
+    await flushInk();
+    stdin.write("\u001b[B");
     await flushInk();
     stdin.write("\r");
     await waitUntil(() => showsStep("Select Model"));

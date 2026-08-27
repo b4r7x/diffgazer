@@ -484,7 +484,7 @@ describe("ReviewProgressView", () => {
     expect(prevented).toBe(false);
   });
 
-  it("enters the log with the down arrow and leaves the up arrow native there", async () => {
+  it("enters the log with the down arrow and returns to the error actions at its top", async () => {
     const user = userEvent.setup();
     renderView({
       isRunning: false,
@@ -494,13 +494,20 @@ describe("ReviewProgressView", () => {
     });
 
     const log = screen.getByRole("log", { name: "Activity log" });
-    await waitFor(() => expect(screen.getByRole("button", { name: "Back to Home" })).toHaveFocus());
+    const back = screen.getByRole("button", { name: "Back to Home" });
+    await waitFor(() => expect(back).toHaveFocus());
 
     await user.keyboard("{ArrowDown}");
     await waitFor(() => expect(log).toHaveFocus());
 
+    log.scrollTop = 120;
     await user.keyboard("{ArrowUp}");
     expect(log).toHaveFocus();
+
+    log.scrollTop = 0;
+    await user.keyboard("{ArrowUp}");
+    await waitFor(() => expect(back).toHaveFocus());
+    expect(back).toHaveAttribute("data-highlighted");
   });
 
   it("names the focused error action in the footer, with no move for a lone one", async () => {
@@ -1040,7 +1047,7 @@ describe("ReviewProgressView", () => {
     await waitFor(() => expect(allChip).toHaveFocus());
   });
 
-  it("keeps ArrowUp inside the download and action rows nested under the scroller", async () => {
+  it("climbs ArrowUp from the action row to the download row to the scroller, never the header Back", async () => {
     const user = userEvent.setup();
     renderView(
       {
@@ -1058,20 +1065,74 @@ describe("ReviewProgressView", () => {
         "focused",
       ),
     );
+    const scroller = document.activeElement as HTMLElement;
 
     await user.keyboard("{Tab}");
-    const download = screen.getByRole("button", { name: "Download .txt" });
-    await waitFor(() => expect(download).toHaveFocus());
-    await user.keyboard("{ArrowUp}");
-    expect(download).toHaveFocus();
-    expect(back).not.toHaveFocus();
-
     await user.keyboard("{Tab}");
     const viewResults = screen.getByRole("button", { name: "View Results" });
     await waitFor(() => expect(viewResults).toHaveFocus());
+
     await user.keyboard("{ArrowUp}");
-    expect(viewResults).toHaveFocus();
+    const download = screen.getByRole("button", { name: "Download .txt" });
+    await waitFor(() => expect(download).toHaveFocus());
     expect(back).not.toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    await waitFor(() => expect(scroller).toHaveFocus());
+    expect(back).not.toHaveFocus();
+  });
+
+  it("walks ArrowDown at the scroller's bottom into the download row, then the action row", async () => {
+    const user = userEvent.setup();
+    renderView({
+      isRunning: false,
+      onViewResults: vi.fn(),
+      data: makeProgressData({ contextSnapshot: makeContextSnapshot() }),
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
+        "data-state",
+        "focused",
+      ),
+    );
+    const scroller = document.activeElement as HTMLElement;
+
+    Object.defineProperties(scroller, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 1_000 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+    await user.keyboard("{ArrowDown}");
+    expect(scroller).toHaveFocus();
+
+    scroller.scrollTop = 900;
+    await user.keyboard("{ArrowDown}");
+    const download = screen.getByRole("button", { name: "Download .txt" });
+    await waitFor(() => expect(download).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(screen.getByRole("button", { name: "View Results" })).toHaveFocus());
+  });
+
+  it("walks ArrowDown straight into the action row when there is no download row", async () => {
+    const user = userEvent.setup();
+    renderView({ isRunning: true, onCancel: vi.fn() });
+
+    await waitFor(() =>
+      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
+        "data-state",
+        "focused",
+      ),
+    );
+    const scroller = document.activeElement as HTMLElement;
+
+    await user.keyboard("{ArrowDown}");
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    await waitFor(() => expect(cancel).toHaveFocus());
+
+    await user.keyboard("{ArrowUp}");
+    await waitFor(() => expect(scroller).toHaveFocus());
   });
 
   it("cycles the lens filter with ] and [ without moving focus or zone", async () => {

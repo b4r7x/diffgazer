@@ -190,15 +190,15 @@ const SINGLE_PANEL_SCREENS = [
     vertical: "centre",
     spareHeight: "real",
   },
-  // A boxed dead-end gate with hundreds of pixels of spare at this size:
-  // boxed gates dead-centre (the two-species rule below), so this row pins
-  // the live centre, not the band. The other dead end — the 404 — is a
-  // full-bleed interruption band with its own test below.
+  // A boxed dead-end gate with hundreds of pixels of spare at this size: gates
+  // sit in the same app-wide 1:2 band as everything else, so this row pins the
+  // live band. The other dead end — the 404 — is a full-bleed interruption
+  // band with its own test below.
   {
     path: `/review/${GATE_REVIEW_ID}?live=true&mode=unstaged`,
     panel: "No Unstaged Changes",
     contentWidth: 448,
-    vertical: "centre",
+    vertical: "band",
     spareHeight: "real",
   },
 ] as const;
@@ -220,9 +220,9 @@ test("single-panel screens centre and hold the hero band inside their clipped vi
     expect(Math.abs(geometry.centerXDelta), `${screen.path} horizontal centre`).toBeLessThanOrEqual(
       1,
     );
-    // Vertical: two species own this table. Sparse page cards and loading sit
-    // in the app-wide 1:2 band; boxed dead-end gates dead-centre; the 404
-    // interruption band is full-bleed in the 1:2 band with its own test.
+    // Vertical: sparse page cards, loading, and boxed dead-end gates all sit
+    // in the app-wide 1:2 band; the 404 interruption band is full-bleed in
+    // the same band with its own test.
     // A row marked "collapsed" has no room to place — its card fills the box
     // the helper measures — while a "real" row keeps leftover height, so its
     // placement assertion is live (help's 64px is the padding of its own
@@ -261,7 +261,7 @@ test("the 404 interruption band spans the frame and holds the hero band", async 
     Math.abs(geometry.panelWidth - geometry.viewportContentWidth),
     "full-bleed width",
   ).toBeLessThanOrEqual(1);
-  // The 404 keeps the app-wide 1:2 band (boxed gates dead-centre instead), so
+  // The 404 keeps the app-wide 1:2 band, like every other screen, so
   // loading → 404 lands without a jump; a live placement needs real spare.
   expect(geometry.spare, "spare height").toBeGreaterThan(0);
   expect(Math.abs(geometry.bandTopDelta), "hero band").toBeLessThanOrEqual(1);

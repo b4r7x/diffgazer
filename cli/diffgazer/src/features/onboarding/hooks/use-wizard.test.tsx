@@ -144,6 +144,26 @@ describe("useOnboardingWizard", () => {
     expect(hook.result.current.focusZone).toBe("nav");
   });
 
+  it("leaves the nav row upward into the key field for paste and the env radio otherwise", () => {
+    const wrapper = createWrapper();
+    const hook = renderHook(() => useOnboardingWizard(), { wrapper });
+
+    act(() => hook.result.current.handleProductChange("openrouter"));
+    act(() => hook.result.current.handleNext());
+    act(() => hook.result.current.handleNext());
+    expect(hook.result.current.currentStep).toBe("authentication");
+
+    act(() => hook.result.current.enterNav());
+    act(() => hook.result.current.exitNav());
+    expect(hook.result.current.focusZone).toBe("api-key-input");
+
+    act(() => hook.result.current.handleInputMethodChange("env"));
+    act(() => hook.result.current.enterNav());
+    act(() => hook.result.current.exitNav());
+    expect(hook.result.current.focusZone).toBe("api-key-method");
+    expect(hook.result.current.methodHighlight).toBe("env");
+  });
+
   it("persists a real configuration before the model step discovers against it", async () => {
     mockRunConfigurationAction.mockResolvedValue({
       action: "create",

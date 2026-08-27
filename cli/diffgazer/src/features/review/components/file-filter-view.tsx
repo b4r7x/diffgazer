@@ -17,11 +17,13 @@ import { MAX_REVIEW_FILES, type ReviewMode } from "@diffgazer/core/schemas/revie
 import { Box, Text, useInput } from "ink";
 import { type ReactElement, type ReactNode, useState } from "react";
 import { useContentZone } from "../../../components/layout/global";
+import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { CheckboxGroup } from "../../../components/ui/checkbox";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { Panel } from "../../../components/ui/panel";
 import { Spinner } from "../../../components/ui/spinner";
+import { getFirstEnabledAction, useActionRow } from "../../../hooks/use-action-row";
 import { getListWindow } from "../../../lib/list-window";
 import { wrappedRowCount } from "../../../lib/terminal-width";
 import { useTheme } from "../../../theme/provider";
@@ -63,18 +65,27 @@ const START_KEY = "s";
 
 /**
  * Rows the list cannot use: the panel's two border rows, its header, the scope
- * line under it, and the two rows the scroll indicators take when the change set
- * is longer than the frame.
+ * line under it, and the two rows the scroll indicators take when the change
+ * set is longer than the frame. The actions row is counted separately, since
+ * it renders only when the list has something selectable.
  */
 const LIST_CHROME_ROWS = 6;
 /** Columns the panel spends per row: its two borders and its horizontal padding. */
 const PANEL_CHROME_COLUMNS = 4;
 const REASON_TITLE = "Narrow the review";
 
-function getFileFilterShortcuts(canStart: boolean, ownsScope: boolean): Shortcut[] {
+function getFileFilterShortcuts(
+  canStart: boolean,
+  ownsScope: boolean,
+  inActions: boolean,
+): Shortcut[] {
   return [
-    NAVIGATE_SHORTCUT,
-    { key: "Space", label: "Toggle" },
+    ...(inActions
+      ? [
+          { key: "←/→", label: "Move Action" },
+          { key: "Enter", label: "Run Action" },
+        ]
+      : [NAVIGATE_SHORTCUT, { key: "Space", label: "Toggle" }]),
     { key: SELECT_ALL_KEY, label: "All" },
     { key: CLEAR_SELECTION_KEY, label: "None" },
     ...(ownsScope ? [{ key: "Tab", label: "Switch Scope" }] : []),
@@ -103,6 +114,7 @@ export function ReviewFileFilterView({
   const [selected, setSelected] = useState<string[]>([]);
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [pickedScope, setPickedScope] = useState<FileScope | null>(null);
+  const [zone, setZone] = useState<"list" | "actions">("list");
 
   const ownsScope = mode === undefined;
   const rowsByScope: Record<FileScope, ReviewableFile[]> = {
@@ -137,6 +149,30 @@ export function ReviewFileFilterView({
   const calloutColumns = Math.max(contentColumns - CALLOUT_CHROME_COLUMNS, 1);
   const panelColumns = Math.max(contentColumns - PANEL_CHROME_COLUMNS, 1);
 
+  const hasActions = selectableRows.length > 0;
+  const activeZone = hasActions ? zone : "list";
+  const disabledActions = [false, false, !canStart];
+  const actionRow = useActionRow({
+    actionCount: disabledActions.length,
+    disabledActions,
+    isActive: activeZone === "actions",
+    verticalNavigation: true,
+    onExitUp: () => setZone("list"),
+  });
+
+  function enterActions() {
+    actionRow.reset(getFirstEnabledAction(disabledActions.length, disabledActions));
+    setZone("actions");
+  }
+
+  function selectAll() {
+    setSelected(selectableRows.map((row) => row.path));
+  }
+
+  function clearSelection() {
+    setSelected([]);
+  }
+
   function start() {
     const [first, ...rest] = selectedPaths;
     if (first === undefined) return;
@@ -161,18 +197,18 @@ export function ReviewFileFilterView({
         return;
       }
       if (input === SELECT_ALL_KEY) {
-        setSelected(selectableRows.map((row) => row.path));
+        selectAll();
         return;
       }
       if (input === CLEAR_SELECTION_KEY) {
-        setSelected([]);
+        clearSelection();
       }
     },
     { isActive: true },
   );
 
   usePageFooter({
-    shortcuts: getFileFilterShortcuts(canStart, ownsScope),
+    shortcuts: getFileFilterShortcuts(canStart, ownsScope, activeZone === "actions"),
     rightShortcuts: BACK_SHORTCUTS,
   });
 
@@ -185,7 +221,11 @@ export function ReviewFileFilterView({
       calloutTextRows(sanitizedReason, calloutColumns)
     : 0;
   const noticeRows = limitNotice ? wrappedRowCount(limitNotice, panelColumns) : 0;
-  const listRows = Math.max(contentRows - LIST_CHROME_ROWS - reasonRows - noticeRows, 1);
+  const actionsRows = hasActions ? 1 : 0;
+  const listRows = Math.max(
+    contentRows - LIST_CHROME_ROWS - actionsRows - reasonRows - noticeRows,
+    1,
+  );
   const highlightedIndex = Math.max(
     rows.findIndex((row) => row.path === highlightedPath),
     0,
@@ -231,6 +271,11 @@ export function ReviewFileFilterView({
           onChange={setSelected}
           highlightedValue={highlightedPath}
           onHighlightChange={setHighlighted}
+          isActive={activeZone === "list"}
+          wrap={false}
+          onNavigationBoundaryReached={(direction) => {
+            if (direction === 1) enterActions();
+          }}
           navigationItems={rows.map((row) => ({ id: row.path, disabled: row.conflicted }))}
         >
           {rows.slice(listWindow.start, listWindow.end).map((row) => (
@@ -279,6 +324,28 @@ export function ReviewFileFilterView({
             </Text>
             {renderBody()}
             {limitNotice ? <Text color={tokens.warning}>{limitNotice}</Text> : null}
+            {hasActions ? (
+              <Box>
+                <Button variant="ghost" isActive={actionRow.isActionActive(0)} onPress={selectAll}>
+                  Select All
+                </Button>
+                <Button
+                  variant="ghost"
+                  isActive={actionRow.isActionActive(1)}
+                  onPress={clearSelection}
+                >
+                  None
+                </Button>
+                <Button
+                  variant="success"
+                  isActive={actionRow.isActionActive(2)}
+                  disabled={!canStart}
+                  onPress={start}
+                >
+                  Review Selected
+                </Button>
+              </Box>
+            ) : null}
           </Box>
         </Panel.Content>
       </Panel>

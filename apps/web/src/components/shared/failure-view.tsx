@@ -95,12 +95,11 @@ export function FailureView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
-      {/* Boxed dead-end panels dead-centre. Sparse page cards and loading keep
-          the app-wide 1:2 band (card.tsx, centered-status.tsx); the 404
-          interruption strip is banded by its own rule. Centring
-          also restores parity with the TUI's GateShell, which centres too
-          (error-gate.tsx). The spacers collapse once the panel outgrows the
-          viewport, so a short window scrolls from the top. */}
+      {/* Boxed dead-end panels sit in the app-wide 1:2 band, like sparse page
+          cards, loading, and the 404 interruption strip (card.tsx,
+          centered-status.tsx), so the panel rides above the shell footer
+          instead of dead-centring the viewport. The spacers collapse once the
+          panel outgrows the viewport, so a short window scrolls from the top. */}
       <div aria-hidden className="grow" />
       <Panel
         {...focusProps}
@@ -182,7 +181,7 @@ export function FailureView({
           </div>
         </Panel.Content>
       </Panel>
-      <div aria-hidden className="grow" />
+      <div aria-hidden className="grow-[2]" />
     </div>
   );
 }

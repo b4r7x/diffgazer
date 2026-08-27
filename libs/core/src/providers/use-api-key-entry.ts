@@ -6,6 +6,11 @@ export interface UseApiKeyEntryOptions {
   onSubmit: (method: InputMethod, value: string) => Promise<boolean>;
 }
 
+type SubmitState =
+  | { status: "idle" }
+  | { status: "submitting" }
+  | { status: "error"; message: string };
+
 export interface UseApiKeyEntryResult {
   method: InputMethod;
   setMethod: (method: InputMethod) => void;
@@ -28,17 +33,20 @@ export interface UseApiKeyEntryResult {
 export function useApiKeyEntry({ onSubmit }: UseApiKeyEntryOptions): UseApiKeyEntryResult {
   const [method, setMethodState] = useState<InputMethod>("paste");
   const [value, setValueState] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitState, setSubmitState] = useState<SubmitState>({ status: "idle" });
   const submittingRef = useRef(false);
 
+  const clearError = () => {
+    setSubmitState((state) => (state.status === "error" ? { status: "idle" } : state));
+  };
+
   const setMethod = (next: InputMethod) => {
-    setError(null);
+    clearError();
     setMethodState(next);
   };
 
   const setValue = (next: string) => {
-    setError(null);
+    clearError();
     setValueState(next);
   };
 
@@ -49,26 +57,28 @@ export function useApiKeyEntry({ onSubmit }: UseApiKeyEntryOptions): UseApiKeyEn
     if (submitMethod === "paste" && !value) return false;
 
     submittingRef.current = true;
-    setIsSubmitting(true);
-    setError(null);
+    setSubmitState({ status: "submitting" });
     try {
       const committed = await onSubmit(submitMethod, value);
+      setSubmitState({ status: "idle" });
       if (!committed) return false;
       setValueState("");
       return true;
     } catch (cause) {
-      setError(getErrorMessage(cause, "Failed to save API key"));
+      setSubmitState({
+        status: "error",
+        message: getErrorMessage(cause, "Failed to save API key"),
+      });
       return false;
     } finally {
       submittingRef.current = false;
-      setIsSubmitting(false);
     }
   };
 
   const reset = () => {
     setMethodState("paste");
     setValueState("");
-    setError(null);
+    setSubmitState({ status: "idle" });
   };
 
   return {
@@ -77,8 +87,8 @@ export function useApiKeyEntry({ onSubmit }: UseApiKeyEntryOptions): UseApiKeyEn
     value,
     setValue,
     canSubmit,
-    isSubmitting,
-    error,
+    isSubmitting: submitState.status === "submitting",
+    error: submitState.status === "error" ? submitState.message : null,
     submit,
     reset,
   };

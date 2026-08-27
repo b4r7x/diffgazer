@@ -103,32 +103,18 @@ function getServerSnapshot(): StoreState {
   return INITIAL_STATE;
 }
 
-function scheduleAutoDismiss(
-  id: string,
-  tone: ToastTone,
-  duration?: number,
-  variant: Toast["variant"] = "card",
-) {
-  if ((tone === "error" || tone === "loading") && duration === undefined && variant !== "hud")
-    return;
-  const resolved = duration ?? DEFAULT_DURATION;
-  if (!Number.isFinite(resolved) || resolved <= 0) return;
-  timers().schedule(id, resolved, state.paused);
-}
-
-function isEvictable(t: Toast): boolean {
-  // Persistent toasts (with actions and no explicit duration) and
-  // error/loading toasts without duration should not be evicted before
-  // transient toasts (WCAG 2.2.1 — enough time). HUD auto-dismisses like
-  // scheduleAutoDismiss, so error/loading HUD toasts remain evictable.
-  if (t.action && t.duration === undefined) return false;
-  if (
-    (t.tone === "error" || t.tone === "loading") &&
-    t.duration === undefined &&
-    t.variant !== "hud"
-  )
-    return false;
-  return true;
+// The region's persistent/timed contract. A persistent toast never
+// auto-dismisses: it carries a rendered action or an error/loading tone with no
+// explicit duration, or a duration that never elapses. Persistent toasts are
+// not evicted before transient ones (WCAG 2.2.1 — enough time) and are the ones
+// the arrow-key entry (`focusToastRegion`) is wired for; timed toasts stay
+// hotkey/pointer-only, since focus on a timer-unmounted element would strand
+// the user. HUD drops actions and always auto-dismisses, so a HUD toast is
+// transient even with an error/loading tone.
+export function isPersistentToast(t: Toast): boolean {
+  if (t.duration !== undefined) return !(Number.isFinite(t.duration) && t.duration > 0);
+  if (t.action) return true;
+  return (t.tone === "error" || t.tone === "loading") && t.variant !== "hud";
 }
 
 function resolveNextToasts(current: Toast[], incoming: Toast): Toast[] {
@@ -141,7 +127,7 @@ function resolveNextToasts(current: Toast[], incoming: Toast): Toast[] {
   const remaining = [...current];
 
   while (remaining.length >= MAX_TOASTS) {
-    const transientIndex = remaining.findIndex(isEvictable);
+    const transientIndex = remaining.findIndex((t) => !isPersistentToast(t));
     const evictionIndex = transientIndex >= 0 ? transientIndex : 0;
     const [removed] = remaining.splice(evictionIndex, 1);
     if (removed) evicted.push(removed);
@@ -180,10 +166,8 @@ function create(options: ToastOptions): string {
   clearTimer(id);
   const nextDismissing = new Set(state.dismissingIds);
   nextDismissing.delete(id);
-  // Persist indefinitely only when there's a real, rendered action (WCAG 2.2.1).
-  // HUD drops the action, so a HUD with an "action" still auto-dismisses.
-  if (!effectiveAction || options.duration !== undefined) {
-    scheduleAutoDismiss(id, tone, options.duration, variant);
+  if (!isPersistentToast(newToast)) {
+    timers().schedule(id, newToast.duration ?? DEFAULT_DURATION, state.paused);
   }
 
   const nextToasts = resolveNextToasts(state.toasts, newToast);
@@ -337,4 +321,9 @@ export const toast: ToastFn = Object.assign(
 
 export function useToastStore(): StoreState {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+export function useHasPersistentToast(): boolean {
+  const { toasts, dismissingIds } = useToastStore();
+  return toasts.some((t) => !dismissingIds.has(t.id) && isPersistentToast(t));
 }

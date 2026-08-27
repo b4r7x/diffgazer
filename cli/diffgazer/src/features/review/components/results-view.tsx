@@ -83,33 +83,6 @@ export function ReviewResultsView({
       : [...RESULTS_SHORTCUTS_LEFT, { key: `1-${visibleTabs.length}`, label: "Tabs" }];
   usePageFooter({ shortcuts, rightShortcuts: onBack ? RESULTS_SHORTCUTS_RIGHT : [] });
 
-  useReviewKeyboard({
-    onZoneSwitch() {
-      if (activeZone === "list") {
-        setDetailsSubZone("body");
-        setActiveZone("details");
-        return;
-      }
-
-      if (canFocusFixPlan && effectiveDetailsSubZone === "body") {
-        setDetailsSubZone("fix-plan");
-        return;
-      }
-
-      setDetailsSubZone("body");
-      setActiveZone("list");
-    },
-    onTabSwitch(tabNumber) {
-      const tab = visibleTabs[tabNumber - 1];
-      if (!tab) return;
-      setDetailsSubZone("body");
-      setActiveTab(tab);
-    },
-    onBack() {
-      onBack?.();
-    },
-  });
-
   const detailsEmptyKind = selectDetailsEmptyKind(issues.length, filteredIssues.length);
   const duplicateNotice = buildDuplicateCollapseNotice(droppedDuplicates, issues.length);
   const completenessNotice = buildLensFailureNotice(lensStats);
@@ -133,6 +106,48 @@ export function ReviewResultsView({
     noticeRows,
   });
   const reviewIdLabel = reviewId ? formatRunId(reviewId) : "#unknown";
+  const isIssueListFocused =
+    activeZone === "list" && listSubZone === "issues" && filteredIssues.length > 0;
+  const isDetailsLeftEdge = !showDetailsTabs || !visibleTabs[0] || activeTab === visibleTabs[0];
+
+  useReviewKeyboard({
+    onZoneSwitch() {
+      if (activeZone === "list") {
+        setDetailsSubZone("body");
+        setActiveZone("details");
+        return;
+      }
+
+      if (canFocusFixPlan && effectiveDetailsSubZone === "body") {
+        setDetailsSubZone("fix-plan");
+        return;
+      }
+
+      setDetailsSubZone("body");
+      setActiveZone("list");
+    },
+    onPaneCross(direction) {
+      if (direction === "right" && isIssueListFocused) {
+        setDetailsSubZone("body");
+        setActiveZone("details");
+        return;
+      }
+
+      if (direction === "left" && activeZone === "details" && isDetailsLeftEdge) {
+        setDetailsSubZone("body");
+        setActiveZone("list");
+      }
+    },
+    onTabSwitch(tabNumber) {
+      const tab = visibleTabs[tabNumber - 1];
+      if (!tab) return;
+      setDetailsSubZone("body");
+      setActiveTab(tab);
+    },
+    onBack() {
+      onBack?.();
+    },
+  });
 
   return (
     <Box flexDirection="column" width="100%">

@@ -20,7 +20,7 @@ describe("ModelSelectOverlay discovery provenance", () => {
     cleanup();
   });
 
-  test("shows the skipped catalog reason, checkedAt, and retry hint", async () => {
+  test("shows the skipped catalog reason, checkedAt, and retry control", async () => {
     const getConfigurationModels = vi
       .fn<BoundApi["getConfigurationModels"]>()
       .mockResolvedValue(
@@ -40,7 +40,7 @@ describe("ModelSelectOverlay discovery provenance", () => {
     const frame = lastFrame() ?? "";
     expect(frame).toContain("gemini");
     expect(frame).toContain("checked");
-    expect(frame).toContain("Press r to retry");
+    expect(frame).toContain("[ Retry ]");
     expect(frame).not.toContain("structured outputs");
   });
 

@@ -928,6 +928,90 @@ describe("HomePagePresentation — pane Tab cycle", () => {
   });
 });
 
+describe("HomePagePresentation — pane arrow hop", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const hopContext: HomeContextInfo = {
+    ...baseContext,
+    lastRunId: "12345678-1234-4123-8123-123456789abc",
+    lastRunIssueCount: 2,
+  };
+
+  it("enters the context rows on ArrowLeft, skipping the static trust row, and stops at both ends", async () => {
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ context: hopContext }));
+
+    const providerRow = screen.getByRole("button", { name: "Configure provider settings" });
+    const scopeRow = screen.getByRole("button", { name: "Choose files to review" });
+    const lastRunRow = screen.getByRole("button", { name: /open last review/i });
+    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
+
+    await user.keyboard("{ArrowLeft}");
+    await waitFor(() => expect(providerRow).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+    expect(scopeRow).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(lastRunRow).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(lastRunRow).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    await user.keyboard("{ArrowUp}");
+    expect(providerRow).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    expect(providerRow).toHaveFocus();
+  });
+
+  it("returns to the menu on ArrowRight with the highlight where it was left", async () => {
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ context: hopContext, highlighted: "review-staged" }));
+
+    const menu = screen.getByRole("menu");
+    await waitFor(() => expect(menu).toHaveFocus());
+    const highlightedRow = screen.getByRole("menuitem", { name: "Review Staged" });
+    expect(menu).toHaveAttribute("aria-activedescendant", highlightedRow.id);
+
+    await user.keyboard("{ArrowLeft}");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Configure provider settings" })).toHaveFocus(),
+    );
+
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() => expect(menu).toHaveFocus());
+    expect(menu).toHaveAttribute("aria-activedescendant", highlightedRow.id);
+  });
+
+  it("walks the rows with the arrows after Tab reaches the pane", async () => {
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ context: hopContext }));
+
+    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
+    await user.tab();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Configure provider settings" })).toHaveFocus(),
+    );
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Choose files to review" })).toHaveFocus();
+  });
+
+  it("holds the arrow hop while a review is starting", async () => {
+    const createReview = vi.fn(() => new Promise<{ reviewId: string }>(() => {}));
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ context: hopContext, createReview }));
+
+    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
+    await user.keyboard("r");
+    await waitFor(() => expect(createReview).toHaveBeenCalled());
+
+    await user.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("menu")).toHaveFocus();
+  });
+});
+
 describe("HomePagePresentation — file picker entry", () => {
   const PICKER_STATUS: GitStatus = {
     isGitRepo: true,

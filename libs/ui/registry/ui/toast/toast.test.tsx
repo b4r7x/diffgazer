@@ -3,8 +3,8 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Dialog } from "../dialog/index";
-import { Toaster, toast } from "./index";
-import { dismiss, remove, useToastStore } from "./toast-store";
+import { focusToastRegion, Toaster, toast } from "./index";
+import { dismiss, remove, useHasPersistentToast, useToastStore } from "./toast-store";
 
 // The Toaster's persistent polite live region duplicates visible toast
 // text for screen readers, so text queries ignore it like script/style.
@@ -382,6 +382,35 @@ describe("Toast", () => {
     expect(screen.getByText("Persistent 2")).toBeInTheDocument();
     expect(screen.getByText("Persistent 5")).toBeInTheDocument();
     expect(screen.getByText("Incoming toast")).toBeInTheDocument();
+  });
+
+  it("treats a duration: Infinity toast as persistent", () => {
+    let hasPersistent = false;
+    function PersistentReader() {
+      hasPersistent = useHasPersistentToast();
+      return null;
+    }
+    render(
+      <>
+        <Toaster />
+        <PersistentReader />
+      </>,
+    );
+    act(() => {
+      toast("Sticky", { id: "sticky", duration: Number.POSITIVE_INFINITY });
+      for (let index = 1; index <= 5; index++) {
+        toast(`Transient ${index}`, { id: `transient-${index}` });
+      }
+    });
+
+    expect(hasPersistent).toBe(true);
+    expect(screen.getByText("Sticky")).toBeInTheDocument();
+    expect(screen.queryByText("Transient 1")).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.getByText("Sticky")).toBeInTheDocument();
   });
 
   it("dismisses a toast via toast.dismiss(id)", () => {
@@ -793,6 +822,75 @@ describe("Toast", () => {
       vi.advanceTimersByTime(250);
     });
     expect(screen.queryByText("Final toast")).not.toBeInTheDocument();
+    expect(pageControl).toHaveFocus();
+  });
+
+  it("walks the region controls with arrows and returns focus to the opener at the boundary", () => {
+    render(
+      <div>
+        <button type="button">Page control</button>
+        <Toaster hotkey="F8" />
+      </div>,
+    );
+    act(() => {
+      toast.error("Connection lost", {
+        id: "arrow-walk",
+        action: <button type="button">Retry</button>,
+      });
+    });
+    const { pageControl, region } = inspectRegionViaHotkey();
+
+    const arrow = (key: "ArrowDown" | "ArrowUp") => {
+      act(() => {
+        (document.activeElement ?? region).dispatchEvent(
+          new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }),
+        );
+      });
+    };
+
+    arrow("ArrowDown");
+    expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus();
+    arrow("ArrowDown");
+    expect(screen.getByRole("button", { name: "Dismiss: Connection lost" })).toHaveFocus();
+    arrow("ArrowUp");
+    expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus();
+    arrow("ArrowDown");
+    arrow("ArrowDown");
+    expect(pageControl).toHaveFocus();
+  });
+
+  it("enters the region through focusToastRegion and restores the opener on boundary exit", () => {
+    render(
+      <div>
+        <button type="button">Page control</button>
+        <Toaster />
+      </div>,
+    );
+    expect(focusToastRegion()).toBe(false);
+
+    act(() => {
+      toast.error("Connection lost", {
+        id: "arrow-entry",
+        action: <button type="button">Retry</button>,
+      });
+    });
+    const pageControl = screen.getByRole("button", { name: "Page control" });
+    act(() => {
+      pageControl.focus();
+    });
+    let entered = false;
+    act(() => {
+      entered = focusToastRegion();
+    });
+    expect(entered).toBe(true);
+    const region = screen.getByRole("region", { name: "Notifications" });
+    expect(region).toHaveFocus();
+
+    act(() => {
+      region.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true, cancelable: true }),
+      );
+    });
     expect(pageControl).toHaveFocus();
   });
 

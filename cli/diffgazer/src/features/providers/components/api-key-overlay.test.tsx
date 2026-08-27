@@ -26,6 +26,9 @@ import { CliThemeProvider } from "../../../theme/provider";
 import { flushUntil } from "../testing/model-select-overlay";
 import { ApiKeyOverlay } from "./api-key-overlay";
 
+const ARROW_DOWN = "\u001B[B";
+const ARROW_UP = "\u001B[A";
+
 function Wrapper({ children, api }: { children: ReactNode; api: BoundApi }) {
   return (
     <QueryClientProvider client={createTestQueryClient()}>
@@ -149,7 +152,9 @@ describe("ApiKeyOverlay hosted write-only flow", () => {
     await flush();
     view.stdin.write("\t");
     await flush();
-    view.stdin.write("\u001B[B");
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(" ");
     await flush();
     expect(view.lastFrame()).not.toContain("sk-never-an-env-name");
     view.stdin.write("\r");
@@ -352,7 +357,9 @@ describe("ApiKeyOverlay notice acknowledgement", () => {
     );
 
     await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
-    view.stdin.write("\u001B[B");
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(" ");
     await flushUntil(() => view.lastFrame()?.includes("GOOGLE_API_KEY") ?? false);
 
     const frame = view.lastFrame() ?? "";
@@ -395,5 +402,219 @@ describe("ApiKeyOverlay notice acknowledgement", () => {
 
     expect(onUpdate).toHaveBeenCalledOnce();
     expect(onOpenChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("ApiKeyOverlay arrow navigation", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  function renderOverlay(
+    row: ProviderListRow,
+    handlers: Partial<{
+      onOpenChange: (open: boolean) => void;
+      onUpdate: (payload: {
+        input: ClientConfigurationInput;
+        acknowledgement: ReadinessAcknowledgement;
+      }) => Promise<void>;
+    }> = {},
+  ) {
+    return render(
+      <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
+        <ApiKeyOverlay
+          open
+          row={row}
+          onOpenChange={handlers.onOpenChange ?? (() => {})}
+          onCreate={async () => {}}
+          onUpdate={handlers.onUpdate ?? (async () => {})}
+        />
+      </Wrapper>,
+    );
+  }
+
+  test("steps down from the method radios into the key field and back up", async () => {
+    const view = renderOverlay(unconfiguredRow("gemini"));
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write("sk123");
+    await flush();
+    expect(view.lastFrame()).toContain("*****");
+
+    view.stdin.write(ARROW_UP);
+    await flush();
+    view.stdin.write("xy");
+    await flush();
+    expect(view.lastFrame()).toContain("*****");
+    expect(view.lastFrame()).not.toContain("******");
+  });
+
+  test("reaches the acknowledgement from the radios and toggles it with Space", async () => {
+    const view = renderOverlay(unacknowledgedHostedRow());
+    await flushUntil(() => view.lastFrame()?.includes("[ ] I accept") ?? false);
+
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(" ");
+    await flush();
+    expect(view.lastFrame()).toContain("[x] I accept");
+
+    view.stdin.write(ARROW_UP);
+    await flush();
+    view.stdin.write(" ");
+    await flush();
+    expect(view.lastFrame()).toContain("[x] I accept");
+  });
+
+  test("steps from the acknowledgement into the footer actions and confirms there", async () => {
+    const onUpdate = vi.fn(
+      async (_payload: {
+        input: ClientConfigurationInput;
+        acknowledgement: ReadinessAcknowledgement;
+      }) => {},
+    );
+    const view = renderOverlay(unacknowledgedHostedRow(), { onUpdate });
+    await flushUntil(() => view.lastFrame()?.includes("[ ] I accept") ?? false);
+
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(" ");
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(" ");
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write("\r");
+    await waitUntil(() => onUpdate.mock.calls.length > 0);
+
+    expect(onUpdate.mock.calls[0]?.[0]).toMatchObject({
+      input: { credential: { kind: "environment" } },
+      acknowledgement: { status: "accepted" },
+    });
+  });
+
+  test("returns from the footer actions to the acknowledgement", async () => {
+    const view = renderOverlay(unacknowledgedHostedRow());
+    await flushUntil(() => view.lastFrame()?.includes("[ ] I accept") ?? false);
+
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(" ");
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_UP);
+    await flush();
+    view.stdin.write(" ");
+    await flush();
+
+    expect(view.lastFrame()).toContain("[ ] I accept");
+  });
+
+  test("stops at the first zone instead of wrapping past the method radios", async () => {
+    const view = renderOverlay(unconfiguredRow("gemini"));
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+
+    view.stdin.write(ARROW_UP);
+    await flush();
+    view.stdin.write(ARROW_UP);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write("sk123");
+    await flush();
+
+    expect(view.lastFrame()).toContain("*****");
+  });
+
+  test("keeps the pasted key on the arrow route to Save instead of flipping to the env method", async () => {
+    const onCreate = vi.fn(async (_input: ClientConfigurationInput) => {});
+    const view = render(
+      <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
+        <ApiKeyOverlay
+          open
+          row={unconfiguredRow("gemini")}
+          onOpenChange={() => {}}
+          onCreate={onCreate}
+          onUpdate={async () => {}}
+        />
+      </Wrapper>,
+    );
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write("sk-arrow-key");
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write("\r");
+    await waitUntil(() => onCreate.mock.calls.length > 0);
+
+    expect(onCreate.mock.calls[0]?.[0]).toMatchObject({
+      credential: { kind: "literal", value: "sk-arrow-key" },
+    });
+  });
+
+  test("returns from the footer actions to the key field while the paste method is selected", async () => {
+    const view = renderOverlay(unconfiguredRow("gemini"));
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write("sk123");
+    await flush();
+    expect(view.lastFrame()).toContain("*****");
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_UP);
+    await flush();
+    view.stdin.write("xy");
+    await flush();
+
+    expect(view.lastFrame()).toContain("*******");
+  });
+
+  test("stops at the footer actions instead of wrapping back to the method radios", async () => {
+    const onOpenChange = vi.fn();
+    const view = renderOverlay(unacknowledgedHostedRow(), { onOpenChange });
+    await flushUntil(() => view.lastFrame()?.includes("[ ] I accept") ?? false);
+
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write("\r");
+    await waitUntil(() => onOpenChange.mock.calls.length > 0);
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

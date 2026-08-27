@@ -1,12 +1,14 @@
 import type { HistoryRunSummary } from "@diffgazer/core/review";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
-import { Box, Text } from "ink";
-import type { ReactElement } from "react";
+import { Box, Text, useInput } from "ink";
+import { type ReactElement, useEffect } from "react";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { NavigationList } from "../../../components/ui/navigation-list";
 import { getListWindow, type ListWindow } from "../../../lib/list-window";
 import { terminalCellWidth, wrappedRowCount } from "../../../lib/terminal-width";
+import { rowTone } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
+import type { HistoryRunsSubZone } from "../types";
 
 interface RunsWindowOptions {
   selectedIndex: number;
@@ -48,6 +50,7 @@ export interface RunsListProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onHighlightChange?: (id: string) => void;
+  onNavigationBoundaryReached?: (direction: 1 | -1) => void;
   isActive?: boolean;
   emptyMessage: string;
   height: number;
@@ -55,6 +58,9 @@ export interface RunsListProps {
   hasMore?: boolean;
   isLoadingMore?: boolean;
   salvagedRunIds?: ReadonlySet<string>;
+  subZone?: HistoryRunsSubZone;
+  onSubZoneChange?: (zone: HistoryRunsSubZone) => void;
+  onLoadMore?: () => void;
 }
 
 export function RunsList({
@@ -62,6 +68,7 @@ export function RunsList({
   selectedId,
   onSelect,
   onHighlightChange,
+  onNavigationBoundaryReached,
   isActive = true,
   emptyMessage,
   height,
@@ -69,6 +76,9 @@ export function RunsList({
   hasMore = false,
   isLoadingMore = false,
   salvagedRunIds,
+  subZone = "list",
+  onSubZoneChange,
+  onLoadMore,
 }: RunsListProps): ReactElement {
   const { tokens } = useTheme();
   const paddingY = height >= 6 ? 1 : 0;
@@ -108,6 +118,27 @@ export function RunsList({
     itemRows,
   });
   const visibleRuns = runs.slice(window.start, window.end);
+  const effectiveSubZone: HistoryRunsSubZone = showsPaginationStatus ? subZone : "list";
+
+  useEffect(() => {
+    if (subZone === "load-more" && !showsPaginationStatus) onSubZoneChange?.("list");
+  }, [subZone, showsPaginationStatus, onSubZoneChange]);
+
+  const paginationTone = rowTone(tokens, {
+    isHighlighted: effectiveSubZone === "load-more",
+    isActive,
+  });
+
+  useInput(
+    (input, key) => {
+      if (key.upArrow || input === "k") {
+        onSubZoneChange?.("list");
+        return;
+      }
+      if (key.return) onLoadMore?.();
+    },
+    { isActive: isActive && effectiveSubZone === "load-more" },
+  );
 
   return (
     <Box
@@ -130,7 +161,14 @@ export function RunsList({
             highlightedId={selectedId}
             onSelect={onSelect}
             onHighlightChange={onHighlightChange}
-            isActive={isActive}
+            onNavigationBoundaryReached={(direction) => {
+              if (direction === 1 && showsPaginationStatus) {
+                onSubZoneChange?.("load-more");
+                return;
+              }
+              onNavigationBoundaryReached?.(direction);
+            }}
+            isActive={isActive && effectiveSubZone === "list"}
             wrap={false}
             navigationItems={runs.map((run) => ({ id: run.id, disabled: false }))}
           >
@@ -212,8 +250,8 @@ export function RunsList({
         </>
       )}
       {showsPaginationStatus ? (
-        <Box width={statusWidth}>
-          <Text color={tokens.muted} wrap="truncate-end">
+        <Box width={statusWidth} backgroundColor={paginationTone.background}>
+          <Text color={paginationTone.secondary} wrap="truncate-end">
             {paginationStatus}
           </Text>
         </Box>

@@ -401,6 +401,24 @@ describe("ModelSelectDialog search escape staging", () => {
     );
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it("clears the query from the keyboard via ArrowRight to the clear button and Enter", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    await screen.findByRole("radio", { name: /gemini-2\.5-flash/ });
+    const search = screen.getByRole("searchbox", { name: "Search models" });
+    await user.click(search);
+    await user.keyboard("flash");
+
+    await user.keyboard("{ArrowRight}");
+    const clearButton = screen.getByRole("button", { name: "Clear search" });
+    expect(clearButton).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(search).toHaveValue("");
+    expect(search).toHaveFocus();
+  });
 });
 
 describe("ModelSelectDialog discovery states", () => {

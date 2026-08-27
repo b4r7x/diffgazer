@@ -44,7 +44,11 @@ export interface ReviewSummaryViewProps {
   onBack?: () => void;
 }
 
-const SUMMARY_SHORTCUTS_LEFT: Shortcut[] = [{ key: "Enter", label: "View Results" }];
+const SUMMARY_SCROLL_SHORTCUT: Shortcut = { key: "↑/↓", label: "Scroll" };
+const SUMMARY_SHORTCUTS_LEFT: Shortcut[] = [
+  SUMMARY_SCROLL_SHORTCUT,
+  { key: "Enter", label: "View Results" },
+];
 const SUMMARY_SHORTCUTS_RIGHT: Shortcut[] = [BACK_SHORTCUT];
 // Header rule only: the shortcut bar is the single action surface, so the view
 // spends no rows restating [Enter] View Results as a button.
@@ -72,7 +76,7 @@ export function ReviewSummaryView({
   const viewResults = failure && issues.length === 0 ? undefined : onContinue;
 
   usePageFooter({
-    shortcuts: viewResults ? SUMMARY_SHORTCUTS_LEFT : [],
+    shortcuts: viewResults ? SUMMARY_SHORTCUTS_LEFT : [SUMMARY_SCROLL_SHORTCUT],
     rightShortcuts: onBack ? SUMMARY_SHORTCUTS_RIGHT : [],
   });
 

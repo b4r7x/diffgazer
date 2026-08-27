@@ -441,6 +441,32 @@ describe("HistoryPage keyboard navigation", () => {
     expect(footer.queryByText("Retry History")).not.toBeInTheDocument();
   });
 
+  it("reaches the list Retry with arrows past the timeline boundary and returns", async () => {
+    const user = userEvent.setup();
+    const { queryClient } = renderHistoryPage(<HistoryPage />);
+
+    await focusRunsList();
+    mockGetReviews.mockRejectedValueOnce(new Error("background refresh failed"));
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ["review", "list"], exact: true });
+    });
+    await screen.findByRole("alert");
+
+    const runsList = screen.getByRole("listbox", { name: /review runs/i });
+    runsList.focus();
+    await waitFor(() => expect(runsList).toHaveFocus());
+
+    await user.keyboard("{ArrowLeft}");
+    const sectionsList = screen.getByRole("listbox", { name: /review sections/i });
+    await waitFor(() => expect(sectionsList).toHaveFocus());
+
+    await user.keyboard("{ArrowLeft}");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus());
+
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() => expect(sectionsList).toHaveFocus());
+  });
+
   it("retries the failed list refresh with R without leaving the runs list", async () => {
     const user = userEvent.setup();
     const { queryClient } = renderHistoryPage(

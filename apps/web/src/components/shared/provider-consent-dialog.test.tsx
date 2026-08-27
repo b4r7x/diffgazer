@@ -131,6 +131,26 @@ describe("ProviderConsentDialog", () => {
     expect(props.onAccept).not.toHaveBeenCalled();
   });
 
+  it("steps up from the action row to the privacy link and back down with the arrows", async () => {
+    const user = userEvent.setup();
+    const { props } = renderDialog();
+
+    const accept = screen.getByRole("button", { name: "Accept and continue" });
+    const notNow = screen.getByRole("button", { name: "Not now" });
+    const link = screen.getByRole("link", { name: /Privacy notes/ });
+    await waitFor(() => expect(accept).toHaveFocus());
+
+    await user.keyboard("{ArrowUp}");
+    expect(link).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(notNow).toHaveFocus();
+    await user.keyboard("{ArrowRight}");
+    expect(accept).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(props.onAccept).toHaveBeenCalledOnce();
+  });
+
   it("keeps Left on the acceptance while it is being saved", async () => {
     const user = userEvent.setup();
     renderDialog({ isAccepting: true });

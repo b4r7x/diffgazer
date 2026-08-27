@@ -58,6 +58,7 @@ export function ProviderConsentDialog({
   // accepted. Initial focus lands on it, per APG, so Enter means Accept (or
   // Close), not "open the privacy notes in a new tab".
   const primaryRef = useRef<HTMLButtonElement>(null);
+  const privacyLinkRef = useRef<HTMLAnchorElement>(null);
   const keyboard = useKeyboardContext();
   // The page's own accelerators and the global q/s/h stand down while the
   // notice owns the keys (a dialog scope is what GlobalShortcuts suppresses
@@ -71,17 +72,19 @@ export function ProviderConsentDialog({
     return pushNoticeScope();
   }, [open]);
   // The open footer is an action row like every other dialog footer: Left/Right
-  // move between Not now and Accept, Enter activates the focused one. Bound to
-  // the pushed scope explicitly, since implicit ordering would rank this hook
-  // below the routed page (see above).
+  // move between Not now and Accept, Enter activates the focused one, and the
+  // up boundary steps out to the privacy link — ArrowUp from the row focuses
+  // it, ArrowDown returns to the row. Initial focus still lands on Accept.
+  // Bound to the pushed scope explicitly, since implicit ordering would rank
+  // this hook below the routed page (see above).
   const footer = useActionRowNavigation({
     enabled: open && consent === null,
     scope: CONSENT_SCOPE,
     actionCount: 2,
     disabledActions: [isAccepting, false],
+    disabledFocusFallbackRef: privacyLinkRef,
     defaultZone: "actions",
     defaultIndex: 1,
-    canExitActions: false,
     onAction: (index) => {
       if (index === 0) handleOpenChange(false);
       else if (!isAccepting) onAccept();
@@ -120,6 +123,7 @@ export function ProviderConsentDialog({
         <DialogBody className="space-y-4">
           <p className="text-sm leading-relaxed">{PROVIDER_CONSENT_TEXT}</p>
           <Button
+            ref={privacyLinkRef}
             as="a"
             variant="link"
             size="sm"

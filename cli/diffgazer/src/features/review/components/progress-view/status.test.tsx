@@ -179,7 +179,7 @@ describe("ReviewProgressView (TUI) status", () => {
     stdin.write("f");
     await flush();
 
-    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Detective");
+    expect(lastFrame() ?? "").toContain("Filter (f, [, ]): Detective");
     expect(lastFrame() ?? "").toContain("detective-only-event");
     expect(lastFrame() ?? "").not.toContain("guardian-only-event");
   });
@@ -189,29 +189,29 @@ describe("ReviewProgressView (TUI) status", () => {
       agents: [makeAgent("detective"), makeAgent("guardian")],
     });
 
-    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("Filter [f] [/]: All agents"));
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("Filter (f, [, ]): All agents"));
 
     stdin.write("]");
     await flush();
-    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Detective");
+    expect(lastFrame() ?? "").toContain("Filter (f, [, ]): Detective");
 
     stdin.write("]");
     await flush();
-    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Guardian");
+    expect(lastFrame() ?? "").toContain("Filter (f, [, ]): Guardian");
 
     // Forward off the last agent wraps back to the unfiltered log.
     stdin.write("]");
     await flush();
-    expect(lastFrame() ?? "").toContain("Filter [f] [/]: All agents");
+    expect(lastFrame() ?? "").toContain("Filter (f, [, ]): All agents");
 
     // Backward off "All agents" wraps to the far end of the row.
     stdin.write("[");
     await flush();
-    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Guardian");
+    expect(lastFrame() ?? "").toContain("Filter (f, [, ]): Guardian");
 
     stdin.write("[");
     await flush();
-    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Detective");
+    expect(lastFrame() ?? "").toContain("Filter (f, [, ]): Detective");
   });
 
   test("ignores a pasted chunk that names an Object prototype key", async () => {
@@ -219,15 +219,83 @@ describe("ReviewProgressView (TUI) status", () => {
       agents: [makeAgent("detective"), makeAgent("guardian")],
     });
 
-    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("Filter [f] [/]: All agents"));
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("Filter (f, [, ]): All agents"));
 
     stdin.write("]");
     await flush();
-    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Detective");
+    expect(lastFrame() ?? "").toContain("Filter (f, [, ]): Detective");
 
     stdin.write("constructor");
     await flush();
-    expect(lastFrame() ?? "").toContain("Filter [f] [/]: Detective");
+    expect(lastFrame() ?? "").toContain("Filter (f, [, ]): Detective");
+  });
+
+  test("advertises log scrolling and the filter keys in the shortcut bar", async () => {
+    const { lastFrame } = render(
+      <FooterProvider initialShortcuts={[]}>
+        <CliThemeProvider initialTheme="dark">
+          <ReviewProgressView
+            progressSteps={[]}
+            agents={[makeAgent("detective")]}
+            events={[]}
+            fileProgress={{ total: 0, completed: [] }}
+            isStreaming
+            error={null}
+            notices={[]}
+            onCancel={vi.fn()}
+            issuesFound={0}
+            startedAt={null}
+            completedAt={null}
+          />
+          <FooterProbe />
+        </CliThemeProvider>
+      </FooterProvider>,
+    );
+
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("↑/↓ Scroll"));
+    expect(lastFrame() ?? "").toContain("f [ ] Filter Log");
+  });
+
+  test("gives f to Filter Files while the size warning is up and keeps the log filter on brackets", async () => {
+    const onFilterFiles = vi.fn();
+    const { lastFrame, stdin } = render(
+      <FooterProvider initialShortcuts={[]}>
+        <CliThemeProvider initialTheme="dark">
+          <ReviewProgressView
+            progressSteps={[]}
+            agents={[makeAgent("detective")]}
+            events={[]}
+            fileProgress={{ total: 0, completed: [] }}
+            isStreaming
+            error={null}
+            notices={[]}
+            sizeWarning={{
+              message: "Large review: 0.60MB across 30 files, about 190,000 prompt tokens.",
+              diffBytes: 629_145,
+              estimatedInputTokens: 190_000,
+              contextTokens: 400_000,
+              modelId: "gpt-test",
+            }}
+            onFilterFiles={onFilterFiles}
+            issuesFound={0}
+            startedAt={null}
+            completedAt={null}
+          />
+          <FooterProbe />
+        </CliThemeProvider>
+      </FooterProvider>,
+    );
+
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("f Filter Files"));
+    expect(lastFrame() ?? "").toContain("[ ] Filter Log");
+    expect(lastFrame() ?? "").not.toContain("f [ ]");
+    expect(lastFrame() ?? "").toContain("Filter ([, ]): All agents");
+
+    stdin.write("f");
+    await flush();
+
+    expect(onFilterFiles).toHaveBeenCalledTimes(1);
+    expect(lastFrame() ?? "").toContain("Filter ([, ]): All agents");
   });
 
   test("publishes the context save action after streaming completes", async () => {

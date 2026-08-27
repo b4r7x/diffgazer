@@ -15,6 +15,8 @@ const ARROW_UP = "\u001b[A";
 
 const ARROW_RIGHT = "\u001b[C";
 
+const ARROW_LEFT = "\u001b[D";
+
 const terminalDimensions = { columns: 100, rows: 24 };
 const MEDIUM_LIST_WIDTH = 40;
 
@@ -484,5 +486,87 @@ describe("ReviewResultsView (TUI)", () => {
     expect(previewRows).toHaveLength(initialPreviewRows.length);
     expect(frame).toContain("ISSUE-10");
     expect(frame).not.toContain("ISSUE-1 ");
+  });
+  test("right arrow crosses from the issues list into the details pane", async () => {
+    const { stdin, lastFrame } = renderResults();
+    await flush();
+
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write("\t");
+    await flush();
+    stdin.write(" ");
+    await flush();
+
+    expect(lastFrame() ?? "").toContain("[x] 1. First fix step");
+  });
+
+  test("left arrow at the details left edge returns to the issues list", async () => {
+    const { stdin, lastFrame } = render(
+      resultsElement([
+        makeIssue({
+          id: "issue-a",
+          title: "Alpha issue",
+          symptom: "Issue A symptom",
+          fixPlan: [{ step: 1, action: "Alpha fix step" }],
+        }),
+        makeIssue({ id: "issue-b", title: "Bravo issue", symptom: "Issue B symptom" }),
+      ]),
+    );
+    await flush();
+
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write("\t");
+    await flush();
+    stdin.write(" ");
+    await flush();
+    expect(lastFrame() ?? "").toContain("[x] 1. Alpha fix step");
+
+    stdin.write(ARROW_LEFT);
+    await flush();
+    stdin.write(ARROW_DOWN);
+    await flush();
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("Issue B symptom");
+    expect(frame).not.toContain("Issue A symptom");
+  });
+
+  test("left arrow off the first tab moves the tab instead of leaving the details pane", async () => {
+    const { stdin, lastFrame } = renderResults();
+    await flush();
+
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write("2");
+    await flush();
+    expect(lastFrame() ?? "").toContain("Explain rationale text");
+
+    stdin.write(ARROW_LEFT);
+    await flush();
+    expect(lastFrame() ?? "").toContain("Details symptom text");
+
+    stdin.write("\t");
+    await flush();
+    stdin.write(" ");
+    await flush();
+    expect(lastFrame() ?? "").toContain("[x] 1. First fix step");
+  });
+
+  test("right arrow keeps moving the severity chips while the filter row is focused", async () => {
+    const { stdin, lastFrame } = render(
+      resultsElement([makeIssue({ id: "issue-blocker", severity: "blocker" })]),
+    );
+    await flush();
+
+    stdin.write(ARROW_UP);
+    await flush();
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write(" ");
+    await flush();
+
+    expect(lastFrame() ?? "").toContain("No issues match filter");
   });
 });

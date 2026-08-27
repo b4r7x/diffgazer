@@ -10,6 +10,7 @@ import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useEffect, useEffectEvent, useState } from "react";
 import { useContentZone } from "../../../components/layout/global";
+import { Button } from "../../../components/ui/button";
 import { Dialog, getDialogWidth } from "../../../components/ui/dialog";
 import { Spinner } from "../../../components/ui/spinner";
 import { useListNavigation } from "../../../hooks/use-list-navigation";
@@ -20,7 +21,12 @@ import { ModelListItem } from "./model-list-item";
 import { ModelSearchInput } from "./model-search-input";
 import { TierFilterTabs } from "./tier-filter-tabs";
 
-type FocusZone = "search" | "filters" | "list";
+type FocusZone = "search" | "filters" | "retry" | "list";
+type SelectionState =
+  | { status: "idle" }
+  | { status: "selecting" }
+  | { status: "error"; message: string };
+const IDLE_SELECTION: SelectionState = { status: "idle" };
 const MODEL_SELECT_SHORTCUTS: Shortcut[] = [
   { key: "Tab", label: "Switch Zone" },
   { key: "/", label: "Search" },
@@ -150,13 +156,18 @@ export function ModelSelectOverlay({
   } = useModelFilter(source.models);
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [highlightedModelId, setHighlightedModelId] = useState<string>();
-  const [selectionError, setSelectionError] = useState<string | null>(null);
-  const [isSelecting, setIsSelecting] = useState(false);
-  const saving = isSaving || isSelecting;
+  const [selection, setSelection] = useState<SelectionState>(IDLE_SELECTION);
+  const selectionError = selection.status === "error" ? selection.message : null;
+  const saving = isSaving || selection.status === "selecting";
 
   const loading = source.status === "loading" || source.status === "idle";
   const sourceError = source.status === "error" ? source.error : undefined;
   const skippedReason = source.status === "skipped" ? source.reason : null;
+  const retryVisible = Boolean(sourceError) || Boolean(skippedReason);
+  const zoneChain: FocusZone[] = retryVisible
+    ? ["search", "filters", "retry", "list"]
+    : ["search", "filters", "list"];
+  const activeZone = zoneChain.includes(focusZone) ? focusZone : "list";
 
   const initialHighlightId =
     (selectedId && source.models.some((model) => model.id === selectedId)
@@ -174,20 +185,19 @@ export function ModelSelectOverlay({
     items: filteredModels.map((model) => ({ id: model.id, disabled: false })),
     highlightedId: filteredModels[safeHighlightIndex]?.id ?? null,
     onHighlightChange: setHighlightedModelId,
-    wrap: true,
+    wrap: false,
   });
 
   const resetOnOpen = useEffectEvent(() => {
     resetFilters();
     setFocusZone("list");
     setHighlightedModelId(undefined);
-    setSelectionError(null);
+    setSelection(IDLE_SELECTION);
   });
 
   const resetOnClose = useEffectEvent(() => {
     setHighlightedModelId(undefined);
-    setSelectionError(null);
-    setIsSelecting(false);
+    setSelection(IDLE_SELECTION);
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: configuration identity is a reset trigger.
@@ -203,15 +213,16 @@ export function ModelSelectOverlay({
   // closing first would hide the only place its failure can be reported.
   async function handleSelect(modelId: string) {
     if (saving) return;
-    setSelectionError(null);
-    setIsSelecting(true);
+    setSelection({ status: "selecting" });
     try {
       await onSelect?.(modelId);
+      setSelection(IDLE_SELECTION);
       onOpenChange(false);
     } catch (error) {
-      setSelectionError(error instanceof Error ? error.message : "Failed to select model");
-    } finally {
-      setIsSelecting(false);
+      setSelection({
+        status: "error",
+        message: error instanceof Error ? error.message : "Failed to select model",
+      });
     }
   }
 
@@ -220,29 +231,20 @@ export function ModelSelectOverlay({
     onOpenChange(nextOpen);
   }
 
-  function handleEscapeKeyDown(): boolean {
-    if (focusZone !== "search" || searchQuery.length === 0) return false;
-    setSearchQuery("");
-    return true;
-  }
-
   useInput(
     (input, key) => {
       if (key.tab) {
-        setFocusZone((prev) => {
-          const zones: FocusZone[] = ["search", "filters", "list"];
-          const idx = zones.indexOf(prev);
-          return zones[(idx + 1) % zones.length] ?? "list";
-        });
+        const idx = zoneChain.indexOf(activeZone);
+        setFocusZone(zoneChain[(idx + 1) % zoneChain.length] ?? "list");
         return;
       }
 
-      if (input === "/" && focusZone !== "search") {
+      if (input === "/" && activeZone !== "search") {
         setFocusZone("search");
         return;
       }
 
-      if (input === "f" && focusZone !== "search") {
+      if (input === "f" && activeZone !== "search") {
         cycleTierFilter();
       }
     },
@@ -250,23 +252,34 @@ export function ModelSelectOverlay({
   );
 
   useInput(
-    (input) => {
-      if (input.toLowerCase() === "r") source.retry();
+    (_input, key) => {
+      const idx = zoneChain.indexOf(activeZone);
+      if (key.upArrow) {
+        const previous = zoneChain[idx - 1];
+        if (previous) setFocusZone(previous);
+        return;
+      }
+      if (key.downArrow) {
+        const next = zoneChain[idx + 1];
+        if (next && (next !== "list" || filteredModels.length > 0)) setFocusZone(next);
+      }
     },
     {
-      isActive:
-        open &&
-        !saving &&
-        focusZone !== "search" &&
-        (Boolean(sourceError) || Boolean(skippedReason)),
+      isActive: open && !saving && (activeZone !== "list" || filteredModels.length === 0),
     },
   );
 
+  useInput(
+    (input) => {
+      if (input.toLowerCase() === "r") source.retry();
+    },
+    { isActive: open && !saving && activeZone !== "search" && retryVisible },
+  );
+
   usePageFooter({
-    shortcuts:
-      sourceError || skippedReason
-        ? [...MODEL_SELECT_SHORTCUTS, MODEL_SELECT_RETRY_SHORTCUT]
-        : MODEL_SELECT_SHORTCUTS,
+    shortcuts: retryVisible
+      ? [...MODEL_SELECT_SHORTCUTS, MODEL_SELECT_RETRY_SHORTCUT]
+      : MODEL_SELECT_SHORTCUTS,
     rightShortcuts: MODEL_SELECT_RIGHT_SHORTCUTS,
   });
 
@@ -276,6 +289,11 @@ export function ModelSelectOverlay({
       if (filteredModels.length === 0) return;
 
       if (key.upArrow || input === "k") {
+        if (safeHighlightIndex === 0) {
+          const previous = zoneChain[zoneChain.indexOf("list") - 1];
+          if (previous) setFocusZone(previous);
+          return;
+        }
         modelNavigation.moveBy(-1);
         return;
       }
@@ -288,7 +306,7 @@ export function ModelSelectOverlay({
         if (model) void handleSelect(model.id);
       }
     },
-    { isActive: open && focusZone === "list" && !saving },
+    { isActive: open && activeZone === "list" && !saving },
   );
 
   const contentWidth = Math.max(getDialogWidth(columns) - 6, 1);
@@ -302,8 +320,8 @@ export function ModelSelectOverlay({
   const retainedModelNotice = saving ? null : getRetainedModelNotice(selectedId, source.models);
   const conditionalRows = [
     freshnessLabel ? 1 : 0,
-    skippedReason ? wrappedRowCount(`${skippedReason} Press r to retry.`, contentWidth) : 0,
-    sourceError ? 1 : 0,
+    skippedReason ? wrappedRowCount(skippedReason, contentWidth) : 0,
+    retryVisible ? 1 : 0,
     retainedModelNotice ? wrappedRowCount(retainedModelNotice, contentWidth) : 0,
     selectionError ? wrappedRowCount(sanitizeTerminalText(selectionError), contentWidth) : 0,
     saving ? 1 : 0,
@@ -317,7 +335,7 @@ export function ModelSelectOverlay({
   const modelCountLabel = pluralize(source.models.length, "model");
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange} onEscapeKeyDown={handleEscapeKeyDown}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <Dialog.Content>
         <Dialog.Header>
           <Dialog.Title>Select Model</Dialog.Title>
@@ -332,19 +350,25 @@ export function ModelSelectOverlay({
             <ModelSearchInput
               value={searchQuery}
               onChange={setSearchQuery}
-              isActive={focusZone === "search" && !saving}
+              isActive={activeZone === "search" && !saving}
             />
 
             <TierFilterTabs
               value={tierFilter}
               onChange={setTierFilter}
-              isActive={focusZone === "filters" && !saving}
+              isActive={activeZone === "filters" && !saving}
             />
 
-            {skippedReason ? (
-              <Text color={tokens.warning}>{skippedReason} Press r to retry.</Text>
+            {skippedReason ? <Text color={tokens.warning}>{skippedReason}</Text> : null}
+            {retryVisible ? (
+              <Button
+                variant="secondary"
+                isActive={activeZone === "retry" && !saving}
+                onPress={source.retry}
+              >
+                Retry
+              </Button>
             ) : null}
-            {sourceError ? <Text color={tokens.muted}>Press r to retry.</Text> : null}
             {retainedModelNotice ? (
               // The saved selection is not in the review-capable list. It keeps
               // working, so this states the gap rather than dropping the row.
@@ -357,7 +381,7 @@ export function ModelSelectOverlay({
               reason={skippedReason}
               models={source.models}
               filteredModels={filteredModels}
-              focusZone={focusZone}
+              focusZone={activeZone}
               safeHighlightIndex={safeHighlightIndex}
               selectedId={selectedId}
               contentWidth={contentWidth}

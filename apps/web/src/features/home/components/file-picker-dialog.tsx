@@ -6,7 +6,7 @@ import {
 } from "@diffgazer/core/review";
 import { MAX_REVIEW_FILES, type ReviewMode } from "@diffgazer/core/schemas/review";
 import { pluralize } from "@diffgazer/core/strings";
-import { useKey } from "@diffgazer/keys";
+import { useActionRowNavigation, useKey } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
@@ -15,6 +15,7 @@ import {
   DialogAction,
   DialogBody,
   DialogClose,
+  DialogCloseIcon,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -52,8 +53,6 @@ const FOOTER_HINTS = [
   { key: "↑/↓", label: "Navigate" },
   { key: "Space", label: "Toggle" },
   { key: "a/n", label: "All/None" },
-  { key: "Enter", label: "Start" },
-  { key: "Esc", label: "Cancel" },
 ];
 
 export interface FilePickerDialogProps {
@@ -102,6 +101,10 @@ export function FilePickerDialog({
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const scopeRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const selectAllRef = useRef<HTMLButtonElement>(null);
+  const retryRef = useRef<HTMLButtonElement>(null);
+  const footerRef = useRef<HTMLDivElement>(null);
 
   // Both sides up front: the toggle needs each one's count to know whether it
   // has a list to offer, and core is what decides which files a mode's diff
@@ -175,27 +178,43 @@ export function FilePickerDialog({
     );
   };
 
-  const focusList = () => {
-    listRef.current
-      ?.querySelector<HTMLElement>('[role="checkbox"]:not([aria-disabled="true"])')
-      ?.focus();
-  };
-
   // Roving tabindex marks the selected chip as the group's tab target.
   const focusScopeChips = () => {
     scopeRef.current?.querySelector<HTMLElement>('[role="radio"][tabindex="0"]')?.focus();
   };
 
-  // Vertical keys walk the dialog's zones (chips ↕ search ↕ list) instead of
-  // switching chips — Left/Right stay the switching keys. Runs before the
-  // group's own radio navigation and preventDefault suppresses it, so an
-  // intercepted key can never move-and-select a chip. j/k mirror the list.
+  const lastEnabledScopeChip = () => {
+    const chips = scopeRef.current?.querySelectorAll<HTMLElement>('[role="radio"]:not(:disabled)');
+    return chips?.length ? chips[chips.length - 1] : null;
+  };
+
+  const lastListRow = () => {
+    const rows = listRef.current?.querySelectorAll<HTMLElement>(
+      '[role="checkbox"]:not([aria-disabled="true"])',
+    );
+    return rows?.length ? rows[rows.length - 1] : null;
+  };
+
+  // Vertical keys walk the dialog's zones ([x] ↕ chips ↕ search ↕ list ↕
+  // footer) instead of switching chips — Left/Right stay the switching keys,
+  // except ArrowRight on the last enabled chip, the row's boundary stop into
+  // [Select All]. Runs before the group's own radio navigation and
+  // preventDefault suppresses it, so an intercepted key can never
+  // move-and-select a chip. j/k mirror the list.
   const handleScopeKeyDown = (event: KeyboardEvent) => {
     if (event.key === "ArrowDown" || event.key === "j") {
       event.preventDefault();
       searchRef.current?.focus();
     } else if (event.key === "ArrowUp" || event.key === "k") {
       event.preventDefault();
+      closeRef.current?.focus();
+    } else if (
+      event.key === "ArrowRight" &&
+      selectAllRef.current &&
+      event.target === lastEnabledScopeChip()
+    ) {
+      event.preventDefault();
+      selectAllRef.current.focus();
     }
   };
 
@@ -206,6 +225,12 @@ export function FilePickerDialog({
     preventDefault: true,
   });
 
+  // a/n mirror the TUI's select-all/none, live from anywhere in the dialog.
+  // Like "/", useKey stands them down inside the search box, where the
+  // letters are for typing.
+  useKey("a", () => selectVisible(true), { enabled: open && !isStarting, preventDefault: true });
+  useKey("n", () => selectVisible(false), { enabled: open && !isStarting, preventDefault: true });
+
   const handleStart = () => {
     if (isStarting || selected.length === 0 || isOverLimit) return;
     // An untouched list is the whole scope, and the whole scope needs no
@@ -213,19 +238,46 @@ export function FilePickerDialog({
     onStart({ mode: scope, files: allSelected ? undefined : selected });
   };
 
+  const footerActions = useActionRowNavigation({
+    enabled: open && !isStarting,
+    actionCount: 2,
+    containerRef: footerRef,
+    defaultIndex: 1,
+    disabledActions: [isStarting, isStarting || selected.length === 0 || isOverLimit],
+    onAction: (index) => {
+      if (index === 0) onOpenChange(false);
+      else handleStart();
+    },
+    onNavigationBoundaryReached: (direction) => {
+      if (direction !== "previous") return;
+      const above = lastListRow() ?? retryRef.current ?? searchRef.current;
+      above?.focus();
+    },
+  });
+
+  const focusList = () => {
+    const firstRow = listRef.current?.querySelector<HTMLElement>(
+      '[role="checkbox"]:not([aria-disabled="true"])',
+    );
+    if (firstRow) {
+      firstRow.focus();
+      return;
+    }
+    if (retryRef.current) {
+      retryRef.current.focus();
+      return;
+    }
+    footerActions.enterActions(1);
+  };
+
   // Runs before the group's built-in handling; preventDefault suppresses it.
   // Enter is the dialog's primary action here — every other dialog's Enter
-  // confirms, so a second Space it is not. a/n mirror the TUI's select-all/none.
+  // confirms, so a second Space it is not.
   const handleListKeyDown = (event: KeyboardEvent) => {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
     if (event.key === "Enter") {
       event.preventDefault();
       handleStart();
-      return;
-    }
-    if (event.key === "a" || event.key === "n") {
-      event.preventDefault();
-      selectVisible(event.key === "a");
     }
   };
 
@@ -234,6 +286,7 @@ export function FilePickerDialog({
       <DialogContent
         height="stable"
         className="overflow-hidden"
+        closeIcon={false}
         closeOnBackdropClick={!isStarting}
         onEscapeKeyDown={(event) => {
           if (isStarting) event.preventDefault();
@@ -280,11 +333,25 @@ export function FilePickerDialog({
                 </span>
                 {visibleSelectable.length > 0 && (
                   <Button
+                    ref={selectAllRef}
                     variant="ghost"
                     size="sm"
                     bracket
                     disabled={isStarting}
+                    aria-keyshortcuts="a n"
                     onClick={() => selectVisible(!allVisibleSelected)}
+                    onKeyDown={(event) => {
+                      if (event.key === "ArrowLeft") {
+                        event.preventDefault();
+                        lastEnabledScopeChip()?.focus();
+                      } else if (event.key === "ArrowDown") {
+                        event.preventDefault();
+                        searchRef.current?.focus();
+                      } else if (event.key === "ArrowUp") {
+                        event.preventDefault();
+                        closeRef.current?.focus();
+                      }
+                    }}
                   >
                     {allVisibleSelected ? "Clear All" : "Select All"}
                   </Button>
@@ -302,15 +369,19 @@ export function FilePickerDialog({
               // Typing here before the tree arrives must not end with the list
               // yanking focus out of the box the moment it mounts.
               onFocus={() => setListAutoFocusSpent(true)}
+              onEscape={() => {
+                if (!isStarting) onOpenChange(false);
+              }}
               aria-label="Search files"
               placeholder="Search files..."
               size="md"
               className="w-full bg-input-well"
               onKeyDown={(event) => {
-                // ArrowDown leaves the box for the list, the model-select move.
-                // Enter must not start a review from an editable target — with
-                // no form in the dialog it submits nothing, so it goes to the
-                // list too instead of dying silently.
+                // ArrowDown leaves the box downward — to the list, or with no
+                // rows to Retry or the footer, the model-select move. Enter
+                // must not start a review from an editable target — with no
+                // form in the dialog it submits nothing, so it follows
+                // ArrowDown instead of dying silently.
                 if (event.key === "ArrowDown" || event.key === "Enter") {
                   event.preventDefault();
                   focusList();
@@ -341,10 +412,11 @@ export function FilePickerDialog({
                   onKeyDown={handleListKeyDown}
                   disabled={isStarting}
                   wrap={false}
-                  // ↑ on the first row continues into the search box; the
-                  // bottom boundary stays a no-op.
+                  // ↑ on the first row continues into the search box; ↓ on the
+                  // last row continues into the footer actions.
                   onNavigationBoundaryReached={(direction) => {
                     if (direction === "previous") searchRef.current?.focus();
+                    else footerActions.enterActions(1);
                   }}
                   // Focus lands in the list, however late the tree arrives — the
                   // footer's "↑/↓ Navigate" must be true from the first keypress,
@@ -402,10 +474,20 @@ export function FilePickerDialog({
                     <EmptyState.Message>Couldn't read the working tree.</EmptyState.Message>
                     <EmptyState.Actions>
                       <Button
+                        ref={retryRef}
                         variant="ghost"
                         size="sm"
                         bracket
                         onClick={() => void status.refetch()}
+                        onKeyDown={(event) => {
+                          if (event.key === "ArrowUp") {
+                            event.preventDefault();
+                            searchRef.current?.focus();
+                          } else if (event.key === "ArrowDown") {
+                            event.preventDefault();
+                            footerActions.enterActions(1);
+                          }
+                        }}
                       >
                         Retry
                       </Button>
@@ -432,11 +514,18 @@ export function FilePickerDialog({
           )}
         </DialogBody>
 
-        <DialogFooter hints={FOOTER_HINTS}>
-          <DialogClose variant="ghost" size="sm" bracket disabled={isStarting}>
+        <DialogFooter ref={footerRef} hints={FOOTER_HINTS}>
+          <DialogClose
+            {...footerActions.getActionProps(0)}
+            variant="ghost"
+            size="sm"
+            bracket
+            disabled={isStarting}
+          >
             Cancel
           </DialogClose>
           <DialogAction
+            {...footerActions.getActionProps(1)}
             size="sm"
             disabled={selected.length === 0 || isOverLimit}
             loading={isStarting}
@@ -451,6 +540,17 @@ export function FilePickerDialog({
             {selected.length > 0 ? `Review ${pluralize(selected.length, "File")}` : "Review Files"}
           </DialogAction>
         </DialogFooter>
+
+        <DialogCloseIcon
+          ref={closeRef}
+          disabled={isStarting}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              focusScopeChips();
+            }
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

@@ -48,6 +48,15 @@ export const searchInputDoc: ComponentDoc = {
       },
       { keys: "Enter", action: "Calls onEnter when provided." },
       {
+        keys: "ArrowRight",
+        action:
+          "With the caret and selection at the end of a non-empty value, moves focus to the clear button; elsewhere it keeps its native caret move.",
+      },
+      {
+        keys: "ArrowLeft (on the clear button)",
+        action: "Returns focus to the search input.",
+      },
+      {
         keys: "Arrow keys / other keys",
         action:
           "Forward through onKeyDown so a parent listbox, combobox, or custom search flow can own navigation.",

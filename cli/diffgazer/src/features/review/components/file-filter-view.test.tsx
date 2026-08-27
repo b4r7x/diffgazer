@@ -9,15 +9,22 @@ import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 import { frameText } from "../testing/frame-text";
 
+const contentZone = vi.hoisted(() => ({
+  current: { columns: 100, contentColumns: 100, contentRows: 40 },
+}));
+
 vi.mock("../../../components/layout/global", () => ({
   getContentZoneRows: (rows: number) => Math.max(rows - 4, 0),
-  useContentZone: () => ({ columns: 100, contentColumns: 100, contentRows: 40 }),
+  useContentZone: () => contentZone.current,
 }));
 
 import { ReviewFileFilterView, type ReviewFileFilterViewProps } from "./file-filter-view";
 
 const ESCAPE = "\u001b";
 const SPACE = " ";
+const ARROW_UP = "\u001b[A";
+const ARROW_RIGHT = "\u001b[C";
+const ENTER = "\r";
 const ARROW_DOWN = "\u001b[B";
 const TAB = "\t";
 
@@ -86,6 +93,7 @@ function renderPicker({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  contentZone.current = { columns: 100, contentColumns: 100, contentRows: 40 };
 });
 
 describe("ReviewFileFilterView (TUI)", () => {
@@ -135,6 +143,26 @@ describe("ReviewFileFilterView (TUI)", () => {
     // Every reviewable file is picked, so the run keeps its plain unstaged scope
     // instead of restating it as a files[] list.
     expect(onStart).toHaveBeenCalledWith({ mode: "unstaged" });
+  });
+
+  test("gives the actions row back to the list when every row is conflicted", async () => {
+    contentZone.current = { columns: 100, contentColumns: 100, contentRows: 9 };
+    const { lastFrame } = renderPicker({
+      mode: "unstaged",
+      status: makeGitStatus({
+        unstaged: [
+          entry("src/a.ts", "U", "U"),
+          entry("src/b.ts", "U", "U"),
+          entry("src/c.ts", "U", "U"),
+        ],
+        conflicted: ["src/a.ts", "src/b.ts", "src/c.ts"],
+      }),
+    });
+
+    await waitUntil(() => frameText(lastFrame()).includes("src/c.ts"));
+    const frame = frameText(lastFrame());
+    expect(frame).not.toContain("Select All");
+    expect(frame).not.toContain("▼");
   });
 
   test("sends the picked subset and nothing else", async () => {
@@ -243,9 +271,9 @@ describe("ReviewFileFilterView (TUI)", () => {
 
     expect(reserved).toContain("Narrow the review");
     // The callout's five rows come out of the list, not out of the clipped zone.
-    expect(unreserved).toContain("src/file-0032.ts");
-    expect(reserved).not.toContain("src/file-0032.ts");
-    expect(reserved).toContain("src/file-0027.ts");
+    expect(unreserved).toContain("src/file-0031.ts");
+    expect(reserved).not.toContain("src/file-0031.ts");
+    expect(reserved).toContain("src/file-0026.ts");
   });
 
   test("opens on the side that has changes when no run picked the scope", async () => {
@@ -327,5 +355,62 @@ describe("ReviewFileFilterView (TUI)", () => {
     await waitUntil(() => onBack.mock.calls.length === 1);
 
     expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  test("reaches the actions row past the last file and starts the run from it", async () => {
+    const onStart = vi.fn();
+    const { lastFrame, stdin } = renderPicker({
+      onStart,
+      status: makeGitStatus({
+        staged: [entry("src/a.ts", "M", " "), entry("src/b.ts", "M", " ")],
+      }),
+    });
+
+    await waitUntil(() => frameText(lastFrame()).includes("src/a.ts"));
+    const frame = frameText(lastFrame());
+    expect(frame).toContain("[ Select All ]");
+    expect(frame).toContain("[ None ]");
+    expect(frame).toContain("[ Review Selected ]");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    stdin.write(ARROW_DOWN);
+    await flush();
+
+    stdin.write(ENTER);
+    await waitUntil(() => frameText(lastFrame()).includes("2 reviewable, 2 selected"));
+
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write(ENTER);
+    await waitUntil(() => onStart.mock.calls.length === 1);
+
+    expect(onStart).toHaveBeenCalledWith({ mode: "staged" });
+  });
+
+  test("returns to the file list from the actions row", async () => {
+    const { lastFrame, stdin } = renderPicker({
+      status: makeGitStatus({
+        staged: [entry("src/a.ts", "M", " "), entry("src/b.ts", "M", " ")],
+      }),
+    });
+
+    await waitUntil(() => frameText(lastFrame()).includes("src/a.ts"));
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    stdin.write(ARROW_DOWN);
+    await flush();
+
+    stdin.write(SPACE);
+    await flush();
+    expect(frameText(lastFrame())).toContain("2 reviewable, none selected");
+
+    stdin.write(ARROW_UP);
+    await flush();
+    stdin.write(SPACE);
+    await waitUntil(() => frameText(lastFrame()).includes("2 reviewable, 1 selected"));
   });
 });

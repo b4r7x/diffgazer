@@ -154,6 +154,31 @@ describe("ModelStep (TUI catalog)", () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
+  test("offers retry as a chain control that Enter runs and ArrowDown leaves", async () => {
+    const onRetry = vi.fn();
+    const onDownBoundary = vi.fn();
+    const { lastFrame, stdin } = render(
+      <Wrapper api={makeApi(vi.fn<BoundApi["getConfigurationModels"]>())}>
+        <ModelStep
+          configuration={null}
+          isPreparing={false}
+          onRetry={onRetry}
+          onChange={() => {}}
+          onDownBoundary={onDownBoundary}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Retry") ?? false);
+    stdin.write("\r");
+    await flushUntil(() => onRetry.mock.calls.length > 0);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+
+    stdin.write("\u001b[B");
+    await flushUntil(() => onDownBoundary.mock.calls.length > 0);
+    expect(onDownBoundary).toHaveBeenCalledTimes(1);
+  });
+
   test("offers retry without manual model entry when discovery fails", async () => {
     const getConfigurationModels = vi
       .fn<BoundApi["getConfigurationModels"]>()

@@ -191,9 +191,8 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
     renderPage();
 
     const capInput = screen.getByRole("textbox", { name: /per-call token cap/i });
-    expect(capInput).toHaveValue("49152");
+    expect(capInput).toHaveValue("");
 
-    await user.clear(capInput);
     await user.type(capInput, "65536");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
@@ -203,12 +202,92 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
     });
   });
 
+  it("shows the default cap as an empty input with the default in the placeholder", () => {
+    renderPage();
+
+    const capInput = screen.getByRole("textbox", { name: /per-call token cap/i });
+    expect(capInput).toHaveValue("");
+    expect(capInput).toHaveAttribute("placeholder", "49,152 (default)");
+    expect(screen.queryByRole("button", { name: "Reset" })).not.toBeInTheDocument();
+  });
+
+  it("shows a persisted override and resets it back to the default", async () => {
+    mockSettingsQuery.current = {
+      data: { defaultLenses: allLenses, effectiveCallTokenCap: 65_536 },
+      error: null,
+      isLoading: false,
+    };
+    const user = userEvent.setup();
+    renderPage();
+
+    const capInput = screen.getByRole("textbox", { name: /per-call token cap/i });
+    expect(capInput).toHaveValue("65536");
+
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+    expect(capInput).toHaveValue("");
+    expect(capInput).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(mockSaveSettings).toHaveBeenCalledWith({
+      defaultLenses: allLenses,
+      effectiveCallTokenCap: 49_152,
+    });
+  });
+
+  it("navigates the cap row with arrows: input to Reset, back, and footer up to the input", async () => {
+    mockSettingsQuery.current = {
+      data: { defaultLenses: allLenses, effectiveCallTokenCap: 65_536 },
+      error: null,
+      isLoading: false,
+    };
+    const user = userEvent.setup();
+    renderPage();
+
+    const capInput = screen.getByRole("textbox", { name: /per-call token cap/i });
+    const reset = screen.getByRole("button", { name: "Reset" });
+
+    await user.click(capInput);
+    await user.keyboard("{End}{ArrowRight}");
+    expect(reset).toHaveFocus();
+
+    await user.keyboard("{ArrowLeft}");
+    expect(capInput).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(capInput).toHaveFocus();
+  });
+
+  it("clears the lens highlight while the token cap input has focus", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const lensGroup = screen.getByRole("group", { name: /active lenses/i });
+    const checkboxes = within(lensGroup).getAllByRole("checkbox");
+    const lastLens = checkboxes.at(-1);
+    if (!lastLens) throw new Error("Expected at least one analysis lens");
+    await waitFor(() => expect(checkboxes[0]).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}".repeat(checkboxes.length - 1));
+    expect(lastLens).toHaveFocus();
+    expect(lastLens).toHaveAttribute("data-highlighted");
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("textbox", { name: /per-call token cap/i })).toHaveFocus();
+    expect(lastLens).not.toHaveAttribute("data-highlighted");
+
+    await user.keyboard("{ArrowUp}");
+    expect(lastLens).toHaveFocus();
+    expect(lastLens).toHaveAttribute("data-highlighted");
+  });
+
   it("shows the field error instead of saving for an out-of-range token cap", async () => {
     const user = userEvent.setup();
     renderPage();
 
     const capInput = screen.getByRole("textbox", { name: /per-call token cap/i });
-    await user.clear(capInput);
     await user.type(capInput, "999");
 
     expect(capInput).toHaveAttribute("aria-invalid", "true");

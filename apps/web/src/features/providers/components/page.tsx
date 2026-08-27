@@ -275,6 +275,7 @@ export function ProvidersPage() {
             isPending={isSubmitting}
             consentRequired={consent.required}
             onReviewConsent={consent.review}
+            consentLinkRef={keyboard.consentLinkRef}
             focusFallbackRef={keyboard.focusFallbackRef}
             actionRowRef={keyboard.actionRowRef}
             detailsPaneRef={keyboard.detailsPaneRef}

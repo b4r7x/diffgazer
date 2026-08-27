@@ -148,7 +148,7 @@ export function IssueDetailsPane({
         }}
       >
         {showTabs ? (
-          <Tabs.List isActive={isActive}>
+          <Tabs.List isActive={isActive} wrap={false}>
             <Tabs.Trigger value="details">Details</Tabs.Trigger>
             <Tabs.Trigger value="explain">Explain</Tabs.Trigger>
             {issue.trace?.length ? <Tabs.Trigger value="trace">Trace</Tabs.Trigger> : null}

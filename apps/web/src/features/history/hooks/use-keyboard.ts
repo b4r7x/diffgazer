@@ -202,7 +202,7 @@ export function useHistoryKeyboard({
         chrome: null,
         warnings: null,
         "list-retry": null,
-        timeline: null,
+        timeline: hasListRetry ? "list-retry" : null,
         runs: "timeline",
         "load-more": "runs",
         insights: "runs",
@@ -212,7 +212,7 @@ export function useHistoryKeyboard({
       const right: Record<KeyboardHistoryFocusZone, KeyboardHistoryFocusZone | null> = {
         chrome: null,
         warnings: "search",
-        "list-retry": null,
+        "list-retry": "timeline",
         timeline: "runs",
         runs: hasMore ? "load-more" : insightsZone,
         "load-more": insightsZone,

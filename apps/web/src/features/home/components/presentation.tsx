@@ -9,7 +9,7 @@ import {
   TRUST_PERMISSION_SHORTCUTS,
 } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import { DECLINE, useFocusZone, useKey } from "@diffgazer/keys";
+import { DECLINE, useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { toast } from "@diffgazer/ui/components/toast";
 import type { useNavigate } from "@tanstack/react-router";
@@ -53,10 +53,12 @@ const TRUST_PANEL_JUMP_SHORTCUTS: Shortcut[] = [
   { key: "?", label: "Help" },
 ];
 
-// The two panes Tab hops between, menu first: it leads the DOM order, owns the
-// mount focus, and is where an unknown zone falls back. The same order is the
-// Tab cycle — the panes are the whole cycle, so zone order and cycle order are
-// the one order.
+// The two panes the keyboard hops between, menu first: it leads the DOM order,
+// owns the mount focus, and is where an unknown zone falls back. The same order
+// is the Tab cycle — the panes are the whole cycle, so zone order and cycle
+// order are the one order — and the horizontal arrows, unused inside either
+// pane, cross the same edge: ArrowLeft from the menu enters the context rows,
+// ArrowRight hands focus back.
 const HOME_ZONES = ["menu", "context"] as const;
 const HOME_SCOPE = "home";
 
@@ -322,25 +324,46 @@ export function HomePagePresentation({
   });
   // Tab hops between the panes like every other main view, and only while focus
   // is inside one of them: containers scope declines Tab elsewhere, so the skip
-  // link and the header chrome keep native Tab order. The cycle stands down
-  // while a start is in flight — the sidebar is inert then — and while the trust
-  // prompt renders neither pane: a claimed Tab must never land in a zone with
-  // nothing focusable. The zone hook itself stays enabled either way, because it
-  // is what pushes this screen's keyboard scope. Focus repair is deliberately
-  // off at mount (no autoFocus): the menu focuses itself, and the start's own
-  // hand-off to the menu is left to move focus on its own.
-  useFocusZone({
+  // link and the header chrome keep native Tab order. The horizontal arrows
+  // cross the same pane edge — ArrowLeft enters the context rows from the menu,
+  // ArrowRight returns to the menu row the highlight still holds — so every
+  // sidebar action is arrow-reachable without touching the menu's ↑/↓ hot path.
+  // Both the cycle and the arrow hop stand down while a start is in flight —
+  // the sidebar is inert then — and while the trust prompt renders neither
+  // pane: a claimed key must never land in a zone with nothing focusable. The
+  // zone hook itself stays enabled either way, because it is what pushes this
+  // screen's keyboard scope. Focus repair is deliberately off at mount (no
+  // autoFocus): the menu focuses itself, and the start's own hand-off to the
+  // menu is left to move focus on its own.
+  const focusZone = useFocusZone({
     initial: "menu",
     zones: HOME_ZONES,
     scope: HOME_SCOPE,
     tabCycle: isStartingReview || showsTrustPanel ? undefined : HOME_ZONES,
     tabCycleScope: "containers",
+    transitions: ({ zone, key }) => {
+      if (isStartingReview || showsTrustPanel) return null;
+      if (zone === "menu" && key === "ArrowLeft") return "context";
+      if (zone === "context" && key === "ArrowRight") return "menu";
+      return null;
+    },
     focus: {
       targets: {
         menu: menuRef,
         context: sidebarRef,
       },
     },
+  });
+
+  useScopedNavigation({
+    containerRef: sidebarRef,
+    role: "button",
+    orientation: "vertical",
+    moveFocus: true,
+    wrap: false,
+    focusWithinOnly: true,
+    scope: HOME_SCOPE,
+    enabled: focusZone.isZone("context"),
   });
 
   // Every menu item advertises its jump key, matching the TUI home menu. The
@@ -355,7 +378,8 @@ export function HomePagePresentation({
 
   // Opening the run you just made is the most likely next action on home, and
   // its id is already printed in the CONTEXT panel - so the row is a real
-  // action, reachable by click and by [o], with the same guards as r/R/l.
+  // action, reachable by click, by the pane's arrows, and by [o], with the same
+  // guards as r/R/l.
   const openLastRun = () => {
     if (isStartingReview || context.lastRunId === undefined) return;
     void navigate({
@@ -380,8 +404,9 @@ export function HomePagePresentation({
   };
 
   // The sidebar's settings rows carry the same jump treatment as [o]: t and p
-  // reach them without Tab-walking the panel, behind the guards a click on the
-  // row goes through. t follows the trust row — inert once the repo is trusted.
+  // reach them in one keystroke, complementing the arrow route into the pane,
+  // behind the guards a click on the row goes through. t follows the trust
+  // row — inert once the repo is trusted.
   const openSettingsRow = (to: "/settings/providers" | "/settings/trust-permissions") => {
     if (isStartingReview) return;
     void navigate({ to });

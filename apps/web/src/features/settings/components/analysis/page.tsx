@@ -9,6 +9,7 @@ import { LENS_OPTIONS } from "@diffgazer/core/schemas/events";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { deriveLensSelectionState, type SelectableLensId } from "@diffgazer/core/schemas/review";
 import { findNavigationItemByValue, useScope } from "@diffgazer/keys";
+import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Field } from "@diffgazer/ui/components/field";
 import { Input } from "@diffgazer/ui/components/input";
@@ -18,15 +19,20 @@ import { SettingsFormPage } from "../form-page";
 import { AnalysisSelectorContent } from "./selector-content";
 
 const TOKEN_CAP_ERROR = `Enter a whole number between ${EFFECTIVE_CALL_TOKEN_CAP.min.toLocaleString("en-US")} and ${EFFECTIVE_CALL_TOKEN_CAP.max.toLocaleString("en-US")}.`;
+const TOKEN_CAP_PLACEHOLDER = `${EFFECTIVE_CALL_TOKEN_CAP.default.toLocaleString("en-US")} (default)`;
+
+type CapZone = "list" | "capInput" | "capReset";
 
 export function SettingsAnalysisPage() {
   const lensSelectionMessageId = useId();
-  const focusFallbackRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const tokenCapInputRef = useRef<HTMLInputElement>(null);
+  const resetButtonRef = useRef<HTMLButtonElement>(null);
   const settingsQuery = useSettings();
   const settings = settingsQuery.data;
   const [selectedLenses, setSelectedLenses] = useState<SelectableLensId[] | null>(null);
   const [tokenCapDraft, setTokenCapDraft] = useState<string | null>(null);
+  const [ownZone, setOwnZone] = useState<CapZone>("list");
 
   const fallbackLenses = LENS_OPTIONS.map((lens) => lens.id);
   const {
@@ -37,8 +43,13 @@ export function SettingsAnalysisPage() {
 
   const persistedTokenCap =
     settings?.effectiveCallTokenCap ?? DEFAULT_SETTINGS.effectiveCallTokenCap;
-  const tokenCapText = tokenCapDraft ?? String(persistedTokenCap);
-  const tokenCap = parseEffectiveCallTokenCap(tokenCapText);
+  const persistedOverrideText =
+    persistedTokenCap === EFFECTIVE_CALL_TOKEN_CAP.default ? "" : String(persistedTokenCap);
+  const tokenCapText = tokenCapDraft ?? persistedOverrideText;
+  const tokenCap =
+    tokenCapText.trim() === ""
+      ? EFFECTIVE_CALL_TOKEN_CAP.default
+      : parseEffectiveCallTokenCap(tokenCapText);
   const isTokenCapDirty = tokenCap !== null && tokenCap !== persistedTokenCap;
 
   useScope("settings-analysis");
@@ -50,11 +61,26 @@ export function SettingsAnalysisPage() {
       ...(tokenCap !== null && { effectiveCallTokenCap: tokenCap }),
     }),
     contentShortcuts: [NAVIGATE_SHORTCUT, { key: "Enter/Space", label: "Toggle Lens" }],
-    focusFallbackRef,
+    focusFallbackRef: tokenCapInputRef,
   });
   const { canSave, error, footer, isSaving, onCancel, onSave } = actions;
 
-  // The cap input sits below the lens list, outside the checkbox group's roving
+  const showReset = tokenCapText !== "";
+  const safeZone = ownZone === "capReset" && !showReset ? "capInput" : ownZone;
+  const focusZone = footer.inActions ? "footer" : safeZone;
+
+  const focusLastLens = () => {
+    const lastLensId = LENS_OPTIONS.at(-1)?.id;
+    if (lastLensId) {
+      findNavigationItemByValue(contentRef.current, {
+        type: "checkbox",
+        value: lastLensId,
+        ownerSelector: null,
+      })?.focus();
+    }
+  };
+
+  // The cap row sits below the lens list, outside the checkbox group's roving
   // focus, so vertical arrows have to be bridged by hand in both directions.
   const handleTokenCapKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown") {
@@ -64,13 +90,34 @@ export function SettingsAnalysisPage() {
     }
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      const lastLensId = LENS_OPTIONS.at(-1)?.id;
-      if (lastLensId) {
-        findNavigationItemByValue(focusFallbackRef.current, {
-          type: "checkbox",
-          value: lastLensId,
-        })?.focus();
+      focusLastLens();
+      return;
+    }
+    if (event.key === "ArrowRight") {
+      const input = event.currentTarget;
+      const caretAtEnd =
+        input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
+      if (showReset && caretAtEnd) {
+        event.preventDefault();
+        resetButtonRef.current?.focus();
       }
+    }
+  };
+
+  const handleResetKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      tokenCapInputRef.current?.focus();
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      footer.enterActions();
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      focusLastLens();
     }
   };
 
@@ -85,13 +132,13 @@ export function SettingsAnalysisPage() {
       onCancel={onCancel}
       onSave={onSave}
     >
-      <div ref={focusFallbackRef} tabIndex={-1} className="space-y-3 focus:outline-none">
+      <div ref={contentRef} className="space-y-3">
         <AnalysisSelectorContent
           options={LENS_OPTIONS}
           value={effectiveLenses}
           onChange={setSelectedLenses}
-          enabled={!footer.inActions}
-          autoFocusList={!footer.inActions}
+          enabled={focusZone === "list"}
+          autoFocusList={focusZone === "list"}
           disabled={isSaving}
           onFocus={() => footer.reset()}
           required
@@ -111,24 +158,55 @@ export function SettingsAnalysisPage() {
         >
           {hasLensSelection ? null : "Select at least one lens."}
         </output>
-        <Field invalid={tokenCap === null} disabled={isSaving}>
-          <Field.Label>Per-call token cap</Field.Label>
-          <Field.Description>
-            Ceiling on prompt tokens per model call. Diffs that estimate over the cap are reviewed
-            in batches under it.
-          </Field.Description>
-          <Field.Control>
-            <Input
-              ref={tokenCapInputRef}
-              inputMode="numeric"
-              value={tokenCapText}
-              onChange={(event) => setTokenCapDraft(event.target.value)}
-              onFocus={() => footer.reset()}
-              onKeyDown={handleTokenCapKeyDown}
-            />
-          </Field.Control>
-          <Field.Error>{TOKEN_CAP_ERROR}</Field.Error>
-        </Field>
+        <div
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setOwnZone("list");
+          }}
+        >
+          <Field invalid={tokenCap === null} disabled={isSaving}>
+            <Field.Label>Per-call token cap</Field.Label>
+            <Field.Description>
+              Ceiling on prompt tokens per model call. Diffs that estimate over the cap are reviewed
+              in batches under it.
+            </Field.Description>
+            <div className="flex items-center gap-2">
+              <Field.Control>
+                <Input
+                  ref={tokenCapInputRef}
+                  className="flex-1"
+                  inputMode="numeric"
+                  placeholder={TOKEN_CAP_PLACEHOLDER}
+                  value={tokenCapText}
+                  onChange={(event) => setTokenCapDraft(event.target.value)}
+                  onFocus={() => {
+                    footer.reset();
+                    setOwnZone("capInput");
+                  }}
+                  onKeyDown={handleTokenCapKeyDown}
+                />
+              </Field.Control>
+              {showReset && (
+                <Button
+                  ref={resetButtonRef}
+                  type="button"
+                  variant="ghost"
+                  bracket
+                  disabled={isSaving}
+                  highlighted={focusZone === "capReset"}
+                  onFocus={() => setOwnZone("capReset")}
+                  onKeyDown={handleResetKeyDown}
+                  onClick={() => {
+                    setTokenCapDraft("");
+                    tokenCapInputRef.current?.focus();
+                  }}
+                >
+                  Reset
+                </Button>
+              )}
+            </div>
+            <Field.Error>{TOKEN_CAP_ERROR}</Field.Error>
+          </Field>
+        </div>
       </div>
       {error && (
         <Callout tone="error" live>

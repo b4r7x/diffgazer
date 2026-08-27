@@ -69,11 +69,26 @@ const PROGRESS_SCOPE = "review-progress";
 function getZoneTransition(
   zone: ProgressZone,
   key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
-  hasError: boolean,
+  options: {
+    hasError: boolean;
+    hasSnapshotDownloads: boolean;
+    hasActions: boolean;
+    isProgressScrollAtBottom: () => boolean;
+  },
 ): ProgressZone | null {
+  const { hasError, hasSnapshotDownloads, hasActions, isProgressScrollAtBottom } = options;
   if (hasError) return zone === "error" && key === "ArrowDown" ? "log" : null;
   if (key === "ArrowLeft" && zone === "log") return "progress";
   if (key === "ArrowRight" && zone === "progress") return "log";
+  if (key === "ArrowDown" && zone === "progress" && isProgressScrollAtBottom()) {
+    if (hasSnapshotDownloads) return "downloads";
+    if (hasActions) return "actions";
+    return null;
+  }
+  if (key === "ArrowDown" && zone === "downloads" && hasActions) return "actions";
+  if (key === "ArrowUp" && zone === "actions")
+    return hasSnapshotDownloads ? "downloads" : "progress";
+  if (key === "ArrowUp" && zone === "downloads") return "progress";
   return null;
 }
 
@@ -216,7 +231,18 @@ export function useReviewProgressKeyboard({
       if (!downloadsHoldFocus && getFocusedActionElement() == null) return;
       progressScrollRef.current?.focus({ preventScroll: true });
     },
-    transitions: ({ zone, key }) => getZoneTransition(zone, key, hasError),
+    preventDefault: true,
+    transitions: ({ zone, key }) =>
+      getZoneTransition(zone, key, {
+        hasError,
+        hasSnapshotDownloads,
+        hasActions: enabledActionCount > 0,
+        isProgressScrollAtBottom: () => {
+          const scroller = progressScrollRef.current;
+          if (!scroller) return false;
+          return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <= 1;
+        },
+      }),
   });
 
   const chrome = useChromeBackHandoff({ zone, setZone, scope: PROGRESS_SCOPE });
@@ -322,8 +348,8 @@ export function useReviewProgressKeyboard({
   );
   // Esc leaves the screen without cancelling the run: the review keeps
   // streaming server-side and home's Resume Last Review picks it back up.
-  // "c" stays bound as an accelerator so Cancel is reachable without walking
-  // the pane Tab cycle to the actions zone.
+  // "c" is only Cancel's accelerator: the action row itself is an arrow stop,
+  // entered by ArrowDown at the progress scroller's bottom edge.
   useKey(REVIEW_PROGRESS_CONTROLS.leave.key, () => onBack?.(), { enabled: !!onBack });
   useKey(
     REVIEW_PROGRESS_CONTROLS.cancel.key,
@@ -391,10 +417,10 @@ export function useReviewProgressKeyboard({
   // The log's top edge continues up into the chip row above it - the mirror of
   // the chips' ArrowDown - and with no chip row in between it continues into the
   // chrome instead. The log reports the boundary only when there is nothing left
-  // to scroll or page back to. On the error layout the panel above the log owns
-  // the hand-off, so the log's ArrowUp stays native there.
+  // to scroll or page back to. On the error layout the panel above the log is
+  // the stop instead - the mirror of its own ArrowDown into the log.
   const logTopBoundary = hasAgentFilterStop ? () => setZone("filters") : () => chrome.handOff();
-  const handleLogBoundary = hasError ? undefined : logTopBoundary;
+  const handleLogBoundary = hasError ? () => setZone("error") : logTopBoundary;
 
   const paneShortcuts: Shortcut[] = [
     SWITCH_PANE_SHORTCUT,

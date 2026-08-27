@@ -10,6 +10,7 @@ export interface SectionsListProps {
   selectedId: string;
   onSelect: (id: string) => void;
   onHighlightChange?: (id: string) => void;
+  onNavigationBoundaryReached?: (direction: 1 | -1) => void;
   isActive?: boolean;
   height: number;
   width: number;
@@ -20,6 +21,7 @@ export function SectionsList({
   selectedId,
   onSelect,
   onHighlightChange,
+  onNavigationBoundaryReached,
   isActive = true,
   height,
   width,
@@ -54,6 +56,7 @@ export function SectionsList({
         highlightedId={selectedId}
         onSelect={onSelect}
         onHighlightChange={onHighlightChange}
+        onNavigationBoundaryReached={onNavigationBoundaryReached}
         isActive={isActive}
         wrap={false}
         navigationItems={items.map((item) => ({ id: item.id, disabled: false }))}

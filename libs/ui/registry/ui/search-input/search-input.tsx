@@ -95,6 +95,7 @@ export function SearchInput({
   ...rest
 }: SearchInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const clearButtonRef = useRef<HTMLButtonElement>(null);
   const composedRef = useComposedRefs(inputRef, ref);
   const [current, setValue, , resetValue] = useControllableState({
     value,
@@ -128,6 +129,16 @@ export function SearchInput({
     } else if (e.key === "Enter" && onEnter) {
       e.preventDefault();
       onEnter();
+    } else if (e.key === "ArrowRight") {
+      // Modified arrows (selection, word-jump) stay native.
+      if (e.shiftKey || e.altKey || e.metaKey || e.ctrlKey) return;
+      const input = e.currentTarget;
+      const caretAtEnd =
+        input.selectionStart === input.value.length && input.selectionEnd === input.value.length;
+      if (current.length > 0 && caretAtEnd) {
+        e.preventDefault();
+        clearButtonRef.current?.focus();
+      }
     }
   };
 
@@ -160,12 +171,19 @@ export function SearchInput({
       />
       {current.length > 0 ? (
         <button
+          ref={clearButtonRef}
           type="button"
           data-slot="search-input-clear"
           aria-label={clearLabel}
           disabled={disabled}
           className={`absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center text-base leading-none text-foreground/70 hover:text-foreground ${FOCUS_OUTLINE} disabled:cursor-not-allowed pointer-coarse:right-0 pointer-coarse:size-11`}
           onPointerDown={(event) => event.preventDefault()}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              inputRef.current?.focus();
+            }
+          }}
           onClick={() => {
             invalidatePendingReset();
             setValue("");

@@ -37,6 +37,13 @@ export function getHistoryFooter(
     };
   }
 
+  if (focusZone === "load-more") {
+    return {
+      shortcuts: [SWITCH_PANE_SHORTCUT, { key: "Enter", label: "Load Older Runs" }],
+      rightShortcuts: BACK_SHORTCUTS,
+    };
+  }
+
   if (focusZone === "timeline") {
     return {
       shortcuts: [SWITCH_PANE_SHORTCUT, NAVIGATE_SHORTCUT, { key: "/", label: "Search" }],

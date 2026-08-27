@@ -37,6 +37,7 @@ interface ProviderDetailsProps {
   /** Derived once per selection so the row and the screen's key handlers cannot diverge. */
   layout: ProviderActionLayout;
   onAction: (control: ProviderRowControl) => void;
+  onExitLeft?: () => void;
   isActive?: boolean;
   isPending?: boolean;
   /** True until the provider consent is on record; the pane then says how to review it. */
@@ -49,6 +50,7 @@ export function ProviderDetails({
   unrecognized = null,
   layout,
   onAction,
+  onExitLeft,
   isActive = false,
   isPending = false,
   consentRequired = false,
@@ -64,6 +66,7 @@ export function ProviderDetails({
       const control = controls[index];
       if (control) onAction(control);
     },
+    onExitLeft,
     isActive,
   });
 

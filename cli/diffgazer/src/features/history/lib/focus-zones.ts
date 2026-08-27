@@ -14,6 +14,27 @@ export function getAvailableHistoryZones({
   return HISTORY_ZONE_ORDER;
 }
 
+const HISTORY_ZONE_EDGES: Record<
+  HistoryFocusZone,
+  { left: HistoryFocusZone | null; right: HistoryFocusZone | null }
+> = {
+  search: { left: null, right: null },
+  timeline: { left: null, right: "runs" },
+  runs: { left: "timeline", right: "insights" },
+  insights: { left: "runs", right: null },
+};
+
+export function adjacentHistoryZone(
+  current: HistoryFocusZone,
+  direction: 1 | -1,
+  availableZones: HistoryFocusZone[] = HISTORY_ZONE_ORDER,
+): HistoryFocusZone | null {
+  const edges = HISTORY_ZONE_EDGES[current];
+  const target = direction === 1 ? edges.right : edges.left;
+  if (target === null || !availableZones.includes(target)) return null;
+  return target;
+}
+
 export function nextHistoryZone(
   current: HistoryFocusZone,
   availableZones: HistoryFocusZone[] = HISTORY_ZONE_ORDER,

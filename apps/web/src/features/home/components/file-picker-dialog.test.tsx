@@ -269,7 +269,7 @@ describe("FilePickerDialog", () => {
     expect(within(dialog()).getByText("2 of 2 files selected")).toBeInTheDocument();
   });
 
-  it("walks the zone chain upward: first row to search, search to the selected chip", async () => {
+  it("walks the zone chain upward: first row to search, search to the chip, chip to [x]", async () => {
     renderPicker();
     const user = userEvent.setup();
 
@@ -285,6 +285,111 @@ describe("FilePickerDialog", () => {
     // ↑ from the search box lands on the selected scope chip.
     await user.keyboard("{ArrowUp}");
     expect(screen.getByRole("radio", { name: "Unstaged" })).toHaveFocus();
+
+    // ↑ from the chips tops the chain out on the [x] close stop.
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Close dialog" })).toHaveFocus();
+  });
+
+  it("returns from [x] to the scope chips on ArrowDown", async () => {
+    renderPicker();
+    const user = userEvent.setup();
+
+    await findRow("src/a.ts");
+    screen.getByRole("radio", { name: "Unstaged" }).focus();
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Close dialog" })).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("radio", { name: "Unstaged" })).toHaveFocus();
+  });
+
+  it("hops from the last scope chip to [Select All] and back", async () => {
+    renderPicker();
+    const user = userEvent.setup();
+
+    await findRow("src/a.ts");
+    screen.getByRole("radio", { name: "Staged" }).focus();
+
+    // → on the last enabled chip is the row's right boundary: it stops on the
+    // bulk-select button instead of dying at the group edge.
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: /Select All|Clear All/ })).toHaveFocus();
+
+    await user.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("radio", { name: "Staged" })).toHaveFocus();
+  });
+
+  it("continues vertically from [Select All]: down to search, up to [x]", async () => {
+    renderPicker();
+    const user = userEvent.setup();
+
+    await findRow("src/a.ts");
+    screen.getByRole("radio", { name: "Staged" }).focus();
+    await user.keyboard("{ArrowRight}");
+    const selectAll = screen.getByRole("button", { name: /Select All|Clear All/ });
+    expect(selectAll).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("searchbox", { name: "Search files" })).toHaveFocus();
+
+    screen.getByRole("radio", { name: "Staged" }).focus();
+    await user.keyboard("{ArrowRight}");
+    expect(selectAll).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Close dialog" })).toHaveFocus();
+  });
+
+  it("continues from the last row into the footer actions and back up", async () => {
+    renderPicker();
+    const user = userEvent.setup();
+
+    await waitFor(async () => expect(await findRow("src/a.ts")).toHaveFocus());
+    await user.keyboard("{ArrowDown}");
+    expect(await findRow("src/b.ts")).toHaveFocus();
+
+    // ↓ past the last enabled row enters the footer on the primary action.
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Review 2 Files" })).toHaveFocus();
+
+    // ← walks to Cancel; ↑ returns to the last row it left.
+    await user.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    expect(await findRow("src/b.ts")).toHaveFocus();
+  });
+
+  it("falls through to the footer when search's ArrowDown finds no rows", async () => {
+    renderPicker();
+    const user = userEvent.setup();
+
+    await findRow("src/a.ts");
+    await user.keyboard("/");
+    await user.keyboard("zzz");
+    await within(dialog()).findByText("No unstaged files match the search.");
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Review 2 Files" })).toHaveFocus();
+  });
+
+  it("hands search's ArrowDown to Retry when the tree cannot be read, ArrowUp returning", async () => {
+    renderPicker({
+      status: () => {
+        throw new Error("Failed to fetch");
+      },
+    });
+    const user = userEvent.setup();
+
+    await screen.findByText("Couldn't read the working tree.");
+    const search = screen.getByRole("searchbox", { name: "Search files" });
+    await user.click(search);
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(search).toHaveFocus();
   });
 
   it("hands ArrowDown on a scope chip to the search box without flipping the scope", async () => {
@@ -327,6 +432,23 @@ describe("FilePickerDialog", () => {
     await user.keyboard("{Enter}");
     expect(onStart).not.toHaveBeenCalled();
 
+    await user.keyboard("a");
+    expect(within(dialog()).getByText("2 of 2 files selected")).toBeInTheDocument();
+  });
+
+  it("answers a/n from chip focus too — the dialog-wide shortcut the button advertises", async () => {
+    renderPicker();
+    const user = userEvent.setup();
+
+    await findRow("src/a.ts");
+    expect(screen.getByRole("button", { name: "Clear All" })).toHaveAttribute(
+      "aria-keyshortcuts",
+      "a n",
+    );
+
+    screen.getByRole("radio", { name: "Unstaged" }).focus();
+    await user.keyboard("n");
+    expect(within(dialog()).getByText("0 of 2 files selected")).toBeInTheDocument();
     await user.keyboard("a");
     expect(within(dialog()).getByText("2 of 2 files selected")).toBeInTheDocument();
   });
@@ -459,6 +581,28 @@ describe("FilePickerDialog", () => {
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(onStart).not.toHaveBeenCalled();
+  });
+
+  it("stages Esc from the search box: the first press clears the query, the second closes", async () => {
+    const onOpenChange = vi.fn();
+    renderPicker({ onOpenChange });
+    const user = userEvent.setup();
+
+    await findRow("src/a.ts");
+    await user.keyboard("/");
+    const search = screen.getByRole("searchbox", { name: "Search files" });
+    expect(search).toHaveFocus();
+    await user.keyboard("b.");
+
+    // fireEvent retained: the assertion is the keydown's defaultPrevented verdict -- what
+    // decides whether the press may reach the dialog -- which userEvent does not expose.
+    const clearingPressPropagates = fireEvent.keyDown(search, { key: "Escape" });
+    expect(clearingPressPropagates).toBe(false);
+    expect(search).toHaveValue("");
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(search, { key: "Escape" });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it("keeps the dialog's accessibility contract intact", async () => {

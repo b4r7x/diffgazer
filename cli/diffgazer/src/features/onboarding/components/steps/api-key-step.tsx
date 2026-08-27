@@ -9,6 +9,7 @@ import { useTheme } from "../../../../theme/provider";
 interface ApiKeyStepProps {
   productId: RunnableProductId;
   method: InputMethod;
+  highlightedMethod?: InputMethod | null;
   onMethodChange: (method: InputMethod) => void;
   apiKey: string;
   onApiKeyChange: (value: string) => void;
@@ -20,6 +21,7 @@ interface ApiKeyStepProps {
 export function ApiKeyStep({
   productId,
   method,
+  highlightedMethod,
   onMethodChange,
   apiKey,
   onApiKeyChange,
@@ -35,6 +37,7 @@ export function ApiKeyStep({
       <Text color={tokens.muted}>Provide your API key for {productName}.</Text>
       <ApiKeyMethodSelector
         method={method}
+        highlightedMethod={highlightedMethod}
         onMethodChange={onMethodChange}
         apiKey={apiKey}
         onApiKeyChange={onApiKeyChange}

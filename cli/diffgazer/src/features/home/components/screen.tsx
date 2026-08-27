@@ -20,6 +20,7 @@ import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
 import { ProviderConsentOverlay } from "../../../components/shared/provider-consent-overlay";
+import { Button } from "../../../components/ui/button";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useExit } from "../../../hooks/use-exit";
@@ -31,7 +32,7 @@ import { ContextSidebar } from "./context-sidebar";
 import { HomeMenu } from "./menu";
 import { TrustPanel } from "./trust-panel";
 
-const RETRY_SHORTCUTS: Shortcut[] = [{ key: "r", label: "Retry" }];
+const RETRY_SHORTCUTS: Shortcut[] = [{ key: "Enter/r", label: "Retry" }];
 
 type InitData = NonNullable<ReturnType<typeof useConfigurationInit>["data"]>;
 
@@ -71,7 +72,9 @@ function HomeInitError({ message, onRetry }: { message: string; onRetry: () => v
     <Box flexDirection="column" flexGrow={1} alignItems="center" justifyContent="center">
       <Text color={tokens.error}>Home Data Unavailable</Text>
       <Text color={tokens.muted}>{sanitizeTerminalText(message)}</Text>
-      <Text color={tokens.muted}>Press r to retry</Text>
+      <Button isActive onPress={onRetry}>
+        Retry
+      </Button>
     </Box>
   );
 }

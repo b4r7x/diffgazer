@@ -8,6 +8,7 @@ import {
 } from "@diffgazer/core/onboarding";
 import { acceptNotice } from "@diffgazer/core/providers";
 import type { RunnableProductId, WriteOnlySecretInput } from "@diffgazer/core/schemas/config";
+import { useInput } from "ink";
 import { useState } from "react";
 import { useRegisterExitPreparation } from "../../../hooks/use-exit";
 import { useNavigation } from "../../../hooks/use-navigation";
@@ -40,6 +41,7 @@ export function useOnboardingWizard() {
   const [focusZone, setFocusZone] = useState<WizardFocusZone>("step");
   const [navIndex, setNavIndex] = useState(0);
   const [apiKeyDraft, setApiKeyDraft] = useState("");
+  const [methodHighlight, setMethodHighlight] = useState<InputMethod>("paste");
 
   const wizard = useWizardState({
     initial: getInitialWizardData(),
@@ -79,9 +81,11 @@ export function useOnboardingWizard() {
     setApiKeyDraft("");
     setFocusZone("step");
     setNavIndex(0);
+    setMethodHighlight("paste");
   }
 
   function handleInputMethodChange(method: InputMethod) {
+    setMethodHighlight(method);
     syncCredentialDraft(method, effectiveApiKey);
   }
 
@@ -157,6 +161,54 @@ export function useOnboardingWizard() {
     setFocusZone(focused ? "api-key-input" : "api-key-method");
   }
 
+  function enterNav() {
+    setFocusZone("nav");
+    setNavIndex(wizard.isFirstStep ? 0 : 1);
+  }
+
+  function exitNav() {
+    if (wizard.currentStep === "authentication") {
+      if (effectiveInputMethod === "paste") {
+        setFocusZone("api-key-input");
+      } else {
+        setFocusZone("api-key-method");
+        setMethodHighlight("env");
+      }
+    } else {
+      setFocusZone("step");
+    }
+    setNavIndex(0);
+  }
+
+  useInput(
+    (input, key) => {
+      if (focusZone === "api-key-method" && (input === " " || key.return)) {
+        handleInputMethodChange(methodHighlight);
+        return;
+      }
+      if (key.upArrow) {
+        if (focusZone === "api-key-input") {
+          setFocusZone("api-key-method");
+          setMethodHighlight("env");
+        } else if (methodHighlight === "env") {
+          setMethodHighlight("paste");
+        }
+        return;
+      }
+      if (!key.downArrow) return;
+      if (focusZone === "api-key-input") {
+        enterNav();
+        return;
+      }
+      if (methodHighlight === "paste") setMethodHighlight("env");
+      else if (effectiveInputMethod === "paste") setFocusZone("api-key-input");
+      else enterNav();
+    },
+    {
+      isActive: !isSaving && focusArea === "step" && wizard.currentStep === "authentication",
+    },
+  );
+
   function retryDraftConfiguration() {
     void wizard.prepareDraftConfiguration();
   }
@@ -180,6 +232,7 @@ export function useOnboardingWizard() {
     navIndex,
     apiKeyInputFocused,
     inputMethod: effectiveInputMethod,
+    methodHighlight,
     apiKey: effectiveApiKey,
     isSaving,
     error: wizard.error,
@@ -195,6 +248,8 @@ export function useOnboardingWizard() {
     handleNext,
     handleBack,
     cycleFocusZone,
+    enterNav,
+    exitNav,
     setApiKeyInputFocused,
     moveNavIndex,
     updateData: wizard.updateData,

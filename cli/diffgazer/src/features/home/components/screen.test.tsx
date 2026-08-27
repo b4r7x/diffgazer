@@ -105,6 +105,26 @@ beforeEach(() => {
 });
 
 describe("HomeScreen", () => {
+  test("puts the init failure's retry on a control Enter reaches, keeping r", async () => {
+    useConfigurationInitMock.mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: new Error("init exploded"),
+      refetch: refetchInitMock,
+    });
+
+    const { stdin, lastFrame } = renderRootFrame(100, 30, renderHome());
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("Home Data Unavailable"));
+    expect(lastFrame()).toContain("[ Retry ]");
+
+    stdin.write("\r");
+    await vi.waitFor(() => expect(refetchInitMock).toHaveBeenCalledTimes(1));
+
+    stdin.write("r");
+    await vi.waitFor(() => expect(refetchInitMock).toHaveBeenCalledTimes(2));
+  });
+
   test("keeps the untrusted action inside an 80 by 24 root frame", async () => {
     useConfigurationInitMock.mockReturnValue({
       data: makeInitResponse(),

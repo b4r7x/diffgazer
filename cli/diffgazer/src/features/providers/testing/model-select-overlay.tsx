@@ -20,6 +20,7 @@ import { createTestQueryClient } from "../../../testing/query-client";
 import { CliThemeProvider } from "../../../theme/provider";
 
 export const ARROW_DOWN = "\u001b[B";
+export const ARROW_UP = "\u001b[A";
 
 const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 

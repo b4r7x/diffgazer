@@ -1,3 +1,4 @@
+import { usePageFooter } from "@diffgazer/core/footer";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { cleanup, render } from "ink-testing-library";
 import { useState } from "react";
@@ -199,6 +200,62 @@ describe("HistoryScreen pagination", () => {
 
     view.stdin.write("R");
     await vi.waitFor(() => expect(refetch).toHaveBeenCalledOnce());
+  });
+
+  it("returns focus to the runs list when a shrink hides the load-more row", async () => {
+    const loadMoreReviews = vi.fn(async () => {});
+    const navigate = vi.fn();
+    useHistoryScreenStateMock.mockReturnValue(
+      makeHistoryScreenState({
+        mappedRuns: [
+          {
+            id: "loaded-review",
+            displayId: "#loaded",
+            branch: "main",
+            timestamp: "now",
+            summary: "Loaded review",
+          },
+        ],
+        selectedRunId: "loaded-review",
+        hasReviews: true,
+        hasMoreReviews: true,
+        loadMoreReviews,
+      }),
+    );
+
+    function lastFooterShortcutLabels(): string[] {
+      const call = vi.mocked(usePageFooter).mock.lastCall;
+      return call?.[0]?.shortcuts.map((shortcut) => shortcut.label) ?? [];
+    }
+
+    const screen = () => (
+      <CliThemeProvider initialTheme="dark">
+        <NavigationContext.Provider
+          value={{ route: { screen: "history" }, navigate, goBack: vi.fn(), canGoBack: true }}
+        >
+          <HistoryScreen />
+        </NavigationContext.Provider>
+      </CliThemeProvider>
+    );
+    const view = render(screen());
+
+    expect(view.lastFrame()).toContain("Load older runs");
+    view.stdin.write("\u001B[B");
+    await vi.waitFor(() => expect(lastFooterShortcutLabels()).toContain("Load Older Runs"));
+
+    terminalSize.rows = 16;
+    view.rerender(screen());
+    await vi.waitFor(() => expect(view.lastFrame()).not.toContain("Load older runs"));
+    await vi.waitFor(() => {
+      expect(lastFooterShortcutLabels()).not.toContain("Load Older Runs");
+      expect(lastFooterShortcutLabels()).toContain("Open Review");
+    });
+
+    view.stdin.write("\r");
+    await vi.waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith({ screen: "review", reviewId: "loaded-review" }),
+    );
+    expect(loadMoreReviews).not.toHaveBeenCalled();
   });
 
   it("keeps the pagination affordance and long run content inside an 80x24 frame", async () => {

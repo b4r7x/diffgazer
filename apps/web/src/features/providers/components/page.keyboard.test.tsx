@@ -94,6 +94,32 @@ describe("ProvidersPage filter keyboard path", () => {
   });
 });
 
+describe("ProvidersPage search Escape staging", () => {
+  beforeEach(() => {
+    clearScopedRouteState("/providers-page-keyboard-test", "providerId");
+  });
+
+  it("clears a typed query on the first Escape and leaves search on the second", async () => {
+    const user = userEvent.setup();
+    renderProvidersPage();
+
+    const listbox = await screen.findByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+
+    const searchInput = screen.getByRole("searchbox", { name: "Search providers" });
+    await user.click(searchInput);
+    await user.keyboard("gem");
+    expect(searchInput).toHaveValue("gem");
+
+    await user.keyboard("{Escape}");
+    expect(searchInput).toHaveValue("");
+    expect(searchInput).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("radio", { name: "All" })).toHaveFocus();
+  });
+});
+
 describe("ProvidersPage degraded-notice keyboard path", () => {
   beforeEach(() => {
     clearScopedRouteState("/providers-page-keyboard-test", "providerId");
