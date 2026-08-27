@@ -27,9 +27,10 @@ export type ProviderDialogRowOwner =
 
 /**
  * A row's id flips from its product id to its configuration id the moment a
- * configuration is created, so a model dialog opened during that transition must
- * be resolved by the configuration it was opened for — the id it captured is
- * the only identity that survives the refresh.
+ * configuration is created, so a model dialog resolves by the configuration it
+ * was opened for and nothing else: until that row arrives there is no row the
+ * dialog can be shown against, and the id it captured before the create is the
+ * unconfigured product row the dialog must never reopen on.
  */
 export function findProviderDialogRow(
   rows: readonly ProviderListRow[],
@@ -37,7 +38,7 @@ export function findProviderDialogRow(
 ): ProviderListRow | null {
   if (!owner) return null;
   if (owner.kind === "setup") return findProviderById(rows, owner.rowId);
-  return findProviderById(rows, owner.configurationId) ?? findProviderById(rows, owner.rowId);
+  return findProviderById(rows, owner.configurationId);
 }
 
 const UNCONFIGURED_READINESS = {

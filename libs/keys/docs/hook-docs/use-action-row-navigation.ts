@@ -45,6 +45,13 @@ export const useActionRowNavigationDoc: HookDoc = {
         "Per-index disabled flags. Disabled actions are skipped during navigation and ignored on activation.",
     },
     {
+      name: "actionIds",
+      type: "readonly string[]",
+      required: false,
+      description:
+        "Stable per-index control identities. When provided, a rebuild that replaces the control at the focused index (same index, still enabled) counts as displacement, so the hook repairs the dropped DOM focus onto the new element instead of leaving it on the body. The hook keys on the id values, not the array identity, so an inline `.map` per render is fine.",
+    },
+    {
       name: "disabledFocusFallbackRef",
       type: "RefObject<HTMLElement | null>",
       required: false,
@@ -158,6 +165,13 @@ export const useActionRowNavigationDoc: HookDoc = {
         type: "(initialIndex?: number) => void",
         required: true,
         description: "Returns to content and resets the focused action index.",
+      },
+      {
+        name: "isRegisteredActionFocused",
+        type: "() => boolean",
+        required: true,
+        description:
+          "Whether DOM focus currently rests on the registered action at focusedIndex. The zone can stay actions after focus left it (Shift+Tab, a click away), so consumers gating their own shortcuts on the row should check this rather than the zone.",
       },
       {
         name: "getActionProps",

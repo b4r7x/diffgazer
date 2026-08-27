@@ -1,6 +1,6 @@
 import { isProviderControlDisabled, type ProviderRowControl } from "@diffgazer/core/providers";
-import { containsActiveElement, DECLINE, useActionRowNavigation, useKey } from "@diffgazer/keys";
-import { type RefCallback, type RefObject, useRef } from "react";
+import { DECLINE, useActionRowNavigation, useKey } from "@diffgazer/keys";
+import type { RefCallback, RefObject } from "react";
 import type { ProvidersFocusZone } from "./use-keyboard";
 
 interface UseProvidersActionButtonsOptions {
@@ -45,7 +45,6 @@ export function useProvidersActionButtons({
   focusProviderList,
   runControl,
 }: UseProvidersActionButtonsOptions): UseProvidersActionButtonsResult {
-  const actionElementsRef = useRef(new Map<number, HTMLElement>());
   // Shares isProviderControlDisabled with the rendered row so focus custody sees what the DOM does.
   const disabledActions = controls.map((control) => isProviderControlDisabled(control, isPending));
 
@@ -59,6 +58,10 @@ export function useProvidersActionButtons({
     enabled: !dialogOpen && inButtons,
     actionCount: controls.length,
     disabledActions,
+    // A completed mutation rebuilds the row in place, so an index survives
+    // while the control behind it does not; ids let the row see that and
+    // repair the dropped focus.
+    actionIds: controls.map((control) => control.id),
     disabledFocusFallbackRef: focusFallbackRef,
     onAction: handleButtonAction,
     onNavigationBoundaryReached: (direction) => {
@@ -76,11 +79,6 @@ export function useProvidersActionButtons({
   // without a second copy of the index to keep in sync.
   const focusedIndex = Math.min(actionRow.focusedIndex, controls.length - 1);
 
-  const isRegisteredActionFocused = () => {
-    const action = actionElementsRef.current.get(focusedIndex);
-    return action ? containsActiveElement(action) : false;
-  };
-
   const enterButtons = (index: number = 0) => {
     if (!hasSelection || controls.length === 0) return;
     setZone("buttons");
@@ -92,13 +90,8 @@ export function useProvidersActionButtons({
   // button's accessible name instead.
   const getActionButtonProps = (index: number) => {
     const actionProps = actionRow.getActionProps(index);
-    const ref: RefCallback<HTMLElement> = (node) => {
-      if (node) actionElementsRef.current.set(index, node);
-      else actionElementsRef.current.delete(index);
-      actionProps.ref(node);
-    };
     return {
-      ref,
+      ref: actionProps.ref,
       onFocus: () => {
         setZone("buttons");
         actionProps.onFocus();
@@ -124,7 +117,7 @@ export function useProvidersActionButtons({
   };
 
   const handleButtonsVertical = (direction: 1 | -1) => () => {
-    if (!isRegisteredActionFocused()) return DECLINE;
+    if (!actionRow.isRegisteredActionFocused()) return DECLINE;
     return navigateButtonsVertical(direction);
   };
 

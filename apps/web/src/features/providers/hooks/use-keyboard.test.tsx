@@ -66,7 +66,7 @@ function Subject({
   isPending = false,
   hasNotice = false,
   dialogOpen = false,
-  activeConfigurationId = null,
+  activatesOnSelect = false,
   runControl = vi.fn(),
   hasConsentLink = false,
 }: {
@@ -76,13 +76,15 @@ function Subject({
   isPending?: boolean;
   hasNotice?: boolean;
   dialogOpen?: boolean;
-  activeConfigurationId?: string | null;
+  /** Mirrors the mutation: selecting the configuration makes it the active one, rebuilding the row. */
+  activatesOnSelect?: boolean;
   runControl?: (control: ProviderRowControl) => void;
   hasConsentLink?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(
     getProviderRowId(GEMINI_ROW as ProviderListRow),
   );
+  const [activeConfigurationId, setActiveConfigurationId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
@@ -108,7 +110,12 @@ function Subject({
     inputRef,
     listContainerRef,
     noticeActionRef,
-    runControl,
+    runControl: (control) => {
+      if (activatesOnSelect && control.id === "selectConfiguration") {
+        setActiveConfigurationId(selectedRow.configuration?.configurationId ?? null);
+      }
+      runControl(control);
+    },
     reviewConsent: null,
   });
 
@@ -904,5 +911,68 @@ describe("useProvidersKeyboard", () => {
 
     await user.keyboard("{ArrowDown}");
     expect(park).toHaveFocus();
+  });
+
+  it("returns focus to the rebuilt row when the activated control leaves it", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <Subject activatesOnSelect />
+      </KeyboardProvider>,
+    );
+
+    const providerList = screen.getByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(providerList).toHaveFocus());
+
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "Select configuration" })).toHaveFocus();
+
+    // Selecting the configuration makes it the active one: the row rebuilds and
+    // the activated button unmounts under the focus it was holding.
+    await user.keyboard("{Enter}");
+    expect(screen.queryByRole("button", { name: "Select configuration" })).not.toBeInTheDocument();
+    const changeModel = screen.getByRole("button", { name: "Change model" });
+    await waitFor(() => expect(changeModel).toHaveFocus());
+
+    // Every direction still acts on the repaired focus.
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "More" })).toHaveFocus();
+    await user.keyboard("{ArrowLeft}");
+    expect(changeModel).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "More" })).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    expect(changeModel).toHaveFocus();
+
+    await user.keyboard("{ArrowLeft}");
+    expect(providerList).toHaveFocus();
+    expect(screen.getByText("zone: list")).toBeInTheDocument();
+  });
+
+  it("leaves focus alone when it left the action row without the row rebuilding", async () => {
+    const user = userEvent.setup();
+    const runAction = vi.fn();
+
+    render(
+      <KeyboardProvider>
+        <Subject runControl={runAction} />
+      </KeyboardProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByRole("listbox", { name: "Providers" })).toHaveFocus());
+    await user.keyboard("{ArrowRight}");
+    const action = screen.getByRole("button", { name: "Select configuration" });
+    expect(action).toHaveFocus();
+
+    // Mirrors a Shift+Tab or a click onto nothing: the zone stays on the buttons
+    // while the DOM focus leaves the row, and no control has changed.
+    action.blur();
+
+    await user.keyboard("{Enter}");
+    expect(runAction).not.toHaveBeenCalled();
+    await user.keyboard("{ArrowRight}");
+    expect(action).not.toHaveFocus();
+    expect(document.body).toHaveFocus();
   });
 });

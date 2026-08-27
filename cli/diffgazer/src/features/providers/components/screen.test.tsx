@@ -97,6 +97,7 @@ const ESCAPE = "\u001b";
 const ARROW_RIGHT = "\u001b[C";
 const ARROW_LEFT = "\u001b[D";
 const ARROW_DOWN = "\u001b[B";
+const ARROW_UP = "\u001b[A";
 
 afterEach(() => {
   cleanup();
@@ -1115,6 +1116,50 @@ describe("ProvidersScreen keyboard zones", () => {
     expect(createConfiguration).toHaveBeenCalledOnce();
     expect(listConfigurations.mock.calls.length).toBeGreaterThan(1);
     expect(lastFrame()).toContain("Select Model");
+  });
+
+  test("keeps the panes answering keys when the post-create refetch misses the new configuration", async () => {
+    const listConfigurations = vi
+      .fn<BoundApi["listConfigurations"]>()
+      .mockResolvedValue(
+        makeConfigurationListResponse(
+          makeConfigurationInitResponse([configurationStatus(GEMINI_CONFIGURATION, "ready")]),
+        ),
+      );
+    const createConfiguration = vi.fn<BoundApi["createConfiguration"]>().mockResolvedValue({
+      action: "create",
+      status: "succeeded",
+      configuration: OPENROUTER_CONFIGURATION,
+    });
+    const api = { ...makeApi(), listConfigurations, createConfiguration } satisfies BoundApi;
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    await flushUntil(() => {
+      if (lastFrame()?.includes("Product       : openrouter")) return true;
+      stdin.write(ARROW_DOWN);
+      return false;
+    });
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("Create Configuration") ?? false);
+    stdin.write(TAB);
+    await flush();
+    stdin.write("sk-openrouter-test");
+    await flush();
+    stdin.write(TAB);
+    await flush();
+    stdin.write(ENTER);
+    await flushUntil(() => createConfiguration.mock.calls.length === 1);
+    await flushUntil(() => !(lastFrame()?.includes("Create Configuration") ?? true));
+    expect(lastFrame()).not.toContain("Select Model");
+
+    stdin.write(ARROW_UP);
+    await flushUntil(() => lastFrame()?.includes("Product       : zai") ?? false);
+    expect(lastFrame()).toContain("Product       : zai");
   });
 
   test("suppresses the help shortcut while the model dialog is open", async () => {

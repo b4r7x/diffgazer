@@ -137,6 +137,7 @@ describe("useActionRowNavigation", () => {
       actionCount: true,
       onAction: true,
       disabledActions: true,
+      actionIds: true,
       disabledFocusFallbackRef: true,
       containerRef: true,
       scope: true,
@@ -353,6 +354,115 @@ describe("useActionRowNavigation", () => {
 
     await user.keyboard("{Enter}");
     expect(onAction).not.toHaveBeenCalled();
+  });
+
+  describe("in-place rebuilds with actionIds", () => {
+    function RebuildingRow({ ids, withIds = true }: { ids: readonly string[]; withIds?: boolean }) {
+      const row = useActionRowNavigation({
+        enabled: true,
+        actionCount: ids.length,
+        defaultZone: "actions",
+        actionIds: withIds ? ids : undefined,
+        onAction: vi.fn(),
+      });
+
+      return (
+        <div>
+          {ids.map((id, index) => (
+            <button key={id} type="button" {...row.getActionProps(index)}>
+              {id}
+            </button>
+          ))}
+          <input aria-label="Outside input" />
+        </div>
+      );
+    }
+
+    it("repairs focus onto the new element when the held control is replaced at the same index", async () => {
+      const { rerender } = render(
+        <KeyboardWrapper>
+          <RebuildingRow ids={["Select", "Model"]} />
+        </KeyboardWrapper>,
+      );
+
+      await waitFor(() => expectFocused(getButton("Select")));
+
+      // The rebuild unmounts the focused button and registers a different
+      // control at the same index, dropping DOM focus onto the body.
+      rerender(
+        <KeyboardWrapper>
+          <RebuildingRow ids={["Model", "More"]} />
+        </KeyboardWrapper>,
+      );
+
+      await waitFor(() => expectFocused(getButton("Model")));
+    });
+
+    it("leaves focus on the body after the same rebuild when actionIds are not provided", async () => {
+      const { rerender } = render(
+        <KeyboardWrapper>
+          <RebuildingRow ids={["Select", "Model"]} withIds={false} />
+        </KeyboardWrapper>,
+      );
+
+      await waitFor(() => expectFocused(getButton("Select")));
+
+      rerender(
+        <KeyboardWrapper>
+          <RebuildingRow ids={["Model", "More"]} withIds={false} />
+        </KeyboardWrapper>,
+      );
+
+      // The index the row held is still registered and enabled, so without ids
+      // the replacement is invisible and no repair runs.
+      expect(document.activeElement).toBe(document.body);
+    });
+
+    it("leaves focus with a control the user chose before the rebuild", async () => {
+      const { rerender } = render(
+        <KeyboardWrapper>
+          <RebuildingRow ids={["Select", "Model"]} />
+        </KeyboardWrapper>,
+      );
+
+      await waitFor(() => expectFocused(getButton("Select")));
+
+      // Mirrors a Shift+Tab or a click away: something else claimed focus, so
+      // the rebuild must not yank it back into the row.
+      const outside = screen.getByRole("textbox", { name: "Outside input" });
+      act(() => outside.focus());
+
+      rerender(
+        <KeyboardWrapper>
+          <RebuildingRow ids={["Model", "More"]} />
+        </KeyboardWrapper>,
+      );
+
+      expectFocused(outside);
+    });
+
+    it("keeps focus where the user moved it across rerenders with fresh actionIds arrays", async () => {
+      const user = userEvent.setup();
+      const { rerender } = render(
+        <KeyboardWrapper>
+          <RebuildingRow ids={["Select", "Model"]} />
+        </KeyboardWrapper>,
+      );
+
+      await waitFor(() => expectFocused(getButton("Select")));
+      await user.keyboard("{ArrowRight}");
+      expectFocused(getButton("Model"));
+
+      // Same id values, fresh array identity — the sanctioned inline `.map`.
+      // A false displacement here would snap focus back to the first action.
+      rerender(
+        <KeyboardWrapper>
+          <RebuildingRow ids={["Select", "Model"]} />
+        </KeyboardWrapper>,
+      );
+
+      expectFocused(getButton("Model"));
+    });
   });
 
   describe("self-disabling actions", () => {

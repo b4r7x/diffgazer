@@ -127,8 +127,8 @@ export function ProvidersScreen(): ReactElement {
       ? { owner: management.dialogOwner, row: dialogRow }
       : null;
   const modelDialog =
-    management.dialogOwner?.kind === "model" && dialogRow
-      ? { owner: management.dialogOwner, row: dialogRow }
+    management.dialogOwner?.kind === "model" && dialogRow?.configuration
+      ? { owner: management.dialogOwner, configuration: dialogRow.configuration }
       : null;
 
   const error = management.actionError ?? configurationsQuery.error?.message ?? null;
@@ -318,17 +318,15 @@ export function ProvidersScreen(): ReactElement {
     );
   }
 
-  const modelConfiguration = modelDialog?.row.configuration ?? null;
-
-  if (modelDialog && modelConfiguration) {
+  if (modelDialog) {
     return (
       <ModelSelectOverlay
         open
-        configuration={modelConfiguration}
+        configuration={modelDialog.configuration}
         onOpenChange={(open) => {
           if (!open) management.closeDialog(modelDialog.owner);
         }}
-        selectedId={modelDialog.row.configuration?.selectedModelId ?? undefined}
+        selectedId={modelDialog.configuration.selectedModelId ?? undefined}
         onSelect={(modelId) => management.handleSelectModel(modelDialog.owner, modelId)}
       />
     );

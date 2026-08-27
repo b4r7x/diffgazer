@@ -184,7 +184,7 @@ describe("findProviderDialogRow", () => {
     );
   });
 
-  it("falls back to the pre-create row id when the configuration id is not listed yet", () => {
+  it("resolves nothing while the created configuration is missing from the list", () => {
     const rows = mapProviderList([]);
     const owner = {
       kind: "model" as const,
@@ -192,7 +192,6 @@ describe("findProviderDialogRow", () => {
       configurationId: "openrouter-primary",
     };
 
-    expect(findProviderDialogRow(rows, owner)?.product.productId).toBe("openrouter");
-    expect(findProviderDialogRow(rows, owner)?.configuration).toBeNull();
+    expect(findProviderDialogRow(rows, owner)).toBeNull();
   });
 });

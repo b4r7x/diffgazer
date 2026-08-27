@@ -17,10 +17,13 @@ const EMPTY_DISABLED: readonly boolean[] = [];
  * `none` — the row has no claim. A blur the row cannot attribute to its own
  * disable/unmount (the user clicking empty space) lands on `none`, so later
  * effect runs leave that focus alone instead of yanking it back to the row.
+ * `id` (from `actionIds`, when provided) records which control the index meant,
+ * so an in-place rebuild that swaps the control behind the index still counts
+ * as displacement.
  */
 type FocusCustody =
   | { status: "none" }
-  | { status: "action"; index: number }
+  | { status: "action"; index: number; id?: string }
   | { status: "fallback" };
 
 /** Options for two-zone keyboard navigation across row content and inline actions. */
@@ -33,6 +36,16 @@ export interface UseActionRowNavigationOptions {
   onAction: (index: number) => void;
   /** Per-index disabled flags; disabled actions are skipped and ignored on activation. */
   disabledActions?: readonly boolean[];
+  /**
+   * Stable per-index control identities. Without them, a rebuild that replaces
+   * the control at the focused index — same index, still registered, still
+   * enabled — is invisible to focus custody and the dropped DOM focus stays on
+   * the body. With them, the row treats an identity change at its held index as
+   * its own displacement and repairs focus onto the new element. The hook keys
+   * on the id values, not the array identity, so an inline `.map` per render
+   * is fine.
+   */
+  actionIds?: readonly string[];
   /**
    * Content focus target used both when entering actions with no action enabled
    * and when ArrowUp exits the actions zone back to content. Provide it (or another
@@ -70,6 +83,18 @@ function getDisabledKey(actionCount: number, disabledActions: readonly boolean[]
     key += disabledActions[i] ? "1" : "0";
   }
   return key;
+}
+
+// The ids get the same primitive treatment — JSON because they are arbitrary
+// consumer strings rather than single flags — so an inline `.map` per render
+// never churns the callbacks that read them.
+function getActionIdsKey(actionIds: readonly string[] | undefined): string {
+  return actionIds === undefined ? "" : JSON.stringify(actionIds);
+}
+
+function getActionId(actionIdsKey: string, index: number): string | undefined {
+  if (actionIdsKey === "") return undefined;
+  return (JSON.parse(actionIdsKey) as readonly string[])[index];
 }
 
 function isIndexEnabled(index: number, actionCount: number, disabledKey: string): boolean {
@@ -126,6 +151,13 @@ export interface UseActionRowNavigationReturn {
   exitActions: () => void;
   /** Returns to content and resets the focused action index. */
   reset: (initialIndex?: number) => void;
+  /**
+   * Whether DOM focus currently rests on the registered action at
+   * `focusedIndex`. The zone can stay `"actions"` after focus left it
+   * (Shift+Tab, a click away), so consumers gating their own shortcuts on the
+   * row should check this rather than the zone.
+   */
+  isRegisteredActionFocused: () => boolean;
   /** Props to spread onto each action element so the hook can focus and track it. */
   getActionProps: (index: number) => {
     /** Ref callback that registers the action element at this index. */
@@ -146,6 +178,7 @@ export function useActionRowNavigation({
   actionCount,
   onAction,
   disabledActions = EMPTY_DISABLED,
+  actionIds,
   disabledFocusFallbackRef,
   containerRef,
   scope,
@@ -162,6 +195,7 @@ export function useActionRowNavigation({
   const hasFocusedDefaultRef = useRef(false);
   const custodyRef = useRef<FocusCustody>({ status: "none" });
   const disabledKey = getDisabledKey(actionCount, disabledActions);
+  const actionIdsKey = getActionIdsKey(actionIds);
 
   const focusZone = useFocusZone<ActionRowZone>({
     initial: defaultZone,
@@ -190,11 +224,15 @@ export function useActionRowNavigation({
       if (targetIndex === null) return null;
 
       setFocusedIndex(targetIndex);
-      custodyRef.current = { status: "action", index: targetIndex };
+      custodyRef.current = {
+        status: "action",
+        index: targetIndex,
+        id: getActionId(actionIdsKey, targetIndex),
+      };
       actionRefs.current.get(targetIndex)?.focus();
       return targetIndex;
     },
-    [getEnabledTargetIndex],
+    [actionIdsKey, getEnabledTargetIndex],
   );
 
   const focusDisabledFallback = useCallback(() => {
@@ -228,15 +266,19 @@ export function useActionRowNavigation({
     return null;
   }, []);
 
-  // The action the row held is gone: it turned disabled or unregistered since
-  // the row claimed it, which is the only reason the row itself can have caused
-  // the blur.
+  // The action the row held is gone: it turned disabled, unregistered, or —
+  // when actionIds names the controls — was replaced in place by a control with
+  // another id, which are the only reasons the row itself can have caused the
+  // blur.
   const isDisplacedFromOwnAction = useCallback(() => {
     const custody = custodyRef.current;
     if (custody.status !== "action") return false;
     if (!actionRefs.current.has(custody.index)) return true;
+    if (custody.id !== undefined && getActionId(actionIdsKey, custody.index) !== custody.id) {
+      return true;
+    }
     return !isIndexEnabled(custody.index, actionCount, disabledKey);
-  }, [actionCount, disabledKey]);
+  }, [actionCount, actionIdsKey, disabledKey]);
 
   /**
    * The one place custody changes from observation. Focus resting on a
@@ -249,13 +291,17 @@ export function useActionRowNavigation({
   const claimsCurrentFocus = useCallback(() => {
     const activeIndex = findFocusedActionIndex();
     if (activeIndex !== null) {
-      custodyRef.current = { status: "action", index: activeIndex };
+      custodyRef.current = {
+        status: "action",
+        index: activeIndex,
+        id: getActionId(actionIdsKey, activeIndex),
+      };
       return true;
     }
     if (isDisplacedFromOwnAction() && isFocusUnclaimed()) return true;
     custodyRef.current = { status: "none" };
     return false;
-  }, [findFocusedActionIndex, isDisplacedFromOwnAction, isFocusUnclaimed]);
+  }, [actionIdsKey, findFocusedActionIndex, isDisplacedFromOwnAction, isFocusUnclaimed]);
 
   useEffect(() => {
     if (!enabled || defaultZone !== "actions" || !inActions || hasFocusedDefaultRef.current) return;
@@ -416,7 +462,7 @@ export function useActionRowNavigation({
     "data-action-index": index,
     onFocus: () => {
       if (!isIndexEnabled(index, actionCount, disabledKey)) return;
-      custodyRef.current = { status: "action", index };
+      custodyRef.current = { status: "action", index, id: getActionId(actionIdsKey, index) };
       setZone("actions");
       setFocusedIndex(index);
     },
@@ -429,6 +475,7 @@ export function useActionRowNavigation({
     enterActions,
     exitActions,
     reset,
+    isRegisteredActionFocused,
     getActionProps,
   };
 }
