@@ -74,7 +74,6 @@ describe("requireSetup", () => {
     "conformance-pending",
     "skipped",
     "conformance-failed",
-    "local-conformance-failed",
   ] as const)("passes %s through so admission can attempt or fast-fail the review", async (status) => {
     getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor(status) });
     const app = await createApp();

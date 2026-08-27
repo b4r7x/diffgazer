@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { scanJsonRejectingDuplicateKeys } from "../canonical-json.js";
+import { scanJsonRejectingDuplicateKeys } from "../json-scan.js";
 
 export const LEGACY_V1_HAS_API_KEY_PROPERTY = "hasApiKey" as const;
 
@@ -26,7 +26,7 @@ function copyBytes(rawBytes: Uint8Array): Uint8Array<ArrayBuffer> {
 }
 
 // V1 records are untrusted bytes, so they go through the shared bounded scanner
-// in canonical-json.ts, which rejects a repeated object key before JSON.parse
+// in json-scan.ts, which rejects a repeated object key before JSON.parse
 // can collapse it to the last value (and so relabel one provider as another).
 const MAX_LEGACY_RECORD_BYTES = 64 * 1024;
 const MAX_LEGACY_JSON_DEPTH = 32;

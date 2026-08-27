@@ -18,11 +18,6 @@ export interface LensResult {
   /** One entry per model call this lens made, in dispatch order. */
   dispatches: LensDispatch[];
   /**
-   * Issues a batched lens found past the per-lens cap, which the concatenated
-   * batches are trimmed to. A single call cannot overflow it.
-   */
-  droppedOverLensCap?: number;
-  /**
    * Set when a batch failed after earlier batches had already returned findings.
    * Dispatching stops there, but what the earlier batches found is already paid
    * for, so the lens reports those issues beside the error that ended it.

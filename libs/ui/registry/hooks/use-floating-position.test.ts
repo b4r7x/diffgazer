@@ -3,6 +3,12 @@ import { JSDOM } from "jsdom";
 import { createElement, useLayoutEffect, useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  computePosition as libComputePosition,
+  resolveCollisionPosition as libResolveCollisionPosition,
+  shift as libShift,
+  wouldOverflow as libWouldOverflow,
+} from "@/lib/floating-position";
+import {
   computePosition,
   type FloatingAlign,
   type FloatingSide,
@@ -112,22 +118,11 @@ afterEach(() => {
 });
 
 describe("floating position helpers", () => {
-  it("computes placement, overflow, shift, and collision fallback", () => {
-    expect(computePosition(triggerRect, contentRect, "bottom", "start", 6, 10)).toEqual({
-      x: 110,
-      y: 146,
-    });
-    expect(wouldOverflow(700, 100, contentRect, 8, viewport)).toBe(true);
-    expect(shift(750, 580, contentRect, 8, viewport)).toEqual({ x: 672, y: 542 });
-
-    const nearBottom = makeDOMRect(100, 540, 80, 40);
-    expect(
-      resolveCollisionPosition(nearBottom, contentRect, "bottom", "center", 6, 0, 8, viewport),
-    ).toMatchObject({
-      side: "top",
-      x: 80,
-      y: 484,
-    });
+  it("re-exports the lib helpers unchanged for copy-path consumers", () => {
+    expect(computePosition).toBe(libComputePosition);
+    expect(wouldOverflow).toBe(libWouldOverflow);
+    expect(shift).toBe(libShift);
+    expect(resolveCollisionPosition).toBe(libResolveCollisionPosition);
   });
 });
 

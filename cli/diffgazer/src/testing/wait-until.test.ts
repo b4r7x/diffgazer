@@ -7,4 +7,12 @@ describe("waitUntil", () => {
       "Timed out waiting for condition after 2 attempts",
     );
   });
+
+  test("resolves on the check where the predicate flips true", async () => {
+    let calls = 0;
+    await expect(
+      waitUntil(() => ++calls === 2, { attempts: 5, intervalMs: 0 }),
+    ).resolves.toBeUndefined();
+    expect(calls).toBe(2);
+  });
 });

@@ -742,9 +742,11 @@ describe("review budget across lenses", () => {
     }
   });
 
-  it("preserves the fixed typed adapter failure diagnostic", async () => {
-    const plan = admittedPlan("gemini");
-    const adapter = clientTestCreateMockAdapter("gemini", async () =>
+  it.each(
+    OUTER_ADMISSION_PRODUCTS,
+  )("settles a transport-failed %s receipt with the fixed diagnostic and no findings", async (productId) => {
+    const plan = admittedPlan(productId);
+    const adapter = clientTestCreateMockAdapter(productId, async () =>
       clientTestExecutionResult(plan, "transport-failed"),
     );
     const { authorization } = authorize(plan, adapter);
@@ -755,6 +757,8 @@ describe("review budget across lenses", () => {
     });
 
     expect(result.execution.receipt.outcome).toBe("transport-failed");
+    expect(result.execution.result.issues).toEqual([]);
+    expect(ExecutionResultSchema.safeParse(result.execution).success).toBe(true);
     expect(result.diagnostic).toMatchObject({
       code: "transport-failed",
       safeMessage: "Adapter transport failed.",
@@ -954,22 +958,6 @@ describe("review generation terminal failures", () => {
     expect(truncated.diagnostic.remediation).toBe("Reduce the review scope.");
   });
 
-  it("returns zero findings for provider refusal transport failures", async () => {
-    const plan = admittedPlan("zai");
-    const adapter = clientTestCreateMockAdapter("zai", async () =>
-      clientTestExecutionResult(plan, "transport-failed"),
-    );
-    const { authorization } = authorize(plan, adapter);
-
-    const result = await executeReviewGeneration({
-      authorization,
-      prompt: "short",
-    });
-
-    expect(result.execution.receipt.outcome).toBe("transport-failed");
-    expect(result.execution.result.issues).toEqual([]);
-  });
-
   it("reports the adapter's own reason for a refused request instead of the generic transport message", async () => {
     const plan = admittedPlan("zai");
     const adapter = clientTestCreateMockAdapter("zai", async (request) => {
@@ -1036,39 +1024,6 @@ describe("review generation terminal failures", () => {
     expect(result.execution.result.issues).toEqual([]);
     expect(result.diagnostic.code).toBe("cancelled");
   });
-
-  it("returns zero findings for redirect provider failures", async () => {
-    const plan = admittedPlan("openrouter");
-    const adapter = clientTestCreateMockAdapter("openrouter", async () =>
-      clientTestExecutionResult(plan, "transport-failed"),
-    );
-    const { authorization } = authorize(plan, adapter);
-
-    const result = await executeReviewGeneration({
-      authorization,
-      prompt: "short",
-    });
-
-    expect(result.execution.receipt.outcome).toBe("transport-failed");
-    expect(result.execution.result.issues).toEqual([]);
-    expect(ExecutionResultSchema.safeParse(result.execution).success).toBe(true);
-  });
-
-  it("returns zero findings for generic provider transport failures", async () => {
-    const plan = admittedPlan("opencode-zen");
-    const adapter = clientTestCreateMockAdapter("opencode-zen", async () =>
-      clientTestExecutionResult(plan, "transport-failed"),
-    );
-    const { authorization } = authorize(plan, adapter);
-
-    const result = await executeReviewGeneration({
-      authorization,
-      prompt: "short",
-    });
-
-    expect(result.execution.receipt.outcome).toBe("transport-failed");
-    expect(result.execution.result.issues).toEqual([]);
-  });
 });
 
 describe("review generation redaction", () => {
@@ -1078,9 +1033,16 @@ describe("review generation redaction", () => {
   it("redacts bearer tokens from failure diagnostics", async () => {
     const plan = admittedPlan("gemini");
     const secret = "sk-test-bearer-token-value";
-    const adapter = clientTestCreateMockAdapter("gemini", async () =>
-      clientTestExecutionResult(plan, "transport-failed"),
-    );
+    const adapter = clientTestCreateMockAdapter("gemini", async (request) => {
+      request.reportDiagnostic?.(
+        serializeFailureDiagnostic({
+          code: "provider-rejected",
+          message: `Authorization: Bearer ${secret}`,
+          sensitive: { literalSecrets: [secret] },
+        }),
+      );
+      return clientTestExecutionResult(plan, "transport-failed");
+    });
     const { authorization } = authorize(plan, adapter);
 
     const result = await executeReviewGeneration({

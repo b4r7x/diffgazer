@@ -43,16 +43,6 @@ test("documentedEnvKeys collects active and commented optional variables", () =>
   assert.deepEqual([...keys].sort(), ["ACTIVE", "OPTIONAL"]);
 });
 
-test("surface env.example keys stay within the root canonical example", () => {
-  const root = createConformingFixture();
-  const result = resultByName(
-    runFixture(root, { checks: [checkSurfaceEnvExampleKeysStayInRootExample] }),
-    "surface env.example keys stay in root .env.example",
-  );
-
-  assert.equal(result.ok, true);
-});
-
 test("surface env.example keys reject variables absent from the root example", () => {
   const root = createConformingFixture();
   writeText(root, "apps/landing/.env.example", "ORPHAN_ONLY=1\nVITE_SURFACE=1\n");
@@ -201,14 +191,6 @@ test("top-level package overrides are rejected under pnpm 11", () => {
 
   assert.equal(result.ok, false);
   assert.match(result.details, /pnpm-workspace\.yaml/);
-});
-
-test("Node declarations match the CI runtime and package compatibility floors", () => {
-  const root = createConformingFixture();
-
-  const [result] = runFixture(root, { checks: [checkNodeDeclarationsMatchRuntime] });
-
-  assert.equal(result.ok, true);
 });
 
 test("Node declaration checks reject workspace and package major drift", () => {

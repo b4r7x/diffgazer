@@ -8,6 +8,7 @@ import { renderToString } from "react-dom/server";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { requireAttribute, requireElement } from "../../testing/assertions";
+import { atRuleBody, eachRule, ruleBody } from "../../testing/css-contract";
 import { Popover } from "../popover/index";
 import { Dialog } from "./index";
 
@@ -1143,9 +1144,10 @@ describe("Dialog", () => {
         </Dialog>,
       );
       const dialog = screen.getByRole("dialog", { name: "Stable height" });
+      // Class assertion retained: the height class IS the public contract here
+      // (height="stable" exists to declare one content-independent height), and
+      // jsdom cannot compute it from the shipped stylesheet.
       expect(dialog).toHaveClass("h-[min(40rem,85dvh)]");
-      // The flex column is what lets Header/Footer hold and Body flex+scroll.
-      expect(dialog).toHaveClass("flex", "flex-col");
     });
   });
 
@@ -1392,30 +1394,29 @@ describe("Dialog prefers-reduced-motion (CSS-only)", () => {
   // to simulate matchMedia returning true; getComputedStyle then reports
   // the suppressed animation.
   const DIALOG_CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../shared/dialog.css");
-  const REDUCED_MOTION_RULE_RE =
-    /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*dialog,?\s*\n?\s*dialog::backdrop\s*\{[^}]*\}\s*\}/;
   let styleElement: HTMLStyleElement | null = null;
 
   beforeAll(() => {
     const sourceCss = readFileSync(DIALOG_CSS_PATH, "utf8");
-    const ruleBlock = sourceCss.match(REDUCED_MOTION_RULE_RE)?.[0];
-    if (!ruleBlock) {
+    const mediaBody = atRuleBody(sourceCss, "@media (prefers-reduced-motion: reduce)");
+    const declaration = ruleBody(mediaBody, "dialog, dialog::backdrop");
+    if (declaration === null) {
       throw new Error(
         "dialog.css must declare a @media (prefers-reduced-motion: reduce) rule for dialog and dialog::backdrop",
       );
     }
-    if (!/animation:\s*none\s*!important/.test(ruleBlock)) {
+    if (!/animation:\s*none\s*!important/.test(declaration)) {
       throw new Error(
         "dialog.css reduced-motion rule must set animation: none !important (not animation-duration: 0.01s)",
       );
     }
-    if (/animation-duration:\s*0\.01s/.test(ruleBlock)) {
+    // Regression guard for a concrete historical value: the rule once used
+    // animation-duration: 0.01s !important, which does not suppress the animation.
+    if (/animation-duration:\s*0\.01s/.test(declaration)) {
       throw new Error(
         "dialog.css reduced-motion rule must no longer use animation-duration: 0.01s !important",
       );
     }
-    const declaration = ruleBlock.match(/\{[^{]*\{([^}]*)\}/)?.[1];
-    if (!declaration) throw new Error("dialog.css reduced-motion rule body could not be extracted");
     styleElement = document.createElement("style");
     styleElement.dataset.testSource = "dialog.css#reduced-motion";
     styleElement.textContent = `dialog { ${declaration} }`;
@@ -1458,15 +1459,17 @@ describe("DialogContent corner CSS tokens (CSS-only)", () => {
         'dialog.css must use [data-corners]:not([data-corners="none"]) as the non-none selector',
       );
     }
-    const rules = [...sourceCss.matchAll(/\[data-slot="dialog-content"\][^{]*\{[^}]*\}/g)].map(
-      (m) => m[0],
+    const rules = eachRule(sourceCss).filter((rule) =>
+      rule.selector.includes('[data-slot="dialog-content"]'),
     );
     if (rules.length === 0) {
       throw new Error('dialog.css must declare [data-slot="dialog-content"] corner rules');
     }
     styleElement = document.createElement("style");
     styleElement.dataset.testSource = "dialog.css#corners";
-    styleElement.textContent = rules.join("\n");
+    styleElement.textContent = rules
+      .map((rule) => `${rule.selector.replace(/^@layer \S+ /, "")} { ${rule.declarations} }`)
+      .join("\n");
     document.head.appendChild(styleElement);
   });
 

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { KeyboardProvider } from "@diffgazer/keys";
 import {
@@ -15,7 +17,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { GlobalShortcuts } from "@/components/layout/global";
 import { StreamingReviewProvider } from "@/components/layout/streaming-review";
 import { shutdown } from "@/lib/shutdown";
-import { useReviewProgressKeyboard } from "./use-progress-keyboard";
+import { REVIEW_PROGRESS_CONTROLS, useReviewProgressKeyboard } from "./use-progress-keyboard";
 
 vi.mock("@/lib/shutdown", () => ({
   shutdown: vi.fn().mockResolvedValue({ status: "closed" as const }),
@@ -187,5 +189,22 @@ describe("useReviewProgressKeyboard lens cycling", () => {
     await user.keyboard("][[");
 
     expect(onCycleAgentFilter).not.toHaveBeenCalled();
+  });
+});
+
+describe("review progress control documentation", () => {
+  it("matches the cancel and resumable-leave controls used by the progress screen", () => {
+    const guide = readFileSync(
+      resolve(import.meta.dirname, "../../../../../docs/content/docs/app/web/reviewing.mdx"),
+      "utf8",
+    );
+
+    expect(guide).toContain(
+      `press \`${REVIEW_PROGRESS_CONTROLS.cancel.key}\` or use **${REVIEW_PROGRESS_CONTROLS.cancel.label}**`,
+    );
+    expect(guide).toContain(
+      "Press `Esc` to return to Home without stopping the run; the server session keeps running and remains resumable from Home.",
+    );
+    expect(REVIEW_PROGRESS_CONTROLS.leave.key).toBe("Escape");
   });
 });

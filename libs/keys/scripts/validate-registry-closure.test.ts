@@ -71,15 +71,6 @@ describe("public registry target paths", () => {
         ).toBe(true);
       }
     });
-
-    it(`${sourceItem.name} public targets use @hooks/ alias-relative paths`, () => {
-      for (const target of expectedPublicTargets) {
-        expect(
-          target.startsWith("@hooks/"),
-          `${sourceItem.name}: public target ${target} must use @hooks/ for shadcn alias resolution`,
-        ).toBe(true);
-      }
-    });
   }
 });
 

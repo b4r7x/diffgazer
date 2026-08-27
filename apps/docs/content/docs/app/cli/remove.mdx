@@ -9,7 +9,7 @@ description: Remove installed Diffgazer registry items.
 pnpm exec dgadd remove <item> [item...]
 ```
 
-> **Note:** Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.
+> **Before publication:** Diffgazer packages are not yet published to npm, so there is no `dgadd` bin until you install one. Follow the canonical [Copy-first mode procedure](https://github.com/b4r7x/diffgazer#copy-first-mode-dgadd) to build and pack `@diffgazer/add`, then install that packed tarball in the target app. The target-app install is what puts `dgadd` on `pnpm exec`.
 
 ## Examples
 

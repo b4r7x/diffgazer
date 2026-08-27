@@ -78,9 +78,13 @@ test("public install snippets stay local-first or publish-gated", () => {
     "cli/add/README.md",
     "cli/diffgazer/README.md",
     ...listDocsFiles("libs/ui/docs/content", ".mdx").map((file) => relative(REPO_ROOT, file)),
+    ...listDocsFiles("libs/keys/docs/content", ".mdx").map((file) => relative(REPO_ROOT, file)),
+    ...listDocsFiles("apps/docs/content/docs/app/cli", ".mdx").map((file) =>
+      relative(REPO_ROOT, file),
+    ),
   ];
   const installCommand =
-    /npx @diffgazer\/add|pnpm dlx @diffgazer\/add|yarn dlx @diffgazer\/add|bunx @diffgazer\/add|npm install @diffgazer\/|npm install -g diffgazer/;
+    /npx @diffgazer\/add|pnpm dlx @diffgazer\/add|yarn dlx @diffgazer\/add|bunx @diffgazer\/add|npm install @diffgazer\/|npm install -g diffgazer|pnpm exec dgadd/;
   const publishGate =
     /not yet published to npm|first release|local checkout|npm view|publish-gated|After Publication|after publication|after `@diffgazer\/add` is published|after its npm package is published/;
 

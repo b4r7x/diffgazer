@@ -73,10 +73,6 @@ function hasForbiddenSerializedData(descriptor: unknown): boolean {
 }
 
 describe("product registry authority", () => {
-  it("references the shared endpoint tuple instead of copying it", () => {
-    expect(PRODUCT_REGISTRY.gemini.configuration.endpoints).toBe(PRODUCT_ENDPOINT_TUPLES.gemini);
-  });
-
   it("enumerates exactly the 9 selectable products with add-now notices and gates", () => {
     expect(SELECTABLE_PRODUCT_IDS).toEqual([
       "gemini",
@@ -110,6 +106,8 @@ describe("product registry authority", () => {
   });
 
   it("uses one endpoint tuple authority for validation and presentation", () => {
+    // Referential identity, not structural equality: the registry must point at
+    // the shared tuple, never copy it.
     for (const productId of SELECTABLE_PRODUCT_IDS) {
       expect(PRODUCT_REGISTRY[productId].configuration.endpoints).toBe(
         PRODUCT_ENDPOINT_TUPLES[productId],
@@ -412,8 +410,6 @@ describe("product registry authority", () => {
   });
 
   it("keeps GitHub Models hidden and every candidate non-runnable", () => {
-    expect(Object.keys(CANDIDATE_VERDICTS)).toEqual(CANDIDATE_PRODUCT_IDS);
-
     for (const productId of EXPERIMENTAL_PRODUCT_IDS) {
       expect(CANDIDATE_VERDICTS[productId]).toMatchObject({
         verdict: "experimental",

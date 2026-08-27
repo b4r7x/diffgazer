@@ -250,14 +250,23 @@ describe("ProvidersScreen V2 products and readiness", () => {
   });
 
   test("opens the model dialog for the active configuration on a select-model deep link, once", async () => {
+    // The active configuration is not the first row, so landing on the dialog
+    // for it proves the deep link followed the selection, not the highlight.
+    const listConfigurations = vi.fn<BoundApi["listConfigurations"]>().mockResolvedValue({
+      ...makeAllConfigurationsListResponse(),
+      selectedConfigurationId: "zai-primary",
+    });
+    const api = { ...makeApi(), listConfigurations } satisfies BoundApi;
     const { lastFrame, stdin } = render(
-      <Wrapper initialRoute={{ screen: "settings/providers", intent: "select-model" }}>
+      <Wrapper api={api} initialRoute={{ screen: "settings/providers", intent: "select-model" }}>
         <ProvidersScreen />
       </Wrapper>,
     );
 
     // "Change model" on the review error screen lands in the dialog itself.
     await flushUntil(() => lastFrame()?.includes("Select Model") ?? false);
+    // The subtitle names the configuration's product, so it tells the rows apart.
+    expect(lastFrame()).toContain(ZAI_CONFIGURATION.productId);
 
     // Closing it stays closed: the intent is one-shot, not a sticky reopen.
     stdin.write(ESCAPE);

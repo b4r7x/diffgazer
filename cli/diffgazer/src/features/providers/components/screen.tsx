@@ -112,11 +112,11 @@ export function ProvidersScreen(): ReactElement {
   const modelIntentConsumedRef = useRef(false);
   useEffect(() => {
     if (!modelIntent || modelIntentConsumedRef.current || !configurationsQuery.data) return;
-    modelIntentConsumedRef.current = true;
     const activeRow = providers.find(
       (row) => row.configuration?.configurationId === selectedConfigurationId,
     );
     if (!activeRow?.configuration) return;
+    modelIntentConsumedRef.current = true;
     const rowId = getProviderRowId(activeRow);
     setSelectedId(rowId);
     management.openModelDialog(rowId);

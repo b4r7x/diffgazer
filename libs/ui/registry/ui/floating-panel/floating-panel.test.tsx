@@ -704,7 +704,7 @@ describe("FloatingPanel available-size caps", () => {
   });
 
   it("caps a panel that fits nowhere to the padded viewport rather than to a side with zero room", async () => {
-    // H-3: the trigger sits past the bottom edge, so the preferred side leaves 0px of room.
+    // The trigger sits past the bottom edge, so the preferred side leaves 0px of room.
     // Before the best-fit fallback the panel kept the preferred side and rendered
     // `max-height: 0px` while staying mounted and focusable.
     setViewport(400, 300);

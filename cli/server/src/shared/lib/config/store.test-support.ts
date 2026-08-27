@@ -13,7 +13,7 @@ type KeyringMocks = {
   writeKeyringSecret: Mock;
 };
 
-type CatalogMocks = { getProviderModels: Mock; discoverConfigurationCatalog: Mock };
+type CatalogMocks = { discoverConfigurationCatalog: Mock };
 
 const { keyring, fsHooks, catalog } = vi.hoisted(() => ({
   keyring: {
@@ -37,7 +37,6 @@ const { keyring, fsHooks, catalog } = vi.hoisted(() => ({
       | null,
   },
   catalog: {
-    getProviderModels: vi.fn(),
     discoverConfigurationCatalog: vi.fn(),
   } as CatalogMocks,
 }));

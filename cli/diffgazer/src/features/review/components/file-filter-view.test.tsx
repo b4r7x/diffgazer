@@ -217,8 +217,35 @@ describe("ReviewFileFilterView (TUI)", () => {
     stdin.write(" ");
     await waitUntil(() => frameText(lastFrame()).includes(`at most ${MAX_REVIEW_FILES} files`));
 
-    expect(frameText(lastFrame())).toContain(`${MAX_REVIEW_FILES + 2} selected`);
+    // The deselection is recorded, and the notice names how many more must go.
+    expect(frameText(lastFrame())).toContain(`${MAX_REVIEW_FILES + 1} selected`);
+    expect(frameText(lastFrame())).toContain("Deselect 1 to start.");
+
+    stdin.write("s");
+    await flush();
     expect(onStart).not.toHaveBeenCalled();
+  });
+
+  test("gives the reason callout its own rows instead of taking them from the frame", async () => {
+    const staged = Array.from({ length: 40 }, (_, index) =>
+      entry(`src/file-${String(index).padStart(4, "0")}.ts`, "M", " "),
+    );
+    const status = makeGitStatus({ staged });
+
+    const withoutReason = renderPicker({ status });
+    await waitUntil(() => frameText(withoutReason.lastFrame()).includes("src/file-0000.ts"));
+    const unreserved = frameText(withoutReason.lastFrame());
+    cleanup();
+
+    const withReason = renderPicker({ status, reason: "The change set is large." });
+    await waitUntil(() => frameText(withReason.lastFrame()).includes("src/file-0000.ts"));
+    const reserved = frameText(withReason.lastFrame());
+
+    expect(reserved).toContain("Narrow the review");
+    // The callout's five rows come out of the list, not out of the clipped zone.
+    expect(unreserved).toContain("src/file-0032.ts");
+    expect(reserved).not.toContain("src/file-0032.ts");
+    expect(reserved).toContain("src/file-0027.ts");
   });
 
   test("opens on the side that has changes when no run picked the scope", async () => {

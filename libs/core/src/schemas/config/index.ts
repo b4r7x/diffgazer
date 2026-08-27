@@ -54,8 +54,6 @@ export {
   ConfigurationRevisionSchema,
   type ExactModelId,
   ExactModelIdSchema,
-  type HostedApiConfigurationInput,
-  HostedApiConfigurationInputSchema,
   type WriteOnlySecretInput,
   WriteOnlySecretInputSchema,
 } from "./provider-config.js";

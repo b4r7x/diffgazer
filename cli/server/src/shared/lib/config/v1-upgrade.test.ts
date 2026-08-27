@@ -342,7 +342,10 @@ describe("upgradeV1Documents", () => {
         filePath: literalCredentialFilePath("cfg-v1-gemini", 1),
       },
     ]);
-    expect(JSON.stringify(result)).not.toContain("groq");
+    expect(result.value.retiredProviders).toEqual(["groq"]);
+    const documents = JSON.stringify([result.value.configDocument, result.value.secretsDocument]);
+    expect(documents).not.toContain("groq");
+    expect(documents).not.toContain("sk-v1-groq-literal");
     expect(JSON.stringify(result)).not.toContain("sk-v1-groq-literal");
   });
 

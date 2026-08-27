@@ -353,17 +353,12 @@ export function useModelDialogKeyboard({
     enabled: open && retryVisible && isZone("retry"),
     preventDefault: true,
   });
-  useKey(
-    ["ArrowDown", "j"],
-    () => {
-      if (listInteractive) {
-        enterListFromBoundary("first");
-        return;
-      }
-      enterFooter(0);
-    },
-    { enabled: open && retryVisible && isZone("retry"), preventDefault: true },
-  );
+  // A visible Retry callout always means an empty, non-interactive list, so the
+  // footer is the only stop below it.
+  useKey(["ArrowDown", "j"], () => enterFooter(0), {
+    enabled: open && retryVisible && isZone("retry"),
+    preventDefault: true,
+  });
 
   const search = useModelSearchFocus({
     // Quiet during the save window: / would flip the zone to search while the

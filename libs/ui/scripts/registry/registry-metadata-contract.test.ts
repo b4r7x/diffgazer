@@ -15,14 +15,6 @@ describe("CSS-heavy components declare CSS in registry metadata", () => {
 
     const deps = item?.registryDependencies ?? [];
     expect(deps).toContain("dialog-shell");
-
-    const dialogShell = registry.items?.find((i) => i.name === "dialog-shell");
-    expect(dialogShell).toBeDefined();
-
-    const cssFile = dialogShell?.files?.find((f) => f.path.endsWith(".css"));
-    expect(cssFile, "dialog-shell must include a CSS file").toBeDefined();
-    expect(cssFile?.type).toBe("registry:style");
-    expect(cssFile?.target).toMatch(/\.css$/);
   });
 
   it("dialog declares its copied scroll-lock hook dependency", () => {

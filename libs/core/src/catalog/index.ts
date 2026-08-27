@@ -24,7 +24,6 @@ export {
   ModelsDevProviderSchema,
   parseModelsDevCatalog,
 } from "./schema.js";
-// `isOfferableObservation` is the only picker predicate that crosses the boundary.
 export {
   type CatalogModelObservation,
   type CatalogObservationInput,

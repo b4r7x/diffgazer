@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  canonicalJson,
-  scanJsonRejectingDuplicateKeys,
-  sha256CanonicalJsonSync,
-} from "./canonical-json.js";
+import { canonicalJson, sha256CanonicalJsonSync } from "./canonical-json.js";
+import { scanJsonRejectingDuplicateKeys } from "./json-scan.js";
 
 const canonicalByteLength = (value: unknown) =>
   new TextEncoder().encode(canonicalJson(value)).length;

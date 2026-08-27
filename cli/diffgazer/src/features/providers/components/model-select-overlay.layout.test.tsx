@@ -54,8 +54,22 @@ describe("ModelSelectOverlay layout", () => {
 
   test("keeps a wide long-name model and footer within a 40-column terminal budget", async () => {
     setTestTerminalDimensions({ columns: 40, rows: 19 });
+    const getConfigurationModels = vi.fn<BoundApi["getConfigurationModels"]>().mockResolvedValue(
+      catalogModelsResponse(GEMINI_CONFIGURATION, [
+        {
+          id: "vendor/extremely-long-model-name-that-must-not-wrap",
+          name: "vendor/extremely-long-model-name-that-must-not-wrap",
+          description: "1M context FULLTAILVISIBLE",
+          tier: "paid",
+        },
+      ]),
+    );
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getConfigurationModels,
+    } satisfies BoundApi;
     const { lastFrame } = render(
-      <Wrapper>
+      <Wrapper api={api}>
         <ModelSelectOverlay open onOpenChange={() => {}} configuration={GEMINI_CONFIGURATION} />
       </Wrapper>,
     );
@@ -65,6 +79,8 @@ describe("ModelSelectOverlay layout", () => {
     const frame = lastFrame() ?? "";
     const lines = frame.split("\n");
     expect(lines.every((line) => terminalCellWidth(line) <= 40)).toBe(true);
+    // The wide row is on screen, truncated rather than wrapped.
+    expect(frame).toContain("vendor/");
     expect(frame).not.toContain("FULLTAILVISIBLE");
   });
 });

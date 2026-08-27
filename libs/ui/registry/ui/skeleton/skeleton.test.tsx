@@ -76,7 +76,7 @@ describe("Skeleton CSS contract", () => {
     expect(root).not.toBeNull();
     expect(root).toContain("border-radius: 0");
     expect(root).toContain("mask-image: repeating-linear-gradient");
-    expect(css).not.toContain("border-radius: 50%");
+    expect(root).not.toContain("border-radius: 50%");
   });
 
   it("drops the scan sweep under prefers-reduced-motion", () => {

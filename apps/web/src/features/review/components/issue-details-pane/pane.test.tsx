@@ -571,12 +571,12 @@ describe("IssueDetailsPane", () => {
     expect(screen.getByText("Select an issue to view details")).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Details" })).not.toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Patch" })).not.toBeInTheDocument();
-  });
-
-  it("tags the pane frame even when no issue is selected", () => {
-    renderPane(null);
-
-    expect(screen.getByText("Details")).toBeInTheDocument();
+    // The pane frame still names itself while empty; only the tab strip is gone.
+    expect(
+      screen
+        .getByRole("complementary", { name: "Issue details" })
+        .querySelector('[data-slot="panel-label"]'),
+    ).toHaveTextContent("Details");
   });
 
   it("does not fabricate a line number when issue location has no line", () => {

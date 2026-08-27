@@ -38,7 +38,7 @@ export function ApiKeyStep({
         onMethodChange={onMethodChange}
         apiKey={apiKey}
         onApiKeyChange={onApiKeyChange}
-        envVar={CREDENTIAL_ENV_VARS[productId] ?? ""}
+        envVar={CREDENTIAL_ENV_VARS[productId]}
         isActive={isActive}
         inputFocused={inputFocused}
         onInputFocusedChange={onInputFocusedChange}

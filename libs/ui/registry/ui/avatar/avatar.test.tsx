@@ -228,29 +228,21 @@ describe("Avatar", () => {
     expect(getAvatarImage(container)).toHaveAttribute("alt", "");
   });
 
-  it("keeps decorative fallback text out of the container name while loading", () => {
-    render(
-      <Card as="article" aria-label="Jane Doe">
-        <Avatar src="https://example.com/avatar.jpg" />
-        <span>Jane Doe</span>
-      </Card>,
-    );
-
-    expect(screen.getByRole("article", { name: "Jane Doe" })).toBeInTheDocument();
-  });
-
-  it("keeps decorative fallback text out of the container name after image error", () => {
+  it("hides decorative fallback text from assistive tech while loading and after error", () => {
     const { container } = render(
-      <Card as="article" aria-label="Jane Doe">
+      <Card as="article">
         <Avatar src="https://example.com/avatar.jpg" />
         <span>Jane Doe</span>
       </Card>,
     );
+
+    expect(container.querySelector('[data-slot="avatar"]')).toHaveAttribute("role", "presentation");
+    expect(screen.getByText("?").closest('[aria-hidden="true"]')).not.toBeNull();
 
     // fireEvent retained: native <img> error event has no user-event equivalent
     fireEvent.error(getAvatarImage(container));
 
-    expect(screen.getByRole("article", { name: "Jane Doe" })).toBeInTheDocument();
+    expect(screen.getByText("?").closest('[aria-hidden="true"]')).not.toBeNull();
   });
 
   it("group with aria-label is accessible", () => {

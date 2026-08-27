@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider, useReview } from "@diffgazer/core/api/hooks";
 import { sessionTerminationCopy } from "@diffgazer/core/review";
@@ -25,7 +23,6 @@ import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
 import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
-import { REVIEW_PROGRESS_CONTROLS } from "./use-progress-keyboard";
 
 const {
   mockNavigate,
@@ -71,23 +68,6 @@ import { useReviewLifecycle } from "./use-lifecycle";
 type CancelReviewOutcome =
   | { status: "cancelled"; reason: "cancelled" }
   | { status: "error"; message: string };
-
-describe("review progress control documentation", () => {
-  it("matches the cancel and resumable-leave controls used by the progress screen", () => {
-    const guide = readFileSync(
-      resolve(import.meta.dirname, "../../../../../docs/content/docs/app/web/reviewing.mdx"),
-      "utf8",
-    );
-
-    expect(guide).toContain(
-      `press \`${REVIEW_PROGRESS_CONTROLS.cancel.key}\` or use **${REVIEW_PROGRESS_CONTROLS.cancel.label}**`,
-    );
-    expect(guide).toContain(
-      "Press `Esc` to return to Home without stopping the run; the server session keeps running and remains resumable from Home.",
-    );
-    expect(REVIEW_PROGRESS_CONTROLS.leave.key).toBe("Escape");
-  });
-});
 
 let queryClient: QueryClient;
 let mockApi: BoundApi;

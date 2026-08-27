@@ -50,10 +50,11 @@ describe("ApiKeyStep", () => {
     }
 
     render(<ControlledStep />);
+    await user.type(screen.getByLabelText("Google Gemini credential"), "sk-live-secret");
     await user.click(screen.getByRole("radio", { name: "Use environment reference" }));
     await user.keyboard("{Enter}");
     expect(onCommit).toHaveBeenCalled();
-    expect(screen.queryByDisplayValue("sk-")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("sk-live-secret")).not.toBeInTheDocument();
   });
 
   it("focuses the selected method when the step becomes active", () => {

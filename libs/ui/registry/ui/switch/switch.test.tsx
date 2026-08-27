@@ -337,7 +337,7 @@ describe("Switch", () => {
     expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "false");
   });
 
-  // touch-target contract (mobile campaign): pointer-coarse hit-area is the public contract; jsdom
+  // touch-target contract: pointer-coarse hit-area is the public contract; jsdom
   // cannot measure layout. sm is 20x36 and md is 24x44, so each size needs its own overhang to
   // reach 44x44.
   it("extends the coarse-pointer hit area to 44px on both sizes", () => {
@@ -354,7 +354,7 @@ describe("Switch", () => {
     expect(md).not.toHaveClass("before:absolute");
   });
 
-  // motion contract (mobile campaign): the reduced-motion class is the public contract; jsdom does
+  // motion contract: the reduced-motion class is the public contract; jsdom does
   // not evaluate media queries or transitions.
   it("disables track and thumb transitions under reduced motion", () => {
     const { container } = render(<Switch aria-label="Toggle" />);
@@ -401,7 +401,7 @@ describe("Switch", () => {
 
   it("keeps the label row a 44px coarse-pointer target", () => {
     const { container } = render(<Switch label="Telemetry" />);
-    // Touch-target contract from the mobile campaign; jsdom cannot measure layout, so the class
+    // Touch-target contract; jsdom cannot measure layout, so the class
     // that reserves the height is the assertion, exactly as in Checkbox and Radio.
     const row = container.querySelector('[data-slot="switch-row"]');
     expect(row).toHaveClass("pointer-coarse:min-h-11");

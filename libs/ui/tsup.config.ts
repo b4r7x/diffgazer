@@ -26,30 +26,12 @@ import { REGISTRY_ITEM_TYPE, RegistrySchema } from "@diffgazer/registry/schemas"
 import type { Plugin } from "esbuild";
 import { defineConfig } from "tsup";
 import { NON_REGISTRY_CLIENT_OUTPUTS } from "./scripts/registry/client-entrypoints.js";
+import { collectComponentCssFiles } from "./scripts/registry/component-css-files.js";
 
 const registryRoot = resolve(import.meta.dirname, "registry");
 const registry = RegistrySchema.parse(
   JSON.parse(readFileSync(resolve(registryRoot, "registry.json"), "utf-8")),
 );
-
-export function collectComponentCssFiles(
-  items: typeof registry.items,
-  rootDir = import.meta.dirname,
-): string[] {
-  const paths: string[] = [];
-  const seen = new Set<string>();
-  for (const item of items) {
-    if (item.type === REGISTRY_ITEM_TYPE.theme) continue;
-    for (const file of item.files) {
-      if (!file.path.endsWith(".css")) continue;
-      const normalizedPath = resolve(rootDir, file.path);
-      if (seen.has(normalizedPath)) continue;
-      seen.add(normalizedPath);
-      paths.push(file.path);
-    }
-  }
-  return paths;
-}
 
 /** Keys hooks derived from registry refs, with `use-` prefix for hook matching. */
 const DIFFGAZER_KEYS_HOOKS = resolveKeysHookFiles(registry.items);
@@ -74,7 +56,6 @@ for (const item of registry.items) {
   entry[key] = resolve(import.meta.dirname, file);
 }
 
-// Add utils (cn function)
 entry["lib/utils"] = resolve(registryRoot, "lib/utils.ts");
 entry["theme/index"] = resolve(import.meta.dirname, "theme/index.ts");
 entry["components/logo/figlet"] = resolve(registryRoot, "ui/logo/figlet-text.ts");
@@ -155,7 +136,6 @@ export default defineConfig({
   async onSuccess() {
     const dist = resolve(import.meta.dirname, "dist");
 
-    // Copy theme CSS files
     const stylesDir = resolve(import.meta.dirname, "styles");
     mkdirSync(dist, { recursive: true });
     cpSync(resolve(stylesDir, "theme-base.css"), resolve(dist, "theme-base.css"));
@@ -165,7 +145,7 @@ export default defineConfig({
 
     // Append component CSS files to styles.css. Theme CSS is already imported
     // by styles.css and must not be appended after normal CSS rules.
-    const componentCssFiles = collectComponentCssFiles(registry.items);
+    const componentCssFiles = collectComponentCssFiles(registry.items, import.meta.dirname);
     const stylesPath = resolve(dist, "styles.css");
     let stylesContent = readFileSync(stylesPath, "utf-8");
     for (const cssFile of componentCssFiles) {

@@ -26,7 +26,7 @@ export interface ReviewNoChangesCopy {
   switchLabel: string;
 }
 
-export const NO_CHANGES_COPY = {
+const NO_CHANGES_COPY = {
   staged: {
     title: "No Staged Changes",
     message:

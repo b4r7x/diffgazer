@@ -116,7 +116,7 @@ export function ReviewCompleteSummary({
             <p
               className={cn(
                 "text-sm",
-                isClean && !failure ? "text-success-text" : "text-muted-foreground",
+                isClean && runTone === "success" ? "text-success-text" : "text-muted-foreground",
               )}
             >
               {failure

@@ -9,8 +9,8 @@ import {
   CORRECTNESS_SEVERITY_RUBRIC,
   CORRECTNESS_SYSTEM_PROMPT,
   SECURITY_HARDENING_PROMPT,
-  SYNTHESIS_DIGEST_MAX_CHARS,
   SYNTHESIS_SYSTEM_PROMPT,
+  SYNTHESIS_VARIABLE_MAX_CHARS,
 } from "./prompts.js";
 
 function makeLens(overrides: Partial<Lens> = {}): Lens {
@@ -240,7 +240,7 @@ describe("buildSynthesisPrompt", () => {
     const { user } = buildSynthesisPrompt(SYNTHESIS_LENS, twoFileDiff(), issues);
 
     const digest = user.slice(user.indexOf("<issues-digest"), user.indexOf("</issues-digest>"));
-    expect(digest.length).toBeLessThan(SYNTHESIS_DIGEST_MAX_CHARS + 1_000);
+    expect(digest.length).toBeLessThan(SYNTHESIS_VARIABLE_MAX_CHARS + 1_000);
     expect(digest).toContain("Kept blocker finding");
     expect(digest).toMatch(/\(\d+ lower-severity issues omitted to fit the token budget\)/);
   });

@@ -34,13 +34,18 @@ describe("partitionDiff", () => {
 
     const batches = partitionDiff(parsed, THREE_FILE_BUDGET);
 
+    // Two files a batch, not three: every batch of a split review also names the
+    // files it does not carry, and that roster is charged against the budget.
     expect(batches.map((batch) => batch.files.map((file) => file.filePath))).toEqual([
-      ["src/file-0.ts", "src/file-1.ts", "src/file-2.ts"],
-      ["src/file-3.ts", "src/file-4.ts", "src/file-5.ts"],
+      ["src/file-0.ts", "src/file-1.ts"],
+      ["src/file-2.ts", "src/file-3.ts"],
+      ["src/file-4.ts", "src/file-5.ts"],
       ["src/file-6.ts"],
     ]);
     for (const batch of batches) {
-      expect(estimateReviewPromptTokens(batch)).toBeLessThanOrEqual(THREE_FILE_BUDGET);
+      expect(
+        estimateReviewPromptTokens(batch, parsed.files.length - batch.files.length),
+      ).toBeLessThanOrEqual(THREE_FILE_BUDGET);
     }
   });
 

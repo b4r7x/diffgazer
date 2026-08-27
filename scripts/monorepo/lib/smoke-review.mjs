@@ -27,6 +27,8 @@ export function resolveE2eDisposition({
   networkEnabled,
   credentialEnvFor,
   suggestedModelFor,
+  hasCoreDist,
+  coreDistError = null,
   hasServerDist,
 }) {
   if (env[E2E_OPT_IN_ENV] !== "1") {
@@ -34,6 +36,9 @@ export function resolveE2eDisposition({
   }
   if (!networkEnabled) {
     return { kind: "not-requested", reason: "network-disabled" };
+  }
+  if (!hasCoreDist) {
+    return { kind: "unavailable", reason: "core-dist-missing", coreDistError };
   }
   if (!hasServerDist) {
     return { kind: "unavailable", reason: "server-dist-missing" };
@@ -65,6 +70,8 @@ export function e2eCommand({ credentialEnv = "OPENROUTER_API_KEY", productId } =
 const SKIP_DETAILS = {
   "live-e2e-disabled": () => `${E2E_OPT_IN_ENV} not set`,
   "network-disabled": () => `${ENV.smokeAllowNetwork} not set`,
+  "core-dist-missing": (disposition) =>
+    `libs/core dist not importable${disposition.coreDistError ? ` (${disposition.coreDistError})` : ""}; run \`turbo run build --filter=@diffgazer/core\``,
   "server-dist-missing": () =>
     "cli/server dist not built; run `turbo run build --filter=@diffgazer/server`",
   "unknown-product": (disposition) => `unknown product '${disposition.productId}'`,

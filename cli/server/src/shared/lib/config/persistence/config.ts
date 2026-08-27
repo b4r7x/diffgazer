@@ -250,9 +250,6 @@ const assertV2Document = (document: ConfigDocumentV2): void => {
     }
     if (record.status === "supported")
       SupportedProviderConfigurationRecordSchema.parse(record.record);
-    if (record.rawBytes.byteLength > MAX_V2_RECORD_BYTES) {
-      throw new Error("Configuration record exceeds the size limit");
-    }
   }
   if (document.selectedConfigurationId !== null) {
     // The selection may name an unknown record — a retired product's bytes stay
@@ -275,16 +272,12 @@ const serializeV2Record = (record: DecodedProviderConfigurationRecord): string =
   const text = decodeConfigText(bytes);
   if (record.status === "unknown") return text;
 
-  try {
-    const decoded = decodeProviderConfigurationRecord(bytes);
-    if (
-      decoded.status === record.status &&
-      JSON.stringify(decoded.record) === JSON.stringify(record.record)
-    ) {
-      return text;
-    }
-  } catch {
-    // A changed known record is serialized from its validated representation below.
+  const decoded = decodeProviderConfigurationRecord(bytes);
+  if (
+    decoded.status === record.status &&
+    JSON.stringify(decoded.record) === JSON.stringify(record.record)
+  ) {
+    return text;
   }
   return JSON.stringify(record.record);
 };
@@ -440,6 +433,11 @@ export const decodeConfigFile = (inputBytes: Uint8Array): ConfigDocumentV2 | Con
 /** Serialize only schemaVersion=2; V1 records are never emitted by this writer. */
 export const serializeConfigV2 = (document: ConfigDocumentV2): Uint8Array => {
   assertV2Document(document);
+  for (const record of document.configurations) {
+    if (record.rawBytes.byteLength > MAX_V2_RECORD_BYTES) {
+      throw new Error("Configuration record exceeds the size limit");
+    }
+  }
   const snapshot = (document as V2DocumentWithSnapshot)[V2_DOCUMENT_SNAPSHOT];
   const settingsBytes = textEncoder.encode(JSON.stringify(document.settings));
   const recordBytes = recordBytesForDocument(document);

@@ -39,6 +39,8 @@ export interface V1UpgradeOptions {
 export interface V1UpgradeResult {
   readonly configDocument: ConfigDocumentV2;
   readonly secretsDocument: SecretsDocumentV2;
+  /** Legacy provider ids whose entry and secret the upgrade dropped. */
+  readonly retiredProviders: readonly string[];
 }
 
 const textEncoder = new TextEncoder();
@@ -127,6 +129,7 @@ interface V1UpgradePlan {
   readonly transfers: readonly V1CredentialTransfer[];
   readonly records: readonly DecodedProviderConfigurationRecord[];
   readonly selectedConfigurationId: string | null;
+  readonly retiredProviders: readonly string[];
 }
 
 const migrationFailure = (): Result<never, SecretsStorageError> =>
@@ -201,6 +204,7 @@ const buildV1UpgradePlan = (
     transfers: secretPreflight.value.transfers,
     records,
     selectedConfigurationId: activeConfigurationIds[0] ?? null,
+    retiredProviders: [...retiredProviders],
   });
 };
 
@@ -244,5 +248,6 @@ export async function upgradeV1Documents(
   return ok({
     configDocument,
     secretsDocument: bindingsDocument(plan.value.bindings),
+    retiredProviders: plan.value.retiredProviders,
   });
 }

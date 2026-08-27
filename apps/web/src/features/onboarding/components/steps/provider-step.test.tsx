@@ -38,7 +38,7 @@ describe("ProviderStep", () => {
     render(<ProviderStep value={null} onChange={vi.fn()} />);
 
     expect(screen.getByRole("radiogroup", { name: "Select product" })).toBeInTheDocument();
-    expect(screen.getAllByRole("radio")).toHaveLength(9);
+    expect(screen.getAllByRole("radio")).toHaveLength(SELECTABLE_PRODUCTS.length);
   });
 
   it("uses identical shared product names and descriptions", () => {

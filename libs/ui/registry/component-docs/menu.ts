@@ -106,7 +106,14 @@ export const menuDoc: ComponentDoc = {
       appliesTo: "MenuItem / MenuItemCheckbox / MenuItemRadio / MenuSubTrigger",
       values: "present when highlighted",
       description:
-        "Marks the active descendant for keyboard and pointer highlight styling, including disabled items that remain discoverable but cannot activate.",
+        "Marks the active descendant for keyboard highlight styling, including disabled items that remain discoverable but cannot activate.",
+    },
+    {
+      attribute: "data-hovered",
+      appliesTo: "MenuItem / MenuItemCheckbox / MenuItemRadio / MenuSubTrigger / MenuStackBack",
+      values: "present when pointer-hovered",
+      description:
+        "Cosmetic pointer hover styling hook. It never enters the accessibility tree and does not move the active descendant.",
     },
     {
       attribute: "data-state",

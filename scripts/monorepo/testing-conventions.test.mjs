@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import ts from "typescript";
 import { listRepoFiles } from "./lib/files.mjs";
@@ -477,14 +477,13 @@ function sourceFireEventCallsAreRationalized(source) {
 }
 
 function listTestFiles() {
-  return listRepoFiles().filter((file) => existsSync(file) && TEST_FILE_RE.test(file));
+  return listRepoFiles().filter((file) => TEST_FILE_RE.test(file));
 }
 
 function listUiComponentFolders() {
   const folders = new Set();
 
   for (const file of listRepoFiles()) {
-    if (!existsSync(file)) continue;
     const match = UI_COMPONENT_FILE_RE.exec(file);
     if (match) folders.add(match[1]);
   }
@@ -568,29 +567,27 @@ test("axe convention requires an awaited call resolved to the approved helper im
     `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", () => { axe(container); });`,
     `// axe skipped: x`,
     `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { await axe(container); });`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { do { await axe(container); } while (false); });`,
-    `import { describe, it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; describe("suite", () => { it("audit", async () => { await axe(container); }); });`,
     `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { expect(await axe(container)).not.toHaveNoViolations(); });`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { const axe = async () => {}; await axe(); });`,
-    `import { axe } from "${AXE_HELPER_MODULE}"; async function audit() { await axe(container); }`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it.skip("audit", async () => { await axe(container); });`,
-    `import { describe, it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; describe.skip("suite", () => { it("audit", async () => { await axe(container); }); });`,
-    `import { describe, it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; describe["skip"]("suite", () => { it("audit", async () => { await axe(container); }); });`,
-    `import { describe, it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; const mode = "skip"; describe[mode]("suite", () => { it("audit", async () => { await axe(container); }); });`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; function neverCalled() { it("audit", async () => { await axe(container); }); }`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; const neverCalled = () => { it("audit", async () => { await axe(container); }); };`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; wrapper(() => { it("audit", async () => { await axe(container); }); });`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; if (false) { it("audit", async () => { await axe(container); }); }`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; false && it("audit", async () => { await axe(container); });`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { if (false) { await axe(container); } });`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { async function dead() { await axe(container); } });`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { const dead = { async run() { await axe(container); } }; });`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { return; await axe(container); });`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { false ? await axe(container) : undefined; });`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { false && await axe(container); });`,
-    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { true || await axe(container); });`,
-    `import { axe } from "${AXE_HELPER_MODULE}"; function it(_name, _callback) {} it("audit", async () => { await axe(container); });`,
-    `import { axe } from "${AXE_HELPER_MODULE}"; const it = () => () => {}; it()("audit", async () => { await axe(container); });`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { const axe = async () => {}; expect(await axe()).toHaveNoViolations(); });`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; async function audit() { expect(await axe(container)).toHaveNoViolations(); }`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it.skip("audit", async () => { expect(await axe(container)).toHaveNoViolations(); });`,
+    `import { describe, it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; describe.skip("suite", () => { it("audit", async () => { expect(await axe(container)).toHaveNoViolations(); }); });`,
+    `import { describe, it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; describe["skip"]("suite", () => { it("audit", async () => { expect(await axe(container)).toHaveNoViolations(); }); });`,
+    `import { describe, it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; const mode = "skip"; describe[mode]("suite", () => { it("audit", async () => { expect(await axe(container)).toHaveNoViolations(); }); });`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; function neverCalled() { it("audit", async () => { expect(await axe(container)).toHaveNoViolations(); }); }`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; const neverCalled = () => { it("audit", async () => { expect(await axe(container)).toHaveNoViolations(); }); };`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; wrapper(() => { it("audit", async () => { expect(await axe(container)).toHaveNoViolations(); }); });`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; if (false) { it("audit", async () => { expect(await axe(container)).toHaveNoViolations(); }); }`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; false && it("audit", async () => { expect(await axe(container)).toHaveNoViolations(); });`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { if (false) { expect(await axe(container)).toHaveNoViolations(); } });`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { async function dead() { expect(await axe(container)).toHaveNoViolations(); } });`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { const dead = { async run() { expect(await axe(container)).toHaveNoViolations(); } }; });`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { return; expect(await axe(container)).toHaveNoViolations(); });`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { false ? expect(await axe(container)).toHaveNoViolations() : undefined; });`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { false && expect(await axe(container)).toHaveNoViolations(); });`,
+    `import { it } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; it("audit", async () => { true || expect(await axe(container)).toHaveNoViolations(); });`,
+    `import { it as vit } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; function it(_name, _callback) {} it("audit", async () => { expect(await axe(container)).toHaveNoViolations(); });`,
+    `import { it as vit } from "vitest"; import { axe } from "${AXE_HELPER_MODULE}"; const it = () => () => {}; it()("audit", async () => { expect(await axe(container)).toHaveNoViolations(); });`,
   ];
 
   for (const source of rejected) {

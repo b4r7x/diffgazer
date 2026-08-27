@@ -7,7 +7,7 @@ description: Install `@diffgazer/keys` as a package, or copy standalone hooks in
 
 > **Installing via dgadd:** Only standalone hooks (`keys/navigation`, `keys/focus-trap`, `keys/focus-restore`, `keys/scroll-lock`) are copyable; provider-backed hooks are package-only. For the full command and flag reference — `init`, `add`, `list`, `diff`, `remove` — see the [dgadd CLI reference](/app/cli).
 
-> **Note:** Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.
+> **Before publication:** Diffgazer packages are not yet published to npm, so `npm install @diffgazer/keys` and `pnpm exec dgadd` do not resolve yet. Pack the workspace packages from a checkout and install those tarballs in the target app — see the canonical [Consumption Paths](https://github.com/b4r7x/diffgazer#consumption-paths) section.
 
 ## Package install
 
@@ -16,6 +16,20 @@ Use the package when you need provider-backed hooks: `KeyboardProvider`, `useKey
 <Steps>
 
 <Step title="Install the package">
+
+Before publication, pack `@diffgazer/keys` from a checkout of the repository:
+
+```bash
+pnpm --filter @diffgazer/keys pack --pack-destination /tmp/diffgazer-packs
+```
+
+Then install that tarball in the target app:
+
+```bash
+npm install /tmp/diffgazer-packs/diffgazer-keys-*.tgz
+```
+
+After publication, this becomes:
 
 ```bash
 npm install @diffgazer/keys

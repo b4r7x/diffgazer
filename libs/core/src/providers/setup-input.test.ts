@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ConfigurationStatus } from "../schemas/config/configuration-status.js";
-import { HostedApiConfigurationInputSchema } from "../schemas/config/provider-config.js";
+import { ClientConfigurationInputSchema } from "../schemas/config/provider-config.js";
 import {
   READINESS_PRESENTATION,
   type Readiness,
@@ -106,7 +106,7 @@ describe("buildSetupInput", () => {
       endpoint: "https://api.z.ai/api/paas/v4",
       credential: { kind: "environment" },
     });
-    expect(() => HostedApiConfigurationInputSchema.parse(input)).not.toThrow();
+    expect(() => ClientConfigurationInputSchema.parse(input)).not.toThrow();
   });
 });
 

@@ -36,3 +36,9 @@ apps/landing/test-results/
 /artifacts/parity/
 libs/keys/artifacts/artifacts/
 .nuke
+
+# Local screenshot scratch from TUI/UI review sessions
+.gallery-tmp/
+.shots*/
+*-shots/
+shot-*.png

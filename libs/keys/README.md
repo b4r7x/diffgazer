@@ -4,7 +4,7 @@ Composable, scoped keyboard navigation hooks for React `>=19.2.0`.
 
 ## Consumption Paths Summary
 
-> **Note:** Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.
+> **Before publication:** Diffgazer packages are not yet published to npm. Until the first release, pack the workspace packages from this repository and install those tarballs in the target app — see the canonical [Copy-first mode (`dgadd`)](https://github.com/b4r7x/diffgazer/blob/main/README.md#copy-first-mode-dgadd) and [local runtime package](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#local-runtime-package-installation-before-publication) procedures. The target-app install is what puts `dgadd` on `pnpm exec` and makes `@diffgazer/keys` resolve.
 
 `@diffgazer/keys` requires no CSS or Tailwind setup.
 

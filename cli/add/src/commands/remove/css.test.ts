@@ -1,54 +1,13 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import {
-  type DiffgazerAddConfig,
-  DiffgazerAddConfigSchema,
-  type ResolvedConfig,
-} from "../../context.js";
-import { planComponentCss } from "../../utils/css-chunks.js";
+import { type DiffgazerAddConfig, DiffgazerAddConfigSchema } from "../../context.js";
+import { editChunkBody, seedChunk, styledConfig } from "../../testing/css-fixture.js";
 import { applyRemovalManifestUpdate, planOwnedCssChunkRemoval } from "./css.js";
 
 describe("planOwnedCssChunkRemoval", () => {
   let root: string;
-
-  function styledConfig(): ResolvedConfig {
-    return {
-      aliases: {
-        components: "@/components/ui",
-        utils: "@/lib/utils",
-        lib: "@/lib",
-        hooks: "@/hooks",
-      },
-      rsc: false,
-      componentsFsPath: "src/components/ui",
-      hooksFsPath: "src/hooks",
-      libFsPath: "src/lib",
-      stylesFsPath: "src/styles",
-      tailwind: { css: "src/styles/styles.css" },
-    };
-  }
-
-  function seedChunk(config: ResolvedConfig): { stylesPath: string; hash: string } {
-    mkdirSync(join(root, "src/styles"), { recursive: true });
-    const stylesPath = join(root, "src/styles/styles.css");
-    writeFileSync(stylesPath, "/* base */\n");
-    const plan = planComponentCss(["dialog-shell"], root, config);
-    if (!plan.fileOp) throw new Error("Expected dialog-shell to add a CSS chunk.");
-    writeFileSync(stylesPath, plan.fileOp.content);
-    const [hash] = plan.chunksByItem.get("ui/dialog-shell") ?? [];
-    if (!hash) throw new Error("Expected dialog-shell to record a chunk hash.");
-    return { stylesPath, hash };
-  }
-
-  function editChunkBody(stylesPath: string, hash: string): void {
-    const edited = readFileSync(stylesPath, "utf-8").replace(
-      `/* dgadd:css-end ${hash} */`,
-      `  --user-edit: teal;\n/* dgadd:css-end ${hash} */`,
-    );
-    writeFileSync(stylesPath, edited);
-  }
 
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), "dgadd-remove-plan-"));
@@ -60,7 +19,7 @@ describe("planOwnedCssChunkRemoval", () => {
 
   test("plans removal of a pristine managed chunk with no notices", () => {
     const config = styledConfig();
-    const { hash } = seedChunk(config);
+    const { hash } = seedChunk(root, config);
     const snapshot = new Map([["dialog-shell", [hash]]]);
 
     const plan = planOwnedCssChunkRemoval(root, config, ["dialog-shell"], snapshot, false);
@@ -73,7 +32,7 @@ describe("planOwnedCssChunkRemoval", () => {
 
   test("preserves an edited chunk and emits a drift notice without --force", () => {
     const config = styledConfig();
-    const { stylesPath, hash } = seedChunk(config);
+    const { stylesPath, hash } = seedChunk(root, config);
     editChunkBody(stylesPath, hash);
     const snapshot = new Map([["dialog-shell", [hash]]]);
 
@@ -90,7 +49,7 @@ describe("planOwnedCssChunkRemoval", () => {
   // tracked so the block stays targetable by `remove --force`, not orphaned.
   test("keeps the drifted chunk's owner tracked so its block is not orphaned", () => {
     const config = styledConfig();
-    const { stylesPath, hash } = seedChunk(config);
+    const { stylesPath, hash } = seedChunk(root, config);
     editChunkBody(stylesPath, hash);
     const snapshot = new Map([["dialog-shell", [hash]]]);
 
@@ -137,7 +96,7 @@ describe("planOwnedCssChunkRemoval", () => {
     ],
   ])("preserves ownership for %s managed markers", (_shape, corrupt) => {
     const config = styledConfig();
-    const { stylesPath, hash } = seedChunk(config);
+    const { stylesPath, hash } = seedChunk(root, config);
     writeFileSync(stylesPath, corrupt(readFileSync(stylesPath, "utf-8"), hash));
     const snapshot = new Map([["dialog-shell", [hash]]]);
 
@@ -151,7 +110,7 @@ describe("planOwnedCssChunkRemoval", () => {
 
   test("rejects --force when a managed chunk has incomplete markers", () => {
     const config = styledConfig();
-    const { stylesPath, hash } = seedChunk(config);
+    const { stylesPath, hash } = seedChunk(root, config);
     const edited = readFileSync(stylesPath, "utf-8").replace(`\n/* dgadd:css-end ${hash} */`, "\n");
     writeFileSync(stylesPath, edited);
     const snapshot = new Map([["dialog-shell", [hash]]]);
@@ -164,7 +123,7 @@ describe("planOwnedCssChunkRemoval", () => {
 
   test("--force overrides an edited chunk and drops its body from the write", () => {
     const config = styledConfig();
-    const { stylesPath, hash } = seedChunk(config);
+    const { stylesPath, hash } = seedChunk(root, config);
     editChunkBody(stylesPath, hash);
     const snapshot = new Map([["dialog-shell", [hash]]]);
 

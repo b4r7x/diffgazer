@@ -50,6 +50,18 @@ export function ruleBody(source: string, selector: string): string | null {
 }
 
 /**
+ * Where `selector`'s rule opens in `source`, for the order-dependent contracts a
+ * cascade decides on declaration order. Throws when the selector is absent: a
+ * comparison against a missing rule would otherwise be satisfied by any index at
+ * all, and the ordering claim would stop being checked without failing.
+ */
+export function ruleIndex(source: string, selector: string): number {
+  const opener = new RegExp(`${toSelectorPattern(selector)}\\s*\\{`).exec(source);
+  if (!opener) throw new Error(`missing ${selector}`);
+  return opener.index;
+}
+
+/**
  * Everything between the braces of an at-rule such as `@media (pointer: coarse)`,
  * with the rules nested inside it intact, ready to read further rules out of.
  * Throws rather than returning null: a missing at-rule means the block a suite

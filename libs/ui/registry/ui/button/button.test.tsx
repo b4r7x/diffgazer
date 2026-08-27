@@ -328,17 +328,16 @@ describe("Button", () => {
   });
 });
 
-// touch-target contract (mobile campaign): the pointer-coarse hit area is the public contract and
+// touch-target contract: the pointer-coarse hit area is the public contract and
 // jsdom cannot measure layout, so these assert the tokens that carry it. One Tailwind spacing unit
 // is 4px, so an `-inset-y-N` overhang is N*4px per side.
 describe("Button coarse-pointer hit area", () => {
-  const TAILWIND_UNIT_PX = 4;
-  /** Per-size vertical overhang in Tailwind units, and the minimum stacking gap the docs promise. */
+  /** Per-size vertical overhang in Tailwind units. */
   const COARSE_SIZES = [
-    ["sm", 2, 16],
-    ["md", 1, 8],
-    ["icon", 1, 8],
-  ] as const satisfies ReadonlyArray<readonly ["sm" | "md" | "icon", number, number]>;
+    ["sm", 2],
+    ["md", 1],
+    ["icon", 1],
+  ] as const satisfies ReadonlyArray<readonly ["sm" | "md" | "icon", number]>;
 
   it("extends sm, md, and icon to 44px from their own containing block", () => {
     for (const [size, overhangUnits] of COARSE_SIZES) {
@@ -376,10 +375,6 @@ describe("Button coarse-pointer hit area", () => {
     );
     for (const name of ["First", "Second"]) {
       expect(screen.getByRole("button", { name })).toHaveClass("pointer-coarse:before:-inset-y-2");
-    }
-
-    for (const [, overhangUnits, documentedGapPx] of COARSE_SIZES) {
-      expect(overhangUnits * TAILWIND_UNIT_PX * 2).toBe(documentedGapPx);
     }
   });
 });

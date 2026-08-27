@@ -7,7 +7,7 @@ import { createRef, useEffect } from "react";
 import { renderToString } from "react-dom/server";
 import { assertType, describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
-import { ruleBody } from "../../testing/css-contract";
+import { ruleBody, ruleIndex } from "../../testing/css-contract";
 import { expectSingleReticle } from "../../testing/reticle";
 import { Panel, type PanelProps } from "./index";
 
@@ -684,8 +684,8 @@ describe("Panel reticle grammar", () => {
   });
 
   it("declares the focused corner rule after the tone rules so focus wins on equal specificity", () => {
-    expect(css.indexOf(`${FOCUSED} {`)).toBeGreaterThan(
-      css.indexOf(`${RESTING}[data-tone="accent"] {`),
+    expect(ruleIndex(css, FOCUSED)).toBeGreaterThan(
+      ruleIndex(css, `${RESTING}[data-tone="accent"]`),
     );
   });
 

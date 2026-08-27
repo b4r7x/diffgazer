@@ -144,7 +144,7 @@ describe("HelpPage", () => {
     expect(container.querySelectorAll('[data-slot="panel-corners"]')).toHaveLength(0);
   });
 
-  // The focus ring geometry PF4 fixed: the labelled scroll region lives inside
+  // The focus ring geometry: the labelled scroll region lives inside
   // the sheet, so the pane mark it drives hugs the panel instead of the
   // viewport. It is the sheet's own child rather than the content of a padded
   // box inside it, which is what puts the scrollbar on the pane edge instead of

@@ -223,9 +223,6 @@ const OrchestratorCompleteEventSchema = z.strictObject({
   droppedDuplicates: CountSchema.optional(),
   droppedBelowThreshold: CountSchema.optional(),
   droppedIncompleteProviderIssues: CountSchema.optional(),
-  // Findings a batched lens trimmed off the per-lens cap, disclosed like the
-  // other drop paths rather than disappearing silently.
-  droppedOverLensCap: CountSchema.optional(),
   // The resolved severity floor the dropped issues fell below, so the hidden-count
   // notice can name the threshold the user can lower to surface them.
   minSeverity: ReviewSeveritySchema.optional(),

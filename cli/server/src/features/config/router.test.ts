@@ -145,11 +145,14 @@ async function postConfigurationAction(
   });
 }
 
-async function seedGeminiConfiguration(app: Hono): Promise<string> {
+async function seedGeminiConfiguration(
+  app: Hono,
+  secret = "sk-proj-router-secret",
+): Promise<string> {
   await grantProjectTrust();
   const created = await postConfigurationAction(
     app,
-    createGeminiAction({ kind: "literal", value: "sk-proj-router-secret" }),
+    createGeminiAction({ kind: "literal", value: secret }),
   );
   expect(created.status).toBe(200);
   const body = ClientConfigurationActionResponseSchema.parse(await created.json());
@@ -338,17 +341,6 @@ describe("GET /config/providers/:configurationId/models", () => {
     // The failed live-list fetch degrades to null before it reaches the reader.
     expect(catalogSpy).toHaveBeenCalledTimes(1);
     await expect(catalogSpy.mock.calls[0]?.[1]).resolves.toBeNull();
-  });
-
-  it("keeps the exact /providers list route working next to the models route", async () => {
-    const app = await loadRouter();
-    await spyCatalogModels([catalogModel("gemini-2.5-flash")]);
-
-    const response = await app.request("/config/providers");
-
-    expect(response.status).toBe(200);
-    const body = ConfigurationListResponseSchema.parse(await response.json());
-    expect(body.schemaVersion).toBe(2);
   });
 
   it("passes discovery when the cached catalog carries a zero-limit model", async () => {
@@ -679,7 +671,7 @@ describe("POST /config/actions no secret JSON", () => {
   it("never returns literal credential material in action responses", async () => {
     const secret = "sk-proj-router-no-secret-json";
     const app = await loadRouter();
-    const configurationId = await seedGeminiConfiguration(app);
+    const configurationId = await seedGeminiConfiguration(app, secret);
     const responses = [
       await postConfigurationAction(app, { action: "inspect", configurationId }),
       await postConfigurationAction(app, {

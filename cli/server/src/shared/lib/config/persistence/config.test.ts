@@ -1,4 +1,4 @@
-import { chmod, readFile, stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { atomicWriteFile } from "../../fs.js";
 import {
@@ -150,6 +150,19 @@ describe("V2 configuration persistence", () => {
     expect(output).toContain(secondUnknown);
     expect(output.indexOf(firstUnknown)).toBeLessThan(output.indexOf(secondUnknown));
     expect(output).toContain('"selectedConfigurationId":"gemini-primary"');
+  });
+
+  it("degrades an oversized record to an unknown row instead of failing the whole document", () => {
+    const oversizedRecord = `{"schemaVersion":9,"padding":"${"x".repeat(256 * 1024)}"}`;
+    const input = encoder.encode(
+      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${JSON.stringify(supportedRecord)},${oversizedRecord}]}`,
+    );
+
+    const decoded = decodeConfigV2(input);
+    expect(decoded.configurations[1]?.status).toBe("unknown");
+    expect(selectConfigV2(decoded, "gemini-primary").selectedConfigurationId).toBe(
+      "gemini-primary",
+    );
   });
 
   it("decodes supported V1 hasApiKey only as an explicit migration record", () => {
@@ -400,7 +413,6 @@ describe("V2 configuration persistence", () => {
     const [written, metadata] = await Promise.all([readFile(path), stat(path)]);
     expect(new Uint8Array(written)).toEqual(serializeConfigV2(document));
     expect(metadata.mode & 0o777).toBe(0o600);
-    await chmod(path, 0o600);
     expect(decodeConfigV2(new Uint8Array(written)).configurations[0]).toMatchObject({
       status: "supported",
       record: { productId: "gemini", revision: 3 },

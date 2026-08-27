@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 interface JsonProject {
   compilerOptions?: { incremental?: boolean; tsBuildInfoFile?: string; types?: string[] };
@@ -34,22 +34,23 @@ function discoverE2eTypeScriptFiles(packageRoot: string): string[] {
 }
 
 describe("web executable configuration type coverage", () => {
-  it("includes both Vite configuration files in the Node-typed project", () => {
-    const packageRoot = import.meta.dirname;
+  const packageRoot = import.meta.dirname;
+  const projects = [
+    "tsconfig.app.json",
+    "tsconfig.test.json",
+    "tsconfig.config.json",
+    "tsconfig.e2e.json",
+  ];
+  let buildPlan: string;
+  let resolvedProjects: Map<string, JsonProject>;
+
+  beforeAll(() => {
     const tscPath = resolve(packageRoot, "node_modules/typescript/bin/tsc");
-    const buildPlan = execFileSync(process.execPath, [tscPath, "--build", "--dry", "--verbose"], {
+    buildPlan = execFileSync(process.execPath, [tscPath, "--build", "--dry", "--verbose"], {
       cwd: packageRoot,
       encoding: "utf8",
     });
-    const packageJson = readProject(resolve(packageRoot, "package.json"));
-    const solution = readProject(resolve(packageRoot, "tsconfig.json"));
-    const projects = [
-      "tsconfig.app.json",
-      "tsconfig.test.json",
-      "tsconfig.config.json",
-      "tsconfig.e2e.json",
-    ];
-    const resolvedProjects = new Map(
+    resolvedProjects = new Map(
       projects.map((project) => [
         project,
         JSON.parse(
@@ -60,11 +61,11 @@ describe("web executable configuration type coverage", () => {
         ) as JsonProject,
       ]),
     );
-    const parsedConfig = resolvedProjects.get("tsconfig.config.json");
-    const e2eConfig = resolvedProjects.get("tsconfig.e2e.json");
-    const buildInfoFiles = [...resolvedProjects.values()].map(
-      (project) => project.compilerOptions?.tsBuildInfoFile,
-    );
+  });
+
+  it("lists every leaf project in the solution", () => {
+    const packageJson = readProject(resolve(packageRoot, "package.json"));
+    const solution = readProject(resolve(packageRoot, "tsconfig.json"));
 
     expect(packageJson.scripts?.["type-check"]).toBe("tsc -b --force");
     expect(solution.references?.map((reference) => reference.path)).toEqual([
@@ -73,6 +74,15 @@ describe("web executable configuration type coverage", () => {
       "./tsconfig.config.json",
       "./tsconfig.e2e.json",
     ]);
+    expect(buildPlan).toContain("tsconfig.config.json");
+    expect(buildPlan).toContain("tsconfig.e2e.json");
+  });
+
+  it("gives each project its own incremental buildinfo", () => {
+    const buildInfoFiles = [...resolvedProjects.values()].map(
+      (project) => project.compilerOptions?.tsBuildInfoFile,
+    );
+
     expect(buildInfoFiles.every((path) => typeof path === "string" && path.length > 0)).toBe(true);
     expect(new Set(buildInfoFiles).size).toBe(projects.length);
     // Every leaf is noEmit, so without incremental mode the `build` script's
@@ -83,14 +93,22 @@ describe("web executable configuration type coverage", () => {
     expect(
       [...resolvedProjects.values()].map((project) => project.compilerOptions?.incremental),
     ).toEqual(projects.map(() => true));
-    expect(buildPlan).toContain("tsconfig.config.json");
-    expect(buildPlan).toContain("tsconfig.e2e.json");
+  });
+
+  it("types the Vite/vitest configs as node", () => {
+    const parsedConfig = resolvedProjects.get("tsconfig.config.json");
+
     expect(parsedConfig?.files).toEqual([
       "./vite.config.ts",
       "./vite.embedded.config.ts",
       "./vitest.config.ts",
     ]);
     expect(parsedConfig?.compilerOptions).toMatchObject({ types: ["node"] });
+  });
+
+  it("covers every discovered e2e file", () => {
+    const e2eConfig = resolvedProjects.get("tsconfig.e2e.json");
+
     expect(e2eConfig?.compilerOptions).toMatchObject({
       tsBuildInfoFile: "./node_modules/.tmp/tsconfig.e2e.tsbuildinfo",
       types: ["node", "vite/client"],

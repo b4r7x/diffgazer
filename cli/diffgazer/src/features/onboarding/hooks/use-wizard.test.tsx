@@ -90,7 +90,8 @@ describe("useOnboardingWizard", () => {
     );
 
     await flushInk();
-    expect(wide.lastFrame()).toContain("Google Gemini");
+    expect(wide.lastFrame()).toContain("[o] Product");
+    expect(wide.lastFrame()).not.toMatch(/Step 1 of \d+/);
     wide.unmount();
   });
 

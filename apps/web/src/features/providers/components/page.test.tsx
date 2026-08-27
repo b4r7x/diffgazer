@@ -4,7 +4,6 @@ import { UNRECOGNIZED_CONFIGURATION_COPY } from "@diffgazer/core/providers";
 import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
 import {
   ClientConfigurationActionResponseSchema,
-  LEGACY_V1_HAS_API_KEY_PROPERTY,
   PROVIDER_CONSENT_TEXT,
   type SettingsConfig,
 } from "@diffgazer/core/schemas/config";
@@ -25,6 +24,7 @@ import { ConfigProvider } from "@/hooks/use-config";
 import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { shutdown } from "@/lib/shutdown";
+import { assertClientSafeDom } from "@/testing/client-safe-assertions";
 import { createConfigurationActionMocks } from "@/testing/configuration-action-mocks";
 import { FooterView } from "@/testing/footer-view";
 import { HeaderChromeHarness } from "@/testing/header-chrome";
@@ -715,10 +715,6 @@ describe("ProvidersPage", () => {
       expect(screen.getByRole("option", { name: "Google Gemini" })).toBeInTheDocument(),
     );
 
-    const serialized = container.innerHTML;
-    expect(serialized).not.toContain(LEGACY_V1_HAS_API_KEY_PROPERTY);
-    expect(serialized).not.toContain("providerStatus");
-    expect(serialized).not.toContain("sk-");
-    expect(serialized).not.toMatch(/"secret"\s*:/);
+    expect(() => assertClientSafeDom(container.innerHTML, "providers page")).not.toThrow();
   });
 });

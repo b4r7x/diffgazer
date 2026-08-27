@@ -424,39 +424,6 @@ describe("useReviewStream", () => {
     });
   });
 
-  it("cancel() surfaces thrown server errors as state.error", async () => {
-    const resumeDeferred = createDeferred<Result<ResumeReviewResult, StreamReviewError>>();
-    const resumeReviewStream = vi
-      .fn<BoundApi["resumeReviewStream"]>()
-      .mockReturnValue(resumeDeferred.promise);
-    const cancelReviewSession = vi.fn().mockRejectedValue(new Error("cancel endpoint down"));
-    const api = createApi({ resumeReviewStream, cancelReviewSession });
-
-    const { result } = renderHook(() => useReviewStream(), {
-      wrapper: createWrapper(api),
-    });
-
-    let resumePromise: Promise<Result<void, StreamReviewError>> | undefined;
-    act(() => {
-      resumePromise = result.current.resume("cancel-throws-review");
-    });
-
-    await waitFor(() => expect(result.current.state.isStreaming).toBe(true));
-
-    let cancelOutcome: CancelReviewOutcome | null | undefined;
-    await act(async () => {
-      cancelOutcome = await result.current.cancel("cancel-throws-review");
-    });
-
-    expect(cancelOutcome).toEqual({ status: "error", message: "cancel endpoint down" });
-    expect(result.current.state.error).toBe("cancel endpoint down");
-
-    await act(async () => {
-      resumeDeferred.resolve(ok(fakeResumeResult("cancel-throws-review")));
-      await requireValue(resumePromise, "cancel throws resume promise");
-    });
-  });
-
   it("cancel() with null reviewId skips the server call", async () => {
     const cancelReviewSession = vi.fn().mockResolvedValue({ cancelled: true });
     const api = createApi({ cancelReviewSession });

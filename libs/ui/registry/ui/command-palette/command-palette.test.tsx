@@ -850,8 +850,8 @@ describe("CommandPaletteContent mobile viewport contract", () => {
     );
   }
 
-  // Public styling contract exception (fix-spec-b1 OV-03): the dvh unit IS the fix
-  // and jsdom cannot compute viewport-relative layout.
+  // Public styling contract exception: the dvh unit IS the fix and jsdom cannot
+  // compute viewport-relative layout.
   it("caps the surface against the dynamic viewport height", () => {
     render(<ModalPalette open />);
     const content = screen.getByRole("dialog", { name: "Mobile palette" });
@@ -880,8 +880,8 @@ describe("CommandPaletteContent mobile viewport contract", () => {
     expect(document.body.style.overflow).toBe("auto");
   });
 
-  // Public styling contract exception (fix-spec-b1 OV-04): overscroll containment
-  // is not observable in jsdom.
+  // Public styling contract exception: overscroll containment is not observable
+  // in jsdom.
   it("contains overscroll inside the results scroller", () => {
     render(<ModalPalette open />);
     expect(screen.getByRole("listbox")).toHaveClass("overscroll-contain");

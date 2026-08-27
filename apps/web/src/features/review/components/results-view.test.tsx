@@ -178,19 +178,13 @@ describe("ReviewResultsView keyboard regression", () => {
     );
   });
 
-  it("auto-focuses the issue list zone on mount so aria-activedescendant is read", async () => {
-    renderView();
-
-    // Without focus.autoFocus the listbox never receives DOM focus on mount and a
-    // screen reader hears nothing while j/k move aria-activedescendant.
-    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
-  });
-
   it("keeps exactly one pane bracketed when mount focus lands on the issue list", async () => {
     const { container } = renderView();
 
-    // Brackets arrive with real focus, so the invariant is checked after the
-    // mount autofocus settles on the list pane.
+    // Without focus.autoFocus the listbox never receives DOM focus on mount and a
+    // screen reader hears nothing while j/k move aria-activedescendant. Brackets
+    // arrive with real focus, so the invariant is checked after the mount
+    // autofocus settles on the list pane.
     await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
     expectSingleReticle(container);
   });

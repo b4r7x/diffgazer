@@ -2,11 +2,12 @@ import { TextDecoder } from "node:util";
 import { scanJsonRejectingDuplicateKeys } from "@diffgazer/core/json";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import {
+  ClientConfigurationInputSchema,
   type ConfigurationId,
   ConfigurationIdSchema,
   ConfigurationRevisionSchema,
   ExactModelIdSchema,
-  HostedApiConfigurationInputSchema,
+  RunnableProductIdSchema,
 } from "@diffgazer/core/schemas/config";
 import { z } from "zod";
 
@@ -14,17 +15,6 @@ import { z } from "zod";
 const PROVIDER_CONFIGURATION_SCHEMA_VERSION = 2 as const;
 
 const TimestampSchema = z.iso.datetime();
-const RunnableProductIdSchema = z.enum([
-  "gemini",
-  "zai",
-  "openrouter",
-  "deepseek",
-  "qwen",
-  "moonshot",
-  "minimax",
-  "ollama-cloud",
-  "opencode-zen",
-]);
 
 /**
  * The transport input persisted in config.json.  These schemas deliberately do
@@ -33,12 +23,12 @@ const RunnableProductIdSchema = z.enum([
  */
 export const NonSecretTransportInputSchema = z
   .strictObject({
-    transportFamily: HostedApiConfigurationInputSchema.shape.transportFamily,
-    productId: HostedApiConfigurationInputSchema.shape.productId,
-    endpoint: HostedApiConfigurationInputSchema.shape.endpoint,
+    transportFamily: ClientConfigurationInputSchema.shape.transportFamily,
+    productId: ClientConfigurationInputSchema.shape.productId,
+    endpoint: ClientConfigurationInputSchema.shape.endpoint,
   })
   .superRefine((input, context) => {
-    const result = HostedApiConfigurationInputSchema.safeParse(input);
+    const result = ClientConfigurationInputSchema.safeParse(input);
     if (!result.success) {
       for (const issue of result.error.issues) {
         context.addIssue({ code: "custom", path: issue.path, message: issue.message });

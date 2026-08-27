@@ -226,18 +226,19 @@ describe("internal-error boundary", () => {
   });
 });
 
+// Type-level guard (enforced by `pnpm --filter @diffgazer/server type-check`): the code
+// param is the typed review-error union, so an out-of-union code is a compile error
+// instead of a runtime GENERATION_FAILED collapse.
+void (() =>
+  // @ts-expect-error out-of-union code must not compile
+  reviewStreamError("msg", "nope"));
+
 describe("reviewStreamError", () => {
   it("returns a typed error event with the provided code", () => {
     expect(reviewStreamError("msg", ReviewErrorCode.SESSION_STALE)).toEqual({
       type: "error",
       error: { code: ReviewErrorCode.SESSION_STALE, message: "msg" },
     });
-  });
-
-  it("rejects an out-of-union code at compile time (no silent collapse)", () => {
-    // @ts-expect-error — the code param is the typed review-error union, so an
-    // out-of-union code is a compile error instead of a runtime GENERATION_FAILED collapse.
-    reviewStreamError("msg", "nope");
   });
 });
 

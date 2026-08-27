@@ -23,17 +23,15 @@ function normalizeTerminalText(value: string): string {
   return value.replaceAll(/[\s─│┌┐└┘├┤┬┴┼╭╮╰╯]+/g, "");
 }
 
-function buildSearchableFrame(frames: string[]): string {
-  return frames
-    .flatMap((rawFrame) => {
-      const frame = stripAnsi(rawFrame);
-      const detailsPane = frame
-        .split("\n")
-        .map((line) => line.slice(RESULTS_DETAILS_COLUMN))
-        .join("\n");
-      return [normalizeTerminalText(frame), normalizeTerminalText(detailsPane)];
-    })
-    .join("");
+function buildSearchableFrames(frames: string[]): string[] {
+  return frames.flatMap((rawFrame) => {
+    const frame = stripAnsi(rawFrame);
+    const detailsPane = frame
+      .split("\n")
+      .map((line) => line.slice(RESULTS_DETAILS_COLUMN))
+      .join("\n");
+    return [normalizeTerminalText(frame), normalizeTerminalText(detailsPane)];
+  });
 }
 
 test("renders every canonical review fact in ANSI-free 80x24 TUI frames", async () => {
@@ -82,7 +80,7 @@ test("renders every canonical review fact in ANSI-free 80x24 TUI frames", async 
     capturedFrames.push(results.lastFrame() ?? "");
   }
 
-  const frame = buildSearchableFrame(capturedFrames);
+  const searchableFrames = buildSearchableFrames(capturedFrames);
   const assertedFacts = [
     facts.runId,
     ...facts.issueTitles,
@@ -94,7 +92,9 @@ test("renders every canonical review fact in ANSI-free 80x24 TUI frames", async 
 
   for (const assertedFact of assertedFacts) {
     const fact = normalizeTerminalText(assertedFact);
-    expect(frame).toContain(fact);
+    // Per frame, never over a concatenation: a fact must be rendered inside one
+    // frame, not spliced together across a frame boundary.
+    expect(searchableFrames.some((searchable) => searchable.includes(fact))).toBe(true);
   }
   expect(stripAnsi(results.lastFrame() ?? "").split("\n")).toHaveLength(24);
 });

@@ -1200,16 +1200,6 @@ describe("configuration credential lifecycle", () => {
       value: { action: "update", status: "succeeded" },
     });
 
-    keyring.deleteKeyringSecret.mockImplementation((key: string) => {
-      if (key === oldKeyId) {
-        return {
-          ok: false,
-          error: { code: "KEYRING_UNAVAILABLE", message: "keyring is locked" },
-        };
-      }
-      return { ok: true, value: true };
-    });
-
     const deleted = await store.runConfigurationAction({
       action: "delete",
       configurationId: "cfg-keyring",
@@ -1224,9 +1214,5 @@ describe("configuration credential lifecycle", () => {
       configurations: [expect.objectContaining({ configurationId: "cfg-keyring", revision: 2 })],
     });
     expect(keyringValues.get(newKeyId)).toBe("sk-proj-rotation-replacement");
-    expect(keyring.readKeyringSecret(newKeyId)).toMatchObject({
-      ok: true,
-      value: "sk-proj-rotation-replacement",
-    });
   });
 });

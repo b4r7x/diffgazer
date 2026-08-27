@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { PRODUCT_REGISTRY } from "../providers/product-registry.js";
 import type { ClientConfigurationAction, RunnableProductId } from "../schemas/config/index.js";
-import { makeReadiness } from "../testing/provider-fixtures.js";
 import { getInitialWizardData, type OnboardingDraft } from "./defaults.js";
 import {
   buildConfigPayload,
@@ -220,61 +219,6 @@ describe("saveWizard", () => {
     expect(runConfigurationAction).not.toHaveBeenCalledWith(
       expect.objectContaining({ action: "test" }),
     );
-  });
-
-  it("completes with store-aligned readiness projection without a pre-select test", async () => {
-    const data = zaiDraft();
-    const productId = data.plan.productId;
-    const actions: ClientConfigurationAction[] = [];
-    let revision = 1;
-
-    const runConfigurationAction = vi.fn(async (action: ClientConfigurationAction) => {
-      actions.push(action);
-      if (action.action === "create") {
-        return {
-          action: "create",
-          status: "succeeded",
-          configuration: configurationSummary(data, "configuration-1", null, revision),
-          readiness: makeReadiness("model-missing", productId),
-        };
-      }
-      if (action.action === "select") {
-        revision = 2;
-        return {
-          action: "select",
-          status: "succeeded",
-          configuration: configurationSummary(
-            data,
-            action.configurationId,
-            action.modelId,
-            revision,
-          ),
-        };
-      }
-      if (action.action === "update") {
-        revision = 3;
-        return {
-          action: "update",
-          status: "succeeded",
-          configuration: configurationSummary(
-            data,
-            action.configurationId,
-            data.selectedModelId,
-            revision,
-          ),
-        };
-      }
-      throw new Error(`Unexpected action ${action.action}`);
-    });
-
-    await expect(
-      saveWizard(data, { saveSettings: vi.fn(async () => {}), runConfigurationAction }),
-    ).resolves.toEqual({
-      status: "complete",
-      configurationId: "configuration-1",
-    });
-    expect(actions.map(({ action }) => action)).toEqual(["create", "select", "update"]);
-    expect(makeReadiness("model-missing", productId).evidenceStatus).toBe("failed");
   });
 
   it("rejects a select response that does not match the explicit selected tuple", async () => {

@@ -88,9 +88,8 @@ describe("HistoryScreen floor", () => {
     const frame = stripAnsi(lastFrame() ?? "");
 
     expect(frame.split("\n")).toHaveLength(20);
-    // The focused pane keeps its header and at least one run row instead of
-    // collapsing every pane into an empty bordered box.
-    expect(frame).toMatch(/SECTIONS|RUNS|INSIGHTS/);
+    // The focused pane keeps at least one run row instead of collapsing every
+    // pane into an empty bordered box.
     expect(frame).toContain("#c0ffee");
     expect(hasEmptyBoxPair(frame)).toBe(false);
   });

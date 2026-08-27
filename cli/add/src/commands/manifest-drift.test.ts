@@ -43,6 +43,29 @@ function seedProject(): void {
   writeFileSync(join(root, "src/styles/styles.css"), "");
 }
 
+function recordLegacyManifestPath(projectRoot: string): string {
+  const legacyPath = join(projectRoot, "src/components/ui/button/button-v1.tsx");
+  const legacyBody = "export const legacyButton = true;\n";
+  writeFileSync(legacyPath, legacyBody);
+
+  const config = JSON.parse(readFileSync(join(projectRoot, "diffgazer.json"), "utf-8")) as {
+    installedItems: Record<string, { files?: Array<{ path: string; hash: string; item: string }> }>;
+  };
+  const button = config.installedItems["ui/button"];
+  if (!button) throw new Error("Expected ui/button in manifest");
+  button.files = [
+    ...(button.files ?? []),
+    {
+      path: "src/components/ui/button/button-v1.tsx",
+      hash: computeIntegrity(legacyBody),
+      item: "ui/button",
+    },
+  ];
+  writeFileSync(join(projectRoot, "diffgazer.json"), `${JSON.stringify(config, null, 2)}\n`);
+
+  return legacyPath;
+}
+
 function createCliProgram() {
   return createCli({
     name: "dgadd-manifest-drift-test",
@@ -100,27 +123,7 @@ describe("manifest-backed diff and remove after registry drift", () => {
       from: "user",
     });
 
-    const legacyPath = join(root, "src/components/ui/button/button-v1.tsx");
-    const legacyBody = "export const legacyButton = true;\n";
-    writeFileSync(legacyPath, legacyBody);
-
-    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8")) as {
-      installedItems: Record<
-        string,
-        { files?: Array<{ path: string; hash: string; item: string }> }
-      >;
-    };
-    const button = config.installedItems["ui/button"];
-    if (!button) throw new Error("Expected ui/button in manifest");
-    button.files = [
-      ...(button.files ?? []),
-      {
-        path: "src/components/ui/button/button-v1.tsx",
-        hash: computeIntegrity(legacyBody),
-        item: "ui/button",
-      },
-    ];
-    writeFileSync(join(root, "diffgazer.json"), `${JSON.stringify(config, null, 2)}\n`);
+    const legacyPath = recordLegacyManifestPath(root);
 
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
     await program.parseAsync(["remove", "ui/button", "--cwd", root, "--yes"], { from: "user" });
@@ -137,27 +140,7 @@ describe("manifest-backed diff and remove after registry drift", () => {
       from: "user",
     });
 
-    const legacyPath = join(root, "src/components/ui/button/button-v1.tsx");
-    const legacyBody = "export const legacyButton = true;\n";
-    writeFileSync(legacyPath, legacyBody);
-
-    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8")) as {
-      installedItems: Record<
-        string,
-        { files?: Array<{ path: string; hash: string; item: string }> }
-      >;
-    };
-    const button = config.installedItems["ui/button"];
-    if (!button) throw new Error("Expected ui/button in manifest");
-    button.files = [
-      ...(button.files ?? []),
-      {
-        path: "src/components/ui/button/button-v1.tsx",
-        hash: computeIntegrity(legacyBody),
-        item: "ui/button",
-      },
-    ];
-    writeFileSync(join(root, "diffgazer.json"), `${JSON.stringify(config, null, 2)}\n`);
+    recordLegacyManifestPath(root);
 
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
     await program.parseAsync(["diff", "ui/button", "--cwd", root], { from: "user" });

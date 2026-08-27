@@ -122,11 +122,11 @@ describe("Popover", () => {
     expect(screen.queryByRole("menu", { name: "Actions" })).not.toBeInTheDocument();
   });
 
-  it("can declare click popup role on the root before content effects run", () => {
+  it("prefers the popup role declared on the root over the content role", () => {
     render(
       <Popover triggerMode="click" popupRole="menu">
         <Popover.Trigger>Open</Popover.Trigger>
-        <Popover.Content role="menu" aria-label="Actions">
+        <Popover.Content role="dialog" aria-label="Actions">
           Popover body
         </Popover.Content>
       </Popover>,

@@ -83,7 +83,6 @@ describe("parseHotkey + eventMatchesParsedHotkey", () => {
   });
 
   it("resolves 'mod' to meta on Mac (lazy isMac)", async () => {
-    // isMac is now lazy — reset module to test Mac detection
     vi.stubGlobal("navigator", { userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X)" });
 
     // Re-import to get a fresh module with reset _isMac cache

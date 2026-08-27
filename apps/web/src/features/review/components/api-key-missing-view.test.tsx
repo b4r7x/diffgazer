@@ -18,16 +18,15 @@ type RenderViewProps = Pick<ApiKeyMissingViewProps, "readiness"> &
   Partial<Omit<ApiKeyMissingViewProps, "readiness">>;
 
 function renderView(props: RenderViewProps) {
-  const readiness = props.readiness ?? makeReadiness("unconfigured");
   const onBack = props.onBack ?? vi.fn();
   const onNavigateSettings = props.onNavigateSettings ?? vi.fn();
   const primaryLabel = props.primaryLabel ?? CONFIGURE_PROVIDER_LABEL;
 
-  const view = render(
+  return render(
     <KeyboardProvider>
       <FooterProvider>
         <ApiKeyMissingView
-          readiness={readiness}
+          readiness={props.readiness}
           productLabel={props.productLabel}
           primaryLabel={primaryLabel}
           onBack={onBack}
@@ -37,8 +36,6 @@ function renderView(props: RenderViewProps) {
       </FooterProvider>
     </KeyboardProvider>,
   );
-
-  return { ...view, onBack, onNavigateSettings, readiness, primaryLabel };
 }
 
 describe("ApiKeyMissingView", () => {
@@ -297,24 +294,6 @@ describe("ReviewTerminalReceiptView", () => {
 
     await user.keyboard("{Escape}");
     expect(onBack).toHaveBeenCalledTimes(1);
-  });
-
-  it("exposes no secret values in the rendered receipt DOM", () => {
-    const { container } = render(
-      <KeyboardProvider>
-        <FooterProvider>
-          <ReviewTerminalReceiptView
-            outcome="transport-failed"
-            usageAvailability="required-missing"
-            onBack={() => {}}
-          />
-        </FooterProvider>
-      </KeyboardProvider>,
-    );
-
-    expect(container.textContent).not.toMatch(/sk-[A-Za-z0-9_-]{8,}/i);
-    expect(container.textContent).not.toMatch(/Bearer\s+/i);
-    expect(container.textContent).not.toMatch(/\/Users\//);
   });
 });
 

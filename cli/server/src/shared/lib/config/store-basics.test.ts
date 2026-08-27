@@ -126,15 +126,11 @@ const updateGeminiAction = (configurationId: string, expectedRevision: number) =
 const literalSecretPathFor = (configurationId: string, revision: number): string =>
   join(diffgazerHome, "credentials", `${configurationId}-${revision}.key`);
 
-const evidenceKeyFor = (
-  configurationId: string,
-  revision = 1,
-  budget: typeof DEFAULT_BUDGET = DEFAULT_BUDGET,
-): EvidenceKey => ({
+const evidenceKeyFor = (configurationId: string): EvidenceKey => ({
   authentication: null,
   credentialReferenceIdentity: sha256CanonicalJsonSync({
     kind: "file-0600",
-    filePath: literalSecretPathFor(configurationId, revision),
+    filePath: literalSecretPathFor(configurationId, 1),
   }),
   installationId: null,
   productId: "gemini",
@@ -146,7 +142,7 @@ const evidenceKeyFor = (
   runtime: RUNTIME_IDENTITY,
   structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
   noticeVersion: 1,
-  limits: executionLimitsFromBudget(budget),
+  limits: executionLimitsFromBudget(DEFAULT_BUDGET),
 });
 
 const evidenceKeyForPersisted = (configurationId: string): EvidenceKey => {

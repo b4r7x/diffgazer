@@ -55,7 +55,9 @@ describe("buildHtmlShell", () => {
     expect(body).toContain("window.__DIFFGAZER_SHUTDOWN_TOKEN__=");
     expect(body).toContain('"test-token-123"');
     expect(body).toMatch(/<script nonce="[A-Za-z0-9+/=]+">/);
-    expect(body).toContain("</head>");
+    expect(body.indexOf("window.__DIFFGAZER_SHUTDOWN_TOKEN__=")).toBeLessThan(
+      body.indexOf("</head>"),
+    );
   });
 
   it("returns a CSP header string with a nonce matching the script tag", () => {

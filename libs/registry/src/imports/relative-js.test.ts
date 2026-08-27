@@ -113,21 +113,35 @@ describe("findRelativeJsSpecifiers", () => {
 // failed a gate the writer could never fix, the rest shipped a broken specifier past it.
 describe("findRelativeJsSpecifiers agrees with stripRelativeJsExtensions", () => {
   const cases = [
-    { name: "a .js specifier quoted inside a comment", content: '// re-export from "./legacy.js"' },
+    {
+      name: "a .js specifier quoted inside a comment",
+      content: '// re-export from "./legacy.js"',
+      flagged: false,
+    },
     {
       name: "a .js specifier inside an ordinary string",
       content: `const msg = 'import "./x.js"';`,
+      flagged: false,
     },
-    { name: "a template-literal dynamic import", content: "await import(`./lazy.js`);" },
-    { name: "a re-export with no whitespace around from", content: 'export{a}from"./a.js";' },
+    {
+      name: "a template-literal dynamic import",
+      content: "await import(`./lazy.js`);",
+      flagged: true,
+    },
+    {
+      name: "a re-export with no whitespace around from",
+      content: 'export{a}from"./a.js";',
+      flagged: true,
+    },
     {
       name: "a specifier wrapped onto its own line",
       content: 'import {\n  a,\n} from\n  "./x.js";',
+      flagged: true,
     },
   ];
 
-  it.each(cases)("flags $name only when the writer would rewrite it", ({ content }) => {
-    const rewritten = stripRelativeJsExtensions(content) !== content;
-    expect(findRelativeJsSpecifiers(content).length > 0).toBe(rewritten);
+  it.each(cases)("flags $name only when the writer would rewrite it", ({ content, flagged }) => {
+    expect(findRelativeJsSpecifiers(content).length > 0).toBe(flagged);
+    expect(stripRelativeJsExtensions(content) !== content).toBe(flagged);
   });
 });

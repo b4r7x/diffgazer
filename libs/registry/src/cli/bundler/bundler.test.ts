@@ -148,7 +148,6 @@ describe("bundleRegistry", () => {
 
       expect(loadBundle().items[0]?.name).toBe("button");
     } finally {
-      rmSync(join(tmpdir(), "outside-registry-source.ts"), { force: true });
       rmSync(rootDir, { recursive: true, force: true });
     }
   });

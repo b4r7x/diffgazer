@@ -1,7 +1,7 @@
 import { CatalogSelectableModelIdSchema } from "../catalog/schema.js";
 import { isModelIdAllowedForProduct, PRODUCT_REGISTRY } from "../providers/product-registry.js";
 import {
-  HostedApiConfigurationInputSchema,
+  ClientConfigurationInputSchema,
   HostedApiTransportInputSchema,
   WriteOnlySecretInputSchema,
 } from "../schemas/config/index.js";
@@ -29,7 +29,7 @@ function hasEndpointBinding(data: OnboardingDraft): boolean {
 
 function hasAuthentication(data: OnboardingDraft): boolean {
   const { configurationInput } = data;
-  if (!HostedApiConfigurationInputSchema.safeParse(configurationInput).success) return false;
+  if (!ClientConfigurationInputSchema.safeParse(configurationInput).success) return false;
   return WriteOnlySecretInputSchema.safeParse(configurationInput.credential).success;
 }
 

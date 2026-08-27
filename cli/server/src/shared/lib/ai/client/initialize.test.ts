@@ -14,11 +14,11 @@ import type { SupportedProviderConfigurationRecord } from "../../config/provider
 import { createEnvironmentSecretBinding } from "../../config/secret-bindings.js";
 import { clientTestExecutionResult } from "../../testing/ai-client-fixtures.js";
 import { assertTempHome } from "../../testing/temp-home.js";
+import { ExecutionLeaseRegistry } from "../admission/lease-registry.js";
 import {
   type AdmissionServiceDependencies,
   type AdmissionSnapshot,
   authorizeReviewExecution,
-  ExecutionLeaseRegistry,
 } from "../admission/service.js";
 import { createBudgetLedger } from "../budget/ledger.js";
 
@@ -36,17 +36,11 @@ const BUDGET = {
   perReview: 40_000,
 } as const;
 
-const catalogMocks = vi.hoisted(() => ({
-  getProviderModels: vi.fn(),
-}));
 const executeReviewGenerationMock = vi.hoisted(() => vi.fn());
 const storeMocks = vi.hoisted(() => ({
   readCurrentState: vi.fn(),
 }));
 
-vi.mock("../models-dev-catalog.js", () => ({
-  getProviderModels: catalogMocks.getProviderModels,
-}));
 vi.mock("./generate.js", () => ({
   executeReviewGeneration: (...args: unknown[]) => executeReviewGenerationMock(...args),
 }));
@@ -139,12 +133,6 @@ function setupTempHome() {
   process.env.GEMINI_KEY = "test-api-key";
   vi.resetModules();
   vi.clearAllMocks();
-  catalogMocks.getProviderModels.mockResolvedValue({
-    models: [],
-    fetchedAt: "",
-    source: "live",
-    cached: false,
-  });
   storeMocks.readCurrentState.mockResolvedValue({
     ok: true,
     value: {
@@ -191,7 +179,6 @@ describe("toInitializedAIClient", () => {
     expect(client.authorization?.plan.evidenceKey.modelId).toBe("gemini-2.5-flash");
     expect(client.authorization?.plan.configurationId).toBe("gemini-primary");
     expect(JSON.stringify(client.authorization?.plan.evidenceKey)).not.toContain("super-secret");
-    expect(catalogMocks.getProviderModels).not.toHaveBeenCalled();
     expect(dependencies.resolveCredential).not.toHaveBeenCalled();
   });
 

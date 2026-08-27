@@ -232,7 +232,6 @@ export async function orchestrateReview(
   let firstStructuredOutputError: ReviewError | null = null;
   let lastNonSchemaError: ReviewError | null = null;
   let droppedIncompleteProviderIssues = 0;
-  let droppedOverLensCap = 0;
   // Budget death and a user cancellation abort a lens the same way, so only the
   // controller that fired tells them apart — and a lens stopped for budget,
   // whether never dispatched or aborted in flight, must not report a
@@ -249,13 +248,15 @@ export async function orchestrateReview(
       // abort) or an unexpected internal throw — never a classified network
       // failure, which travels the `result.ok === false` branch below.
       const aborted = isAbortRejection(settled.reason, dispatchSignal);
-      const notDispatched = settled.reason === UNDISPATCHED && stoppedForBudget;
+      const notDispatched = settled.reason === UNDISPATCHED;
       const budgetCollateral = aborted && stoppedForBudget;
       const abortCode = budgetCollateral ? "BUDGET_EXHAUSTED" : "CANCELLED";
       const errorCode = aborted ? abortCode : "INTERNAL_ERROR";
       let errorMsg = getErrorMessage(settled.reason);
       if (notDispatched) {
-        errorMsg = "Not dispatched — the review budget was exhausted.";
+        errorMsg = stoppedForBudget
+          ? "Not dispatched — the review budget was exhausted."
+          : "Not dispatched — the review was cancelled.";
       } else if (budgetCollateral) {
         errorMsg = "Cancelled — the review budget was exhausted.";
       }
@@ -313,7 +314,6 @@ export async function orchestrateReview(
 
     allIssues.push(...result.value.issues);
     droppedIncompleteProviderIssues += result.value.droppedIncompleteProviderIssues;
-    droppedOverLensCap += result.value.droppedOverLensCap ?? 0;
     // Count only issues that meet the severity threshold, matching the streamed
     // per-agent counter so the persisted lens stats stay consistent with the UI.
     // A lens whose later batch failed still succeeded on what it dispatched, so
@@ -381,7 +381,6 @@ export async function orchestrateReview(
     droppedDuplicates,
     droppedBelowThreshold,
     droppedIncompleteProviderIssues,
-    droppedOverLensCap,
     minSeverity: filter?.minSeverity,
     timestamp: new Date().toISOString(),
   });

@@ -4,7 +4,11 @@ import {
 } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { setupClientTestHome, teardownClientTestHome } from "../../testing/ai-client-env.js";
+import {
+  clientTestHome,
+  setupClientTestHome,
+  teardownClientTestHome,
+} from "../../testing/ai-client-env.js";
 import {
   CLIENT_TEST_CREDENTIAL_REFERENCE_IDENTITY,
   CLIENT_TEST_SECRET_LITERAL,
@@ -14,7 +18,7 @@ import {
   clientTestCreateMockAdapter,
   clientTestExecutionResult,
 } from "../../testing/ai-client-fixtures.js";
-import { createFromAdmittedPlan } from "./create.js";
+import { serializeFailureDiagnostic } from "../diagnostics.js";
 import { executeReviewGeneration } from "./generate.js";
 
 const CONTRACT_TEST_LIMITS = Object.freeze({
@@ -122,9 +126,19 @@ describe("executeReviewGeneration contract", () => {
 
   it("redacts configured credential references from failure diagnostics", async () => {
     const plan = admittedPlan("gemini");
-    const adapter = clientTestCreateMockAdapter("gemini", async () =>
-      clientTestExecutionResult(plan, "transport-failed"),
-    );
+    const adapter = clientTestCreateMockAdapter("gemini", async (request) => {
+      request.reportDiagnostic?.(
+        serializeFailureDiagnostic({
+          code: "provider-rejected",
+          message: `Bearer ${CLIENT_TEST_SECRET_LITERAL}`,
+          capture: { channel: "stderr", text: CLIENT_TEST_CREDENTIAL_REFERENCE_IDENTITY },
+          sensitive: {
+            literalSecrets: [CLIENT_TEST_SECRET_LITERAL, CLIENT_TEST_CREDENTIAL_REFERENCE_IDENTITY],
+          },
+        }),
+      );
+      return clientTestExecutionResult(plan, "transport-failed");
+    });
     const { authorization } = clientTestAuthorize(plan, adapter);
 
     const result = await executeReviewGeneration({
@@ -141,9 +155,17 @@ describe("executeReviewGeneration contract", () => {
 
   it("never persists raw home paths in diagnostics", async () => {
     const plan = admittedPlan("gemini");
-    const adapter = clientTestCreateMockAdapter("gemini", async () =>
-      clientTestExecutionResult(plan, "transport-failed"),
-    );
+    const home = clientTestHome();
+    const adapter = clientTestCreateMockAdapter("gemini", async (request) => {
+      request.reportDiagnostic?.(
+        serializeFailureDiagnostic({
+          code: "provider-rejected",
+          message: "The adapter could not read its working file.",
+          capture: { channel: "stderr", text: `ENOENT: ${home}/config.json` },
+        }),
+      );
+      return clientTestExecutionResult(plan, "transport-failed");
+    });
     const { authorization } = clientTestAuthorize(plan, adapter);
 
     const result = await executeReviewGeneration({
@@ -152,15 +174,18 @@ describe("executeReviewGeneration contract", () => {
     });
 
     const serialized = JSON.stringify(result.diagnostic);
-    expect(serialized).not.toMatch(/\/Users\//);
+    expect(serialized).not.toContain(home);
     expect(serialized).not.toContain(CLIENT_TEST_SECRET_LITERAL);
     expect(serialized).toContain(result.diagnostic.correlationId);
   });
 
   it("preserves provider-specific adapter behavior only through the admitted adapter route", async () => {
     const plan = admittedPlan("zai");
+    // Captured, not asserted, inside the adapter: generate.ts turns an adapter
+    // throw into a transport failure, so an assertion here would be swallowed.
+    let seenProductId: string | undefined;
     const adapter = clientTestCreateMockAdapter("zai", async (request) => {
-      expect(request.evidenceKey.productId).toBe("zai");
+      seenProductId = request.evidenceKey.productId;
       return clientTestExecutionResult(plan, "schema-failed");
     });
     const { authorization } = clientTestAuthorize(plan, adapter);
@@ -170,8 +195,8 @@ describe("executeReviewGeneration contract", () => {
       prompt: "review",
     });
 
+    expect(seenProductId).toBe("zai");
     expect(result.execution.receipt.productId).toBe("zai");
-    expect(result.execution.result.issues).toEqual([]);
   });
 
   it("keeps the review reservation open after a dispatch and leaves release to the owning session", async () => {
@@ -197,21 +222,5 @@ describe("executeReviewGeneration contract", () => {
 
     expect(releaseTracker?.count).toBe(1);
     expect(ledger.snapshot().inFlightAttempts).toBe(0);
-  });
-});
-
-describe("createFromAdmittedPlan generation surface", () => {
-  beforeEach(setupClientTestHome);
-  afterEach(teardownClientTestHome);
-
-  it("creates an admitted-plan client that delegates to the registry adapter", async () => {
-    const plan = admittedPlan("zai");
-    const clientResult = createFromAdmittedPlan(plan);
-    expect(clientResult.ok).toBe(true);
-    if (!clientResult.ok) return;
-
-    const execution = await clientResult.value.execute("review prompt");
-    expect(execution.receipt.productId).toBe("zai");
-    expect(execution.result.issues).toEqual([]);
   });
 });

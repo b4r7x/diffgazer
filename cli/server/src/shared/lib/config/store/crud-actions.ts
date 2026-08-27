@@ -76,8 +76,6 @@ const toNonSecretInput = (input: ClientConfigurationInput): NonSecretTransportIn
     endpoint: input.endpoint,
   });
 
-const secretInputFor = (input: ClientConfigurationInput) => input.credential;
-
 const replaceRecordInDocument = (
   document: ConfigDocumentV2,
   record: DecodedProviderConfigurationRecord,
@@ -293,7 +291,7 @@ export function createCrudActions(deps: CrudActionDependencies) {
     const summaryResult = deps.projectSummary(nextRecord);
     if (!summaryResult.ok) return summaryResult;
     const previousBinding = deps.findBindingForIdentity(configurationId, record.record.revision);
-    const secretInput = secretInputFor(action.input);
+    const secretInput = action.input.credential;
     const bindingResult =
       secretInput !== undefined
         ? await deps.bindActionSecret(configurationId, nextRecord.revision, action.input)

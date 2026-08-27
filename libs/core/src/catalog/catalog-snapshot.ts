@@ -13,7 +13,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek-v4-flash-0731": {
         id: "deepseek-v4-flash-0731",
         name: "DeepSeek V4 Flash 0731",
-        family: "deepseek-flash",
         cost: {
           input: 0.2,
           output: 0.4,
@@ -28,7 +27,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5.2": {
         id: "glm-5.2",
         name: "GLM-5.2",
-        family: "glm",
         cost: {
           input: 1.4,
           output: 4.4,
@@ -43,7 +41,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qvq-max": {
         id: "qvq-max",
         name: "QVQ Max",
-        family: "qvq",
         cost: {
           input: 1.2,
           output: 4.8,
@@ -57,7 +54,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen-flash": {
         id: "qwen-flash",
         name: "Qwen Flash",
-        family: "qwen",
         cost: {
           input: 0.05,
           output: 0.4,
@@ -71,7 +67,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen-max": {
         id: "qwen-max",
         name: "Qwen Max",
-        family: "qwen",
         cost: {
           input: 1.6,
           output: 6.4,
@@ -85,7 +80,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen-mt-plus": {
         id: "qwen-mt-plus",
         name: "Qwen-MT Plus",
-        family: "qwen",
         cost: {
           input: 2.46,
           output: 7.37,
@@ -98,7 +92,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen-mt-turbo": {
         id: "qwen-mt-turbo",
         name: "Qwen-MT Turbo",
-        family: "qwen",
         cost: {
           input: 0.16,
           output: 0.49,
@@ -111,7 +104,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen-omni-turbo": {
         id: "qwen-omni-turbo",
         name: "Qwen-Omni Turbo",
-        family: "qwen",
         cost: {
           input: 0.07,
           output: 0.27,
@@ -127,7 +119,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen-omni-turbo-realtime": {
         id: "qwen-omni-turbo-realtime",
         name: "Qwen-Omni Turbo Realtime",
-        family: "qwen",
         cost: {
           input: 0.27,
           output: 1.07,
@@ -143,7 +134,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen-plus": {
         id: "qwen-plus",
         name: "Qwen Plus",
-        family: "qwen",
         cost: {
           input: 0.4,
           output: 1.2,
@@ -157,7 +147,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen-plus-character-ja": {
         id: "qwen-plus-character-ja",
         name: "Qwen Plus Character (Japanese)",
-        family: "qwen",
         cost: {
           input: 0.5,
           output: 1.4,
@@ -170,7 +159,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen-turbo": {
         id: "qwen-turbo",
         name: "Qwen Turbo",
-        family: "qwen",
         cost: {
           input: 0.05,
           output: 0.2,
@@ -184,7 +172,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen-vl-max": {
         id: "qwen-vl-max",
         name: "Qwen-VL Max",
-        family: "qwen",
         cost: {
           input: 0.8,
           output: 3.2,
@@ -198,7 +185,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen-vl-ocr": {
         id: "qwen-vl-ocr",
         name: "Qwen-VL OCR",
-        family: "qwen",
         cost: {
           input: 0.72,
           output: 0.72,
@@ -212,7 +198,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen-vl-plus": {
         id: "qwen-vl-plus",
         name: "Qwen-VL Plus",
-        family: "qwen",
         cost: {
           input: 0.21,
           output: 0.63,
@@ -226,7 +211,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen2-5-14b-instruct": {
         id: "qwen2-5-14b-instruct",
         name: "Qwen2.5 14B Instruct",
-        family: "qwen",
         cost: {
           input: 0.35,
           output: 1.4,
@@ -239,7 +223,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen2-5-32b-instruct": {
         id: "qwen2-5-32b-instruct",
         name: "Qwen2.5 32B Instruct",
-        family: "qwen",
         cost: {
           input: 0.7,
           output: 2.8,
@@ -252,7 +235,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen2-5-72b-instruct": {
         id: "qwen2-5-72b-instruct",
         name: "Qwen2.5 72B Instruct",
-        family: "qwen",
         cost: {
           input: 1.4,
           output: 5.6,
@@ -265,7 +247,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen2-5-7b-instruct": {
         id: "qwen2-5-7b-instruct",
         name: "Qwen2.5 7B Instruct",
-        family: "qwen",
         cost: {
           input: 0.175,
           output: 0.7,
@@ -278,7 +259,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen2-5-omni-7b": {
         id: "qwen2-5-omni-7b",
         name: "Qwen2.5-Omni 7B",
-        family: "qwen",
         cost: {
           input: 0.1,
           output: 0.4,
@@ -294,7 +274,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen2-5-vl-72b-instruct": {
         id: "qwen2-5-vl-72b-instruct",
         name: "Qwen2.5-VL 72B Instruct",
-        family: "qwen",
         cost: {
           input: 2.8,
           output: 8.4,
@@ -307,7 +286,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen2-5-vl-7b-instruct": {
         id: "qwen2-5-vl-7b-instruct",
         name: "Qwen2.5-VL 7B Instruct",
-        family: "qwen",
         cost: {
           input: 0.35,
           output: 1.05,
@@ -320,7 +298,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-14b": {
         id: "qwen3-14b",
         name: "Qwen3 14B",
-        family: "qwen",
         cost: {
           input: 0.35,
           output: 1.4,
@@ -333,7 +310,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-235b-a22b": {
         id: "qwen3-235b-a22b",
         name: "Qwen3 235B-A22B",
-        family: "qwen",
         cost: {
           input: 0.7,
           output: 2.8,
@@ -346,7 +322,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-32b": {
         id: "qwen3-32b",
         name: "Qwen3 32B",
-        family: "qwen",
         cost: {
           input: 0.7,
           output: 2.8,
@@ -359,7 +334,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-8b": {
         id: "qwen3-8b",
         name: "Qwen3 8B",
-        family: "qwen",
         cost: {
           input: 0.18,
           output: 0.7,
@@ -372,7 +346,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-asr-flash": {
         id: "qwen3-asr-flash",
         name: "Qwen3-ASR Flash",
-        family: "qwen",
         cost: {
           input: 0.035,
           output: 0.035,
@@ -386,7 +359,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-coder-30b-a3b-instruct": {
         id: "qwen3-coder-30b-a3b-instruct",
         name: "Qwen3-Coder 30B-A3B Instruct",
-        family: "qwen",
         cost: {
           input: 0.45,
           output: 2.25,
@@ -399,7 +371,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-coder-480b-a35b-instruct": {
         id: "qwen3-coder-480b-a35b-instruct",
         name: "Qwen3-Coder 480B-A35B Instruct",
-        family: "qwen",
         cost: {
           input: 1.5,
           output: 7.5,
@@ -412,7 +383,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-coder-flash": {
         id: "qwen3-coder-flash",
         name: "Qwen3 Coder Flash",
-        family: "qwen",
         cost: {
           input: 0.3,
           output: 1.5,
@@ -426,7 +396,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-coder-plus": {
         id: "qwen3-coder-plus",
         name: "Qwen3 Coder Plus",
-        family: "qwen",
         cost: {
           input: 1,
           output: 5,
@@ -440,7 +409,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-livetranslate-flash-realtime": {
         id: "qwen3-livetranslate-flash-realtime",
         name: "Qwen3-LiveTranslate Flash Realtime",
-        family: "qwen",
         cost: {
           input: 10,
           output: 10,
@@ -456,7 +424,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-max": {
         id: "qwen3-max",
         name: "Qwen3 Max",
-        family: "qwen",
         cost: {
           input: 1.2,
           output: 6,
@@ -470,7 +437,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-next-80b-a3b-instruct": {
         id: "qwen3-next-80b-a3b-instruct",
         name: "Qwen3-Next 80B-A3B Instruct",
-        family: "qwen",
         cost: {
           input: 0.5,
           output: 2,
@@ -483,7 +449,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-next-80b-a3b-thinking": {
         id: "qwen3-next-80b-a3b-thinking",
         name: "Qwen3-Next 80B-A3B (Thinking)",
-        family: "qwen",
         cost: {
           input: 0.5,
           output: 6,
@@ -496,7 +461,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-omni-flash": {
         id: "qwen3-omni-flash",
         name: "Qwen3-Omni Flash",
-        family: "qwen",
         cost: {
           input: 0.43,
           output: 1.66,
@@ -512,7 +476,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-omni-flash-realtime": {
         id: "qwen3-omni-flash-realtime",
         name: "Qwen3-Omni Flash Realtime",
-        family: "qwen",
         cost: {
           input: 0.52,
           output: 1.99,
@@ -528,7 +491,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-vl-235b-a22b": {
         id: "qwen3-vl-235b-a22b",
         name: "Qwen3-VL 235B-A22B",
-        family: "qwen",
         cost: {
           input: 0.7,
           output: 2.8,
@@ -541,7 +503,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-vl-30b-a3b": {
         id: "qwen3-vl-30b-a3b",
         name: "Qwen3-VL 30B-A3B",
-        family: "qwen",
         cost: {
           input: 0.2,
           output: 0.8,
@@ -554,7 +515,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-vl-plus": {
         id: "qwen3-vl-plus",
         name: "Qwen3-VL Plus",
-        family: "qwen",
         cost: {
           input: 0.2,
           output: 1.6,
@@ -568,7 +528,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.5-122b-a10b": {
         id: "qwen3.5-122b-a10b",
         name: "Qwen3.5 122B-A10B",
-        family: "qwen",
         cost: {
           input: 0.4,
           output: 3.2,
@@ -583,7 +542,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.5-27b": {
         id: "qwen3.5-27b",
         name: "Qwen3.5 27B",
-        family: "qwen",
         cost: {
           input: 0.3,
           output: 2.4,
@@ -598,7 +556,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.5-35b-a3b": {
         id: "qwen3.5-35b-a3b",
         name: "Qwen3.5 35B-A3B",
-        family: "qwen",
         cost: {
           input: 0.25,
           output: 2,
@@ -613,7 +570,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.5-397b-a17b": {
         id: "qwen3.5-397b-a17b",
         name: "Qwen3.5 397B-A17B",
-        family: "qwen",
         cost: {
           input: 0.6,
           output: 3.6,
@@ -628,7 +584,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.5-plus": {
         id: "qwen3.5-plus",
         name: "Qwen3.5 Plus",
-        family: "qwen",
         cost: {
           input: 0.4,
           output: 2.4,
@@ -642,7 +597,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.6-27b": {
         id: "qwen3.6-27b",
         name: "Qwen3.6 27B",
-        family: "qwen",
         cost: {
           input: 0.6,
           output: 3.6,
@@ -657,7 +611,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.6-35b-a3b": {
         id: "qwen3.6-35b-a3b",
         name: "Qwen3.6 35B-A3B",
-        family: "qwen",
         cost: {
           input: 0.248,
           output: 1.485,
@@ -672,7 +625,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.6-flash": {
         id: "qwen3.6-flash",
         name: "Qwen3.6 Flash",
-        family: "qwen3.6",
         cost: {
           input: 0.1875,
           output: 1.125,
@@ -687,7 +639,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.6-max-preview": {
         id: "qwen3.6-max-preview",
         name: "Qwen3.6 Max Preview",
-        family: "qwen",
         cost: {
           input: 1.3,
           output: 7.8,
@@ -701,7 +652,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.6-plus": {
         id: "qwen3.6-plus",
         name: "Qwen3.6 Plus",
-        family: "qwen",
         cost: {
           input: 0.5,
           output: 3,
@@ -715,7 +665,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.7-max": {
         id: "qwen3.7-max",
         name: "Qwen3.7 Max",
-        family: "qwen",
         cost: {
           input: 2.5,
           output: 7.5,
@@ -729,7 +678,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.7-plus": {
         id: "qwen3.7-plus",
         name: "Qwen3.7 Plus",
-        family: "qwen",
         cost: {
           input: 0.5,
           output: 3,
@@ -743,7 +691,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.8-max": {
         id: "qwen3.8-max",
         name: "Qwen3.8 Max",
-        family: "qwen",
         cost: {
           input: 2,
           output: 6,
@@ -758,7 +705,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwq-plus": {
         id: "qwq-plus",
         name: "QwQ Plus",
-        family: "qwen",
         cost: {
           input: 0.8,
           output: 2.4,
@@ -780,7 +726,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek-v4-flash": {
         id: "deepseek-v4-flash",
         name: "DeepSeek V4 Flash",
-        family: "deepseek-flash",
         cost: {
           input: 0.14,
           output: 0.28,
@@ -795,7 +740,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek-v4-flash-vision-exp": {
         id: "deepseek-v4-flash-vision-exp",
         name: "DeepSeek V4 Flash Vision Exp",
-        family: "deepseek-flash",
         cost: {
           input: 0.14,
           output: 0.28,
@@ -810,7 +754,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek-v4-pro": {
         id: "deepseek-v4-pro",
         name: "DeepSeek V4 Pro",
-        family: "deepseek-thinking",
         cost: {
           input: 0.435,
           output: 0.87,
@@ -832,7 +775,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deep-research-max-preview-04-2026": {
         id: "deep-research-max-preview-04-2026",
         name: "Deep Research Max Preview (Apr-21-2026)",
-        family: "gemini-pro",
         cost: {
           input: 2,
           output: 12,
@@ -848,7 +790,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deep-research-preview-04-2026": {
         id: "deep-research-preview-04-2026",
         name: "Deep Research Preview (Apr-21-2026)",
-        family: "gemini-pro",
         cost: {
           input: 2,
           output: 12,
@@ -864,7 +805,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-2.5-computer-use-preview-10-2025": {
         id: "gemini-2.5-computer-use-preview-10-2025",
         name: "Gemini 2.5 Computer Use Preview 10-2025",
-        family: "gemini-pro",
         cost: {
           input: 1.25,
           output: 10,
@@ -878,7 +818,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-2.5-flash": {
         id: "gemini-2.5-flash",
         name: "Gemini 2.5 Flash",
-        family: "gemini-flash",
         cost: {
           input: 0.3,
           output: 2.5,
@@ -893,7 +832,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-2.5-flash-image": {
         id: "gemini-2.5-flash-image",
         name: "Nano Banana",
-        family: "gemini-flash",
         cost: {
           input: 0.3,
           output: 30,
@@ -909,7 +847,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-2.5-flash-lite": {
         id: "gemini-2.5-flash-lite",
         name: "Gemini 2.5 Flash-Lite",
-        family: "gemini-flash-lite",
         cost: {
           input: 0.1,
           output: 0.4,
@@ -924,7 +861,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-2.5-flash-preview-tts": {
         id: "gemini-2.5-flash-preview-tts",
         name: "Gemini 2.5 Flash Preview TTS",
-        family: "gemini-flash",
         cost: {
           input: 0.5,
           output: 10,
@@ -940,7 +876,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-2.5-pro": {
         id: "gemini-2.5-pro",
         name: "Gemini 2.5 Pro",
-        family: "gemini-pro",
         cost: {
           input: 1.25,
           output: 10,
@@ -955,7 +890,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-2.5-pro-preview-tts": {
         id: "gemini-2.5-pro-preview-tts",
         name: "Gemini 2.5 Pro Preview TTS",
-        family: "gemini-flash",
         cost: {
           input: 1,
           output: 20,
@@ -971,7 +905,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3-flash-preview": {
         id: "gemini-3-flash-preview",
         name: "Gemini 3 Flash Preview",
-        family: "gemini-flash",
         cost: {
           input: 0.5,
           output: 3,
@@ -986,7 +919,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3-pro-image": {
         id: "gemini-3-pro-image",
         name: "Nano Banana Pro",
-        family: "gemini-pro",
         cost: {
           input: 2,
           output: 120,
@@ -1002,7 +934,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3-pro-image-preview": {
         id: "gemini-3-pro-image-preview",
         name: "Nano Banana Pro",
-        family: "gemini-pro",
         cost: {
           input: 2,
           output: 120,
@@ -1018,7 +949,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.1-flash-image": {
         id: "gemini-3.1-flash-image",
         name: "Nano Banana 2",
-        family: "gemini-flash",
         cost: {
           input: 0.5,
           output: 60,
@@ -1034,7 +964,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.1-flash-image-preview": {
         id: "gemini-3.1-flash-image-preview",
         name: "Nano Banana 2",
-        family: "gemini-flash",
         cost: {
           input: 0.5,
           output: 60,
@@ -1050,7 +979,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.1-flash-lite": {
         id: "gemini-3.1-flash-lite",
         name: "Gemini 3.1 Flash Lite",
-        family: "gemini-flash-lite",
         cost: {
           input: 0.25,
           output: 1.5,
@@ -1065,7 +993,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.1-flash-lite-image": {
         id: "gemini-3.1-flash-lite-image",
         name: "Nano Banana 2 Lite",
-        family: "gemini-flash-lite",
         cost: {
           input: 0.25,
           output: 30,
@@ -1082,7 +1009,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.1-flash-lite-preview": {
         id: "gemini-3.1-flash-lite-preview",
         name: "Gemini 3.1 Flash Lite Preview",
-        family: "gemini-flash-lite",
         cost: {
           input: 0.25,
           output: 1.5,
@@ -1097,7 +1023,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.1-flash-live-preview": {
         id: "gemini-3.1-flash-live-preview",
         name: "Gemini 3.1 Flash Live Preview",
-        family: "gemini-flash",
         cost: {
           input: 0.75,
           output: 4.5,
@@ -1114,7 +1039,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.1-flash-tts-preview": {
         id: "gemini-3.1-flash-tts-preview",
         name: "Gemini 3.1 Flash TTS Preview",
-        family: "gemini-flash",
         cost: {
           input: 1,
           output: 20,
@@ -1130,7 +1054,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.1-pro-preview": {
         id: "gemini-3.1-pro-preview",
         name: "Gemini 3.1 Pro Preview",
-        family: "gemini-pro",
         cost: {
           input: 2,
           output: 12,
@@ -1145,7 +1068,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.1-pro-preview-customtools": {
         id: "gemini-3.1-pro-preview-customtools",
         name: "Gemini 3.1 Pro Preview Custom Tools",
-        family: "gemini-pro",
         cost: {
           input: 2,
           output: 12,
@@ -1160,7 +1082,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.5-flash": {
         id: "gemini-3.5-flash",
         name: "Gemini 3.5 Flash",
-        family: "gemini-flash",
         cost: {
           input: 1.5,
           output: 9,
@@ -1175,7 +1096,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.5-flash-lite": {
         id: "gemini-3.5-flash-lite",
         name: "Gemini 3.5 Flash Lite",
-        family: "gemini-flash-lite",
         cost: {
           input: 0.3,
           output: 2.5,
@@ -1190,7 +1110,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.5-live-translate-preview": {
         id: "gemini-3.5-live-translate-preview",
         name: "Gemini 3.5 Live Translate Preview",
-        family: "gemini-pro",
         cost: {
           input: 3.5,
           output: 21,
@@ -1206,7 +1125,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.6-flash": {
         id: "gemini-3.6-flash",
         name: "Gemini 3.6 Flash",
-        family: "gemini-flash",
         cost: {
           input: 0.75,
           output: 3.75,
@@ -1221,7 +1139,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.7-flash": {
         id: "gemini-3.7-flash",
         name: "Gemini 3.7 Flash",
-        family: "gemini-flash",
         cost: {
           input: 0.75,
           output: 3.75,
@@ -1236,7 +1153,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-embedding-001": {
         id: "gemini-embedding-001",
         name: "Gemini Embedding 001",
-        family: "gemini",
         cost: {
           input: 0.15,
           output: 0,
@@ -1250,7 +1166,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-embedding-2": {
         id: "gemini-embedding-2",
         name: "Gemini Embedding 2",
-        family: "gemini",
         cost: {
           input: 0.2,
           output: 0,
@@ -1264,7 +1179,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-flash-latest": {
         id: "gemini-flash-latest",
         name: "Gemini Flash Latest",
-        family: "gemini-flash",
         cost: {
           input: 0.75,
           output: 3.75,
@@ -1279,7 +1193,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-flash-lite-latest": {
         id: "gemini-flash-lite-latest",
         name: "Gemini Flash-Lite Latest",
-        family: "gemini-flash-lite",
         cost: {
           input: 0.3,
           output: 2.5,
@@ -1294,7 +1207,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-omni-flash-preview": {
         id: "gemini-omni-flash-preview",
         name: "Gemini Omni Flash Preview",
-        family: "gemini",
         cost: {
           input: 1.5,
           output: 17.5,
@@ -1310,7 +1222,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-robotics-er-1.6-preview": {
         id: "gemini-robotics-er-1.6-preview",
         name: "Gemini Robotics-ER 1.6 Preview",
-        family: "gemini",
         cost: {
           input: 1,
           output: 5,
@@ -1325,7 +1236,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemma-4-26b-a4b-it": {
         id: "gemma-4-26b-a4b-it",
         name: "Gemma 4 26B A4B IT",
-        family: "gemma",
         limit: {
           context: 262144,
           output: 32768,
@@ -1336,7 +1246,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemma-4-31b-it": {
         id: "gemma-4-31b-it",
         name: "Gemma 4 31B IT",
-        family: "gemma",
         limit: {
           context: 262144,
           output: 32768,
@@ -1347,7 +1256,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "lyria-3-clip-preview": {
         id: "lyria-3-clip-preview",
         name: "Lyria 3 Clip Preview",
-        family: "lyria",
         cost: {
           input: 0,
           output: 0,
@@ -1364,7 +1272,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "lyria-3-pro-preview": {
         id: "lyria-3-pro-preview",
         name: "Lyria 3 Pro Preview",
-        family: "lyria",
         cost: {
           input: 0,
           output: 0,
@@ -1381,7 +1288,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "veo-3.1-fast-generate-preview": {
         id: "veo-3.1-fast-generate-preview",
         name: "Veo 3.1 fast",
-        family: "veo",
         limit: {
           context: 480,
           output: 8192,
@@ -1393,7 +1299,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "veo-3.1-generate-preview": {
         id: "veo-3.1-generate-preview",
         name: "Veo 3.1",
-        family: "veo",
         limit: {
           context: 480,
           output: 8192,
@@ -1405,7 +1310,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "veo-3.1-lite-generate-preview": {
         id: "veo-3.1-lite-generate-preview",
         name: "Veo 3.1 lite",
-        family: "veo",
         limit: {
           context: 480,
           output: 8192,
@@ -1425,7 +1329,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "MiniMax-M2": {
         id: "MiniMax-M2",
         name: "MiniMax-M2",
-        family: "minimax",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -1439,7 +1342,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "MiniMax-M2.1": {
         id: "MiniMax-M2.1",
         name: "MiniMax-M2.1",
-        family: "minimax",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -1453,7 +1355,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "MiniMax-M2.5": {
         id: "MiniMax-M2.5",
         name: "MiniMax-M2.5",
-        family: "minimax",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -1467,7 +1368,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "MiniMax-M2.5-highspeed": {
         id: "MiniMax-M2.5-highspeed",
         name: "MiniMax-M2.5-highspeed",
-        family: "minimax",
         cost: {
           input: 0.6,
           output: 2.4,
@@ -1481,7 +1381,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "MiniMax-M2.7": {
         id: "MiniMax-M2.7",
         name: "MiniMax-M2.7",
-        family: "minimax",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -1495,7 +1394,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "MiniMax-M2.7-highspeed": {
         id: "MiniMax-M2.7-highspeed",
         name: "MiniMax-M2.7-highspeed",
-        family: "minimax",
         cost: {
           input: 0.6,
           output: 2.4,
@@ -1509,7 +1407,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "MiniMax-M3": {
         id: "MiniMax-M3",
         name: "MiniMax-M3",
-        family: "minimax",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -1531,7 +1428,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2-0711-preview": {
         id: "kimi-k2-0711-preview",
         name: "Kimi K2 0711",
-        family: "kimi-k2",
         cost: {
           input: 0.6,
           output: 2.5,
@@ -1545,7 +1441,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2-0905-preview": {
         id: "kimi-k2-0905-preview",
         name: "Kimi K2 0905",
-        family: "kimi-k2",
         cost: {
           input: 0.6,
           output: 2.5,
@@ -1559,7 +1454,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2-thinking": {
         id: "kimi-k2-thinking",
         name: "Kimi K2 Thinking",
-        family: "kimi-thinking",
         cost: {
           input: 0.6,
           output: 2.5,
@@ -1573,7 +1467,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2-thinking-turbo": {
         id: "kimi-k2-thinking-turbo",
         name: "Kimi K2 Thinking Turbo",
-        family: "kimi-thinking",
         cost: {
           input: 1.15,
           output: 8,
@@ -1587,7 +1480,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2-turbo-preview": {
         id: "kimi-k2-turbo-preview",
         name: "Kimi K2 Turbo",
-        family: "kimi-k2",
         cost: {
           input: 2.4,
           output: 10,
@@ -1601,7 +1493,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.5": {
         id: "kimi-k2.5",
         name: "Kimi K2.5",
-        family: "kimi-k2",
         cost: {
           input: 0.6,
           output: 3,
@@ -1615,7 +1506,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.6": {
         id: "kimi-k2.6",
         name: "Kimi K2.6",
-        family: "kimi-k2",
         cost: {
           input: 0.95,
           output: 4,
@@ -1630,7 +1520,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.7-code": {
         id: "kimi-k2.7-code",
         name: "Kimi K2.7 Code",
-        family: "kimi-k2",
         cost: {
           input: 0.95,
           output: 4,
@@ -1645,7 +1534,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.7-code-highspeed": {
         id: "kimi-k2.7-code-highspeed",
         name: "Kimi K2.7 Code HighSpeed",
-        family: "kimi-k2",
         cost: {
           input: 1.9,
           output: 8,
@@ -1660,7 +1548,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k3": {
         id: "kimi-k3",
         name: "Kimi K3",
-        family: "kimi-k3",
         cost: {
           input: 3,
           output: 15,
@@ -1683,7 +1570,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek-v4-flash": {
         id: "deepseek-v4-flash",
         name: "deepseek-v4-flash",
-        family: "deepseek-flash",
         limit: {
           context: 1048576,
           output: 1048576,
@@ -1693,7 +1579,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek-v4-flash:0731": {
         id: "deepseek-v4-flash:0731",
         name: "DeepSeek V4 Flash 0731",
-        family: "deepseek-flash",
         limit: {
           context: 1048576,
           output: 1048576,
@@ -1704,7 +1589,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek-v4-pro": {
         id: "deepseek-v4-pro",
         name: "deepseek-v4-pro",
-        family: "deepseek-thinking",
         limit: {
           context: 1048576,
           output: 1048576,
@@ -1714,7 +1598,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemma4:31b": {
         id: "gemma4:31b",
         name: "gemma4:31b",
-        family: "gemma",
         limit: {
           context: 262144,
           output: 262144,
@@ -1724,7 +1607,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5.1": {
         id: "glm-5.1",
         name: "glm-5.1",
-        family: "glm",
         limit: {
           context: 202752,
           output: 131072,
@@ -1734,7 +1616,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5.2": {
         id: "glm-5.2",
         name: "GLM-5.2",
-        family: "glm",
         limit: {
           context: 976000,
           output: 131072,
@@ -1745,7 +1626,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-oss:120b": {
         id: "gpt-oss:120b",
         name: "gpt-oss:120b",
-        family: "gpt-oss",
         limit: {
           context: 131072,
           output: 32768,
@@ -1755,7 +1635,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-oss:20b": {
         id: "gpt-oss:20b",
         name: "gpt-oss:20b",
-        family: "gpt-oss",
         limit: {
           context: 131072,
           output: 32768,
@@ -1765,7 +1644,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.5": {
         id: "kimi-k2.5",
         name: "kimi-k2.5",
-        family: "kimi-k2",
         limit: {
           context: 262144,
           output: 262144,
@@ -1775,7 +1653,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.6": {
         id: "kimi-k2.6",
         name: "kimi-k2.6",
-        family: "kimi-k2",
         limit: {
           context: 262144,
           output: 262144,
@@ -1785,7 +1662,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.7-code": {
         id: "kimi-k2.7-code",
         name: "kimi-k2.7-code",
-        family: "kimi-k2",
         limit: {
           context: 262144,
           output: 262144,
@@ -1796,7 +1672,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k3": {
         id: "kimi-k3",
         name: "kimi-k3",
-        family: "kimi-k3",
         limit: {
           context: 1048576,
           output: 131072,
@@ -1807,7 +1682,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax-m2.5": {
         id: "minimax-m2.5",
         name: "minimax-m2.5",
-        family: "minimax",
         limit: {
           context: 204800,
           output: 131072,
@@ -1817,7 +1691,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax-m2.7": {
         id: "minimax-m2.7",
         name: "minimax-m2.7",
-        family: "minimax",
         limit: {
           context: 196608,
           output: 196608,
@@ -1827,7 +1700,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax-m3": {
         id: "minimax-m3",
         name: "minimax-m3",
-        family: "minimax-m3",
         limit: {
           context: 512000,
           output: 131072,
@@ -1837,7 +1709,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistral-large-3:675b": {
         id: "mistral-large-3:675b",
         name: "mistral-large-3:675b",
-        family: "mistral-large",
         limit: {
           context: 262144,
           output: 262144,
@@ -1847,7 +1718,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nemotron-3-nano:30b": {
         id: "nemotron-3-nano:30b",
         name: "nemotron-3-nano:30b",
-        family: "nemotron",
         limit: {
           context: 1048576,
           output: 131072,
@@ -1857,7 +1727,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nemotron-3-super": {
         id: "nemotron-3-super",
         name: "nemotron-3-super",
-        family: "nemotron",
         limit: {
           context: 262144,
           output: 65536,
@@ -1867,7 +1736,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nemotron-3-ultra": {
         id: "nemotron-3-ultra",
         name: "nemotron-3-ultra",
-        family: "nemotron",
         limit: {
           context: 262144,
           output: 128000,
@@ -1877,7 +1745,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.5:397b": {
         id: "qwen3.5:397b",
         name: "qwen3.5:397b",
-        family: "qwen",
         limit: {
           context: 262144,
           output: 65536,
@@ -1895,7 +1762,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "big-pickle": {
         id: "big-pickle",
         name: "Big Pickle",
-        family: "big-pickle",
         cost: {
           input: 0,
           output: 0,
@@ -1910,7 +1776,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "claude-3-5-haiku": {
         id: "claude-3-5-haiku",
         name: "Claude Haiku 3.5",
-        family: "claude-haiku",
         cost: {
           input: 0.8,
           output: 4,
@@ -1924,7 +1789,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "claude-fable-5": {
         id: "claude-fable-5",
         name: "Claude Fable 5",
-        family: "claude-fable",
         cost: {
           input: 10,
           output: 50,
@@ -1938,7 +1802,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "claude-haiku-4-5": {
         id: "claude-haiku-4-5",
         name: "Claude Haiku 4.5",
-        family: "claude-haiku",
         cost: {
           input: 1,
           output: 5,
@@ -1952,7 +1815,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "claude-opus-4-1": {
         id: "claude-opus-4-1",
         name: "Claude Opus 4.1",
-        family: "claude-opus",
         cost: {
           input: 15,
           output: 75,
@@ -1966,7 +1828,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "claude-opus-4-5": {
         id: "claude-opus-4-5",
         name: "Claude Opus 4.5",
-        family: "claude-opus",
         cost: {
           input: 5,
           output: 25,
@@ -1980,7 +1841,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "claude-opus-4-6": {
         id: "claude-opus-4-6",
         name: "Claude Opus 4.6",
-        family: "claude-opus",
         cost: {
           input: 5,
           output: 25,
@@ -1994,7 +1854,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "claude-opus-4-7": {
         id: "claude-opus-4-7",
         name: "Claude Opus 4.7",
-        family: "claude-opus",
         cost: {
           input: 5,
           output: 25,
@@ -2008,7 +1867,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "claude-opus-4-8": {
         id: "claude-opus-4-8",
         name: "Claude Opus 4.8",
-        family: "claude-opus",
         cost: {
           input: 5,
           output: 25,
@@ -2022,7 +1880,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "claude-opus-5": {
         id: "claude-opus-5",
         name: "Claude Opus 5",
-        family: "claude-opus",
         cost: {
           input: 5,
           output: 25,
@@ -2036,7 +1893,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "claude-sonnet-4": {
         id: "claude-sonnet-4",
         name: "Claude Sonnet 4",
-        family: "claude-sonnet",
         cost: {
           input: 3,
           output: 15,
@@ -2050,7 +1906,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "claude-sonnet-4-5": {
         id: "claude-sonnet-4-5",
         name: "Claude Sonnet 4.5",
-        family: "claude-sonnet",
         cost: {
           input: 3,
           output: 15,
@@ -2064,7 +1919,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "claude-sonnet-4-6": {
         id: "claude-sonnet-4-6",
         name: "Claude Sonnet 4.6",
-        family: "claude-sonnet",
         cost: {
           input: 3,
           output: 15,
@@ -2078,7 +1932,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "claude-sonnet-5": {
         id: "claude-sonnet-5",
         name: "Claude Sonnet 5",
-        family: "claude-sonnet",
         cost: {
           input: 2,
           output: 10,
@@ -2092,7 +1945,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek-v4-flash": {
         id: "deepseek-v4-flash",
         name: "DeepSeek V4 Flash",
-        family: "deepseek-flash",
         cost: {
           input: 0.14,
           output: 0.28,
@@ -2107,7 +1959,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek-v4-flash-free": {
         id: "deepseek-v4-flash-free",
         name: "DeepSeek V4 Flash Free",
-        family: "deepseek-flash",
         cost: {
           input: 0,
           output: 0,
@@ -2122,7 +1973,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek-v4-pro": {
         id: "deepseek-v4-pro",
         name: "DeepSeek V4 Pro",
-        family: "deepseek-thinking",
         cost: {
           input: 1.74,
           output: 3.84,
@@ -2137,7 +1987,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3-flash": {
         id: "gemini-3-flash",
         name: "Gemini 3 Flash",
-        family: "gemini-flash",
         cost: {
           input: 0.5,
           output: 3,
@@ -2152,7 +2001,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3-pro": {
         id: "gemini-3-pro",
         name: "Gemini 3 Pro",
-        family: "gemini-pro",
         cost: {
           input: 2,
           output: 12,
@@ -2167,7 +2015,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.1-pro": {
         id: "gemini-3.1-pro",
         name: "Gemini 3.1 Pro Preview",
-        family: "gemini-pro",
         cost: {
           input: 2,
           output: 12,
@@ -2182,7 +2029,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.5-flash": {
         id: "gemini-3.5-flash",
         name: "Gemini 3.5 Flash",
-        family: "gemini-flash",
         cost: {
           input: 1.5,
           output: 9,
@@ -2197,7 +2043,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.5-flash-lite": {
         id: "gemini-3.5-flash-lite",
         name: "Gemini 3.5 Flash Lite",
-        family: "gemini-flash-lite",
         cost: {
           input: 0.3,
           output: 2.5,
@@ -2212,7 +2057,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.6-flash": {
         id: "gemini-3.6-flash",
         name: "Gemini 3.6 Flash",
-        family: "gemini-flash",
         cost: {
           input: 1.5,
           output: 7.5,
@@ -2227,7 +2071,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gemini-3.7-flash": {
         id: "gemini-3.7-flash",
         name: "Gemini 3.7 Flash",
-        family: "gemini-flash",
         cost: {
           input: 1.5,
           output: 7.5,
@@ -2242,7 +2085,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-4.6": {
         id: "glm-4.6",
         name: "GLM-4.6",
-        family: "glm",
         cost: {
           input: 0.6,
           output: 2.2,
@@ -2256,7 +2098,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-4.7": {
         id: "glm-4.7",
         name: "GLM-4.7",
-        family: "glm",
         cost: {
           input: 0.6,
           output: 2.2,
@@ -2270,7 +2111,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-4.7-free": {
         id: "glm-4.7-free",
         name: "GLM-4.7 Free",
-        family: "glm-free",
         cost: {
           input: 0,
           output: 0,
@@ -2284,7 +2124,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5": {
         id: "glm-5",
         name: "GLM-5",
-        family: "glm",
         cost: {
           input: 1,
           output: 3.2,
@@ -2298,7 +2137,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5-free": {
         id: "glm-5-free",
         name: "GLM-5 Free",
-        family: "glm-free",
         cost: {
           input: 0,
           output: 0,
@@ -2312,7 +2150,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5.1": {
         id: "glm-5.1",
         name: "GLM-5.1",
-        family: "glm",
         cost: {
           input: 1.4,
           output: 4.4,
@@ -2326,7 +2163,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5.2": {
         id: "glm-5.2",
         name: "GLM-5.2",
-        family: "glm",
         cost: {
           input: 1.4,
           output: 4.4,
@@ -2341,7 +2177,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5": {
         id: "gpt-5",
         name: "GPT-5",
-        family: "gpt",
         cost: {
           input: 1.07,
           output: 8.5,
@@ -2356,7 +2191,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5-codex": {
         id: "gpt-5-codex",
         name: "GPT-5 Codex",
-        family: "gpt-codex",
         cost: {
           input: 1.07,
           output: 8.5,
@@ -2371,7 +2205,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5-nano": {
         id: "gpt-5-nano",
         name: "GPT-5 Nano",
-        family: "gpt-nano",
         cost: {
           input: 0.05,
           output: 0.4,
@@ -2386,7 +2219,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.1": {
         id: "gpt-5.1",
         name: "GPT-5.1",
-        family: "gpt",
         cost: {
           input: 1.07,
           output: 8.5,
@@ -2401,7 +2233,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.1-codex": {
         id: "gpt-5.1-codex",
         name: "GPT-5.1 Codex",
-        family: "gpt-codex",
         cost: {
           input: 1.07,
           output: 8.5,
@@ -2416,7 +2247,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.1-codex-max": {
         id: "gpt-5.1-codex-max",
         name: "GPT-5.1 Codex Max",
-        family: "gpt-codex",
         cost: {
           input: 1.25,
           output: 10,
@@ -2431,7 +2261,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.1-codex-mini": {
         id: "gpt-5.1-codex-mini",
         name: "GPT-5.1 Codex Mini",
-        family: "gpt-codex",
         cost: {
           input: 0.25,
           output: 2,
@@ -2446,7 +2275,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.2": {
         id: "gpt-5.2",
         name: "GPT-5.2",
-        family: "gpt",
         cost: {
           input: 1.75,
           output: 14,
@@ -2461,7 +2289,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.2-codex": {
         id: "gpt-5.2-codex",
         name: "GPT-5.2 Codex",
-        family: "gpt-codex",
         cost: {
           input: 1.75,
           output: 14,
@@ -2476,7 +2303,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.3-codex": {
         id: "gpt-5.3-codex",
         name: "GPT-5.3 Codex",
-        family: "gpt-codex",
         cost: {
           input: 1.75,
           output: 14,
@@ -2491,7 +2317,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.3-codex-spark": {
         id: "gpt-5.3-codex-spark",
         name: "GPT-5.3 Codex Spark",
-        family: "gpt-codex-spark",
         cost: {
           input: 1.75,
           output: 14,
@@ -2506,7 +2331,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.4": {
         id: "gpt-5.4",
         name: "GPT-5.4",
-        family: "gpt",
         cost: {
           input: 2.5,
           output: 15,
@@ -2521,7 +2345,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.4-mini": {
         id: "gpt-5.4-mini",
         name: "GPT-5.4 Mini",
-        family: "gpt-mini",
         cost: {
           input: 0.75,
           output: 4.5,
@@ -2536,7 +2359,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.4-nano": {
         id: "gpt-5.4-nano",
         name: "GPT-5.4 Nano",
-        family: "gpt-nano",
         cost: {
           input: 0.2,
           output: 1.25,
@@ -2551,7 +2373,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.4-pro": {
         id: "gpt-5.4-pro",
         name: "GPT-5.4 Pro",
-        family: "gpt-pro",
         cost: {
           input: 30,
           output: 180,
@@ -2566,7 +2387,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.5": {
         id: "gpt-5.5",
         name: "GPT-5.5",
-        family: "gpt",
         cost: {
           input: 5,
           output: 30,
@@ -2581,7 +2401,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.5-pro": {
         id: "gpt-5.5-pro",
         name: "GPT-5.5 Pro",
-        family: "gpt-pro",
         cost: {
           input: 30,
           output: 180,
@@ -2596,7 +2415,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.6-luna": {
         id: "gpt-5.6-luna",
         name: "GPT-5.6 Luna",
-        family: "gpt-luna",
         cost: {
           input: 0.2,
           output: 1.2,
@@ -2611,7 +2429,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.6-sol": {
         id: "gpt-5.6-sol",
         name: "GPT-5.6 Sol (50% Off)",
-        family: "gpt-sol",
         cost: {
           input: 2,
           output: 10,
@@ -2626,7 +2443,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.6-terra": {
         id: "gpt-5.6-terra",
         name: "GPT-5.6 Terra",
-        family: "gpt-terra",
         cost: {
           input: 2.5,
           output: 15,
@@ -2641,7 +2457,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "grok-4.5": {
         id: "grok-4.5",
         name: "Grok 4.5",
-        family: "grok",
         cost: {
           input: 2,
           output: 6,
@@ -2656,7 +2471,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "grok-4.6": {
         id: "grok-4.6",
         name: "Grok 4.6",
-        family: "grok",
         cost: {
           input: 2,
           output: 6,
@@ -2671,7 +2485,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "grok-build-0.1": {
         id: "grok-build-0.1",
         name: "Grok Build 0.1",
-        family: "grok-build",
         cost: {
           input: 1,
           output: 2,
@@ -2686,7 +2499,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "grok-code": {
         id: "grok-code",
         name: "Grok Code Fast 1",
-        family: "grok",
         cost: {
           input: 0,
           output: 0,
@@ -2700,7 +2512,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "hy3-free": {
         id: "hy3-free",
         name: "Hy3 Free",
-        family: "hy3-free",
         cost: {
           input: 0,
           output: 0,
@@ -2715,7 +2526,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "hy3-preview-free": {
         id: "hy3-preview-free",
         name: "Hy3 preview Free",
-        family: "hy3-free",
         cost: {
           input: 0,
           output: 0,
@@ -2729,7 +2539,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2": {
         id: "kimi-k2",
         name: "Kimi K2",
-        family: "kimi-k2",
         cost: {
           input: 0.4,
           output: 2.5,
@@ -2743,7 +2552,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2-thinking": {
         id: "kimi-k2-thinking",
         name: "Kimi K2 Thinking",
-        family: "kimi-thinking",
         cost: {
           input: 0.4,
           output: 2.5,
@@ -2757,7 +2565,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.5": {
         id: "kimi-k2.5",
         name: "Kimi K2.5",
-        family: "kimi-k2",
         cost: {
           input: 0.6,
           output: 3,
@@ -2771,7 +2578,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.5-free": {
         id: "kimi-k2.5-free",
         name: "Kimi K2.5 Free",
-        family: "kimi-free",
         cost: {
           input: 0,
           output: 0,
@@ -2785,7 +2591,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.6": {
         id: "kimi-k2.6",
         name: "Kimi K2.6",
-        family: "kimi-k2",
         cost: {
           input: 0.95,
           output: 4,
@@ -2799,7 +2604,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.7-code": {
         id: "kimi-k2.7-code",
         name: "Kimi K2.7 Code",
-        family: "kimi-k2",
         cost: {
           input: 0.95,
           output: 4,
@@ -2814,7 +2618,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k3": {
         id: "kimi-k3",
         name: "Kimi K3",
-        family: "kimi-k3",
         cost: {
           input: 3,
           output: 15,
@@ -2829,7 +2632,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "laguna-s-2.1-free": {
         id: "laguna-s-2.1-free",
         name: "Laguna S 2.1 Free",
-        family: "laguna",
         cost: {
           input: 0,
           output: 0,
@@ -2844,7 +2646,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "ling-2.6-flash-free": {
         id: "ling-2.6-flash-free",
         name: "Ling 2.6 Flash Free",
-        family: "ling-flash-free",
         cost: {
           input: 0,
           output: 0,
@@ -2858,7 +2659,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "ling-3.0-flash-free": {
         id: "ling-3.0-flash-free",
         name: "Ling-3.0-flash Free",
-        family: "ling",
         cost: {
           input: 0,
           output: 0,
@@ -2873,7 +2673,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "ling-3.0-tiny-free": {
         id: "ling-3.0-tiny-free",
         name: "Ling-3.0-tiny Free",
-        family: "ling",
         cost: {
           input: 0,
           output: 0,
@@ -2888,7 +2687,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "longcat-2.0-free": {
         id: "longcat-2.0-free",
         name: "LongCat-2.0 Free",
-        family: "longcat",
         cost: {
           input: 0,
           output: 0,
@@ -2902,7 +2700,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mimo-v2-flash-free": {
         id: "mimo-v2-flash-free",
         name: "MiMo V2 Flash Free",
-        family: "mimo-flash-free",
         cost: {
           input: 0,
           output: 0,
@@ -2916,7 +2713,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mimo-v2-omni-free": {
         id: "mimo-v2-omni-free",
         name: "MiMo V2 Omni Free",
-        family: "mimo-omni-free",
         cost: {
           input: 0,
           output: 0,
@@ -2930,7 +2726,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mimo-v2-pro-free": {
         id: "mimo-v2-pro-free",
         name: "MiMo V2 Pro Free",
-        family: "mimo-pro-free",
         cost: {
           input: 0,
           output: 0,
@@ -2944,7 +2739,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mimo-v2.5-free": {
         id: "mimo-v2.5-free",
         name: "MiMo V2.5 Free",
-        family: "mimo-v2.5-free",
         cost: {
           input: 0,
           output: 0,
@@ -2958,7 +2752,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax-m2.1": {
         id: "minimax-m2.1",
         name: "MiniMax-M2.1",
-        family: "minimax",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -2972,7 +2765,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax-m2.1-free": {
         id: "minimax-m2.1-free",
         name: "MiniMax-M2.1 Free",
-        family: "minimax-free",
         cost: {
           input: 0,
           output: 0,
@@ -2986,7 +2778,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax-m2.5": {
         id: "minimax-m2.5",
         name: "MiniMax-M2.5",
-        family: "minimax",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -3000,7 +2791,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax-m2.5-free": {
         id: "minimax-m2.5-free",
         name: "MiniMax-M2.5 Free",
-        family: "minimax-free",
         cost: {
           input: 0,
           output: 0,
@@ -3014,7 +2804,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax-m2.7": {
         id: "minimax-m2.7",
         name: "MiniMax-M2.7",
-        family: "minimax",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -3028,7 +2817,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax-m3": {
         id: "minimax-m3",
         name: "MiniMax-M3",
-        family: "minimax",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -3042,7 +2830,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax-m3-free": {
         id: "minimax-m3-free",
         name: "MiniMax-M3 Free",
-        family: "minimax-m3-free",
         cost: {
           input: 0,
           output: 0,
@@ -3056,7 +2843,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "muse-spark-1.2": {
         id: "muse-spark-1.2",
         name: "Muse Spark 1.2",
-        family: "muse",
         cost: {
           input: 1.25,
           output: 4.25,
@@ -3071,7 +2857,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "muse-spark-1.2-contributor-free": {
         id: "muse-spark-1.2-contributor-free",
         name: "Muse Spark 1.2 Free",
-        family: "muse-free",
         cost: {
           input: 0,
           output: 0,
@@ -3086,7 +2871,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nemotron-3-super-free": {
         id: "nemotron-3-super-free",
         name: "Nemotron 3 Super Free",
-        family: "nemotron-free",
         cost: {
           input: 0,
           output: 0,
@@ -3100,7 +2884,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nemotron-3-ultra-free": {
         id: "nemotron-3-ultra-free",
         name: "Nemotron 3 Ultra Free",
-        family: "nemotron-free",
         cost: {
           input: 0,
           output: 0,
@@ -3114,7 +2897,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nemotron-3.5-lightning-free": {
         id: "nemotron-3.5-lightning-free",
         name: "Nemotron 3.5 Lightning Free",
-        family: "nemotron-free",
         cost: {
           input: 0,
           output: 0,
@@ -3129,7 +2911,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "north-mini-code-free": {
         id: "north-mini-code-free",
         name: "North Mini Code Free",
-        family: "north-free",
         cost: {
           input: 0,
           output: 0,
@@ -3144,7 +2925,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3-coder": {
         id: "qwen3-coder",
         name: "Qwen3 Coder",
-        family: "qwen",
         cost: {
           input: 0.45,
           output: 1.8,
@@ -3158,7 +2938,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.5-plus": {
         id: "qwen3.5-plus",
         name: "Qwen3.5 Plus",
-        family: "qwen3.5",
         cost: {
           input: 0.2,
           output: 1.2,
@@ -3172,7 +2951,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.6-plus": {
         id: "qwen3.6-plus",
         name: "Qwen3.6 Plus",
-        family: "qwen3.6",
         cost: {
           input: 0.5,
           output: 3,
@@ -3186,7 +2964,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.6-plus-free": {
         id: "qwen3.6-plus-free",
         name: "Qwen3.6 Plus Free",
-        family: "qwen-free",
         cost: {
           input: 0,
           output: 0,
@@ -3200,7 +2977,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "ring-2.6-1t-free": {
         id: "ring-2.6-1t-free",
         name: "Ring 2.6 1T Free",
-        family: "ring-1t-free",
         cost: {
           input: 0,
           output: 0,
@@ -3214,7 +2990,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "trinity-large-preview-free": {
         id: "trinity-large-preview-free",
         name: "Trinity Large Preview",
-        family: "trinity",
         cost: {
           input: 0,
           output: 0,
@@ -3250,7 +3025,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek-v4-flash": {
         id: "deepseek-v4-flash",
         name: "DeepSeek V4 Flash",
-        family: "deepseek-flash",
         cost: {
           input: 0.22,
           output: 0.66,
@@ -3265,7 +3039,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek-v4-flash-vision-exp": {
         id: "deepseek-v4-flash-vision-exp",
         name: "DeepSeek V4 Flash Vision Exp",
-        family: "deepseek-flash",
         cost: {
           input: 0.22,
           output: 0.66,
@@ -3280,7 +3053,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek-v4-pro": {
         id: "deepseek-v4-pro",
         name: "DeepSeek V4 Pro (New)",
-        family: "deepseek-thinking",
         cost: {
           input: 0.66,
           output: 1.98,
@@ -3295,7 +3067,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5": {
         id: "glm-5",
         name: "GLM-5",
-        family: "glm",
         cost: {
           input: 1,
           output: 3.2,
@@ -3309,7 +3080,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5.1": {
         id: "glm-5.1",
         name: "GLM-5.1",
-        family: "glm",
         cost: {
           input: 1.4,
           output: 4.4,
@@ -3323,7 +3093,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5.2": {
         id: "glm-5.2",
         name: "GLM-5.2",
-        family: "glm",
         cost: {
           input: 1.4,
           output: 4.4,
@@ -3338,7 +3107,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5.3": {
         id: "glm-5.3",
         name: "GLM-5.3",
-        family: "glm",
         cost: {
           input: 1.4,
           output: 4.4,
@@ -3353,7 +3121,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "gpt-5.6-luna": {
         id: "gpt-5.6-luna",
         name: "GPT-5.6 Luna",
-        family: "gpt-luna",
         cost: {
           input: 0.2,
           output: 1.2,
@@ -3368,7 +3135,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "grok-4.5": {
         id: "grok-4.5",
         name: "Grok 4.5",
-        family: "grok",
         cost: {
           input: 2,
           output: 6,
@@ -3383,7 +3149,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "grok-4.6": {
         id: "grok-4.6",
         name: "Grok 4.6",
-        family: "grok",
         cost: {
           input: 2,
           output: 6,
@@ -3398,7 +3163,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       hy3: {
         id: "hy3",
         name: "Hy3 (8x usage)",
-        family: "Hy",
         cost: {
           input: 0.0175,
           output: 0.0725,
@@ -3412,7 +3176,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.5": {
         id: "kimi-k2.5",
         name: "Kimi K2.5",
-        family: "kimi-k2",
         cost: {
           input: 0.6,
           output: 3,
@@ -3426,7 +3189,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.6": {
         id: "kimi-k2.6",
         name: "Kimi K2.6",
-        family: "kimi-k2",
         cost: {
           input: 0.95,
           output: 4,
@@ -3440,7 +3202,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k2.7-code": {
         id: "kimi-k2.7-code",
         name: "Kimi K2.7 Code",
-        family: "kimi-k2",
         cost: {
           input: 0.95,
           output: 4,
@@ -3455,7 +3216,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kimi-k3": {
         id: "kimi-k3",
         name: "Kimi K3",
-        family: "kimi-k3",
         cost: {
           input: 3,
           output: 15,
@@ -3470,7 +3230,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "longcat-2.0": {
         id: "longcat-2.0",
         name: "LongCat-2.0",
-        family: "longcat",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -3484,7 +3243,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mimo-v2-omni": {
         id: "mimo-v2-omni",
         name: "MiMo V2 Omni",
-        family: "mimo-v2-omni",
         cost: {
           input: 0.4,
           output: 2,
@@ -3498,7 +3256,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mimo-v2-pro": {
         id: "mimo-v2-pro",
         name: "MiMo V2 Pro",
-        family: "mimo-v2-pro",
         cost: {
           input: 1,
           output: 3,
@@ -3512,7 +3269,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mimo-v2.5": {
         id: "mimo-v2.5",
         name: "MiMo V2.5",
-        family: "mimo-v2.5",
         cost: {
           input: 0.14,
           output: 0.28,
@@ -3526,7 +3282,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mimo-v2.5-pro": {
         id: "mimo-v2.5-pro",
         name: "MiMo V2.5 Pro",
-        family: "mimo-v2.5-pro",
         cost: {
           input: 0.435,
           output: 0.87,
@@ -3540,7 +3295,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax-m2.5": {
         id: "minimax-m2.5",
         name: "MiniMax-M2.5",
-        family: "minimax-m2.5",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -3554,7 +3308,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax-m2.7": {
         id: "minimax-m2.7",
         name: "MiniMax-M2.7",
-        family: "minimax-m2.7",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -3568,7 +3321,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax-m3": {
         id: "minimax-m3",
         name: "MiniMax-M3",
-        family: "minimax-m3",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -3582,7 +3334,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "muse-spark-1.2-contributor": {
         id: "muse-spark-1.2-contributor",
         name: "Muse Spark 1.2 Contributor",
-        family: "muse",
         cost: {
           input: 0.1,
           output: 0.2,
@@ -3611,7 +3362,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.5-plus": {
         id: "qwen3.5-plus",
         name: "Qwen3.5 Plus",
-        family: "qwen3.5",
         cost: {
           input: 0.2,
           output: 1.2,
@@ -3625,7 +3375,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.6-plus": {
         id: "qwen3.6-plus",
         name: "Qwen3.6 Plus",
-        family: "qwen3.6",
         cost: {
           input: 0.5,
           output: 3,
@@ -3639,7 +3388,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.7-max": {
         id: "qwen3.7-max",
         name: "Qwen3.7 Max",
-        family: "qwen3.7-max",
         cost: {
           input: 2.5,
           output: 7.5,
@@ -3653,7 +3401,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.7-plus": {
         id: "qwen3.7-plus",
         name: "Qwen3.7 Plus",
-        family: "qwen3.7-plus",
         cost: {
           input: 0.4,
           output: 1.6,
@@ -3667,7 +3414,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen3.8-max": {
         id: "qwen3.8-max",
         name: "Qwen3.8 Max",
-        family: "qwen3.8-max",
         cost: {
           input: 2,
           output: 6,
@@ -3732,7 +3478,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "aion-labs/aion-rp-llama-3.1-8b": {
         id: "aion-labs/aion-rp-llama-3.1-8b",
         name: "Aion-RP 1.0 (8B)",
-        family: "llama",
         cost: {
           input: 0.8,
           output: 1.6,
@@ -3747,7 +3492,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "allenai/olmo-3-32b-think": {
         id: "allenai/olmo-3-32b-think",
         name: "Olmo 3 32B Think",
-        family: "allenai",
         cost: {
           input: 0.15,
           output: 0.5,
@@ -3762,7 +3506,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "amazon/nova-2-lite-v1": {
         id: "amazon/nova-2-lite-v1",
         name: "Nova 2 Lite",
-        family: "nova",
         cost: {
           input: 0.3,
           output: 2.5,
@@ -3777,7 +3520,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "amazon/nova-lite-v1": {
         id: "amazon/nova-lite-v1",
         name: "Nova Lite 1.0",
-        family: "nova-lite",
         cost: {
           input: 0.06,
           output: 0.24,
@@ -3792,7 +3534,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "amazon/nova-micro-v1": {
         id: "amazon/nova-micro-v1",
         name: "Nova Micro 1.0",
-        family: "nova-micro",
         cost: {
           input: 0.035,
           output: 0.14,
@@ -3807,7 +3548,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "amazon/nova-premier-v1": {
         id: "amazon/nova-premier-v1",
         name: "Nova Premier 1.0",
-        family: "nova",
         cost: {
           input: 2.5,
           output: 12.5,
@@ -3822,7 +3562,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "amazon/nova-pro-v1": {
         id: "amazon/nova-pro-v1",
         name: "Nova Pro 1.0",
-        family: "nova-pro",
         cost: {
           input: 0.8,
           output: 3.2,
@@ -3851,7 +3590,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-3-haiku": {
         id: "anthropic/claude-3-haiku",
         name: "Claude 3 Haiku",
-        family: "claude",
         cost: {
           input: 0.25,
           output: 1.25,
@@ -3866,7 +3604,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-fable-5": {
         id: "anthropic/claude-fable-5",
         name: "Claude Fable 5",
-        family: "claude-fable",
         cost: {
           input: 10,
           output: 50,
@@ -3881,7 +3618,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-haiku-4.5": {
         id: "anthropic/claude-haiku-4.5",
         name: "Claude Haiku 4.5 (latest)",
-        family: "claude-haiku",
         cost: {
           input: 1,
           output: 5,
@@ -3896,7 +3632,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-opus-4": {
         id: "anthropic/claude-opus-4",
         name: "Claude Opus 4",
-        family: "claude-opus",
         cost: {
           input: 15,
           output: 75,
@@ -3911,7 +3646,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-opus-4.1": {
         id: "anthropic/claude-opus-4.1",
         name: "Claude Opus 4.1 (latest)",
-        family: "claude-opus",
         cost: {
           input: 15,
           output: 75,
@@ -3926,7 +3660,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-opus-4.5": {
         id: "anthropic/claude-opus-4.5",
         name: "Claude Opus 4.5 (latest)",
-        family: "claude-opus",
         cost: {
           input: 5,
           output: 25,
@@ -3941,7 +3674,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-opus-4.6": {
         id: "anthropic/claude-opus-4.6",
         name: "Claude Opus 4.6",
-        family: "claude-opus",
         cost: {
           input: 5,
           output: 25,
@@ -3956,7 +3688,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-opus-4.7": {
         id: "anthropic/claude-opus-4.7",
         name: "Claude Opus 4.7",
-        family: "claude-opus",
         cost: {
           input: 5,
           output: 25,
@@ -3971,7 +3702,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-opus-4.7-fast": {
         id: "anthropic/claude-opus-4.7-fast",
         name: "Claude Opus 4.7 (Fast)",
-        family: "claude-opus",
         cost: {
           input: 30,
           output: 150,
@@ -3986,7 +3716,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-opus-4.8": {
         id: "anthropic/claude-opus-4.8",
         name: "Claude Opus 4.8",
-        family: "claude-opus",
         cost: {
           input: 5,
           output: 25,
@@ -4001,7 +3730,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-opus-4.8-fast": {
         id: "anthropic/claude-opus-4.8-fast",
         name: "Claude Opus 4.8 (Fast)",
-        family: "claude-opus",
         cost: {
           input: 10,
           output: 50,
@@ -4016,7 +3744,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-opus-5": {
         id: "anthropic/claude-opus-5",
         name: "Claude Opus 5",
-        family: "claude-opus",
         cost: {
           input: 5,
           output: 25,
@@ -4031,7 +3758,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-opus-5-fast": {
         id: "anthropic/claude-opus-5-fast",
         name: "Claude Opus 5 (Fast)",
-        family: "claude-opus",
         cost: {
           input: 10,
           output: 50,
@@ -4046,7 +3772,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-sonnet-4": {
         id: "anthropic/claude-sonnet-4",
         name: "Claude Sonnet 4",
-        family: "claude-sonnet",
         cost: {
           input: 3,
           output: 15,
@@ -4061,7 +3786,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-sonnet-4.5": {
         id: "anthropic/claude-sonnet-4.5",
         name: "Claude Sonnet 4.5 (latest)",
-        family: "claude-sonnet",
         cost: {
           input: 3,
           output: 15,
@@ -4076,7 +3800,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-sonnet-4.6": {
         id: "anthropic/claude-sonnet-4.6",
         name: "Claude Sonnet 4.6",
-        family: "claude-sonnet",
         cost: {
           input: 3,
           output: 15,
@@ -4091,7 +3814,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "anthropic/claude-sonnet-5": {
         id: "anthropic/claude-sonnet-5",
         name: "Claude Sonnet 5",
-        family: "claude-sonnet",
         cost: {
           input: 2,
           output: 10,
@@ -4106,7 +3828,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "arcee-ai/trinity-large-thinking": {
         id: "arcee-ai/trinity-large-thinking",
         name: "Trinity Large Thinking",
-        family: "trinity",
         cost: {
           input: 0.22,
           output: 0.85,
@@ -4135,7 +3856,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "baidu/ernie-4.5-vl-424b-a47b": {
         id: "baidu/ernie-4.5-vl-424b-a47b",
         name: "ERNIE 4.5 VL 424B A47B ",
-        family: "ernie",
         cost: {
           input: 0.42,
           output: 1.25,
@@ -4150,7 +3870,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "bytedance-seed/seed-1.6": {
         id: "bytedance-seed/seed-1.6",
         name: "Seed 1.6",
-        family: "seed",
         cost: {
           input: 0.25,
           output: 2,
@@ -4165,7 +3884,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "bytedance-seed/seed-1.6-flash": {
         id: "bytedance-seed/seed-1.6-flash",
         name: "Seed 1.6 Flash",
-        family: "seed",
         cost: {
           input: 0.075,
           output: 0.3,
@@ -4180,7 +3898,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "bytedance-seed/seed-2-1-turbo": {
         id: "bytedance-seed/seed-2-1-turbo",
         name: "Seed 2.1 Turbo",
-        family: "seed",
         cost: {
           input: 0.5,
           output: 2.5,
@@ -4195,7 +3912,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "bytedance-seed/seed-2.0-code": {
         id: "bytedance-seed/seed-2.0-code",
         name: "Seed 2.0 Code",
-        family: "seed",
         cost: {
           input: 0.5,
           output: 3,
@@ -4210,7 +3926,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "bytedance-seed/seed-2.0-lite": {
         id: "bytedance-seed/seed-2.0-lite",
         name: "Seed 2.0 Lite",
-        family: "seed",
         cost: {
           input: 0.25,
           output: 2,
@@ -4225,7 +3940,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "bytedance-seed/seed-2.0-mini": {
         id: "bytedance-seed/seed-2.0-mini",
         name: "Seed 2.0 Mini",
-        family: "seed",
         cost: {
           input: 0.1,
           output: 0.4,
@@ -4254,7 +3968,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "cognitivecomputations/dolphin-mistral-24b-venice-edition": {
         id: "cognitivecomputations/dolphin-mistral-24b-venice-edition",
         name: "Uncensored",
-        family: "mistral",
         cost: {
           input: 0.2,
           output: 0.9,
@@ -4269,7 +3982,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "cohere/command-a": {
         id: "cohere/command-a",
         name: "Command A",
-        family: "command-a",
         cost: {
           input: 2.5,
           output: 10,
@@ -4284,7 +3996,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "cohere/command-r-08-2024": {
         id: "cohere/command-r-08-2024",
         name: "Command R",
-        family: "command-r",
         cost: {
           input: 0.15,
           output: 0.6,
@@ -4299,7 +4010,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "cohere/command-r-plus-08-2024": {
         id: "cohere/command-r-plus-08-2024",
         name: "Command R+",
-        family: "command-r",
         cost: {
           input: 2.5,
           output: 10,
@@ -4314,7 +4024,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "cohere/command-r7b-12-2024": {
         id: "cohere/command-r7b-12-2024",
         name: "Command R7B",
-        family: "command-r",
         cost: {
           input: 0.0375,
           output: 0.15,
@@ -4329,7 +4038,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "cohere/north-mini-code:free": {
         id: "cohere/north-mini-code:free",
         name: "North Mini Code (free)",
-        family: "north",
         cost: {
           input: 0,
           output: 0,
@@ -4344,7 +4052,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-chat": {
         id: "deepseek/deepseek-chat",
         name: "DeepSeek Chat",
-        family: "deepseek",
         cost: {
           input: 0.2574,
           output: 1.0287,
@@ -4359,7 +4066,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-chat-v3-0324": {
         id: "deepseek/deepseek-chat-v3-0324",
         name: "DeepSeek V3 0324",
-        family: "deepseek",
         cost: {
           input: 0.25,
           output: 1,
@@ -4374,7 +4080,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-chat-v3.1": {
         id: "deepseek/deepseek-chat-v3.1",
         name: "DeepSeek V3.1",
-        family: "deepseek",
         cost: {
           input: 0.55,
           output: 1.65,
@@ -4389,7 +4094,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-r1": {
         id: "deepseek/deepseek-r1",
         name: "DeepSeek-R1",
-        family: "deepseek-thinking",
         cost: {
           input: 0.7,
           output: 2.5,
@@ -4404,7 +4108,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-r1-0528": {
         id: "deepseek/deepseek-r1-0528",
         name: "R1 0528",
-        family: "deepseek",
         cost: {
           input: 0.5,
           output: 2.15,
@@ -4419,7 +4122,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-r1-distill-llama-70b": {
         id: "deepseek/deepseek-r1-distill-llama-70b",
         name: "R1 Distill Llama 70B",
-        family: "deepseek-thinking",
         cost: {
           input: 0.8,
           output: 0.8,
@@ -4434,7 +4136,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-v3.1-terminus": {
         id: "deepseek/deepseek-v3.1-terminus",
         name: "DeepSeek V3.1 Terminus",
-        family: "deepseek",
         cost: {
           input: 0.27,
           output: 1,
@@ -4449,7 +4150,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-v3.2": {
         id: "deepseek/deepseek-v3.2",
         name: "DeepSeek V3.2",
-        family: "deepseek",
         cost: {
           input: 0.26,
           output: 0.38,
@@ -4464,7 +4164,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-v3.2-exp": {
         id: "deepseek/deepseek-v3.2-exp",
         name: "DeepSeek V3.2 Exp",
-        family: "deepseek",
         cost: {
           input: 0.27,
           output: 0.41,
@@ -4479,7 +4178,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-v4-flash": {
         id: "deepseek/deepseek-v4-flash",
         name: "DeepSeek V4 Flash",
-        family: "deepseek-flash",
         cost: {
           input: 0.088606,
           output: 0.177212,
@@ -4494,7 +4192,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-v4-flash-0731": {
         id: "deepseek/deepseek-v4-flash-0731",
         name: "DeepSeek V4 Flash 0731",
-        family: "deepseek-flash",
         cost: {
           input: 0.06,
           output: 0.12,
@@ -4509,7 +4206,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-v4-flash-vision-exp": {
         id: "deepseek/deepseek-v4-flash-vision-exp",
         name: "DeepSeek V4 Flash Vision Exp",
-        family: "deepseek-flash",
         cost: {
           input: 0.44,
           output: 1.32,
@@ -4524,7 +4220,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-v4-pro": {
         id: "deepseek/deepseek-v4-pro",
         name: "DeepSeek V4 Pro",
-        family: "deepseek-thinking",
         cost: {
           input: 0.87,
           output: 1.74,
@@ -4539,7 +4234,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "deepseek/deepseek-v4-pro-0813": {
         id: "deepseek/deepseek-v4-pro-0813",
         name: "DeepSeek V4 Pro 0813",
-        family: "deepseek-thinking",
         cost: {
           input: 1.122,
           output: 3.366,
@@ -4568,7 +4262,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-2.5-flash": {
         id: "google/gemini-2.5-flash",
         name: "Gemini 2.5 Flash",
-        family: "gemini-flash",
         cost: {
           input: 0.3,
           output: 2.5,
@@ -4583,7 +4276,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-2.5-flash-image": {
         id: "google/gemini-2.5-flash-image",
         name: "Nano Banana",
-        family: "gemini-flash",
         cost: {
           input: 0.3,
           output: 2.5,
@@ -4598,7 +4290,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-2.5-flash-lite": {
         id: "google/gemini-2.5-flash-lite",
         name: "Gemini 2.5 Flash-Lite",
-        family: "gemini-flash-lite",
         cost: {
           input: 0.1,
           output: 0.4,
@@ -4613,7 +4304,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-2.5-pro": {
         id: "google/gemini-2.5-pro",
         name: "Gemini 2.5 Pro",
-        family: "gemini-pro",
         cost: {
           input: 1.25,
           output: 10,
@@ -4628,7 +4318,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-2.5-pro-preview": {
         id: "google/gemini-2.5-pro-preview",
         name: "Gemini 2.5 Pro Preview 06-05",
-        family: "gemini",
         cost: {
           input: 1.25,
           output: 10,
@@ -4643,7 +4332,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-2.5-pro-preview-05-06": {
         id: "google/gemini-2.5-pro-preview-05-06",
         name: "Gemini 2.5 Pro Preview 05-06",
-        family: "gemini-pro",
         cost: {
           input: 1.25,
           output: 10,
@@ -4658,7 +4346,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3-flash-preview": {
         id: "google/gemini-3-flash-preview",
         name: "Gemini 3 Flash Preview",
-        family: "gemini-flash",
         cost: {
           input: 0.5,
           output: 3,
@@ -4673,7 +4360,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3-pro-image": {
         id: "google/gemini-3-pro-image",
         name: "Nano Banana Pro",
-        family: "gemini-pro",
         cost: {
           input: 2,
           output: 12,
@@ -4688,7 +4374,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3-pro-image-preview": {
         id: "google/gemini-3-pro-image-preview",
         name: "Nano Banana Pro",
-        family: "gemini-pro",
         cost: {
           input: 2,
           output: 12,
@@ -4703,7 +4388,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3.1-flash-image": {
         id: "google/gemini-3.1-flash-image",
         name: "Nano Banana 2",
-        family: "gemini-flash",
         cost: {
           input: 0.5,
           output: 3,
@@ -4718,7 +4402,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3.1-flash-image-preview": {
         id: "google/gemini-3.1-flash-image-preview",
         name: "Nano Banana 2",
-        family: "gemini-flash",
         cost: {
           input: 0.5,
           output: 3,
@@ -4733,7 +4416,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3.1-flash-lite": {
         id: "google/gemini-3.1-flash-lite",
         name: "Gemini 3.1 Flash Lite",
-        family: "gemini-flash-lite",
         cost: {
           input: 0.25,
           output: 1.5,
@@ -4748,7 +4430,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3.1-flash-lite-image": {
         id: "google/gemini-3.1-flash-lite-image",
         name: "Nano Banana 2 Lite",
-        family: "gemini-flash-lite",
         cost: {
           input: 0.25,
           output: 1.5,
@@ -4765,7 +4446,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3.1-flash-lite-preview": {
         id: "google/gemini-3.1-flash-lite-preview",
         name: "Gemini 3.1 Flash Lite Preview",
-        family: "gemini-flash-lite",
         cost: {
           input: 0.25,
           output: 1.5,
@@ -4780,7 +4460,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3.1-pro-preview": {
         id: "google/gemini-3.1-pro-preview",
         name: "Gemini 3.1 Pro Preview",
-        family: "gemini-pro",
         cost: {
           input: 2,
           output: 12,
@@ -4795,7 +4474,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3.1-pro-preview-customtools": {
         id: "google/gemini-3.1-pro-preview-customtools",
         name: "Gemini 3.1 Pro Preview Custom Tools",
-        family: "gemini-pro",
         cost: {
           input: 2,
           output: 12,
@@ -4810,7 +4488,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3.5-flash": {
         id: "google/gemini-3.5-flash",
         name: "Gemini 3.5 Flash",
-        family: "gemini-flash",
         cost: {
           input: 1.5,
           output: 9,
@@ -4825,7 +4502,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3.5-flash-lite": {
         id: "google/gemini-3.5-flash-lite",
         name: "Gemini 3.5 Flash Lite",
-        family: "gemini-flash-lite",
         cost: {
           input: 0.3,
           output: 2.5,
@@ -4840,7 +4516,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3.6-flash": {
         id: "google/gemini-3.6-flash",
         name: "Gemini 3.6 Flash",
-        family: "gemini-flash",
         cost: {
           input: 0.75,
           output: 3.75,
@@ -4855,7 +4530,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemini-3.7-flash": {
         id: "google/gemini-3.7-flash",
         name: "Gemini 3.7 Flash",
-        family: "gemini-flash",
         cost: {
           input: 0.375,
           output: 1.875,
@@ -4870,7 +4544,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemma-2-27b-it": {
         id: "google/gemma-2-27b-it",
         name: "Gemma 2 27B",
-        family: "gemma",
         cost: {
           input: 0.65,
           output: 0.65,
@@ -4885,7 +4558,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemma-3-12b-it": {
         id: "google/gemma-3-12b-it",
         name: "Gemma 3 12B",
-        family: "gemma",
         cost: {
           input: 0.05,
           output: 0.15,
@@ -4900,7 +4572,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemma-3-27b-it": {
         id: "google/gemma-3-27b-it",
         name: "Gemma 3 27B",
-        family: "gemma",
         cost: {
           input: 0.08,
           output: 0.45,
@@ -4915,7 +4586,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemma-3-4b-it": {
         id: "google/gemma-3-4b-it",
         name: "Gemma 3 4B",
-        family: "gemma",
         cost: {
           input: 0.05,
           output: 0.1,
@@ -4930,7 +4600,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemma-4-26b-a4b-it": {
         id: "google/gemma-4-26b-a4b-it",
         name: "Gemma 4 26B A4B IT",
-        family: "gemma",
         cost: {
           input: 0.07,
           output: 0.34,
@@ -4945,7 +4614,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemma-4-26b-a4b-it:free": {
         id: "google/gemma-4-26b-a4b-it:free",
         name: "Gemma 4 26B A4B  (free)",
-        family: "gemma",
         cost: {
           input: 0,
           output: 0,
@@ -4960,7 +4628,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemma-4-31b-it": {
         id: "google/gemma-4-31b-it",
         name: "Gemma 4 31B IT",
-        family: "gemma",
         cost: {
           input: 0.09,
           output: 0.34,
@@ -4975,7 +4642,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/gemma-4-31b-it:free": {
         id: "google/gemma-4-31b-it:free",
         name: "Gemma 4 31B (free)",
-        family: "gemma",
         cost: {
           input: 0,
           output: 0,
@@ -4990,7 +4656,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/lyria-3-clip-preview": {
         id: "google/lyria-3-clip-preview",
         name: "Lyria 3 Clip Preview",
-        family: "lyria",
         cost: {
           input: 0,
           output: 0,
@@ -5007,7 +4672,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "google/lyria-3-pro-preview": {
         id: "google/lyria-3-pro-preview",
         name: "Lyria 3 Pro Preview",
-        family: "lyria",
         cost: {
           input: 0,
           output: 0,
@@ -5038,7 +4702,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "ibm-granite/granite-4.0-h-micro": {
         id: "ibm-granite/granite-4.0-h-micro",
         name: "Granite 4.0 Micro",
-        family: "granite",
         cost: {
           input: 0.017,
           output: 0.112,
@@ -5053,7 +4716,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "ibm-granite/granite-4.1-8b": {
         id: "ibm-granite/granite-4.1-8b",
         name: "Granite 4.1 8B",
-        family: "granite",
         cost: {
           input: 0.05,
           output: 0.1,
@@ -5068,7 +4730,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "inception/mercury-2": {
         id: "inception/mercury-2",
         name: "Mercury 2",
-        family: "mercury",
         cost: {
           input: 0.25,
           output: 0.75,
@@ -5083,7 +4744,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "inclusionai/ling-3.0-flash": {
         id: "inclusionai/ling-3.0-flash",
         name: "Ling-3.0-flash",
-        family: "ling",
         cost: {
           input: 0.021,
           output: 0.063,
@@ -5098,7 +4758,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kwaipilot/kat-coder-air-v2.5": {
         id: "kwaipilot/kat-coder-air-v2.5",
         name: "KAT-Coder-Air V2.5",
-        family: "kat-coder",
         cost: {
           input: 0.15,
           output: 0.6,
@@ -5113,7 +4772,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kwaipilot/kat-coder-pro-v2": {
         id: "kwaipilot/kat-coder-pro-v2",
         name: "KAT-Coder-Pro V2",
-        family: "kat-coder",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -5128,7 +4786,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "kwaipilot/kat-coder-pro-v2.5": {
         id: "kwaipilot/kat-coder-pro-v2.5",
         name: "KAT-Coder-Pro V2.5",
-        family: "kat-coder",
         cost: {
           input: 0.74,
           output: 2.96,
@@ -5143,7 +4800,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "liquid/lfm-2.5-2.6b:free": {
         id: "liquid/lfm-2.5-2.6b:free",
         name: "LFM2.5-2.6B (free)",
-        family: "liquid",
         cost: {
           input: 0,
           output: 0,
@@ -5158,7 +4814,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mancer/weaver": {
         id: "mancer/weaver",
         name: "Weaver (alpha)",
-        family: "alpha",
         cost: {
           input: 0.5,
           output: 0.75,
@@ -5173,7 +4828,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "meituan/longcat-2.0": {
         id: "meituan/longcat-2.0",
         name: "LongCat 2.0",
-        family: "longcat",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -5188,7 +4842,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "meta-llama/llama-3.1-70b-instruct": {
         id: "meta-llama/llama-3.1-70b-instruct",
         name: "Llama 3.1 70B Instruct",
-        family: "llama",
         cost: {
           input: 0.4,
           output: 0.4,
@@ -5203,7 +4856,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "meta-llama/llama-3.1-8b-instruct": {
         id: "meta-llama/llama-3.1-8b-instruct",
         name: "Llama-3.1-8B-Instruct",
-        family: "llama",
         cost: {
           input: 0.05,
           output: 0.08,
@@ -5218,7 +4870,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "meta-llama/llama-3.2-1b-instruct": {
         id: "meta-llama/llama-3.2-1b-instruct",
         name: "Llama 3.2 1B Instruct",
-        family: "llama",
         cost: {
           input: 0.027,
           output: 0.201,
@@ -5233,7 +4884,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "meta-llama/llama-3.2-3b-instruct": {
         id: "meta-llama/llama-3.2-3b-instruct",
         name: "Llama 3.2 3B Instruct",
-        family: "llama",
         cost: {
           input: 0.05,
           output: 0.33,
@@ -5248,7 +4898,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "meta-llama/llama-3.3-70b-instruct": {
         id: "meta-llama/llama-3.3-70b-instruct",
         name: "Llama-3.3-70B-Instruct",
-        family: "llama",
         cost: {
           input: 0.71,
           output: 0.71,
@@ -5263,7 +4912,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "meta-llama/llama-4-maverick": {
         id: "meta-llama/llama-4-maverick",
         name: "Llama 4 Maverick",
-        family: "llama",
         cost: {
           input: 0.2,
           output: 0.8,
@@ -5278,7 +4926,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "meta-llama/llama-4-scout": {
         id: "meta-llama/llama-4-scout",
         name: "Llama 4 Scout",
-        family: "llama",
         cost: {
           input: 0.11,
           output: 0.34,
@@ -5293,7 +4940,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "meta-llama/llama-guard-4-12b": {
         id: "meta-llama/llama-guard-4-12b",
         name: "Llama Guard 4 12B",
-        family: "llama",
         cost: {
           input: 0.18,
           output: 0.18,
@@ -5308,7 +4954,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "meta/muse-glimmer-30b": {
         id: "meta/muse-glimmer-30b",
         name: "Muse Glimmer 30B",
-        family: "muse",
         cost: {
           input: 0.35,
           output: 1.5,
@@ -5323,7 +4968,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "meta/muse-spark-1.1": {
         id: "meta/muse-spark-1.1",
         name: "Muse Spark 1.1",
-        family: "muse",
         cost: {
           input: 1.25,
           output: 4.25,
@@ -5338,7 +4982,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "meta/muse-spark-1.2": {
         id: "meta/muse-spark-1.2",
         name: "Muse Spark 1.2",
-        family: "muse",
         cost: {
           input: 1.25,
           output: 4.25,
@@ -5353,7 +4996,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "meta/muse-spark-1.2-contributor": {
         id: "meta/muse-spark-1.2-contributor",
         name: "Muse Spark 1.2 Contributor",
-        family: "muse",
         cost: {
           input: 0.1,
           output: 0.2,
@@ -5368,7 +5010,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "microsoft/phi-4": {
         id: "microsoft/phi-4",
         name: "Phi 4",
-        family: "phi",
         cost: {
           input: 0.07,
           output: 0.14,
@@ -5397,7 +5038,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax/minimax-01": {
         id: "minimax/minimax-01",
         name: "MiniMax-01",
-        family: "minimax",
         cost: {
           input: 0.2,
           output: 1.1,
@@ -5412,7 +5052,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax/minimax-m1": {
         id: "minimax/minimax-m1",
         name: "MiniMax M1",
-        family: "minimax",
         cost: {
           input: 0.55,
           output: 2.2,
@@ -5427,7 +5066,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax/minimax-m2": {
         id: "minimax/minimax-m2",
         name: "MiniMax-M2",
-        family: "minimax",
         cost: {
           input: 0.255,
           output: 1.02,
@@ -5442,7 +5080,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax/minimax-m2-her": {
         id: "minimax/minimax-m2-her",
         name: "MiniMax-M2 Her",
-        family: "minimax",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -5457,7 +5094,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax/minimax-m2.1": {
         id: "minimax/minimax-m2.1",
         name: "MiniMax-M2.1",
-        family: "minimax",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -5472,7 +5108,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax/minimax-m2.5": {
         id: "minimax/minimax-m2.5",
         name: "MiniMax-M2.5",
-        family: "minimax",
         cost: {
           input: 0.27,
           output: 1.08,
@@ -5487,7 +5122,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax/minimax-m2.7": {
         id: "minimax/minimax-m2.7",
         name: "MiniMax-M2.7",
-        family: "minimax",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -5502,7 +5136,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax/minimax-m2.7:free": {
         id: "minimax/minimax-m2.7:free",
         name: "MiniMax M2.7 (free)",
-        family: "minimax",
         cost: {
           input: 0,
           output: 0,
@@ -5517,7 +5150,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax/minimax-m3": {
         id: "minimax/minimax-m3",
         name: "MiniMax-M3",
-        family: "minimax",
         cost: {
           input: 0.3,
           output: 1.2,
@@ -5532,7 +5164,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "minimax/minimax-m3:free": {
         id: "minimax/minimax-m3:free",
         name: "MiniMax M3 (free)",
-        family: "minimax",
         cost: {
           input: 0,
           output: 0,
@@ -5547,7 +5178,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/codestral-2508": {
         id: "mistralai/codestral-2508",
         name: "Codestral 2508",
-        family: "codestral",
         cost: {
           input: 0.3,
           output: 0.9,
@@ -5562,7 +5192,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/devstral-2512": {
         id: "mistralai/devstral-2512",
         name: "Devstral 2",
-        family: "devstral",
         cost: {
           input: 0.44,
           output: 2.2,
@@ -5577,7 +5206,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/ministral-14b-2512": {
         id: "mistralai/ministral-14b-2512",
         name: "Ministral 3 14B 2512",
-        family: "ministral",
         cost: {
           input: 0.2,
           output: 0.2,
@@ -5592,7 +5220,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/ministral-3b-2512": {
         id: "mistralai/ministral-3b-2512",
         name: "Ministral 3 3B 2512",
-        family: "ministral",
         cost: {
           input: 0.1,
           output: 0.1,
@@ -5607,7 +5234,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/ministral-8b": {
         id: "mistralai/ministral-8b",
         name: "Ministral 8B",
-        family: "ministral",
         cost: {
           input: 0.11,
           output: 0.11,
@@ -5622,7 +5248,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/ministral-8b-2512": {
         id: "mistralai/ministral-8b-2512",
         name: "Ministral 3 8B 2512",
-        family: "ministral",
         cost: {
           input: 0.15,
           output: 0.15,
@@ -5637,7 +5262,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/mistral-large": {
         id: "mistralai/mistral-large",
         name: "Mistral Large",
-        family: "mistral-large",
         cost: {
           input: 2,
           output: 6,
@@ -5652,7 +5276,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/mistral-large-2407": {
         id: "mistralai/mistral-large-2407",
         name: "Mistral Large 2407",
-        family: "mistral-large",
         cost: {
           input: 2,
           output: 6,
@@ -5667,7 +5290,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/mistral-large-2512": {
         id: "mistralai/mistral-large-2512",
         name: "Mistral Large 3",
-        family: "mistral-large",
         cost: {
           input: 0.5,
           output: 1.5,
@@ -5682,7 +5304,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/mistral-medium-3": {
         id: "mistralai/mistral-medium-3",
         name: "Mistral Medium 3",
-        family: "mistral-medium",
         cost: {
           input: 0.4,
           output: 2,
@@ -5697,7 +5318,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/mistral-medium-3-5": {
         id: "mistralai/mistral-medium-3-5",
         name: "Mistral Medium 3.5",
-        family: "mistral-medium",
         cost: {
           input: 1.5,
           output: 7.5,
@@ -5712,7 +5332,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/mistral-medium-3.1": {
         id: "mistralai/mistral-medium-3.1",
         name: "Mistral Medium 3.1",
-        family: "mistral-medium",
         cost: {
           input: 0.4,
           output: 2,
@@ -5727,7 +5346,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/mistral-nemo": {
         id: "mistralai/mistral-nemo",
         name: "Mistral Nemo",
-        family: "mistral-nemo",
         cost: {
           input: 0.019,
           output: 0.03,
@@ -5742,7 +5360,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/mistral-saba": {
         id: "mistralai/mistral-saba",
         name: "Saba",
-        family: "mistral",
         cost: {
           input: 0.2,
           output: 0.6,
@@ -5757,7 +5374,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/mistral-small-24b-instruct-2501": {
         id: "mistralai/mistral-small-24b-instruct-2501",
         name: "Mistral Small 3",
-        family: "mistral-small",
         cost: {
           input: 0.05,
           output: 0.08,
@@ -5772,7 +5388,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/mistral-small-2603": {
         id: "mistralai/mistral-small-2603",
         name: "Mistral Small 4",
-        family: "mistral-small",
         cost: {
           input: 0.15,
           output: 0.6,
@@ -5787,7 +5402,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/mistral-small-3.1-24b-instruct": {
         id: "mistralai/mistral-small-3.1-24b-instruct",
         name: "Mistral Small 3.1 24B",
-        family: "mistral-small",
         cost: {
           input: 0.351,
           output: 0.555,
@@ -5802,7 +5416,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/mistral-small-3.2-24b-instruct": {
         id: "mistralai/mistral-small-3.2-24b-instruct",
         name: "Mistral Small 3.2 24B",
-        family: "mistral-small",
         cost: {
           input: 0.075,
           output: 0.2,
@@ -5817,7 +5430,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/mixtral-8x22b-instruct": {
         id: "mistralai/mixtral-8x22b-instruct",
         name: "Mixtral 8x22B Instruct",
-        family: "mistral",
         cost: {
           input: 2,
           output: 6,
@@ -5832,7 +5444,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "mistralai/voxtral-small-24b-2507": {
         id: "mistralai/voxtral-small-24b-2507",
         name: "Voxtral Small 24B 2507",
-        family: "mistral",
         cost: {
           input: 0.1,
           output: 0.3,
@@ -5847,7 +5458,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "moonshotai/kimi-k2": {
         id: "moonshotai/kimi-k2",
         name: "Kimi K2 0711",
-        family: "kimi-k2",
         cost: {
           input: 0.57,
           output: 2.3,
@@ -5862,7 +5472,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "moonshotai/kimi-k2-0905": {
         id: "moonshotai/kimi-k2-0905",
         name: "Kimi K2 0905",
-        family: "kimi-k2",
         cost: {
           input: 0.6,
           output: 2.5,
@@ -5877,7 +5486,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "moonshotai/kimi-k2-thinking": {
         id: "moonshotai/kimi-k2-thinking",
         name: "Kimi K2 Thinking",
-        family: "kimi-thinking",
         cost: {
           input: 0.6,
           output: 2.5,
@@ -5892,7 +5500,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "moonshotai/kimi-k2.5": {
         id: "moonshotai/kimi-k2.5",
         name: "Kimi K2.5",
-        family: "kimi-k2",
         cost: {
           input: 0.6,
           output: 3,
@@ -5906,7 +5513,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "moonshotai/kimi-k2.6": {
         id: "moonshotai/kimi-k2.6",
         name: "Kimi K2.6",
-        family: "kimi-k2",
         cost: {
           input: 0.95,
           output: 4,
@@ -5921,7 +5527,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "moonshotai/kimi-k2.7-code": {
         id: "moonshotai/kimi-k2.7-code",
         name: "Kimi K2.7 Code",
-        family: "kimi-k2",
         cost: {
           input: 0.67,
           output: 3.4,
@@ -5936,7 +5541,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "moonshotai/kimi-k3": {
         id: "moonshotai/kimi-k3",
         name: "Kimi K3",
-        family: "kimi-k3",
         cost: {
           input: 3,
           output: 15,
@@ -5951,7 +5555,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "morph/morph-v3-fast": {
         id: "morph/morph-v3-fast",
         name: "Morph V3 Fast",
-        family: "morph",
         cost: {
           input: 0.8,
           output: 1.2,
@@ -5966,7 +5569,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "morph/morph-v3-large": {
         id: "morph/morph-v3-large",
         name: "Morph V3 Large",
-        family: "morph",
         cost: {
           input: 0.9,
           output: 1.9,
@@ -5981,7 +5583,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nex-agi/nex-n2-mini": {
         id: "nex-agi/nex-n2-mini",
         name: "Nex-N2-Mini",
-        family: "agi",
         cost: {
           input: 0.025,
           output: 0.1,
@@ -5996,7 +5597,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nex-agi/nex-n2-pro": {
         id: "nex-agi/nex-n2-pro",
         name: "Nex-N2-Pro",
-        family: "agi",
         cost: {
           input: 0.25,
           output: 1,
@@ -6011,7 +5611,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nousresearch/hermes-3-llama-3.1-405b": {
         id: "nousresearch/hermes-3-llama-3.1-405b",
         name: "Hermes 3 405B Instruct",
-        family: "nousresearch",
         cost: {
           input: 1,
           output: 1,
@@ -6026,7 +5625,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nousresearch/hermes-3-llama-3.1-70b": {
         id: "nousresearch/hermes-3-llama-3.1-70b",
         name: "Hermes 3 70B Instruct",
-        family: "nousresearch",
         cost: {
           input: 0.7,
           output: 0.7,
@@ -6041,7 +5639,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nousresearch/hermes-4-405b": {
         id: "nousresearch/hermes-4-405b",
         name: "Hermes 4 405B",
-        family: "hermes",
         cost: {
           input: 1,
           output: 3,
@@ -6056,7 +5653,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nousresearch/hermes-4-70b": {
         id: "nousresearch/hermes-4-70b",
         name: "Hermes 4 70B",
-        family: "hermes",
         cost: {
           input: 0.13,
           output: 0.4,
@@ -6071,7 +5667,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nvidia/nemotron-3-nano-30b-a3b": {
         id: "nvidia/nemotron-3-nano-30b-a3b",
         name: "Nemotron 3 Nano 30B A3B",
-        family: "nemotron",
         cost: {
           input: 0.05,
           output: 0.2,
@@ -6086,7 +5681,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
         id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
         name: "Nemotron 3 Nano Omni (free)",
-        family: "nemotron",
         cost: {
           input: 0,
           output: 0,
@@ -6101,7 +5695,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nvidia/nemotron-3-super-120b-a12b": {
         id: "nvidia/nemotron-3-super-120b-a12b",
         name: "Nemotron 3 Super 120B A12B",
-        family: "nemotron",
         cost: {
           input: 0.085,
           output: 0.4,
@@ -6116,7 +5709,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nvidia/nemotron-3-super-120b-a12b:free": {
         id: "nvidia/nemotron-3-super-120b-a12b:free",
         name: "Nemotron 3 Super (free)",
-        family: "nemotron",
         cost: {
           input: 0,
           output: 0,
@@ -6131,7 +5723,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nvidia/nemotron-3-ultra-550b-a55b": {
         id: "nvidia/nemotron-3-ultra-550b-a55b",
         name: "Nemotron 3 Ultra 550B A55B",
-        family: "nemotron",
         cost: {
           input: 0.6,
           output: 3.6,
@@ -6146,7 +5737,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nvidia/nemotron-3-ultra-550b-a55b:free": {
         id: "nvidia/nemotron-3-ultra-550b-a55b:free",
         name: "Nemotron 3 Ultra (free)",
-        family: "nemotron",
         cost: {
           input: 0,
           output: 0,
@@ -6161,7 +5751,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nvidia/nemotron-3.5-content-safety:free": {
         id: "nvidia/nemotron-3.5-content-safety:free",
         name: "Nemotron 3.5 Content Safety (free)",
-        family: "nemotron",
         cost: {
           input: 0,
           output: 0,
@@ -6176,7 +5765,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nvidia/nemotron-3.5-lightning": {
         id: "nvidia/nemotron-3.5-lightning",
         name: "Nemotron 3.5 Lightning 30B A3B",
-        family: "nemotron",
         cost: {
           input: 0.08,
           output: 0.2,
@@ -6191,7 +5779,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "nvidia/nemotron-3.5-lightning:free": {
         id: "nvidia/nemotron-3.5-lightning:free",
         name: "Nemotron 3.5 Lightning (free)",
-        family: "nemotron",
         cost: {
           input: 0,
           output: 0,
@@ -6206,7 +5793,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-3.5-turbo": {
         id: "openai/gpt-3.5-turbo",
         name: "GPT-3.5-turbo",
-        family: "gpt",
         cost: {
           input: 0.5,
           output: 1.5,
@@ -6221,7 +5807,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-3.5-turbo-0613": {
         id: "openai/gpt-3.5-turbo-0613",
         name: "GPT-3.5 Turbo (older v0613)",
-        family: "gpt",
         cost: {
           input: 1,
           output: 2,
@@ -6236,7 +5821,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-3.5-turbo-16k": {
         id: "openai/gpt-3.5-turbo-16k",
         name: "GPT-3.5 Turbo 16k",
-        family: "gpt",
         cost: {
           input: 3,
           output: 4,
@@ -6251,7 +5835,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-3.5-turbo-instruct": {
         id: "openai/gpt-3.5-turbo-instruct",
         name: "GPT-3.5 Turbo Instruct",
-        family: "gpt",
         cost: {
           input: 1.5,
           output: 2,
@@ -6266,7 +5849,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-4": {
         id: "openai/gpt-4",
         name: "GPT-4",
-        family: "gpt",
         cost: {
           input: 30,
           output: 60,
@@ -6281,7 +5863,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-4-turbo": {
         id: "openai/gpt-4-turbo",
         name: "GPT-4 Turbo",
-        family: "gpt",
         cost: {
           input: 10,
           output: 30,
@@ -6296,7 +5877,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-4-turbo-preview": {
         id: "openai/gpt-4-turbo-preview",
         name: "GPT-4 Turbo Preview",
-        family: "gpt",
         cost: {
           input: 10,
           output: 30,
@@ -6311,7 +5891,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-4.1": {
         id: "openai/gpt-4.1",
         name: "GPT-4.1",
-        family: "gpt",
         cost: {
           input: 2,
           output: 8,
@@ -6326,7 +5905,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-4.1-mini": {
         id: "openai/gpt-4.1-mini",
         name: "GPT-4.1 mini",
-        family: "gpt-mini",
         cost: {
           input: 0.4,
           output: 1.6,
@@ -6341,7 +5919,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-4.1-nano": {
         id: "openai/gpt-4.1-nano",
         name: "GPT-4.1 nano",
-        family: "gpt-nano",
         cost: {
           input: 0.1,
           output: 0.4,
@@ -6356,7 +5933,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-4o": {
         id: "openai/gpt-4o",
         name: "GPT-4o",
-        family: "gpt",
         cost: {
           input: 2.5,
           output: 10,
@@ -6371,7 +5947,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-4o-2024-05-13": {
         id: "openai/gpt-4o-2024-05-13",
         name: "GPT-4o (2024-05-13)",
-        family: "gpt",
         cost: {
           input: 5,
           output: 15,
@@ -6386,7 +5961,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-4o-2024-08-06": {
         id: "openai/gpt-4o-2024-08-06",
         name: "GPT-4o (2024-08-06)",
-        family: "gpt",
         cost: {
           input: 2.5,
           output: 10,
@@ -6401,7 +5975,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-4o-2024-11-20": {
         id: "openai/gpt-4o-2024-11-20",
         name: "GPT-4o (2024-11-20)",
-        family: "gpt",
         cost: {
           input: 2.5,
           output: 10,
@@ -6416,7 +5989,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-4o-mini": {
         id: "openai/gpt-4o-mini",
         name: "GPT-4o mini",
-        family: "gpt-mini",
         cost: {
           input: 0.15,
           output: 0.6,
@@ -6431,7 +6003,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-4o-mini-2024-07-18": {
         id: "openai/gpt-4o-mini-2024-07-18",
         name: "GPT-4o-mini (2024-07-18)",
-        family: "o-mini",
         cost: {
           input: 0.15,
           output: 0.6,
@@ -6446,7 +6017,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5": {
         id: "openai/gpt-5",
         name: "GPT-5",
-        family: "gpt",
         cost: {
           input: 1.25,
           output: 10,
@@ -6461,7 +6031,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5-image": {
         id: "openai/gpt-5-image",
         name: "GPT-5 Image",
-        family: "gpt",
         cost: {
           input: 10,
           output: 10,
@@ -6476,7 +6045,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5-image-mini": {
         id: "openai/gpt-5-image-mini",
         name: "GPT-5 Image Mini",
-        family: "gpt",
         cost: {
           input: 2.5,
           output: 2,
@@ -6491,7 +6059,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5-mini": {
         id: "openai/gpt-5-mini",
         name: "GPT-5 Mini",
-        family: "gpt-mini",
         cost: {
           input: 0.25,
           output: 2,
@@ -6506,7 +6073,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5-nano": {
         id: "openai/gpt-5-nano",
         name: "GPT-5 Nano",
-        family: "gpt-nano",
         cost: {
           input: 0.05,
           output: 0.4,
@@ -6521,7 +6087,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5-pro": {
         id: "openai/gpt-5-pro",
         name: "GPT-5 Pro",
-        family: "gpt-pro",
         cost: {
           input: 15,
           output: 120,
@@ -6536,7 +6101,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.1": {
         id: "openai/gpt-5.1",
         name: "GPT-5.1",
-        family: "gpt",
         cost: {
           input: 1.25,
           output: 10,
@@ -6551,7 +6115,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.1-codex": {
         id: "openai/gpt-5.1-codex",
         name: "GPT-5.1 Codex",
-        family: "gpt-codex",
         cost: {
           input: 1.25,
           output: 10,
@@ -6566,7 +6129,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.1-codex-max": {
         id: "openai/gpt-5.1-codex-max",
         name: "GPT-5.1 Codex Max",
-        family: "gpt-codex",
         cost: {
           input: 1.25,
           output: 10,
@@ -6581,7 +6143,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.1-codex-mini": {
         id: "openai/gpt-5.1-codex-mini",
         name: "GPT-5.1 Codex mini",
-        family: "gpt-codex",
         cost: {
           input: 0.25,
           output: 2,
@@ -6596,7 +6157,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.2": {
         id: "openai/gpt-5.2",
         name: "GPT-5.2",
-        family: "gpt",
         cost: {
           input: 1.75,
           output: 14,
@@ -6611,7 +6171,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.2-chat": {
         id: "openai/gpt-5.2-chat",
         name: "GPT-5.2 Chat",
-        family: "gpt-codex",
         cost: {
           input: 1.75,
           output: 14,
@@ -6626,7 +6185,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.2-codex": {
         id: "openai/gpt-5.2-codex",
         name: "GPT-5.2 Codex",
-        family: "gpt-codex",
         cost: {
           input: 1.75,
           output: 14,
@@ -6641,7 +6199,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.2-pro": {
         id: "openai/gpt-5.2-pro",
         name: "GPT-5.2 Pro",
-        family: "gpt-pro",
         cost: {
           input: 21,
           output: 168,
@@ -6656,7 +6213,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.3-codex": {
         id: "openai/gpt-5.3-codex",
         name: "GPT-5.3 Codex",
-        family: "gpt-codex",
         cost: {
           input: 1.75,
           output: 14,
@@ -6671,7 +6227,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.4": {
         id: "openai/gpt-5.4",
         name: "GPT-5.4",
-        family: "gpt",
         cost: {
           input: 2.5,
           output: 15,
@@ -6686,7 +6241,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.4-image-2": {
         id: "openai/gpt-5.4-image-2",
         name: "GPT-5.4 Image 2",
-        family: "gpt",
         cost: {
           input: 8,
           output: 15,
@@ -6701,7 +6255,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.4-mini": {
         id: "openai/gpt-5.4-mini",
         name: "GPT-5.4 mini",
-        family: "gpt-mini",
         cost: {
           input: 0.75,
           output: 4.5,
@@ -6716,7 +6269,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.4-nano": {
         id: "openai/gpt-5.4-nano",
         name: "GPT-5.4 nano",
-        family: "gpt-nano",
         cost: {
           input: 0.2,
           output: 1.25,
@@ -6731,7 +6283,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.4-pro": {
         id: "openai/gpt-5.4-pro",
         name: "GPT-5.4 Pro",
-        family: "gpt-pro",
         cost: {
           input: 30,
           output: 180,
@@ -6746,7 +6297,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.5": {
         id: "openai/gpt-5.5",
         name: "GPT-5.5",
-        family: "gpt",
         cost: {
           input: 5,
           output: 30,
@@ -6761,7 +6311,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.5-pro": {
         id: "openai/gpt-5.5-pro",
         name: "GPT-5.5 Pro",
-        family: "gpt-pro",
         cost: {
           input: 30,
           output: 180,
@@ -6776,7 +6325,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.6-luna": {
         id: "openai/gpt-5.6-luna",
         name: "GPT-5.6 Luna",
-        family: "gpt-luna",
         cost: {
           input: 0.2,
           output: 1.2,
@@ -6791,7 +6339,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.6-luna-pro": {
         id: "openai/gpt-5.6-luna-pro",
         name: "GPT-5.6 Luna Pro",
-        family: "gpt-luna",
         cost: {
           input: 0.2,
           output: 1.2,
@@ -6806,7 +6353,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.6-sol": {
         id: "openai/gpt-5.6-sol",
         name: "GPT-5.6 Sol",
-        family: "gpt-sol",
         cost: {
           input: 2,
           output: 10,
@@ -6821,7 +6367,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.6-sol-pro": {
         id: "openai/gpt-5.6-sol-pro",
         name: "GPT-5.6 Sol Pro",
-        family: "gpt-sol",
         cost: {
           input: 2,
           output: 10,
@@ -6836,7 +6381,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.6-terra": {
         id: "openai/gpt-5.6-terra",
         name: "GPT-5.6 Terra",
-        family: "gpt-terra",
         cost: {
           input: 2,
           output: 12,
@@ -6851,7 +6395,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-5.6-terra-pro": {
         id: "openai/gpt-5.6-terra-pro",
         name: "GPT-5.6 Terra Pro",
-        family: "gpt-terra",
         cost: {
           input: 2,
           output: 12,
@@ -6866,7 +6409,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-audio": {
         id: "openai/gpt-audio",
         name: "GPT Audio",
-        family: "gpt",
         cost: {
           input: 2.5,
           output: 10,
@@ -6881,7 +6423,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-audio-mini": {
         id: "openai/gpt-audio-mini",
         name: "GPT Audio Mini",
-        family: "o-mini",
         cost: {
           input: 0.6,
           output: 2.4,
@@ -6896,7 +6437,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-chat-latest": {
         id: "openai/gpt-chat-latest",
         name: "GPT Chat Latest",
-        family: "gpt",
         cost: {
           input: 5,
           output: 30,
@@ -6911,7 +6451,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-oss-120b": {
         id: "openai/gpt-oss-120b",
         name: "GPT OSS 120B",
-        family: "gpt-oss",
         cost: {
           input: 0.037,
           output: 0.17,
@@ -6926,7 +6465,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-oss-20b": {
         id: "openai/gpt-oss-20b",
         name: "GPT OSS 20B",
-        family: "gpt-oss",
         cost: {
           input: 0.03,
           output: 0.13,
@@ -6941,7 +6479,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/gpt-oss-safeguard-20b": {
         id: "openai/gpt-oss-safeguard-20b",
         name: "gpt-oss-safeguard-20b",
-        family: "gpt-oss",
         cost: {
           input: 0.075,
           output: 0.3,
@@ -6956,7 +6493,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/o1": {
         id: "openai/o1",
         name: "o1",
-        family: "o",
         cost: {
           input: 15,
           output: 60,
@@ -6971,7 +6507,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/o1-pro": {
         id: "openai/o1-pro",
         name: "o1-pro",
-        family: "o-pro",
         cost: {
           input: 150,
           output: 600,
@@ -6986,7 +6521,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/o3": {
         id: "openai/o3",
         name: "o3",
-        family: "o",
         cost: {
           input: 2,
           output: 8,
@@ -7001,7 +6535,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/o3-mini": {
         id: "openai/o3-mini",
         name: "o3-mini",
-        family: "o-mini",
         cost: {
           input: 1.1,
           output: 4.4,
@@ -7016,7 +6549,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/o3-mini-high": {
         id: "openai/o3-mini-high",
         name: "o3 Mini High",
-        family: "o",
         cost: {
           input: 1.1,
           output: 4.4,
@@ -7031,7 +6563,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/o3-pro": {
         id: "openai/o3-pro",
         name: "o3-pro",
-        family: "o-pro",
         cost: {
           input: 20,
           output: 80,
@@ -7046,7 +6577,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/o4-mini": {
         id: "openai/o4-mini",
         name: "o4-mini",
-        family: "o-mini",
         cost: {
           input: 1.1,
           output: 4.4,
@@ -7061,7 +6591,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openai/o4-mini-high": {
         id: "openai/o4-mini-high",
         name: "o4 Mini High",
-        family: "o",
         cost: {
           input: 1.1,
           output: 4.4,
@@ -7076,7 +6605,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "openrouter/auto": {
         id: "openrouter/auto",
         name: "Auto Router",
-        family: "auto",
         limit: {
           context: 2000000,
           output: 2000000,
@@ -7145,7 +6673,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "perplexity/sonar": {
         id: "perplexity/sonar",
         name: "Sonar",
-        family: "sonar",
         cost: {
           input: 1,
           output: 1,
@@ -7160,7 +6687,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "perplexity/sonar-deep-research": {
         id: "perplexity/sonar-deep-research",
         name: "Sonar Deep Research",
-        family: "sonar-deep-research",
         cost: {
           input: 2,
           output: 8,
@@ -7175,7 +6701,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "perplexity/sonar-pro": {
         id: "perplexity/sonar-pro",
         name: "Sonar Pro",
-        family: "sonar-pro",
         cost: {
           input: 3,
           output: 15,
@@ -7190,7 +6715,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "perplexity/sonar-pro-search": {
         id: "perplexity/sonar-pro-search",
         name: "Sonar Pro Search",
-        family: "sonar-pro",
         cost: {
           input: 3,
           output: 15,
@@ -7205,7 +6729,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "perplexity/sonar-reasoning-pro": {
         id: "perplexity/sonar-reasoning-pro",
         name: "Sonar Reasoning Pro",
-        family: "sonar-reasoning",
         cost: {
           input: 2,
           output: 8,
@@ -7220,7 +6743,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "poolside/laguna-s-2.1": {
         id: "poolside/laguna-s-2.1",
         name: "Laguna S 2.1",
-        family: "laguna-s",
         cost: {
           input: 0.09,
           output: 0.18,
@@ -7235,7 +6757,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "poolside/laguna-s-2.1:free": {
         id: "poolside/laguna-s-2.1:free",
         name: "Laguna S 2.1 (free)",
-        family: "laguna-s",
         cost: {
           input: 0,
           output: 0,
@@ -7250,7 +6771,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "poolside/laguna-xs-2.1": {
         id: "poolside/laguna-xs-2.1",
         name: "Laguna XS 2.1",
-        family: "laguna",
         cost: {
           input: 0.06,
           output: 0.12,
@@ -7265,7 +6785,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "poolside/laguna-xs-2.1:free": {
         id: "poolside/laguna-xs-2.1:free",
         name: "Laguna XS 2.1 (free)",
-        family: "laguna",
         cost: {
           input: 0,
           output: 0,
@@ -7280,7 +6799,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen-2.5-72b-instruct": {
         id: "qwen/qwen-2.5-72b-instruct",
         name: "Qwen2.5 72B Instruct",
-        family: "qwen",
         cost: {
           input: 0.36,
           output: 0.4,
@@ -7295,7 +6813,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen-2.5-7b-instruct": {
         id: "qwen/qwen-2.5-7b-instruct",
         name: "Qwen2.5 7B Instruct",
-        family: "qwen",
         cost: {
           input: 0.1,
           output: 0.2,
@@ -7310,7 +6827,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen-2.5-coder-32b-instruct": {
         id: "qwen/qwen-2.5-coder-32b-instruct",
         name: "Qwen2.5 Coder 32B Instruct",
-        family: "qwen",
         cost: {
           input: 0.66,
           output: 1,
@@ -7325,7 +6841,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen-plus": {
         id: "qwen/qwen-plus",
         name: "Qwen Plus",
-        family: "qwen",
         cost: {
           input: 0.26,
           output: 0.78,
@@ -7340,7 +6855,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen-plus-2025-07-28": {
         id: "qwen/qwen-plus-2025-07-28",
         name: "Qwen Plus 0728",
-        family: "qwen",
         cost: {
           input: 0.26,
           output: 0.78,
@@ -7355,7 +6869,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen2.5-vl-72b-instruct": {
         id: "qwen/qwen2.5-vl-72b-instruct",
         name: "Qwen2.5 VL 72B Instruct",
-        family: "qwen",
         cost: {
           input: 0.25,
           output: 0.75,
@@ -7370,7 +6883,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-14b": {
         id: "qwen/qwen3-14b",
         name: "Qwen3 14B",
-        family: "qwen",
         cost: {
           input: 0.12,
           output: 0.24,
@@ -7385,7 +6897,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-235b-a22b": {
         id: "qwen/qwen3-235b-a22b",
         name: "Qwen3 235B-A22B",
-        family: "qwen",
         cost: {
           input: 0.455,
           output: 1.82,
@@ -7399,7 +6910,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-235b-a22b-2507": {
         id: "qwen/qwen3-235b-a22b-2507",
         name: "Qwen3 235B A22B Instruct 2507",
-        family: "qwen",
         cost: {
           input: 0.09,
           output: 0.55,
@@ -7414,7 +6924,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-235b-a22b-thinking-2507": {
         id: "qwen/qwen3-235b-a22b-thinking-2507",
         name: "Qwen3 235B A22B Thinking 2507",
-        family: "qwen",
         cost: {
           input: 0.23,
           output: 2.3,
@@ -7429,7 +6938,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-30b-a3b": {
         id: "qwen/qwen3-30b-a3b",
         name: "Qwen3 30B A3B",
-        family: "qwen",
         cost: {
           input: 0.12,
           output: 0.5,
@@ -7444,7 +6952,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-30b-a3b-instruct-2507": {
         id: "qwen/qwen3-30b-a3b-instruct-2507",
         name: "Qwen3 30B A3B Instruct 2507",
-        family: "qwen",
         cost: {
           input: 0.04815,
           output: 0.19305,
@@ -7459,7 +6966,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-30b-a3b-thinking-2507": {
         id: "qwen/qwen3-30b-a3b-thinking-2507",
         name: "Qwen3 30B A3B Thinking 2507",
-        family: "qwen",
         cost: {
           input: 0.2,
           output: 2.4,
@@ -7474,7 +6980,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-32b": {
         id: "qwen/qwen3-32b",
         name: "Qwen3 32B",
-        family: "qwen",
         cost: {
           input: 0.08,
           output: 0.28,
@@ -7488,7 +6993,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-8b": {
         id: "qwen/qwen3-8b",
         name: "Qwen3 8B",
-        family: "qwen",
         cost: {
           input: 0.117,
           output: 0.455,
@@ -7503,7 +7007,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-coder": {
         id: "qwen/qwen3-coder",
         name: "Qwen3 Coder 480B A35B",
-        family: "qwen",
         cost: {
           input: 0.3,
           output: 1,
@@ -7518,7 +7021,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-coder-30b-a3b-instruct": {
         id: "qwen/qwen3-coder-30b-a3b-instruct",
         name: "Qwen3-Coder 30B-A3B Instruct",
-        family: "qwen",
         cost: {
           input: 0.07,
           output: 0.28,
@@ -7532,7 +7034,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-coder-flash": {
         id: "qwen/qwen3-coder-flash",
         name: "Qwen3 Coder Flash",
-        family: "qwen",
         cost: {
           input: 0.195,
           output: 0.975,
@@ -7547,7 +7048,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-coder-next": {
         id: "qwen/qwen3-coder-next",
         name: "Qwen3 Coder Next",
-        family: "qwen",
         cost: {
           input: 0.12,
           output: 0.8,
@@ -7562,7 +7062,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-coder-plus": {
         id: "qwen/qwen3-coder-plus",
         name: "Qwen3 Coder Plus",
-        family: "qwen",
         cost: {
           input: 0.65,
           output: 3.25,
@@ -7577,7 +7076,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-max": {
         id: "qwen/qwen3-max",
         name: "Qwen3 Max",
-        family: "qwen",
         cost: {
           input: 0.78,
           output: 3.9,
@@ -7592,7 +7090,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-max-thinking": {
         id: "qwen/qwen3-max-thinking",
         name: "Qwen3 Max Thinking",
-        family: "qwen",
         cost: {
           input: 0.78,
           output: 3.9,
@@ -7607,7 +7104,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-next-80b-a3b-instruct": {
         id: "qwen/qwen3-next-80b-a3b-instruct",
         name: "Qwen3-Next 80B-A3B Instruct",
-        family: "qwen",
         cost: {
           input: 0.1,
           output: 1.1,
@@ -7621,7 +7117,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-next-80b-a3b-thinking": {
         id: "qwen/qwen3-next-80b-a3b-thinking",
         name: "Qwen3-Next 80B-A3B (Thinking)",
-        family: "qwen",
         cost: {
           input: 0.15,
           output: 1.2,
@@ -7635,7 +7130,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-vl-235b-a22b-instruct": {
         id: "qwen/qwen3-vl-235b-a22b-instruct",
         name: "Qwen3 VL 235B A22B Instruct",
-        family: "qwen",
         cost: {
           input: 0.21,
           output: 1.9,
@@ -7650,7 +7144,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-vl-235b-a22b-thinking": {
         id: "qwen/qwen3-vl-235b-a22b-thinking",
         name: "Qwen3 VL 235B A22B Thinking",
-        family: "qwen",
         cost: {
           input: 0.4,
           output: 4,
@@ -7665,7 +7158,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-vl-30b-a3b-instruct": {
         id: "qwen/qwen3-vl-30b-a3b-instruct",
         name: "Qwen3 VL 30B A3B Instruct",
-        family: "qwen",
         cost: {
           input: 0.13,
           output: 0.52,
@@ -7680,7 +7172,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-vl-30b-a3b-thinking": {
         id: "qwen/qwen3-vl-30b-a3b-thinking",
         name: "Qwen3 VL 30B A3B Thinking",
-        family: "qwen",
         cost: {
           input: 0.2,
           output: 2.4,
@@ -7695,7 +7186,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-vl-32b-instruct": {
         id: "qwen/qwen3-vl-32b-instruct",
         name: "Qwen3 VL 32B Instruct",
-        family: "qwen",
         cost: {
           input: 0.104,
           output: 0.416,
@@ -7710,7 +7200,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-vl-8b-instruct": {
         id: "qwen/qwen3-vl-8b-instruct",
         name: "Qwen3 VL 8B Instruct",
-        family: "qwen",
         cost: {
           input: 0.117,
           output: 0.455,
@@ -7725,7 +7214,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3-vl-8b-thinking": {
         id: "qwen/qwen3-vl-8b-thinking",
         name: "Qwen3 VL 8B Thinking",
-        family: "qwen",
         cost: {
           input: 0.18,
           output: 2.1,
@@ -7740,7 +7228,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.5-122b-a10b": {
         id: "qwen/qwen3.5-122b-a10b",
         name: "Qwen3.5 122B-A10B",
-        family: "qwen",
         cost: {
           input: 0.26,
           output: 2.08,
@@ -7755,7 +7242,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.5-27b": {
         id: "qwen/qwen3.5-27b",
         name: "Qwen3.5 27B",
-        family: "qwen",
         cost: {
           input: 0.195,
           output: 1.56,
@@ -7770,7 +7256,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.5-35b-a3b": {
         id: "qwen/qwen3.5-35b-a3b",
         name: "Qwen3.5 35B-A3B",
-        family: "qwen",
         cost: {
           input: 0.25,
           output: 1.25,
@@ -7785,7 +7270,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.5-397b-a17b": {
         id: "qwen/qwen3.5-397b-a17b",
         name: "Qwen3.5 397B-A17B",
-        family: "qwen",
         cost: {
           input: 0.39,
           output: 2.34,
@@ -7800,7 +7284,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.5-9b": {
         id: "qwen/qwen3.5-9b",
         name: "Qwen3.5 9B",
-        family: "qwen",
         cost: {
           input: 0.1,
           output: 0.15,
@@ -7815,7 +7298,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.5-flash-02-23": {
         id: "qwen/qwen3.5-flash-02-23",
         name: "Qwen3.5-Flash",
-        family: "qwen",
         cost: {
           input: 0.065,
           output: 0.26,
@@ -7830,7 +7312,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.5-plus-02-15": {
         id: "qwen/qwen3.5-plus-02-15",
         name: "Qwen3.5 Plus 2026-02-15",
-        family: "qwen",
         cost: {
           input: 0.26,
           output: 1.56,
@@ -7845,7 +7326,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.5-plus-20260420": {
         id: "qwen/qwen3.5-plus-20260420",
         name: "Qwen3.5 Plus 2026-04-20",
-        family: "qwen3.5",
         cost: {
           input: 0.3,
           output: 1.8,
@@ -7860,7 +7340,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.6-27b": {
         id: "qwen/qwen3.6-27b",
         name: "Qwen3.6 27B",
-        family: "qwen",
         cost: {
           input: 0.6,
           output: 3.6,
@@ -7875,7 +7354,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.6-35b-a3b": {
         id: "qwen/qwen3.6-35b-a3b",
         name: "Qwen3.6 35B-A3B",
-        family: "qwen",
         cost: {
           input: 0.14,
           output: 1,
@@ -7890,7 +7368,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.6-flash": {
         id: "qwen/qwen3.6-flash",
         name: "Qwen3.6 Flash",
-        family: "qwen3.6",
         cost: {
           input: 0.1875,
           output: 1.125,
@@ -7905,7 +7382,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.6-max-preview": {
         id: "qwen/qwen3.6-max-preview",
         name: "Qwen3.6 Max Preview",
-        family: "qwen",
         cost: {
           input: 1.027,
           output: 6.162,
@@ -7920,7 +7396,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.6-plus": {
         id: "qwen/qwen3.6-plus",
         name: "Qwen3.6 Plus",
-        family: "qwen",
         cost: {
           input: 0.325,
           output: 1.95,
@@ -7935,7 +7410,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.7-flash": {
         id: "qwen/qwen3.7-flash",
         name: "Qwen3.7 Flash",
-        family: "qwen",
         cost: {
           input: 0.03,
           output: 0.13,
@@ -7950,7 +7424,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.7-max": {
         id: "qwen/qwen3.7-max",
         name: "Qwen3.7 Max",
-        family: "qwen",
         cost: {
           input: 1.475,
           output: 4.425,
@@ -7965,7 +7438,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.7-plus": {
         id: "qwen/qwen3.7-plus",
         name: "Qwen3.7 Plus",
-        family: "qwen",
         cost: {
           input: 0.32,
           output: 1.28,
@@ -7980,7 +7452,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.8-2.4t-a95b": {
         id: "qwen/qwen3.8-2.4t-a95b",
         name: "Qwen3.8 2.4T A95B",
-        family: "qwen",
         cost: {
           input: 2,
           output: 6,
@@ -7995,7 +7466,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.8-27b": {
         id: "qwen/qwen3.8-27b",
         name: "Qwen3.8 27B",
-        family: "qwen",
         cost: {
           input: 0.425,
           output: 2.55,
@@ -8010,7 +7480,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "qwen/qwen3.8-max": {
         id: "qwen/qwen3.8-max",
         name: "Qwen3.8 Max",
-        family: "qwen",
         cost: {
           input: 2,
           output: 6,
@@ -8025,7 +7494,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "rekaai/reka-edge": {
         id: "rekaai/reka-edge",
         name: "Reka Edge",
-        family: "reka",
         cost: {
           input: 0.1,
           output: 0.1,
@@ -8040,7 +7508,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "rekaai/reka-flash-3": {
         id: "rekaai/reka-flash-3",
         name: "Reka Flash 3",
-        family: "reka",
         cost: {
           input: 0.1,
           output: 0.2,
@@ -8083,7 +7550,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "sakana/fugu-ultra": {
         id: "sakana/fugu-ultra",
         name: "Fugu Ultra",
-        family: "fugu",
         cost: {
           input: 5,
           output: 30,
@@ -8098,7 +7564,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "sakana/sakana-namazu": {
         id: "sakana/sakana-namazu",
         name: "Sakana Namazu",
-        family: "sakana-namazu",
         cost: {
           input: 0.95,
           output: 4,
@@ -8113,7 +7578,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "sao10k/l3-lunaris-8b": {
         id: "sao10k/l3-lunaris-8b",
         name: "Llama 3 8B Lunaris",
-        family: "llama",
         cost: {
           input: 0.04,
           output: 0.05,
@@ -8128,7 +7592,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "sao10k/l3.1-euryale-70b": {
         id: "sao10k/l3.1-euryale-70b",
         name: "Llama 3.1 Euryale 70B v2.2",
-        family: "llama",
         cost: {
           input: 0.85,
           output: 0.85,
@@ -8143,7 +7606,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "sao10k/l3.3-euryale-70b": {
         id: "sao10k/l3.3-euryale-70b",
         name: "Llama 3.3 Euryale 70B",
-        family: "llama",
         cost: {
           input: 0.65,
           output: 0.75,
@@ -8158,7 +7620,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "stealth/ox-alpha": {
         id: "stealth/ox-alpha",
         name: "Ox Alpha",
-        family: "alpha",
         cost: {
           input: 0,
           output: 0,
@@ -8201,7 +7662,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "tencent/hunyuan-a13b-instruct": {
         id: "tencent/hunyuan-a13b-instruct",
         name: "Hunyuan A13B Instruct",
-        family: "hunyuan",
         cost: {
           input: 0.14,
           output: 0.57,
@@ -8216,7 +7676,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "tencent/hy-mt2-1.8b": {
         id: "tencent/hy-mt2-1.8b",
         name: "Hy-MT2-1.8B",
-        family: "Hy",
         cost: {
           input: 0.044,
           output: 0.177,
@@ -8231,7 +7690,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "tencent/hy-mt2-30b-a3b": {
         id: "tencent/hy-mt2-30b-a3b",
         name: "Hy-MT2-30B-A3B",
-        family: "Hy",
         cost: {
           input: 0.074,
           output: 0.295,
@@ -8246,7 +7704,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "tencent/hy-mt2-7b": {
         id: "tencent/hy-mt2-7b",
         name: "Hy-MT2-7B",
-        family: "Hy",
         cost: {
           input: 0.074,
           output: 0.295,
@@ -8261,7 +7718,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "tencent/hy3": {
         id: "tencent/hy3",
         name: "Hy3",
-        family: "Hy",
         cost: {
           input: 0.132,
           output: 0.528,
@@ -8276,7 +7732,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "tencent/hy3-preview": {
         id: "tencent/hy3-preview",
         name: "Hy3 preview",
-        family: "Hy",
         cost: {
           input: 0.18,
           output: 0.6,
@@ -8347,7 +7802,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "thinkingmachines/inkling": {
         id: "thinkingmachines/inkling",
         name: "Inkling",
-        family: "ling",
         cost: {
           input: 0.95,
           output: 4.05,
@@ -8362,7 +7816,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "thinkingmachines/inkling-small": {
         id: "thinkingmachines/inkling-small",
         name: "Inkling Small",
-        family: "ling",
         cost: {
           input: 0.45,
           output: 1.2,
@@ -8377,7 +7830,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "thinkingmachines/inkling-small:free": {
         id: "thinkingmachines/inkling-small:free",
         name: "Inkling Small (free)",
-        family: "ling",
         cost: {
           input: 0,
           output: 0,
@@ -8392,7 +7844,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "thinkingmachines/inkling:free": {
         id: "thinkingmachines/inkling:free",
         name: "Inkling (free)",
-        family: "ling",
         cost: {
           input: 0,
           output: 0,
@@ -8421,7 +7872,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "upstage/solar-pro-3": {
         id: "upstage/solar-pro-3",
         name: "Solar Pro 3",
-        family: "solar-pro",
         cost: {
           input: 0.15,
           output: 0.6,
@@ -8436,7 +7886,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "upstage/solar-pro4": {
         id: "upstage/solar-pro4",
         name: "Solar Pro 4",
-        family: "solar",
         cost: {
           input: 0.03,
           output: 0.12,
@@ -8451,7 +7900,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "writer/palmyra-x5": {
         id: "writer/palmyra-x5",
         name: "Palmyra X5",
-        family: "palmyra",
         cost: {
           input: 0.6,
           output: 6,
@@ -8466,7 +7914,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "x-ai/grok-4.20": {
         id: "x-ai/grok-4.20",
         name: "Grok 4.20",
-        family: "grok",
         cost: {
           input: 1.25,
           output: 2.5,
@@ -8481,7 +7928,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "x-ai/grok-4.20-multi-agent": {
         id: "x-ai/grok-4.20-multi-agent",
         name: "Grok 4.20 Multi-Agent",
-        family: "grok",
         cost: {
           input: 1.25,
           output: 2.5,
@@ -8496,7 +7942,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "x-ai/grok-4.3": {
         id: "x-ai/grok-4.3",
         name: "Grok 4.3",
-        family: "grok",
         cost: {
           input: 1.25,
           output: 2.5,
@@ -8511,7 +7956,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "x-ai/grok-4.5": {
         id: "x-ai/grok-4.5",
         name: "Grok 4.5",
-        family: "grok",
         cost: {
           input: 2,
           output: 6,
@@ -8526,7 +7970,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "x-ai/grok-4.6": {
         id: "x-ai/grok-4.6",
         name: "Grok 4.6",
-        family: "grok",
         cost: {
           input: 2,
           output: 6,
@@ -8541,7 +7984,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "x-ai/grok-build-0.1": {
         id: "x-ai/grok-build-0.1",
         name: "Grok Build 0.1",
-        family: "grok-build",
         cost: {
           input: 1,
           output: 2,
@@ -8556,7 +7998,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "xiaomi/mimo-v2.5": {
         id: "xiaomi/mimo-v2.5",
         name: "MiMo-V2.5",
-        family: "mimo",
         cost: {
           input: 0.14,
           output: 0.28,
@@ -8571,7 +8012,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "xiaomi/mimo-v2.5-pro": {
         id: "xiaomi/mimo-v2.5-pro",
         name: "MiMo-V2.5-Pro",
-        family: "mimo",
         cost: {
           input: 0.435,
           output: 0.87,
@@ -8586,7 +8026,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-4.5": {
         id: "z-ai/glm-4.5",
         name: "GLM-4.5",
-        family: "glm",
         cost: {
           input: 0.6,
           output: 2.2,
@@ -8601,7 +8040,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-4.5-air": {
         id: "z-ai/glm-4.5-air",
         name: "GLM-4.5-Air",
-        family: "glm-air",
         cost: {
           input: 0.13,
           output: 0.85,
@@ -8616,7 +8054,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-4.5v": {
         id: "z-ai/glm-4.5v",
         name: "GLM-4.5V",
-        family: "glm",
         cost: {
           input: 0.6,
           output: 1.8,
@@ -8631,7 +8068,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-4.6": {
         id: "z-ai/glm-4.6",
         name: "GLM-4.6",
-        family: "glm",
         cost: {
           input: 0.5,
           output: 2,
@@ -8646,7 +8082,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-4.6v": {
         id: "z-ai/glm-4.6v",
         name: "GLM-4.6V",
-        family: "glm",
         cost: {
           input: 0.3,
           output: 0.9,
@@ -8661,7 +8096,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-4.7": {
         id: "z-ai/glm-4.7",
         name: "GLM-4.7",
-        family: "glm",
         cost: {
           input: 0.4,
           output: 1.75,
@@ -8676,7 +8110,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-4.7-flash": {
         id: "z-ai/glm-4.7-flash",
         name: "GLM-4.7-Flash",
-        family: "glm-flash",
         cost: {
           input: 0.06,
           output: 0.4,
@@ -8691,7 +8124,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-5": {
         id: "z-ai/glm-5",
         name: "GLM-5",
-        family: "glm",
         cost: {
           input: 0.6,
           output: 1.92,
@@ -8706,7 +8138,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-5-turbo": {
         id: "z-ai/glm-5-turbo",
         name: "GLM-5-Turbo",
-        family: "glm",
         cost: {
           input: 1.2,
           output: 4,
@@ -8721,7 +8152,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-5.1": {
         id: "z-ai/glm-5.1",
         name: "GLM-5.1",
-        family: "glm",
         cost: {
           input: 1.26,
           output: 3.96,
@@ -8736,7 +8166,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-5.2": {
         id: "z-ai/glm-5.2",
         name: "GLM-5.2",
-        family: "glm",
         cost: {
           input: 1.19,
           output: 3.74,
@@ -8751,7 +8180,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-5.2:free": {
         id: "z-ai/glm-5.2:free",
         name: "GLM 5.2 (free)",
-        family: "glm",
         cost: {
           input: 0,
           output: 0,
@@ -8766,7 +8194,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-5.3": {
         id: "z-ai/glm-5.3",
         name: "GLM-5.3",
-        family: "glm",
         cost: {
           input: 1.4,
           output: 4.4,
@@ -8781,7 +8208,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "z-ai/glm-5v-turbo": {
         id: "z-ai/glm-5v-turbo",
         name: "GLM-5V-Turbo",
-        family: "glm",
         cost: {
           input: 1.2,
           output: 4,
@@ -8796,7 +8222,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "~anthropic/claude-fable-latest": {
         id: "~anthropic/claude-fable-latest",
         name: "Claude Fable Latest",
-        family: "claude-fable",
         cost: {
           input: 10,
           output: 50,
@@ -8811,7 +8236,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "~anthropic/claude-haiku-latest": {
         id: "~anthropic/claude-haiku-latest",
         name: "Anthropic Claude Haiku Latest",
-        family: "claude-haiku",
         cost: {
           input: 1,
           output: 5,
@@ -8826,7 +8250,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "~anthropic/claude-opus-latest": {
         id: "~anthropic/claude-opus-latest",
         name: "Claude Opus Latest",
-        family: "claude-opus",
         cost: {
           input: 5,
           output: 25,
@@ -8841,7 +8264,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "~anthropic/claude-sonnet-latest": {
         id: "~anthropic/claude-sonnet-latest",
         name: "Anthropic Claude Sonnet Latest",
-        family: "claude-sonnet",
         cost: {
           input: 2,
           output: 10,
@@ -8856,7 +8278,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "~deepseek/deepseek-v4-flash-latest": {
         id: "~deepseek/deepseek-v4-flash-latest",
         name: "DeepSeek V4 Flash Latest",
-        family: "deepseek",
         cost: {
           input: 0.03,
           output: 0.075,
@@ -8871,7 +8292,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "~google/gemini-flash-latest": {
         id: "~google/gemini-flash-latest",
         name: "Google Gemini Flash Latest",
-        family: "gemini-flash",
         cost: {
           input: 0.375,
           output: 1.875,
@@ -8886,7 +8306,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "~google/gemini-pro-latest": {
         id: "~google/gemini-pro-latest",
         name: "Google Gemini Pro Latest",
-        family: "gemini-pro",
         cost: {
           input: 2,
           output: 12,
@@ -8901,7 +8320,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "~moonshotai/kimi-latest": {
         id: "~moonshotai/kimi-latest",
         name: "MoonshotAI Kimi Latest",
-        family: "kimi",
         cost: {
           input: 2.55,
           output: 12.75,
@@ -8916,7 +8334,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "~openai/gpt-latest": {
         id: "~openai/gpt-latest",
         name: "OpenAI GPT Latest",
-        family: "gpt",
         cost: {
           input: 2,
           output: 10,
@@ -8931,7 +8348,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "~openai/gpt-mini-latest": {
         id: "~openai/gpt-mini-latest",
         name: "OpenAI GPT Mini Latest",
-        family: "gpt-mini",
         cost: {
           input: 0.75,
           output: 4.5,
@@ -8946,7 +8362,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "~x-ai/grok-latest": {
         id: "~x-ai/grok-latest",
         name: "Grok Latest",
-        family: "grok",
         cost: {
           input: 2,
           output: 6,
@@ -8961,7 +8376,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "~z-ai/glm-latest": {
         id: "~z-ai/glm-latest",
         name: "GLM Latest",
-        family: "glm",
         cost: {
           input: 1.4,
           output: 4.4,
@@ -8984,7 +8398,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-4.5": {
         id: "glm-4.5",
         name: "GLM-4.5",
-        family: "glm",
         cost: {
           input: 0.6,
           output: 2.2,
@@ -8998,7 +8411,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-4.5-air": {
         id: "glm-4.5-air",
         name: "GLM-4.5-Air",
-        family: "glm-air",
         cost: {
           input: 0.2,
           output: 1.1,
@@ -9012,7 +8424,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-4.5-flash": {
         id: "glm-4.5-flash",
         name: "GLM-4.5-Flash",
-        family: "glm-flash",
         cost: {
           input: 0,
           output: 0,
@@ -9026,7 +8437,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-4.5v": {
         id: "glm-4.5v",
         name: "GLM-4.5V",
-        family: "glm",
         cost: {
           input: 0.6,
           output: 1.8,
@@ -9040,7 +8450,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-4.6": {
         id: "glm-4.6",
         name: "GLM-4.6",
-        family: "glm",
         cost: {
           input: 0.6,
           output: 2.2,
@@ -9054,7 +8463,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-4.6v": {
         id: "glm-4.6v",
         name: "GLM-4.6V",
-        family: "glm",
         cost: {
           input: 0.3,
           output: 0.9,
@@ -9068,7 +8476,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-4.7": {
         id: "glm-4.7",
         name: "GLM-4.7",
-        family: "glm",
         cost: {
           input: 0.6,
           output: 2.2,
@@ -9082,7 +8489,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-4.7-flash": {
         id: "glm-4.7-flash",
         name: "GLM-4.7-Flash",
-        family: "glm-flash",
         cost: {
           input: 0,
           output: 0,
@@ -9096,7 +8502,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-4.7-flashx": {
         id: "glm-4.7-flashx",
         name: "GLM-4.7-FlashX",
-        family: "glm-flash",
         cost: {
           input: 0.07,
           output: 0.4,
@@ -9110,7 +8515,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5": {
         id: "glm-5",
         name: "GLM-5",
-        family: "glm",
         cost: {
           input: 1,
           output: 3.2,
@@ -9124,7 +8528,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5-turbo": {
         id: "glm-5-turbo",
         name: "GLM-5-Turbo",
-        family: "glm",
         cost: {
           input: 1.2,
           output: 4,
@@ -9139,7 +8542,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5.1": {
         id: "glm-5.1",
         name: "GLM-5.1",
-        family: "glm",
         cost: {
           input: 1.4,
           output: 4.4,
@@ -9154,7 +8556,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5.2": {
         id: "glm-5.2",
         name: "GLM-5.2",
-        family: "glm",
         cost: {
           input: 1.4,
           output: 4.4,
@@ -9169,7 +8570,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5.3": {
         id: "glm-5.3",
         name: "GLM-5.3",
-        family: "glm",
         cost: {
           input: 1.4,
           output: 4.4,
@@ -9184,7 +8584,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "glm-5v-turbo": {
         id: "glm-5v-turbo",
         name: "GLM-5V-Turbo",
-        family: "glm",
         cost: {
           input: 1.2,
           output: 4,

@@ -45,8 +45,6 @@ export const ModelsDevCatalogCacheSchema = z.object({
 });
 type ModelsDevCatalogCache = z.infer<typeof ModelsDevCatalogCacheSchema>;
 
-export type CatalogObservableProductId = keyof typeof PROVIDER_OVERLAY & RunnableProductId;
-
 export interface CatalogDiscoveryTuple {
   readonly configurationId: ConfigurationId;
   readonly productId: RunnableProductId;
@@ -86,7 +84,7 @@ interface CatalogFetchGeneration {
 }
 
 interface CatalogFlight {
-  requestedProducts: Set<CatalogObservableProductId>;
+  requestedProducts: Set<RunnableProductId>;
   promise: Promise<CatalogFetchGeneration>;
 }
 
@@ -146,10 +144,6 @@ const countRawModels = (payload: unknown): number => {
   }
   return total;
 };
-
-const isCatalogObservableProduct = (
-  productId: RunnableProductId,
-): productId is CatalogObservableProductId => PROVIDER_OVERLAY[productId] !== undefined;
 
 /** Registry-owned overlay source ids — catalog observations never enable products. */
 const catalogOverlaySourceIds = (): Set<string> => {
@@ -211,7 +205,7 @@ const compareModelsNewestFirst = (left: ModelInfo, right: ModelInfo): number => 
  */
 export const modelInfoFromBoundedObservation = (
   catalog: ModelsDevCatalog,
-  productId: CatalogObservableProductId,
+  productId: RunnableProductId,
   observationSource: CatalogObservationSource,
   checkedAt: string,
 ): ModelInfo[] => {
@@ -249,7 +243,7 @@ interface ModelsDevFetch {
   readonly revalidated: boolean;
 }
 
-// Live fetch + parse + shrink/corruption guard. Exported as a test seam; production reaches it via getProviderModels.
+// Live fetch + parse + shrink/corruption guard. Exported as a test seam; production reaches it via catalogProviderModels.get.
 export const fetchModelsDevCatalog = async (options?: {
   baselineModelCount?: number;
   revalidate?: { etag: string; catalog: ModelsDevCatalog };
@@ -314,7 +308,7 @@ interface CatalogTier {
 // falls through to the next tier instead of serving a blank picker.
 const tierIfNonEmpty = (
   catalog: ModelsDevCatalog,
-  productId: CatalogObservableProductId,
+  productId: RunnableProductId,
   fetchedAt: string,
   source: CatalogTierSource,
 ): CatalogTier | null => {
@@ -336,7 +330,7 @@ const snapshotTier = (): CatalogTier => ({
 const resolveCatalogGeneration = async (options: {
   key: string;
   path: string;
-  productId: CatalogObservableProductId;
+  productId: RunnableProductId;
   baselineModelCount: number;
   trustedCache: ModelsDevCatalogCache | null;
 }): Promise<CatalogFetchGeneration> => {
@@ -346,7 +340,7 @@ const resolveCatalogGeneration = async (options: {
     return active.promise;
   }
 
-  const requestedProducts = new Set<CatalogObservableProductId>([options.productId]);
+  const requestedProducts = new Set<RunnableProductId>([options.productId]);
   const trustedCache = options.trustedCache;
   const promise = (async (): Promise<CatalogFetchGeneration> => {
     const result = await fetchModelsDevCatalog({
@@ -379,7 +373,7 @@ const resolveCatalogGeneration = async (options: {
   }
 };
 
-const resolveCatalogTier = async (productId: CatalogObservableProductId): Promise<CatalogTier> => {
+const resolveCatalogTier = async (productId: RunnableProductId): Promise<CatalogTier> => {
   const path = getGlobalModelsDevCatalogPath();
   const loadedCache = loadCacheStateMemoized(path);
   const cacheState = loadedCache.state;
@@ -543,7 +537,7 @@ const providerModelsResponse = (
 
 const providerModelsFromTier = (
   tier: CatalogTier,
-  productId: CatalogObservableProductId,
+  productId: RunnableProductId,
   liveList: LiveModelList | null,
 ): ProviderModelsResponse => {
   const offered = modelInfoFromBoundedObservation(
@@ -575,26 +569,12 @@ const providerModelsFromTier = (
  */
 export const catalogProviderModels = {
   get: async (
-    productId: CatalogObservableProductId,
+    productId: RunnableProductId,
     liveList: Promise<LiveModelList | null> | null = null,
   ): Promise<ProviderModelsResponse> => {
     const [tier, list] = await Promise.all([resolveCatalogTier(productId), liveList]);
     return providerModelsFromTier(tier, productId, list);
   },
-};
-
-// Three-tier orchestration: a bundled-snapshot tier, per-product non-empty
-// fall-through, a single-source-drop poison guard, and a corrupt-cache
-// quarantine that still seeds a shrink-guard baseline. All of it serves one
-// guarantee: the model picker is never blank on first run or offline.
-export const getProviderModels = async (
-  productId: RunnableProductId,
-): Promise<ProviderModelsResponse> => {
-  if (!isCatalogObservableProduct(productId)) {
-    const fetchedAt = new Date().toISOString();
-    return { models: [], fetchedAt, source: "snapshot", cached: false };
-  }
-  return catalogProviderModels.get(productId);
 };
 
 export const discoverConfigurationCatalog = async (

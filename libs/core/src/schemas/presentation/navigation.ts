@@ -69,6 +69,6 @@ export const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
     label: "Agent Execution",
     description: "Control how analysis agents are scheduled",
   },
-  { id: "analysis", label: "Analysis", description: "Configure agents and context depth" },
+  { id: "analysis", label: "Analysis", description: "Choose which lenses run during reviews" },
   { id: "diagnostics", label: "Diagnostics", description: "Run system health checks" },
 ];

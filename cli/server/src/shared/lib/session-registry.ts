@@ -1,4 +1,4 @@
-import { ExecutionLeaseRegistry } from "./ai/admission/service.js";
+import { ExecutionLeaseRegistry } from "./ai/admission/lease-registry.js";
 import type { ConfigurationLeaseHooks } from "./config/seams.js";
 
 export interface SessionCancelOptions {

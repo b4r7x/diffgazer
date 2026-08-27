@@ -121,10 +121,10 @@ export const segmentedItemVariants = cva(
       // the 3px-inset pill track; row height inherits from sm/md above.
       { variant: "pill", size: "sm", className: "py-1.5" },
       { variant: "pill", size: "md", className: "py-2" },
-      // Underline items have no horizontal padding by default — gap on the row
-      // provides spacing; padding would create a clickable border-bottom strip
-      // that lies past the label. Vertical padding is added for visual weight
-      // without dropping the touch-target height.
+      // Underline items keep horizontal padding minimal (px-1): the row gap
+      // supplies the spacing, and wider padding would stretch the clickable
+      // border-bottom strip well past the label. Vertical padding carries the
+      // visual weight without dropping the touch-target height.
       { variant: "underline", size: "sm", className: "px-1 pb-2" },
       { variant: "underline", size: "md", className: "px-1 pb-3" },
       {

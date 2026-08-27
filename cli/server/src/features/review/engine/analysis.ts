@@ -42,8 +42,6 @@ function getThinkingMessage(lens: Lens): string {
       return "Analyzing diff for test coverage and quality...";
     case "synthesis":
       return "Connecting findings across review batches...";
-    default:
-      return `Analyzing diff with ${lens.name} lens...`;
   }
 }
 
@@ -393,7 +391,6 @@ export async function runLensAnalysis({
     lensId: lens.id,
     issues: processedIssues,
     droppedIncompleteProviderIssues,
-    droppedOverLensCap: uniqueIssues.length - processedIssues.length,
     batchError,
     dispatches,
   });

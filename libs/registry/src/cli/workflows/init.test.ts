@@ -476,24 +476,24 @@ describe("runInitWorkflow rollback", () => {
   it("rejects malformed configs without advertising --force as a ledger-safe recovery path", async () => {
     writeFileSync(join(tempDir, "tool.json"), "{ not valid json\n");
 
-    await expect(
-      runInitWorkflow({
-        cwd: tempDir,
-        configFileName: "tool.json",
-        yes: true,
-        force: false,
-        loadConfig: () => ({
-          ok: false,
-          error: "parse_error",
-          message: "Unexpected token n",
-        }),
-        detectProject: () => ({ display: [] }),
-        plannedPaths: () => [],
-        createFiles: () => [],
-        writeConfig: () => {},
-        nextSteps: [],
+    const parseError = await runInitWorkflow({
+      cwd: tempDir,
+      configFileName: "tool.json",
+      yes: true,
+      force: false,
+      loadConfig: () => ({
+        ok: false,
+        error: "parse_error",
+        message: "Unexpected token n",
       }),
-    ).rejects.toThrow(/before re-initializing/);
+      detectProject: () => ({ display: [] }),
+      plannedPaths: () => [],
+      createFiles: () => [],
+      writeConfig: () => {},
+      nextSteps: [],
+    }).catch((error: unknown) => error);
+    expect(String(parseError)).toMatch(/before re-initializing/);
+    expect(String(parseError)).not.toMatch(/--force to re-initialize/);
 
     await expect(
       runInitWorkflow({
@@ -513,28 +513,6 @@ describe("runInitWorkflow rollback", () => {
         nextSteps: [],
       }),
     ).rejects.toThrow(/before re-initializing/);
-
-    try {
-      await runInitWorkflow({
-        cwd: tempDir,
-        configFileName: "tool.json",
-        yes: true,
-        force: false,
-        loadConfig: () => ({
-          ok: false,
-          error: "parse_error",
-          message: "Unexpected token n",
-        }),
-        detectProject: () => ({ display: [] }),
-        plannedPaths: () => [],
-        createFiles: () => [],
-        writeConfig: () => {},
-        nextSteps: [],
-      });
-      throw new Error("expected malformed-config init to throw");
-    } catch (error) {
-      expect(String(error)).not.toMatch(/--force to re-initialize/);
-    }
   });
 
   it("rolls back created files and exits when installation is cancelled via SIGINT", async () => {

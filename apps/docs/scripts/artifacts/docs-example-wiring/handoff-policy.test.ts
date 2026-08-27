@@ -14,7 +14,6 @@ describe("docs example wiring — handoff policy", () => {
     const docsPackage = JSON.parse(readRepoFile("apps/docs/package.json"));
 
     expect(docsPackage.scripts.preview).toBe("vite preview --outDir .output/public");
-    expect(docsPackage.scripts.preview).not.toContain("npx");
   });
 
   it("every public UI component/hook page has consumption metadata block", () => {

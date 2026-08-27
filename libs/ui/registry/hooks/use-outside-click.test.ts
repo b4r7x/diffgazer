@@ -420,9 +420,9 @@ describe("useOutsideClick", () => {
   });
 
   it.each([
-    { gesture: "pointer", detail: 1, reaches: false },
-    { gesture: "keyboard", detail: 0, reaches: true },
-  ])("swallows the $gesture click after a dismissing press that ended without one", ({
+    { gesture: "pointer", outcome: "swallows", detail: 1, reaches: false },
+    { gesture: "keyboard", outcome: "lets through", detail: 0, reaches: true },
+  ])("$outcome the $gesture click after a dismissing press that ended without one", ({
     detail,
     reaches,
   }) => {

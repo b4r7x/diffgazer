@@ -621,7 +621,10 @@ describe("HomePagePresentation — startReview error surfacing", () => {
     expect(held).toHaveLength(1);
     expect(createReview).not.toHaveBeenCalled();
     // The row is not pending while the notice is up: nothing has started yet.
-    expect(screen.getByRole("menuitem", { name: "Review Unstaged" })).toBeEnabled();
+    const heldRow = screen.getByRole("menuitem", { name: "Review Unstaged" });
+    expect(heldRow).not.toHaveAttribute("aria-busy");
+    expect(heldRow).not.toHaveAttribute("aria-disabled");
+    expect(heldRow).not.toHaveTextContent(/starting/i);
 
     await act(async () => {
       held[0]?.();
@@ -936,7 +939,10 @@ describe("HomePagePresentation — file picker entry", () => {
     conflicted: [],
     files: {
       staged: [],
-      unstaged: [{ path: "src/a.ts", indexStatus: " ", workTreeStatus: "M" }],
+      unstaged: [
+        { path: "src/a.ts", indexStatus: " ", workTreeStatus: "M" },
+        { path: "src/b.ts", indexStatus: " ", workTreeStatus: "M" },
+      ],
       untracked: [],
     },
   };
@@ -974,12 +980,31 @@ describe("HomePagePresentation — file picker entry", () => {
 
     const picker = await screen.findByRole("dialog", { name: "Review Specific Files" });
     await within(picker).findByRole("checkbox", { name: /src\/a\.ts/ });
-    await user.click(within(picker).getByRole("button", { name: "Review 1 File" }));
+    await user.click(within(picker).getByRole("button", { name: "Review 2 Files" }));
 
     // The whole scope is picked, so the start carries no pathspecs: this is the
     // menu row's own start.
     await waitFor(() =>
       expect(createReview).toHaveBeenCalledWith({ mode: "unstaged", files: undefined }),
+    );
+  });
+
+  it("carries the picked subset all the way to the review it creates", async () => {
+    const createReview = vi.fn(async () => ({ reviewId: "rev-filtered" }));
+    const user = userEvent.setup();
+    renderWithGitStatus(buildProps({ createReview }));
+
+    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
+    await user.keyboard("f");
+
+    const picker = await screen.findByRole("dialog", { name: "Review Specific Files" });
+    await user.click(await within(picker).findByRole("checkbox", { name: /src\/a\.ts/ }));
+    await user.click(within(picker).getByRole("button", { name: "Review 1 File" }));
+
+    // The narrowed scope is the whole point of the picker: the pathspecs have to
+    // survive the consent gate and reach the server, not stop at the dialog.
+    await waitFor(() =>
+      expect(createReview).toHaveBeenCalledWith({ mode: "unstaged", files: ["src/b.ts"] }),
     );
   });
 

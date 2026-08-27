@@ -265,18 +265,6 @@ describe("review-state", () => {
       completed: ["src/index.ts", "src/app.ts"],
     });
     expect(state.issues.map((issue) => issue.title)).toEqual(["Bug A", "Bug B"]);
-
-    const unchangedTotal = reviewReducer(state, {
-      type: "EVENT",
-      event: {
-        type: "orchestrator_complete",
-        totalIssues: 0,
-        lensStats: [],
-        filesAnalyzed: 0,
-        timestamp: ts,
-      },
-    });
-    expect(unchangedTotal.fileProgress.total).toBe(12);
   });
 
   it("records prompt coverage for every file_progress event", () => {

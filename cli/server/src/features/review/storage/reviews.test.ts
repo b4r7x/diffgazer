@@ -2090,6 +2090,7 @@ describe("reviews storage", () => {
 
     expect(read.ok).toBe(true);
     if (read.ok) {
+      expect(read.value.review.execution?.receipt.outcome).toBe(outcome);
       expect(read.value.review.result.issues).toEqual([]);
       expect(read.value.review.execution?.result.issues).toEqual([]);
       expect(read.value.review.metadata.issueCount).toBe(0);
@@ -2139,32 +2140,6 @@ describe("reviews storage", () => {
     }
     expect(listed.ok).toBe(true);
     if (listed.ok) expect(listed.value.items[0]?.issueCount).toBe(2);
-  });
-
-  it("does not expose failed execution findings as resumable partial results", async () => {
-    const review = makeSavedReviewWithExecution("transport-failed", "partial-resume");
-    await writeSavedReview({
-      ...review,
-      result: {
-        issues: [makeIssue({ id: "partial", severity: "high", file: "a.ts" })],
-      },
-      metadata: {
-        ...review.metadata,
-        issueCount: 1,
-        highCount: 1,
-        mediumCount: 0,
-      },
-    });
-
-    const { getReviewDetail } = await loadStorage();
-    const read = await getReviewDetail(REVIEW_ID);
-
-    expect(read.ok).toBe(true);
-    if (read.ok) {
-      expect(read.value.review.execution?.receipt.outcome).toBe("transport-failed");
-      expect(read.value.review.result.issues).toEqual([]);
-      expect(read.value.review.execution?.result.issues).toEqual([]);
-    }
   });
 
   it("rekeys every durable review when the legacy source index is incomplete", async () => {

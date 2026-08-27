@@ -16,12 +16,20 @@ import {
 const CREDENTIAL_ENVS = { openrouter: "OPENROUTER_API_KEY", gemini: "GOOGLE_API_KEY" };
 const SUGGESTED_MODELS = { openrouter: null, gemini: "gemini-2.5-flash" };
 
-function resolve({ env = {}, networkEnabled = true, hasServerDist = true } = {}) {
+function resolve({
+  env = {},
+  networkEnabled = true,
+  hasCoreDist = true,
+  coreDistError = null,
+  hasServerDist = true,
+} = {}) {
   return resolveE2eDisposition({
     env,
     networkEnabled,
     credentialEnvFor: (id) => CREDENTIAL_ENVS[id],
     suggestedModelFor: (id) => SUGGESTED_MODELS[id] ?? null,
+    hasCoreDist,
+    coreDistError,
     hasServerDist,
   });
 }
@@ -71,6 +79,7 @@ test("product without a suggested model and no model env -> unavailable (model-u
     networkEnabled: true,
     credentialEnvFor: (id) => CREDENTIAL_ENVS[id],
     suggestedModelFor: () => null,
+    hasCoreDist: true,
     hasServerDist: true,
   });
   assert.deepEqual(disposition, {
@@ -79,6 +88,24 @@ test("product without a suggested model and no model env -> unavailable (model-u
     productId: "gemini",
     credentialEnv: "GOOGLE_API_KEY",
   });
+});
+
+test("unimportable core dist -> unavailable (core-dist-missing) keeping the import error", () => {
+  const disposition = resolve({
+    env: { [E2E_OPT_IN_ENV]: "1" },
+    hasCoreDist: false,
+    coreDistError: "Cannot find module 'libs/core/dist/providers/index.js'",
+  });
+  assert.deepEqual(disposition, {
+    kind: "unavailable",
+    reason: "core-dist-missing",
+    coreDistError: "Cannot find module 'libs/core/dist/providers/index.js'",
+  });
+
+  const line = skipLine(disposition);
+  assert.match(line, /libs\/core dist not importable \(Cannot find module/);
+  assert.match(line, /--filter=@diffgazer\/core/);
+  assert.throws(() => finalizeE2eDisposition(disposition, true), /libs\/core dist not importable/);
 });
 
 test("missing server dist -> unavailable (server-dist-missing)", () => {
@@ -273,16 +300,37 @@ test("timeout -> fail", () => {
   assert.match(lines[0], /did not reach a terminal event/);
 });
 
-test("complete but not persisted or listed -> fail", () => {
+for (const { persisted, listed, missing } of [
+  { persisted: false, listed: true, missing: "detail fetch" },
+  { persisted: true, listed: false, missing: "history listing" },
+  { persisted: false, listed: false, missing: "detail fetch and history listing" },
+]) {
+  test(`complete but persistence missing (${missing}) -> fail`, () => {
+    const { verdict, lines } = evaluateRun({
+      sawNonTerminalEvent: true,
+      terminal: completeTerminal,
+      timedOut: false,
+      persisted,
+      listed,
+    });
+    assert.equal(verdict, "fail");
+    assert.equal(
+      lines[0],
+      `FAIL: live review e2e completed but persistence is missing (${missing}).`,
+    );
+  });
+}
+
+test("stream ends without a terminal event -> fail", () => {
   const { verdict, lines } = evaluateRun({
     sawNonTerminalEvent: true,
-    terminal: completeTerminal,
+    terminal: null,
     timedOut: false,
-    persisted: false,
+    persisted: true,
     listed: true,
   });
   assert.equal(verdict, "fail");
-  assert.match(lines[0], /persistence is missing \(detail fetch\)/);
+  assert.match(lines[0], /stream ended without a terminal event/);
 });
 
 test("terminal complete without any non-terminal event -> fail", () => {

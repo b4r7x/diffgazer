@@ -278,19 +278,19 @@ describe("config API functions", () => {
     await expect(getConfigurationModels(client, "zai-primary")).rejects.toThrow();
   });
 
-  it("rejects cross-transport readiness at the list boundary as INVALID_RESPONSE", async () => {
+  it("rejects inconsistent readiness at the list boundary as INVALID_RESPONSE", async () => {
     const malformedList = {
       schemaVersion: 2,
       configurations: [
         {
           configuration,
           readiness: {
-            status: "local-conformance-failed",
+            status: "unconfigured",
             ready: false,
-            evidenceStatus: "failed",
-            checkedAt,
+            evidenceStatus: "not-checked",
+            checkedAt: null,
             acknowledgement: { status: "not-applicable" },
-            ...READINESS_PRESENTATION["local-conformance-failed"],
+            ...READINESS_PRESENTATION.unconfigured,
           },
         },
       ],

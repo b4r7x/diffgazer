@@ -387,9 +387,15 @@ function createConnectedTitleRouter(initialEntries: string[]) {
 
 describe("route document titles", () => {
   it("declares a head title on every one of the 13 leaf routes", () => {
+    const leaves = Object.values(router.routesById).filter(
+      (route) =>
+        !(Array.isArray(route.children) && route.children.length > 0) && route.id !== "__root__",
+    );
+
     const titlesByPath: Record<string, string> = {};
-    for (const route of Object.values(router.routesById)) {
+    for (const route of leaves) {
       const title = titleFromHead(route.options.head);
+      expect(title, route.fullPath).toBeDefined();
       if (title) titlesByPath[route.fullPath] = title;
     }
 

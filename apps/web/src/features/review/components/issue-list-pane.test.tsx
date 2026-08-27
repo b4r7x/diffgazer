@@ -80,24 +80,6 @@ describe("IssueListPane row highlight inversion", () => {
 });
 
 describe("IssueListPane severity accessibility", () => {
-  it("exposes each issue's severity word in its accessible name, not just by color", () => {
-    render(
-      <IssueListPane
-        issues={issues}
-        allIssues={issues}
-        runDisplayId="#review-1"
-        selectedIssueId="issue-1"
-        onSelectIssue={vi.fn()}
-        filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
-        isFocused
-      />,
-    );
-
-    // Severity reaches AT textually: high vs low is not color-only.
-    expect(screen.getByRole("option", { name: /high severity.*avoid unsafe cast/i })).toBeVisible();
-    expect(screen.getByRole("option", { name: /low severity.*tighten type/i })).toBeVisible();
-  });
-
   it("does not render a nullable line as part of the issue location", () => {
     const issueWithoutLine = makeIssue({
       id: "issue-without-line",
@@ -207,19 +189,10 @@ describe("IssueListPane severity", () => {
     );
   }
 
-  it("prints the severity as a word on every row", () => {
-    renderPane();
-
-    const row = screen.getByRole("option", { name: /avoid unsafe cast/i });
-    expect(within(row).getByText("HIGH")).toBeVisible();
-    expect(
-      within(screen.getByRole("option", { name: /tighten type/i })).getByText("LOW"),
-    ).toBeVisible();
-  });
-
   it("announces the severity exactly once per row", () => {
     renderPane();
 
+    // Severity reaches AT textually: high vs low is not color-only.
     expect(
       screen.getByRole("option", { name: /^high severity:\s*Avoid unsafe cast$/ }),
     ).toBeVisible();

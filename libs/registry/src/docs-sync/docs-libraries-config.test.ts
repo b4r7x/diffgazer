@@ -54,6 +54,19 @@ describe("sync artifacts helper config parsing", () => {
     ]);
   });
 
+  it("skips disabled libraries and libraries without an artifact source", () => {
+    const parsed = parseDocsLibrariesConfig({
+      primaryLibraryId: "ui",
+      libraries: [
+        { id: "ui", enabled: true, artifactSource: { workspaceDir: "libs/ui" } },
+        { id: "keys", enabled: false, artifactSource: { workspaceDir: "libs/keys" } },
+        { id: "legacy", enabled: true },
+      ],
+    });
+
+    expect(getArtifactLibraries(parsed)).toEqual([{ id: "ui", workspaceDir: "libs/ui" }]);
+  });
+
   it("rejects unsafe artifact library ids and workspace paths", () => {
     expect(() => parseDocsLibrariesConfig({ ...VALID_CONFIG, primaryLibraryId: "../ui" })).toThrow(
       /docs libraries config primaryLibraryId must be a safe library id/,

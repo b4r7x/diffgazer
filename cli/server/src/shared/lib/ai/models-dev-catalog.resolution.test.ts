@@ -36,8 +36,8 @@ import { assertTempHome } from "../testing/temp-home.js";
 import { LIVE_LIST_SHAPE_VERSION } from "./live-model-lists.js";
 import * as modelsDevCatalog from "./models-dev-catalog.js";
 import {
+  catalogProviderModels,
   discoverConfigurationCatalog,
-  getProviderModels,
   ModelsDevCatalogCacheSchema,
   modelInfoFromBoundedObservation,
 } from "./models-dev-catalog.js";
@@ -83,7 +83,7 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 // One test re-points DIFFGAZER_HOME at nested homes mid-test; both stay inside testHome,
-// and `getProviderModels` awaits its cache writes, so removing testHome before dropping the
+// and `catalogProviderModels.get` awaits its cache writes, so removing testHome before dropping the
 // variable is enough. `paths.ts` re-reads it per call, so the reverse order would aim any
 // still-pending work at the real ~/.diffgazer.
 afterEach(() => {
@@ -93,10 +93,10 @@ afterEach(() => {
   delete process.env.DIFFGAZER_OFFLINE;
 });
 
-describe("getProviderModels — three-tier fallback", () => {
+describe("catalogProviderModels.get — three-tier fallback", () => {
   it("live success: fetches, persists a valid round-tripping cache, tags source=live", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(result.source).toBe("live");
     expect(result.cached).toBe(false);
     expect(result.models.map((m) => m.id)).toContain("gemini-2.5-flash");
@@ -111,7 +111,7 @@ describe("getProviderModels — three-tier fallback", () => {
 
     // ...and a follow-up request must serve that fresh persisted cache without refetching.
     fetchSpy.mockClear();
-    const followUp = await getProviderModels("gemini");
+    const followUp = await catalogProviderModels.get("gemini");
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(followUp.source).toBe("cache");
     expect(followUp.models.map((m) => m.id)).toContain("gemini-2.5-flash");
@@ -127,9 +127,9 @@ describe("getProviderModels — three-tier fallback", () => {
         ? MODELS_DEV_SAMPLE.google
         : undefined;
 
-    const missingProviderRequest = getProviderModels("openrouter");
+    const missingProviderRequest = catalogProviderModels.get("openrouter");
     await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
-    const presentProviderRequest = getProviderModels("gemini");
+    const presentProviderRequest = catalogProviderModels.get("gemini");
     response.resolve(okResponse({ google: requireValue(google, "sample google provider") }));
 
     const [missingProvider, presentProvider] = await Promise.all([
@@ -146,7 +146,7 @@ describe("getProviderModels — three-tier fallback", () => {
   it("fresh disk cache: serves cache without fetching, source=cache", async () => {
     writeCache(MODELS_DEV_SAMPLE, fresh());
     const spy = vi.spyOn(globalThis, "fetch");
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(spy).not.toHaveBeenCalled();
     expect(result.source).toBe("cache");
     expect(result.cached).toBe(true);
@@ -155,7 +155,7 @@ describe("getProviderModels — three-tier fallback", () => {
   it("a cache older than an hour is stale: refetches instead of serving it", async () => {
     writeCache(MODELS_DEV_SAMPLE, new Date(Date.now() - 90 * 60 * 1000).toISOString());
     const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(spy).toHaveBeenCalledTimes(1);
     expect(result.source).toBe("live");
   });
@@ -164,7 +164,7 @@ describe("getProviderModels — three-tier fallback", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       okResponse(MODELS_DEV_SAMPLE, { etag: '"catalog-v1"' }),
     );
-    await getProviderModels("gemini");
+    await catalogProviderModels.get("gemini");
     expect(readCache().etag).toBe('"catalog-v1"');
   });
 
@@ -175,7 +175,7 @@ describe("getProviderModels — three-tier fallback", () => {
       .spyOn(globalThis, "fetch")
       .mockResolvedValue({ ok: false, status: 304, headers: new Headers() } as Response);
 
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
 
     const [, init] = requireValue(spy.mock.calls[0], "fetch call");
     expect((init as RequestInit).headers).toEqual({ "if-none-match": '"catalog-v1"' });
@@ -189,7 +189,7 @@ describe("getProviderModels — three-tier fallback", () => {
 
     // The revalidated cache is fresh again: the next read serves it without a request.
     spy.mockClear();
-    const followUp = await getProviderModels("gemini");
+    const followUp = await catalogProviderModels.get("gemini");
     expect(spy).not.toHaveBeenCalled();
     expect(followUp.source).toBe("cache");
   });
@@ -197,14 +197,14 @@ describe("getProviderModels — three-tier fallback", () => {
   it("fetch fails with a stale disk cache: serves the stale cache, source=cache", async () => {
     writeCache(MODELS_DEV_SAMPLE, stale());
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(result.source).toBe("cache");
     expect(result.models.map((m) => m.id)).toContain("gemini-2.5-flash");
   });
 
   it("no disk and fetch fails: falls back to the bundled snapshot, source=snapshot", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(result.source).toBe("snapshot");
     expect(result.models.length).toBeGreaterThan(0);
   });
@@ -217,7 +217,7 @@ describe("getProviderModels — three-tier fallback", () => {
       .mockReturnValueOnce(failedGeneration.promise)
       .mockReturnValueOnce(retryGeneration.promise);
 
-    const failedRequests = Array.from({ length: 8 }, () => getProviderModels("gemini"));
+    const failedRequests = Array.from({ length: 8 }, () => catalogProviderModels.get("gemini"));
     await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
     failedGeneration.reject(new Error("network down"));
 
@@ -229,7 +229,7 @@ describe("getProviderModels — three-tier fallback", () => {
     expect(failedResults.every((result) => result.source === "snapshot")).toBe(true);
     expect(new Set(failedBodies.map((body) => JSON.stringify(body))).size).toBe(1);
 
-    const retryRequests = Array.from({ length: 8 }, () => getProviderModels("gemini"));
+    const retryRequests = Array.from({ length: 8 }, () => catalogProviderModels.get("gemini"));
     await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
     retryGeneration.resolve(
       okResponse({
@@ -263,7 +263,7 @@ describe("getProviderModels — three-tier fallback", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       okResponse({ google: { id: "google", models: {} } }),
     );
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(result.source).toBe("cache");
     expect(result.models.map((m) => m.id)).toContain("gemini-2.5-flash");
     // The shrunken live payload must NOT have overwritten the trusted cache.
@@ -276,7 +276,7 @@ describe("getProviderModels — three-tier fallback", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       okResponse({ google: { id: "google", models: {} } }),
     );
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(result.source).toBe("snapshot");
     expect(result.models.length).toBeGreaterThan(0);
   });
@@ -285,7 +285,7 @@ describe("getProviderModels — three-tier fallback", () => {
     process.env.DIFFGAZER_OFFLINE = "1";
     writeCache(MODELS_DEV_SAMPLE, stale());
     const spy = vi.spyOn(globalThis, "fetch");
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(spy).not.toHaveBeenCalled();
     expect(result.source).toBe("cache");
   });
@@ -293,7 +293,7 @@ describe("getProviderModels — three-tier fallback", () => {
   it("DIFFGAZER_OFFLINE with no cache: serves the snapshot, never fetches", async () => {
     process.env.DIFFGAZER_OFFLINE = "true";
     const spy = vi.spyOn(globalThis, "fetch");
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(spy).not.toHaveBeenCalled();
     expect(result.source).toBe("snapshot");
   });
@@ -303,7 +303,7 @@ describe("getProviderModels — three-tier fallback", () => {
     // wire contract is z.iso.datetime(), so validate against that schema to catch
     // a parseable-but-non-ISO fetchedAt the looser Date.parse check would miss.
     vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
-    const response = await getProviderModels("gemini");
+    const response = await catalogProviderModels.get("gemini");
     expect(ProviderModelsResponseSchema.safeParse(response).success).toBe(true);
   });
 
@@ -315,7 +315,7 @@ describe("getProviderModels — three-tier fallback", () => {
     const future = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
     writeCache(MODELS_DEV_SAMPLE, future);
     const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(spy).toHaveBeenCalled();
     expect(result.source).toBe("live");
     expect(result.models.map((m) => m.id)).toContain("gemini-2.5-flash");
@@ -325,13 +325,13 @@ describe("getProviderModels — three-tier fallback", () => {
     // Guards the per-generation parse memo: a second, distinct cache generation
     // (different fetchedAt and contents) must be reflected, never a stale memo.
     writeCache(MODELS_DEV_SAMPLE, fresh());
-    const first = await getProviderModels("gemini");
+    const first = await catalogProviderModels.get("gemini");
     expect(first.models.map((m) => m.id)).toContain("gemini-2.5-flash");
 
     const { google, ...withoutGoogle } = MODELS_DEV_SAMPLE as Record<string, unknown>;
     writeCache(withoutGoogle, new Date(Date.now() + 1000).toISOString());
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-    const second = await getProviderModels("gemini");
+    const second = await catalogProviderModels.get("gemini");
     // The new generation lacks google, so the fresh-cache tier yields nothing for
     // gemini and resolution falls through to the snapshot — proving the memo did
     // not pin the prior generation's parse.
@@ -342,12 +342,12 @@ describe("getProviderModels — three-tier fallback", () => {
   it("serves replacement legacy contents when fetchedAt is unchanged", async () => {
     const fetchedAt = fresh();
     writeCache(catalogWithGoogleModel("first-model"), fetchedAt);
-    expect((await getProviderModels("gemini")).models.map((model) => model.id)).toEqual([
+    expect((await catalogProviderModels.get("gemini")).models.map((model) => model.id)).toEqual([
       "first-model",
     ]);
 
     writeCache(catalogWithGoogleModel("second-model"), fetchedAt);
-    expect((await getProviderModels("gemini")).models.map((model) => model.id)).toEqual([
+    expect((await catalogProviderModels.get("gemini")).models.map((model) => model.id)).toEqual([
       "second-model",
     ]);
   });
@@ -369,11 +369,11 @@ describe("getProviderModels — three-tier fallback", () => {
     );
 
     process.env.DIFFGAZER_HOME = firstHome;
-    expect((await getProviderModels("gemini")).models.map((model) => model.id)).toEqual([
+    expect((await catalogProviderModels.get("gemini")).models.map((model) => model.id)).toEqual([
       "first-path",
     ]);
     process.env.DIFFGAZER_HOME = secondHome;
-    expect((await getProviderModels("gemini")).models.map((model) => model.id)).toEqual([
+    expect((await catalogProviderModels.get("gemini")).models.map((model) => model.id)).toEqual([
       "second-path",
     ]);
   });
@@ -385,7 +385,7 @@ describe("getProviderModels — three-tier fallback", () => {
     const { openrouter, ...withoutOpenrouter } = MODELS_DEV_SAMPLE as Record<string, unknown>;
     writeCache(withoutOpenrouter, fresh());
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-    const result = await getProviderModels("openrouter");
+    const result = await catalogProviderModels.get("openrouter");
     expect(result.source).toBe("snapshot");
     expect(result.models.length).toBeGreaterThan(0);
   });
@@ -394,7 +394,7 @@ describe("getProviderModels — three-tier fallback", () => {
     const { zai, ...withoutZai } = MODELS_DEV_SAMPLE as Record<string, unknown>;
     writeCache(withoutZai, stale());
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-    const result = await getProviderModels("zai");
+    const result = await catalogProviderModels.get("zai");
     expect(result.source).toBe("snapshot");
     expect(result.models.length).toBeGreaterThan(0);
   });
@@ -406,7 +406,7 @@ describe("getProviderModels — three-tier fallback", () => {
     const { openrouter, ...withoutOpenrouter } = MODELS_DEV_SAMPLE as Record<string, unknown>;
     vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(withoutOpenrouter));
 
-    const result = await getProviderModels("openrouter");
+    const result = await catalogProviderModels.get("openrouter");
     // The picker for openrouter must not be blank: it is served from the trusted cache.
     expect(result.models.length).toBeGreaterThan(0);
     expect(result.source).toBe("cache");
@@ -423,7 +423,7 @@ describe("getProviderModels — three-tier fallback", () => {
     const { openrouter, ...withoutOpenrouter } = MODELS_DEV_SAMPLE as Record<string, unknown>;
     vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(withoutOpenrouter));
 
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(result.source).toBe("live");
     expect(result.models.length).toBeGreaterThan(0);
 
@@ -437,7 +437,7 @@ describe("getProviderModels — three-tier fallback", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
     writeJsonFileSyncFailPaths.add(cachePath());
 
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(result.source).toBe("live");
     expect(result.models.map((m) => m.id)).toContain("gemini-2.5-flash");
     expect(fs.existsSync(cachePath())).toBe(false);
@@ -463,7 +463,7 @@ describe("getProviderModels — three-tier fallback", () => {
         },
       }),
     );
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(result.models.length).toBeGreaterThan(0);
     expect(result.source).toBe("snapshot");
     // The corrupt file is quarantined (renamed), not left in place to keep failing.
@@ -1162,7 +1162,7 @@ describe("newest-first model ordering", () => {
       fresh(),
     );
 
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(result.models.map((model) => model.id)).toEqual([
       "tie-a",
       "tie-b",
@@ -1177,7 +1177,7 @@ describe("newest-first model ordering", () => {
 
   it("serves the sample gemini catalog newest-first", async () => {
     writeCache(MODELS_DEV_SAMPLE, fresh());
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     // gemini-3-pro-preview (2025-11-18) is newer than gemini-2.5-flash (2025-03-20).
     expect(result.models.map((model) => model.id)).toEqual([
       "gemini-3-pro-preview",
@@ -1201,7 +1201,7 @@ describe("configuration-bound catalog observations", () => {
     }
   });
 
-  it("labels cache responses with models.dev-live observations", async () => {
+  it("labels cache responses with models.dev-cache observations", async () => {
     writeCache(MODELS_DEV_SAMPLE, fresh());
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const cached = await discoverConfigurationCatalog({
@@ -1277,7 +1277,7 @@ describe("configuration-bound catalog observations", () => {
       fresh(),
     );
 
-    const result = await getProviderModels("gemini");
+    const result = await catalogProviderModels.get("gemini");
     expect(result.models.map((model) => model.id)).toEqual([exactId]);
     expect(result.models[0]).toMatchObject({ id: exactId, name: "Exact" });
   });

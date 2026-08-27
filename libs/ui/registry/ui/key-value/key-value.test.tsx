@@ -73,10 +73,83 @@ describe("KeyValue", () => {
     expect(label.nextElementSibling).toBe(value);
   });
 
+  it("renders a description as a second dd for the same term", () => {
+    render(
+      <KeyValue>
+        <KeyValue.Item label="Provider" value="OpenRouter" description="Routes to an upstream." />
+        <KeyValue.Item label="Model" value="Sonnet" />
+      </KeyValue>,
+    );
+
+    const list = screen.getByText("Provider").closest("dl");
+    expect(list).not.toBeNull();
+    if (!list) return;
+    const children = Array.from(list.children).map((child) => [
+      child.tagName.toLowerCase(),
+      child.textContent,
+    ]);
+
+    expect(children).toEqual([
+      ["dt", "Provider"],
+      ["dd", "OpenRouter"],
+      ["dd", "Routes to an upstream."],
+      ["dt", "Model"],
+      ["dd", "Sonnet"],
+    ]);
+  });
+
+  it("spans the description across both horizontal tracks and forwards its class slot", () => {
+    render(
+      <KeyValue>
+        <KeyValue.Item
+          label="Provider"
+          value="OpenRouter"
+          description="Routes to an upstream."
+          descriptionClassName="custom-description"
+        />
+      </KeyValue>,
+    );
+
+    const description = screen.getByText("Routes to an upstream.");
+
+    expect(description.tagName).toBe("DD");
+    // The span is the whole point of the slot: the app must not restate the grid's track count.
+    expect(description).toHaveClass("col-span-2");
+    expect(description).toHaveClass("custom-description");
+  });
+
+  it("omits the description dd when no description is given", () => {
+    render(
+      <KeyValue>
+        <KeyValue.Item label="Provider" value="OpenRouter" />
+      </KeyValue>,
+    );
+
+    const list = screen.getByText("Provider").closest("dl");
+    expect(list).not.toBeNull();
+    if (!list) return;
+
+    expect(Array.from(list.children).map((child) => child.tagName.toLowerCase())).toEqual([
+      "dt",
+      "dd",
+    ]);
+  });
+
+  it("does not span the description in vertical layout, which has one track", () => {
+    render(
+      <KeyValue layout="vertical">
+        <KeyValue.Item label="Provider" value="OpenRouter" description="Routes to an upstream." />
+      </KeyValue>,
+    );
+
+    // col-span-2 would overflow the single-track vertical grid.
+    expect(screen.getByText("Routes to an upstream.")).not.toHaveClass("col-span-2");
+  });
+
   it("has no a11y violations", async () => {
     const { container } = render(
       <KeyValue layout="horizontal">
-        <KeyValue.Item label="Status" value="Ready" />
+        <KeyValue.Item label="Status" value="Ready" description="Last checked a minute ago." />
         <KeyValue.Item label="Owner" value="Docs" />
       </KeyValue>,
     );

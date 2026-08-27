@@ -6,16 +6,18 @@ import {
   createArtifactManifest,
   REGISTRY_ORIGIN,
 } from "@diffgazer/registry";
+import { transformUiPublicRegistrySourceItem } from "./registry/public-registry-item.js";
 import {
-  aggregateThemeStylesInPublicRegistry,
-  applyUiRegistryTargetsInPublicRegistry,
-  createUiThemeStyleStripPolicy,
   isHiddenKeysShim,
-  removeDuplicateThemeStylesInPublicRegistry,
   transformUiPublicRegistryKeysImportContent,
   transformUiPublicRegistryKeysImports,
-  transformUiPublicRegistrySourceItem,
 } from "./registry/rewrite-keys-imports.js";
+import {
+  aggregateThemeStylesInPublicRegistry,
+  createUiThemeStyleStripPolicy,
+  removeDuplicateThemeStylesInPublicRegistry,
+} from "./registry/theme-style-dedupe.js";
+import { applyUiRegistryTargetsInPublicRegistry } from "./registry/ui-registry-targets.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const SOURCE_REGISTRY_PATH = "registry/registry.json";

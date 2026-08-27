@@ -64,7 +64,6 @@ export const BILLING_MODES = [
   "free-tier",
   "pay-as-you-go",
   "route-specific",
-  "local-resource",
   "subscription-credit",
 ] as const;
 export type BillingMode = (typeof BILLING_MODES)[number];

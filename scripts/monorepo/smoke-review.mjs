@@ -265,10 +265,14 @@ async function run() {
   const optedIn = process.env[E2E_OPT_IN_ENV] === "1";
   const network = networkAllowed();
   let providers = null;
+  let coreDistError = null;
   if (optedIn && network) {
     // Importing the core dist is itself a prerequisite; the pnpm script's build
     // segment normally guarantees it.
-    providers = await loadProviders().catch(() => null);
+    providers = await loadProviders().catch((error) => {
+      coreDistError = errorMessage(error);
+      return null;
+    });
   }
 
   const disposition = resolveE2eDisposition({
@@ -279,7 +283,9 @@ async function run() {
       const modelPolicy = providers?.PRODUCT_REGISTRY[id]?.modelPolicy;
       return modelPolicy && "suggestedModelId" in modelPolicy ? modelPolicy.suggestedModelId : null;
     },
-    hasServerDist: providers !== null && existsSync(SERVER_DIST),
+    hasCoreDist: providers !== null,
+    coreDistError,
+    hasServerDist: existsSync(SERVER_DIST),
   });
 
   if (disposition.kind !== "run") {

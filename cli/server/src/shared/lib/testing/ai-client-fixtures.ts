@@ -8,8 +8,8 @@ import {
   hashExecutionReceiptFingerprintSync,
   type TerminalOutcome,
 } from "@diffgazer/core/schemas/review";
+import { ExecutionLeaseRegistry } from "../ai/admission/lease-registry.js";
 import type { AdmittedExecutionPlan } from "../ai/admission/service.js";
-import { ExecutionLeaseRegistry } from "../ai/admission/service.js";
 import { createBudgetLedger } from "../ai/budget/ledger.js";
 import { promptAttemptEstimate } from "../ai/providers/execution-receipt.js";
 import type { Adapter, AdapterExecuteRequest } from "../ai/types.js";

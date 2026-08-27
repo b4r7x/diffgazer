@@ -17,13 +17,13 @@ import {
   checkSecurityReportingChannelsAgree,
   checkSurfaceEnvExampleKeysStayInRootExample,
 } from "./check-invariants/governance.mjs";
+import { checkLicenseFilesMatch } from "./check-invariants/licenses.mjs";
 import {
   checkAddCliPackageMetadata,
   checkCoreUsesExplicitSubpathExports,
   checkDiffgazerCliPackageMetadata,
   checkInternalLocalDepsUseWorkspaceProtocol,
   checkKeysPackageMetadata,
-  checkLicenseFilesMatch,
   checkNestedPackageFilesAreDocumented,
   checkNoLinkOrFileLocalDeps,
   checkNoPublishableInternalDocsManifest,

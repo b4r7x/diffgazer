@@ -223,7 +223,6 @@ describe("structured git branch status", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.branch).toBe("detached");
-    expect(result.value.branch).not.toBe(DETACHED_HEAD_BRANCH);
   });
 
   it("reads structured upstream ahead and behind counts", async () => {

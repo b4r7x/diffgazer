@@ -94,14 +94,16 @@ function getPaletteValues(block: string): Record<string, string> {
   );
 }
 
-describe("theme override domain token parity", () => {
+describe("bundled font licensing", () => {
   it("ships the JetBrains Mono OFL license beside the bundled font", () => {
     const license = readFileSync(resolve(import.meta.dirname, "../assets/fonts/LICENSE"), "utf8");
 
     expect(license).toMatch(/SIL OPEN FONT LICENSE/i);
     expect(license).toMatch(/JetBrains Mono/i);
   });
+});
 
+describe("theme override domain token parity", () => {
   it("does not declare overrides under :root, which would beat the lib light theme", () => {
     const css = loadThemeOverridesCss();
     // This file loads after @diffgazer/ui/styles.css, so a `:root` selector here

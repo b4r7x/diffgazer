@@ -30,15 +30,21 @@ export const keyValueDoc: ComponentDoc = {
         "Horizontal layout (default) places label and value side-by-side. Vertical layout stacks them with a small gap. Both label and value accept ReactNode.",
     },
     {
+      title: "Descriptions",
+      content:
+        "Pass description to qualify a pair with a line of muted copy. It renders as a second <dd> for the same <dt>, spanning the full row in horizontal layout — so callers never have to restate the grid's column count.",
+    },
+    {
       title: "Class Slots",
       content:
-        "KeyValue.Item renders two elements: className (and every other forwarded prop) lands on the <dt>, valueClassName on the <dd>. Both preserve the <dl>/<dt>/<dd> structure.",
+        "KeyValue.Item renders up to three elements: className (and every other forwarded prop) lands on the <dt>, valueClassName on the value <dd>, descriptionClassName on the description <dd>. All preserve the <dl>/<dt>/<dd> structure.",
     },
   ],
   usage: { example: "key-value-default" },
   examples: [
     { name: "key-value-default", title: "Default" },
     { name: "key-value-variants", title: "Variants" },
+    { name: "key-value-description", title: "Description" },
     { name: "key-value-bordered", title: "Bordered" },
     { name: "key-value-list", title: "List" },
   ],
@@ -79,6 +85,13 @@ export const keyValueDoc: ComponentDoc = {
         defaultValue: null,
         description: "Value content rendered in a <dd>.",
       },
+      description: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description:
+          "Optional qualifying copy for the pair, rendered as a second <dd> that spans the full row. Omit it and no element is rendered.",
+      },
       variant: {
         type: '"default" | "warning" | "info" | "success" | "error"',
         required: false,
@@ -109,7 +122,13 @@ export const keyValueDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "Class applied to the <dd> in addition to the variant classes.",
+        description: "Class applied to the value <dd> in addition to the variant classes.",
+      },
+      descriptionClassName: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Class applied to the description <dd> in addition to the variant classes.",
       },
     },
   },

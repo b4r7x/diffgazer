@@ -200,7 +200,6 @@ const EVIDENCE_STATUS_FOR: Record<ReadinessStatus, Readiness["evidenceStatus"]> 
   "acknowledgement-required": "passed",
   unsupported: "not-checked",
   skipped: "skipped",
-  "local-conformance-failed": "failed",
   ready: "passed",
 };
 

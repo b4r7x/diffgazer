@@ -460,6 +460,33 @@ describe("ModelSelectDialog discovery states", () => {
     await waitFor(() => expect(getConfigurationModels).toHaveBeenCalledTimes(2));
   });
 
+  it("hands focus to the tier filters when a retried discovery succeeds and the callout unmounts", async () => {
+    const user = userEvent.setup();
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValueOnce(skippedModelsResponse(GEMINI_CONFIGURATION))
+      .mockResolvedValue(catalogModelsResponse(GEMINI_CONFIGURATION, GEMINI_CATALOG_MODELS));
+    renderDialog({ getConfigurationModels });
+
+    const retryButton = await screen.findByRole("button", { name: "Retry" });
+    await user.keyboard("/");
+    await waitFor(() =>
+      expect(screen.getByRole("searchbox", { name: "Search models" })).toHaveFocus(),
+    );
+    await user.keyboard("{ArrowDown}");
+    expect(retryButton).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(getConfigurationModels).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument(),
+    );
+
+    // The callout unmounts under the focused button, so focus moves to the first
+    // enabled zone above it instead of dropping to the body.
+    await waitFor(() => expect(screen.getByRole("radio", { name: "all" })).toHaveFocus());
+  });
+
   it("retries discovery from r outside the search box and teaches the key on the Retry button", async () => {
     const user = userEvent.setup();
     const getConfigurationModels = vi

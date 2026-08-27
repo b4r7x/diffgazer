@@ -259,11 +259,7 @@ rename to new-name.ts
     const result = parseDiff(input);
 
     expect(result.files).toHaveLength(0);
-    if (input === "") {
-      expect(result.totalStats.filesChanged).toBe(0);
-      expect(result.totalStats.additions).toBe(0);
-      expect(result.totalStats.deletions).toBe(0);
-    }
+    expect(result.totalStats).toMatchObject({ filesChanged: 0, additions: 0, deletions: 0 });
   });
 
   it("aggregates totalStats across every file in the diff", () => {

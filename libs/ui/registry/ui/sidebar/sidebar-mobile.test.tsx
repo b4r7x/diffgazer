@@ -477,7 +477,7 @@ describe("SidebarContent overflow", () => {
       </Sidebar>,
     );
 
-    // Public styling contract (fix-spec-b1 SEED-02B): the scroller authors both
+    // Public styling contract: the scroller authors both
     // axes explicitly so a one-axis `overflow-y-auto` cannot compute overflow-x
     // to `auto` and pan the sheet horizontally. jsdom cannot compute layout, so
     // the class token is the assertable contract.

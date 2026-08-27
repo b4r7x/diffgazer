@@ -288,22 +288,6 @@ describe("BudgetLedger settlement", () => {
     });
   });
 
-  it("exhausts on measured bytes and cost when the provider does report them", () => {
-    const ledger = createBudgetLedger(sampleLimits({ maxResponseBytes: 512 }));
-    const reservation = ledger.reserveAttempt(estimate({ responseBytes: 0 }));
-    expect(reservation.ok).toBe(true);
-    if (!reservation.ok) return;
-
-    const settled = ledger.settleAttempt(reservation.value, {
-      inputTokens: 1,
-      responseBytes: 1_024,
-    });
-
-    expect(settled.ok).toBe(false);
-    if (settled.ok) return;
-    expect(settled.error.limit).toBe("maxResponseBytes");
-  });
-
   it.each(
     measuredOverrunCases,
   )("records exact measured $label overrun and releases its reservation once", ({

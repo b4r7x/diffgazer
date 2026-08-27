@@ -78,7 +78,7 @@ instanceof\u0020 value;
     expect(hasUseClientDirective(source)).toBe(false);
   });
 
-  it("does not mutate or retain state from an adversarial source", () => {
+  it("stays correct when called twice on the same adversarial source", () => {
     const sources = [
       '"use strict"\n"use client" /* comment */;\n',
       CUSTOM_DIRECTIVE_WITH_ESCAPED_CRLF,
@@ -87,9 +87,7 @@ instanceof\u0020 value;
     ];
 
     for (const source of sources) {
-      const copy = `${source}`;
       expect(hasUseClientDirective(source)).toBe(true);
-      expect(source).toBe(copy);
       expect(hasUseClientDirective(source)).toBe(true);
     }
   });

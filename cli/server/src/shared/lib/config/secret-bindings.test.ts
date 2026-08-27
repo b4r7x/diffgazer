@@ -109,7 +109,6 @@ describe("configuration-bound secret bindings", () => {
     const binding = createFileSecretBinding("config-a", 1, filePath);
 
     await writeSecretBinding(binding, "file-value");
-    await expect(stat(filePath)).resolves.toMatchObject({ mode: expect.any(Number) });
     expect((await stat(filePath)).mode & 0o777).toBe(0o600);
     await expect(resolveSecretBinding(binding)).resolves.toBe("file-value");
 

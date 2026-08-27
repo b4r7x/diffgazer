@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach } from "node:test";
 import { runInvariantChecks } from "../check-invariants.mjs";
-import { CANONICAL_MIT_LICENSE } from "./packages.mjs";
+import { CANONICAL_MIT_LICENSE } from "./licenses.mjs";
 
 export const PACKAGE_FILES = [
   "apps/docs/package.json",

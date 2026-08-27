@@ -19,7 +19,7 @@ const depcruiseBin = join(
 
 // Cruises a throwaway source tree with the real config, so the rules are exercised the way
 // `pnpm run depcruise` exercises them: against resolved module paths, not config text.
-function cruiseFixture(files, { links = [] } = {}) {
+function cruiseFixture(files, { links = [], scanTarget = "apps" } = {}) {
   const root = mkdtempSync(join(tmpdir(), "dg-depcruise-"));
   try {
     for (const [path, source] of Object.entries(files)) {
@@ -34,7 +34,7 @@ function cruiseFixture(files, { links = [] } = {}) {
 
     const run = spawnSync(
       process.execPath,
-      [depcruiseBin, "--config", configPath, "--output-type", "json", "apps"],
+      [depcruiseBin, "--config", configPath, "--output-type", "json", scanTarget],
       { cwd: root, encoding: "utf8" },
     );
     assert.ok(run.stdout, run.stderr);
@@ -48,11 +48,18 @@ function cruiseFixture(files, { links = [] } = {}) {
 }
 
 test("components-not-features matches resolved cli/diffgazer feature paths", () => {
-  assert.match(
-    configSource,
-    /name:\s*"components-not-features"[\s\S]*path:\s*\[[^\]]*"\^cli\/diffgazer\/src\/features\/"/,
-    "dependency-cruiser must reject shared components importing cli/diffgazer features by resolved path",
+  const violations = cruiseFixture(
+    {
+      "cli/diffgazer/src/features/history/lib/x.ts": "export const x = 1;\n",
+      "cli/diffgazer/src/components/shell.ts":
+        'import { x } from "../features/history/lib/x";\nexport const shell = x;\n',
+    },
+    { scanTarget: "cli" },
   );
+
+  assert.deepEqual(violations, [
+    "components-not-features: cli/diffgazer/src/components/shell.ts -> cli/diffgazer/src/features/history/lib/x.ts",
+  ]);
 });
 
 test("package-exported catalog bundle evidence is exempt as testing support", () => {

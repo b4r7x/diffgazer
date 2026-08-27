@@ -128,10 +128,13 @@ export function evaluateReviewCapacity(params: {
   );
 
   const batches = partitionDiff(parsed, perCallBudgetTokens);
+  // A batched call names every file it does not carry a diff for, so a batch
+  // costs more than its own files; a single-batch plan names none.
+  const contextOnlyCount = (batch: ParsedDiff) => parsed.files.length - batch.files.length;
 
   if (modelId !== null && budget !== null && windowInputTokens !== null) {
     for (const batch of batches) {
-      const batchTokens = estimateReviewPromptTokens(batch);
+      const batchTokens = estimateReviewPromptTokens(batch, contextOnlyCount(batch));
       // Only a lone file can outgrow the window: any batch with a neighbour fits
       // the per-call budget, which is never larger than the window allows.
       const [file] = batch.files;
@@ -153,7 +156,11 @@ export function evaluateReviewCapacity(params: {
 
   const estimatedInputTokens = estimateReviewPromptTokens(parsed);
   const estimatedTotalInputTokens =
-    lensCount * batches.reduce((total, batch) => total + estimateReviewPromptTokens(batch), 0);
+    lensCount *
+    batches.reduce(
+      (total, batch) => total + estimateReviewPromptTokens(batch, contextOnlyCount(batch)),
+      0,
+    );
   const contextTokens = budget?.contextTokens ?? null;
   const diffBytes = parsed.totalStats.totalSizeBytes;
 

@@ -422,7 +422,7 @@ export function buildRequestInit(
   });
 }
 
-export type ChoiceError = Readonly<{ code: string | null; message: string | null }>;
+type ChoiceError = Readonly<{ code: string | null; message: string | null }>;
 
 type ParsedProviderPayload = Readonly<{
   content: string | null;

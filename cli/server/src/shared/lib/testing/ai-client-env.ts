@@ -14,6 +14,11 @@ export function setupClientTestHome(): void {
   vi.clearAllMocks();
 }
 
+/** The temp home the current test is running against, for path-leak assertions. */
+export function clientTestHome(): string {
+  return diffgazerHome;
+}
+
 // Remove the temp home before dropping DIFFGAZER_HOME: `paths.ts` re-reads the variable
 // per call, so restoring it first would re-point still-pending work at the real
 // ~/.diffgazer. The AI client never reaches the config store (`create.ts` does not import

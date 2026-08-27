@@ -281,7 +281,6 @@
     color: var(--command-palette-muted, var(--muted-foreground));
   }
 
-  /* Frame-scoped heading typography. Mirrors V2/V3 in the variants preview. */
   [data-slot="command-palette-content"][data-frame="viewfinder"]
     [data-slot="command-palette-group-heading"] {
     text-transform: uppercase;

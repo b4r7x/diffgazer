@@ -158,8 +158,15 @@ describe("evaluateReviewCapacity", () => {
       diffBytes: 300 * 1024,
       modelId: "small-window",
     });
+    // Each batch is priced with the roster of files it does not carry, because
+    // that is what its prompt names.
     expect(plan.estimatedTotalInputTokens).toBe(
-      5 * plan.batches.reduce((total, batch) => total + estimateReviewPromptTokens(batch), 0),
+      5 *
+        plan.batches.reduce(
+          (total, batch) =>
+            total + estimateReviewPromptTokens(batch, parsed.files.length - batch.files.length),
+          0,
+        ),
     );
     expect(plan.warning?.message).toContain("3 sequential batches");
     expect(plan.warning?.message).toContain("synthesis pass");

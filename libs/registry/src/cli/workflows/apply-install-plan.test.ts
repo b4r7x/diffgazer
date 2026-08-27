@@ -256,7 +256,10 @@ describe("applyInstallPlan", () => {
     exitSpy.mockRestore();
   });
 
-  it("rolls back written files and exits when installation is cancelled via SIGINT", async () => {
+  it.each([
+    ["SIGINT", 130],
+    ["SIGTERM", 143],
+  ] as const)("rolls back written files and exits when installation is cancelled via %s", async (signal, code) => {
     const targetPath = join(tempDir, "component.tsx");
     vi.mocked(installDepsWithSpinner).mockImplementation((_pm, _deps, _cwd, abortSignal) => {
       return new Promise((_resolve, reject) => {
@@ -269,8 +272,8 @@ describe("applyInstallPlan", () => {
         );
       });
     });
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
-      throw new Error(`process.exit:${code}`);
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((exitCode?: number) => {
+      throw new Error(`process.exit:${exitCode}`);
     }) as typeof process.exit);
 
     const plan = applyInstallPlan({
@@ -292,52 +295,9 @@ describe("applyInstallPlan", () => {
     });
 
     await vi.waitFor(() => expect(installDepsWithSpinner).toHaveBeenCalled());
-    process.emit("SIGINT");
+    process.emit(signal);
 
-    await expect(plan).rejects.toThrow("process.exit:130");
-    expect(existsSync(targetPath)).toBe(false);
-    exitSpy.mockRestore();
-  });
-
-  it("rolls back written files and exits when installation is cancelled via SIGTERM", async () => {
-    const targetPath = join(tempDir, "component.tsx");
-    vi.mocked(installDepsWithSpinner).mockImplementation((_pm, _deps, _cwd, abortSignal) => {
-      return new Promise((_resolve, reject) => {
-        abortSignal?.addEventListener(
-          "abort",
-          () => {
-            reject(abortSignal.reason ?? new Error("aborted"));
-          },
-          { once: true },
-        );
-      });
-    });
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
-      throw new Error(`process.exit:${code}`);
-    }) as typeof process.exit);
-
-    const plan = applyInstallPlan({
-      cwd: tempDir,
-      yes: true,
-      dryRun: false,
-      overwrite: false,
-      confirmMessage: "proceed?",
-      headingMessage: "Applying...",
-      fileOps: [
-        {
-          targetPath,
-          content: "export {};\n",
-          relativePath: "component.tsx",
-          installDir: ".",
-        },
-      ],
-      missingDeps: ["added@1.0.0"],
-    });
-
-    await vi.waitFor(() => expect(installDepsWithSpinner).toHaveBeenCalled());
-    process.emit("SIGTERM");
-
-    await expect(plan).rejects.toThrow("process.exit:143");
+    await expect(plan).rejects.toThrow(`process.exit:${code}`);
     expect(existsSync(targetPath)).toBe(false);
     exitSpy.mockRestore();
   });

@@ -209,7 +209,7 @@ describe("Toast", () => {
     act(() => {
       toast("Touchable");
     });
-    // touch-target contract (mobile campaign): pointer-coarse hit-area is the public contract; jsdom cannot measure layout.
+    // touch-target contract: pointer-coarse hit-area is the public contract; jsdom cannot measure layout.
     const dismiss = screen.getByRole("button", { name: "Dismiss: Touchable" });
     expect(dismiss).toHaveClass("pointer-coarse:min-h-11");
     expect(dismiss).toHaveClass("pointer-coarse:min-w-11");

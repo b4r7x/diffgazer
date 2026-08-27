@@ -86,20 +86,20 @@ export async function resolveGitDiff(params: {
   await emit(stepStart("diff"));
   signal?.throwIfAborted();
 
+  // `getDiff` overloads a pathspec list onto the modes that accept one, and only
+  // `files` mode requires it, so the call is spelled once with pathspecs and once
+  // without rather than three times.
   let diffResult: Result<string, { message: string }>;
-  if (mode === "files") {
-    if (!files || files.length === 0) {
-      return err(
-        reviewAbort(
-          "files[] must be non-empty when mode is 'files'",
-          ReviewErrorCode.GENERATION_FAILED,
-          "diff",
-        ),
-      );
-    }
+  if (files && files.length > 0) {
     diffResult = await gitService.getDiff(mode, files, signal);
-  } else if (files) {
-    diffResult = await gitService.getDiff(mode, files, signal);
+  } else if (mode === "files") {
+    return err(
+      reviewAbort(
+        "files[] must be non-empty when mode is 'files'",
+        ReviewErrorCode.GENERATION_FAILED,
+        "diff",
+      ),
+    );
   } else {
     diffResult = await gitService.getDiff(mode, undefined, signal);
   }
@@ -144,7 +144,7 @@ export async function resolveGitDiff(params: {
   }
 
   if (parsed.files.length === 0) {
-    const hasUnresolvedConflicts = Boolean(diff.trim()) && hasCombinedDiffBlocks(diff);
+    const hasUnresolvedConflicts = hasCombinedDiffBlocks(diff);
     const noDiffMessage =
       files && files.length > 0 ? getFilesModeNoDiffMessage(mode) : getModeNoDiffMessage(mode);
     const message = hasUnresolvedConflicts

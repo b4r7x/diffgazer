@@ -1,6 +1,6 @@
 import type { HistoryFocusZone } from "../types";
 
-export const HISTORY_ZONE_ORDER: HistoryFocusZone[] = ["search", "timeline", "runs", "insights"];
+const HISTORY_ZONE_ORDER: HistoryFocusZone[] = ["search", "timeline", "runs", "insights"];
 
 export function getAvailableHistoryZones({
   hasRuns,

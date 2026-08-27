@@ -70,15 +70,6 @@ export function refineConfigurationReadinessConsistency(
   context: Pick<z.RefinementCtx<unknown>, "addIssue">,
 ): void {
   const { configuration, readiness } = pair;
-  const transportFamily = configuration.transportFamily;
-
-  if (transportFamily === "hosted-api" && readiness.status === "local-conformance-failed") {
-    context.addIssue({
-      code: "custom",
-      message: "Hosted products cannot report local readiness",
-      path: ["readiness", "status"],
-    });
-  }
 
   if (readiness.status === "unconfigured") {
     context.addIssue({

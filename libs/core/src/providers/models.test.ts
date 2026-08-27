@@ -15,6 +15,7 @@ const MODELS: ModelInfo[] = [
   makeModel("gpt-35", "GPT-3.5", "free", "Fast and cheap"),
   makeModel("claude", "Claude", "paid", "Anthropic model"),
   makeModel("gemini", "Gemini", "free", "Google model"),
+  // unknown tier: must appear only under the "all" filter
   makeModel("glm-5.3", "glm-5.3", "unknown", LIVE_ONLY_MODEL_DESCRIPTION),
 ];
 
@@ -29,12 +30,6 @@ describe("filterModels", () => {
       "gemini",
       "glm-5.3",
     ]);
-  });
-
-  it("hides unknown-tier rows under free and paid, keeps them under all", () => {
-    expect(ids(filterModels(MODELS, "free", ""))).not.toContain("glm-5.3");
-    expect(ids(filterModels(MODELS, "paid", ""))).not.toContain("glm-5.3");
-    expect(ids(filterModels(MODELS, "all", ""))).toContain("glm-5.3");
   });
 
   it("filters to free tier only", () => {

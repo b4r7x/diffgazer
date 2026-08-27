@@ -355,7 +355,7 @@ test("the live providers empty-state stays contained by its scroll parent", asyn
 
   // The sr-only (position:absolute) live region must resolve its offsetParent to a
   // positioned ancestor inside the app shell, never escaping to the document body
-  // where it could re-open the W-01 whole-document over-scroll.
+  // where it could re-open the whole-document over-scroll.
   const escapesShell = await liveEmptyState.evaluate((element) => {
     const parent = (element as HTMLElement).offsetParent;
     return parent === null || parent === document.body || parent === document.documentElement;

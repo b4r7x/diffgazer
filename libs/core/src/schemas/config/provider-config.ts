@@ -89,12 +89,9 @@ export const WriteOnlySecretInputSchema = z.discriminatedUnion("kind", [
 ]);
 export type WriteOnlySecretInput = z.infer<typeof WriteOnlySecretInputSchema>;
 
-export const HostedApiConfigurationInputSchema = HostedApiTransportInputSchema.safeExtend({
+export const ClientConfigurationInputSchema = HostedApiTransportInputSchema.safeExtend({
   credential: WriteOnlySecretInputSchema.optional(),
 });
-export type HostedApiConfigurationInput = z.infer<typeof HostedApiConfigurationInputSchema>;
-
-export const ClientConfigurationInputSchema = HostedApiConfigurationInputSchema;
 export type ClientConfigurationInput = z.infer<typeof ClientConfigurationInputSchema>;
 
 // acknowledgement is optional so onboarding can create a draft before the notice step;

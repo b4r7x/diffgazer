@@ -243,8 +243,8 @@ describe("Stepper indicator glyphs", () => {
 });
 
 describe("Stepper trigger touch target", () => {
-  // Public styling contract exception (fix-spec-b1 NA-02, Strategy T2+T3): jsdom cannot
-  // compute layout, so the hit-area recipe tokens are asserted on the class attribute.
+  // Public styling contract exception: jsdom cannot compute layout, so the hit-area
+  // recipe tokens are asserted on the class attribute.
   it("applies the touch hit-area recipe to the trigger button", () => {
     renderStepper();
     const trigger = screen.getByRole("button", { name: /Step 1/ });

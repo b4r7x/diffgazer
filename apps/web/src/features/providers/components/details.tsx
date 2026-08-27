@@ -19,7 +19,7 @@ import { Panel, type PanelProps } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { Fragment, type ReactNode, type RefCallback, type RefObject } from "react";
+import type { ReactNode, RefCallback, RefObject } from "react";
 import { PROVIDER_STATUS_TONE } from "../lib/status-tone";
 import { ProviderOverflowMenu, type ProviderOverflowMenuState } from "./overflow-menu";
 
@@ -303,29 +303,22 @@ export function ProviderDetails({
               {/* A description list, so the facts are announced as paired terms and
                   definitions rather than a run of text. Rows separate by spacing, not
                   rules — the section underline and the panel border already frame the
-                  block, matching the prose sections below. label -> value ->
-                  description: the description qualifies the value, so it renders as a
-                  second definition of the same term — a full-width muted line under
-                  the pair, aligned with the label column — never inside the label
-                  slot, which would seat a whole sentence between a label and the
-                  value answering it. */}
+                  block, matching the prose sections below. The description qualifies
+                  the value, so it goes through KeyValue.Item's description slot — a
+                  second definition of the same term — never inside the label slot,
+                  which would seat a whole sentence between a label and the value
+                  answering it. */}
               <KeyValue>
                 {factRows.map((fact) => (
-                  <Fragment key={fact.id}>
-                    <KeyValue.Item
-                      label={fact.label}
-                      value={fact.value}
-                      className="text-xs"
-                      valueClassName="text-xs"
-                    />
-                    {fact.description ? (
-                      /* -mt-1 pulls the description toward its own row so the gap
-                         within a fact stays tighter than the gap between facts. */
-                      <dd className="col-span-2 -mt-1 text-2xs leading-relaxed text-muted-foreground">
-                        {fact.description}
-                      </dd>
-                    ) : null}
-                  </Fragment>
+                  <KeyValue.Item
+                    key={fact.id}
+                    label={fact.label}
+                    value={fact.value}
+                    description={fact.description}
+                    className="text-xs"
+                    valueClassName="text-xs"
+                    descriptionClassName="text-2xs"
+                  />
                 ))}
               </KeyValue>
             </Panel.Content>

@@ -37,6 +37,7 @@ module.exports = {
           // crawl (tsPreCompilationDeps:false) does not follow.
           "(^|/)types\\.ts$",
           "(^|/)types/",
+          "^libs/ui/scripts/registry/public-registry-json\\.ts$",
           "^cli/server/src/shared/lib/http/error-codes\\.ts$",
           "^libs/core/src/schemas/presentation/(category-stats|timeline)\\.ts$",
           // Public package subpath exports and documentation data are consumed through

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildResponsiveResult, getBreakpointTier } from "./breakpoints";
+import { buildResponsiveResult, getBreakpointTier, isCompactHeight } from "./breakpoints";
 
 describe("terminal breakpoints", () => {
   test.each([
@@ -11,14 +11,19 @@ describe("terminal breakpoints", () => {
     expect(getBreakpointTier(columns)).toBe(tier);
   });
 
-  test.each(["narrow", "medium", "wide"] as const)("sets only the %s responsive flag", (tier) => {
-    const result = buildResponsiveResult(tier);
+  test.each([
+    ["narrow", { tier: "narrow", isNarrow: true, isMedium: false, isWide: false }],
+    ["medium", { tier: "medium", isNarrow: false, isMedium: true, isWide: false }],
+    ["wide", { tier: "wide", isNarrow: false, isMedium: false, isWide: true }],
+  ] as const)("sets only the %s responsive flag", (tier, expected) => {
+    expect(buildResponsiveResult(tier)).toEqual(expected);
+  });
 
-    expect(result).toEqual({
-      tier,
-      isNarrow: tier === "narrow",
-      isMedium: tier === "medium",
-      isWide: tier === "wide",
-    });
+  test.each([
+    [23, true],
+    [24, true],
+    [25, false],
+  ] as const)("treats %i rows as compact=%s", (rows, compact) => {
+    expect(isCompactHeight(rows)).toBe(compact);
   });
 });

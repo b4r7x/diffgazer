@@ -1,5 +1,4 @@
 import { FooterProvider } from "@diffgazer/core/footer";
-import { getNoChangesCopy } from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -156,16 +155,40 @@ describe("NoChangesView", () => {
     expect(panel?.nextElementSibling).toHaveAttribute("aria-hidden");
   });
 
-  it.each<[ReviewMode, { title: string; switchLabel: string }]>([
-    ["staged", { title: "No Staged Changes", switchLabel: "Review Unstaged" }],
-    ["unstaged", { title: "No Unstaged Changes", switchLabel: "Review Staged" }],
-    ["files", { title: "No Changes in Selected Files", switchLabel: "Review Unstaged" }],
+  it.each<[ReviewMode, { title: string; message: string; switchLabel: string }]>([
+    [
+      "staged",
+      {
+        title: "No Staged Changes",
+        message:
+          "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead.",
+        switchLabel: "Review Unstaged",
+      },
+    ],
+    [
+      "unstaged",
+      {
+        title: "No Unstaged Changes",
+        message:
+          "No unstaged changes found. Make some edits first, or review staged changes instead.",
+        switchLabel: "Review Staged",
+      },
+    ],
+    [
+      "files",
+      {
+        title: "No Changes in Selected Files",
+        message:
+          "No changes found in the selected files. Make some edits first, or select different files.",
+        switchLabel: "Review Unstaged",
+      },
+    ],
   ])("renders %s mode title, remediation body, and switch label", (mode, {
     title,
+    message,
     switchLabel,
   }) => {
     renderView({ mode, onSwitchMode: vi.fn() });
-    const { message } = getNoChangesCopy(mode);
 
     // The mode-dependent headline is a real heading in the content flow, not
     // the static corner chip: the chip names the kind of dead end, the heading

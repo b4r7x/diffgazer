@@ -14,8 +14,8 @@ import {
   type TerminalOutcome,
 } from "@diffgazer/core/schemas/review";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ExecutionLeaseRegistry } from "../../shared/lib/ai/admission/lease-registry.js";
 import type { AdmittedExecutionPlan } from "../../shared/lib/ai/admission/service.js";
-import { ExecutionLeaseRegistry } from "../../shared/lib/ai/admission/service.js";
 import { createBudgetLedger } from "../../shared/lib/ai/budget/ledger.js";
 import { toInitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
 import type { Adapter } from "../../shared/lib/ai/types.js";
@@ -217,7 +217,7 @@ describe("terminal adapter outcomes reach the review receipt", () => {
     expect(result.value.issues).toEqual([]);
   });
 
-  it("persists a non-completed terminal receipt before reporting the failure", async () => {
+  it("saves the cancelled receipt and reports AI_ERROR", async () => {
     const plan = admittedPlan();
     const { client, authorization } = authorizedClient(plan, "cancelled");
     const executed = await executeReview({

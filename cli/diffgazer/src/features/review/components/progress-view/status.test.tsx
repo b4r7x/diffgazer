@@ -102,7 +102,7 @@ describe("ReviewProgressView (TUI) status", () => {
     expect(frame).toContain("Review Error");
   });
 
-  test("reaches settings from the API-key error through the s key alone", async () => {
+  test("reaches settings from the API-key error through the p key alone", async () => {
     const onGoToSettings = vi.fn();
     const { stdin, lastFrame } = renderView({
       isStreaming: false,

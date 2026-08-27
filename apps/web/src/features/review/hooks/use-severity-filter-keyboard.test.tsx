@@ -101,6 +101,19 @@ describe("useReviewSeverityFilterKeyboard", () => {
     );
   });
 
+  it("returns DOM focus to the first severity chip after a pointer reset", async () => {
+    const user = userEvent.setup();
+    renderHarness();
+
+    await user.click(screen.getByRole("button", { name: /reset severity filter/i }));
+
+    const firstSeverityChip = screen.getByRole("button", { name: /blocker severity/i });
+    await waitFor(() => expect(firstSeverityChip).toHaveFocus());
+    expect(
+      screen.queryByRole("button", { name: /reset severity filter/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("leaves every severity chip unselected after activating Reset with Space", async () => {
     const user = userEvent.setup();
     renderHarness();

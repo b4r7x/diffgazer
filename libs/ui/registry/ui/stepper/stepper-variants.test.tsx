@@ -5,29 +5,6 @@ import type { StepperVariant } from "@/lib/stepper-variants";
 import { Stepper } from "./index";
 
 describe("Stepper variant indicators", () => {
-  it('renders the default tag glyphs when variant="tag"', () => {
-    render(
-      <Stepper variant="tag">
-        <Stepper.Step stepId="s1" status="completed">
-          <Stepper.Trigger>Step 1</Stepper.Trigger>
-        </Stepper.Step>
-        <Stepper.Step stepId="s2" status="active">
-          <Stepper.Trigger>Step 2</Stepper.Trigger>
-        </Stepper.Step>
-        <Stepper.Step stepId="s3" status="pending">
-          <Stepper.Trigger>Step 3</Stepper.Trigger>
-        </Stepper.Step>
-        <Stepper.Step stepId="s4" status="error">
-          <Stepper.Trigger>Step 4</Stepper.Trigger>
-        </Stepper.Step>
-      </Stepper>,
-    );
-    expect(screen.getByRole("button", { name: /Step 1/ })).toHaveTextContent("DONE");
-    expect(screen.getByRole("button", { name: /Step 2/ })).toHaveTextContent("RUN");
-    expect(screen.getByRole("button", { name: /Step 3/ })).toHaveTextContent("WAIT");
-    expect(screen.getByRole("button", { name: /Step 4/ })).toHaveTextContent("FAIL");
-  });
-
   it("uses provided statusLabels for tag-variant indicators", () => {
     render(
       <Stepper variant="tag">

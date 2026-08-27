@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useEffect } from "react";
@@ -7,7 +5,6 @@ import { type ReactNode, useEffect } from "react";
 // is not a devDependency of this workspace; renderToString is used untyped below.
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { useKeyDoc } from "../../../docs/hook-docs/use-key.js";
 import UseKeyMap from "../../../registry/examples/use-key/use-key-map.js";
 import UseScopeBasic from "../../../registry/examples/use-scope/use-scope-basic.js";
 import { DECLINE } from "../../core/normalize-key-input.js";
@@ -150,31 +147,6 @@ describe("KeyboardProvider", () => {
     expect(acceptedHandler).toHaveBeenCalledOnce();
     expect(acceptedDuringHandler).toBe(false);
     expect(handledEvent.defaultPrevented).toBe(true);
-  });
-
-  it("keeps the Types prevention contract aligned with the KeyboardProvider reference", () => {
-    const docsDirectory = resolve(process.cwd(), "docs/content/api");
-    const providerPage = readFileSync(resolve(docsDirectory, "keyboard-provider.mdx"), "utf8");
-    const typesPage = readFileSync(resolve(docsDirectory, "types.mdx"), "utf8");
-    const providerContract = providerPage.match(/^- `preventDefault` contract\. (.+)$/m)?.[1];
-
-    expect(providerContract).toBeDefined();
-    expect(typesPage).toContain(providerContract);
-  });
-
-  it("keeps the useKey hook-doc prevention contract aligned with the KeyboardProvider reference", () => {
-    const providerPage = readFileSync(
-      resolve(process.cwd(), "docs/content/api/keyboard-provider.mdx"),
-      "utf8",
-    );
-    const providerContract = providerPage.match(/^- `preventDefault` contract\. (.+)$/m)?.[1];
-    const declineNote = useKeyDoc.notes?.find(
-      (note) => note.title === "Declining a match",
-    )?.content;
-
-    expect(providerContract).toBeDefined();
-    expect(declineNote).toContain("after that handler returns");
-    expect(declineNote).toContain("A declining handler never prevents the default");
   });
 
   it("does not fire when a local keydown listener has already handled the event", async () => {

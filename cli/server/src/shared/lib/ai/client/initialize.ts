@@ -11,9 +11,9 @@ import { credentialReferenceIdentityFor } from "../../config/store/credential-li
 import { getStore } from "../../config/store.js";
 import { V1_MIGRATION_FAILED_MESSAGE } from "../../config/types.js";
 import { getConfigurationLeaseAuthority } from "../../session-registry.js";
+import type { AdmissionFailure } from "../admission/failure.js";
 import { RUNTIME_IDENTITY, STRUCTURED_OUTPUT_SCHEMA_SHA256 } from "../admission/protocol.js";
 import type {
-  AdmissionFailure,
   AdmissionServiceDependencies,
   AdmissionSnapshot,
   AuthorizedReviewExecution,

@@ -1,13 +1,12 @@
 import type { Result } from "./result.js";
 import { err, ok } from "./result.js";
 
+export { canonicalJson, sha256CanonicalJsonSync } from "./schemas/canonical-json.js";
 export {
-  canonicalJson,
   type JsonScanFailure,
   type JsonScanLimits,
   scanJsonRejectingDuplicateKeys,
-  sha256CanonicalJsonSync,
-} from "./schemas/canonical-json.js";
+} from "./schemas/json-scan.js";
 
 function stripMarkdownCodeBlock(content: string): string {
   let cleaned = content.trim();

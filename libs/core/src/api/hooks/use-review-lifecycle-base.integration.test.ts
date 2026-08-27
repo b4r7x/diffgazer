@@ -2,7 +2,7 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { err, ok, type Result } from "../../result.js";
 import type { StreamReviewError } from "../../review/index.js";
 import { type SettingsConfig, SettingsConfigSchema } from "../../schemas/config/index.js";
@@ -17,6 +17,20 @@ import type { ReviewContextResponse } from "../types.js";
 import { reviewQueries } from "./queries/review.js";
 import { useCreateReview } from "./review.js";
 import { useReviewLifecycleBase } from "./use-review-lifecycle-base.js";
+
+const originalVisibility = Object.getOwnPropertyDescriptor(document, "visibilityState");
+
+function stubVisibility(get: () => DocumentVisibilityState) {
+  Object.defineProperty(document, "visibilityState", { configurable: true, get });
+}
+
+afterEach(() => {
+  if (originalVisibility) {
+    Object.defineProperty(document, "visibilityState", originalVisibility);
+  } else {
+    Reflect.deleteProperty(document, "visibilityState");
+  }
+});
 
 // Parsed through the real schema so a fixture cannot claim a settings state the
 // `getSettings` boundary would reject (for example an empty default-lens list).
@@ -450,10 +464,7 @@ describe("useReviewLifecycleBase transport reconnect", () => {
       },
     });
 
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      get: () => "visible",
-    });
+    stubVisibility(() => "visible");
 
     const { result } = renderHook(
       () =>
@@ -492,10 +503,7 @@ describe("useReviewLifecycleBase transport reconnect", () => {
 
   it("resumes after a transport error when the tab becomes visible", async () => {
     const { harness, resumeReviewStream } = createReconnectHarness();
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      get: () => "visible",
-    });
+    stubVisibility(() => "visible");
 
     const { result } = renderHook(
       () =>
@@ -521,10 +529,7 @@ describe("useReviewLifecycleBase transport reconnect", () => {
   it("does not resume while hidden until the tab becomes visible", async () => {
     const { harness, resumeReviewStream } = createReconnectHarness();
     let visibilityState: DocumentVisibilityState = "hidden";
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      get: () => visibilityState,
-    });
+    stubVisibility(() => visibilityState);
 
     const { result } = renderHook(
       () =>

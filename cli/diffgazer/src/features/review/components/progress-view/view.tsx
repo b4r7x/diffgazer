@@ -22,7 +22,11 @@ import { Callout } from "../../../../components/ui/callout";
 import { KeyboardContext } from "../../../../hooks/keyboard-context";
 import { useResponsive } from "../../../../hooks/use-terminal-dimensions";
 import type { BreakpointTier } from "../../../../lib/breakpoints";
-import { wrappedRowCount } from "../../../../lib/terminal-width";
+import {
+  CALLOUT_CHROME_COLUMNS,
+  CALLOUT_CHROME_ROWS,
+  calloutTextRows,
+} from "../../lib/callout-geometry";
 import {
   getProviderRecoveryLine,
   getProviderRecoveryShortcut,
@@ -68,15 +72,6 @@ const SIZE_WARNING_ACTION_LINE = `Press ${FILTER_FILES_KEY} to stop this run and
 const COMPLETING_SHORTCUTS: Shortcut[] = [{ key: "Enter", label: "View Results" }];
 const SAVE_CONTEXT_SHORTCUT: Shortcut = { key: "w", label: "Save context" };
 const RETRY_CONTEXT_SHORTCUT: Shortcut = { key: "r", label: "Retry context" };
-/** Callout chrome around its text: the margin above it plus its two border rows. */
-const CALLOUT_CHROME_ROWS = 3;
-/** Columns the callout spends per row: border, horizontal padding, icon and its gap. */
-const CALLOUT_CHROME_COLUMNS = 6;
-
-/** Rows `text` occupies inside the callout, honouring the newlines the sanitizer keeps. */
-function calloutTextRows(text: string, columns: number): number {
-  return text.split("\n").reduce((rows, line) => rows + wrappedRowCount(line, columns), 0);
-}
 
 function getPaneWidths(tier: BreakpointTier): { progress: string; log: string } {
   if (tier === "wide") return { progress: "33%", log: "67%" };

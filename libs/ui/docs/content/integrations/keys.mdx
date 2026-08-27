@@ -10,7 +10,7 @@ Composable, scoped keyboard navigation hooks for React `>=19.2.0`.
 - **React `>=19.2.0` ready** -- stable callback/ref patterns without stale closures
 - **ESM only**
 
-> **Note:** Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.
+> **Note:** Diffgazer packages are not yet published to npm. Until the first release, pack `@diffgazer/ui` and `@diffgazer/keys` from the repository and install those tarballs.
 
 ## Installation options
 
@@ -38,7 +38,14 @@ pnpm exec dgadd add keys/scroll-lock
 
 ### Option 2: Install `@diffgazer/keys` package
 
-Install the package:
+Install the package. Before publication it is not on npm, so pack it from a checkout of the repository and install that tarball ([Consumption Paths](https://github.com/b4r7x/diffgazer#consumption-paths)):
+
+```bash
+pnpm --filter @diffgazer/keys pack --pack-destination /tmp/diffgazer-packs
+npm install /tmp/diffgazer-packs/diffgazer-keys-*.tgz
+```
+
+After publication, this becomes:
 
 ```bash
 npm install @diffgazer/keys

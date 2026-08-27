@@ -54,43 +54,6 @@ describe("collectRemovalTargets", () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it("keeps shared files when a co-requested item is blocked by integrity", () => {
-    const sharedPath = join(tempDir, "hooks", "use-focus-restore.ts");
-    const restoreOnlyPath = join(tempDir, "hooks", "utils", "focus-restore.ts");
-    const trapOnlyPath = join(tempDir, "hooks", "use-focus-trap.ts");
-    mkdirSync(join(tempDir, "hooks", "utils"), { recursive: true });
-    writeFileSync(sharedPath, "export const shared = true;\n");
-    writeFileSync(restoreOnlyPath, "export const restoreOnly = true;\n");
-    writeFileSync(trapOnlyPath, "export const trapOnly = true;\n");
-
-    const items: TestItem[] = [
-      {
-        name: "keys/focus-restore",
-        files: [{ absolutePath: sharedPath }, { absolutePath: restoreOnlyPath }],
-      },
-      {
-        name: "keys/focus-trap",
-        files: [{ absolutePath: sharedPath }, { absolutePath: trapOnlyPath }],
-      },
-    ];
-
-    const targets = collectRemovalTargets(
-      buildOptions(
-        tempDir,
-        items,
-        items.map((item) => item.name),
-        (path) => (path === trapOnlyPath ? "modified" : "removable"),
-      ),
-      null,
-      items.map((item) => item.name),
-    );
-
-    expect(targets.removedNames).toEqual(["keys/focus-restore"]);
-    expect([...targets.files]).toEqual([restoreOnlyPath]);
-    expect(targets.files.has(sharedPath)).toBe(false);
-    expect(targets.files.has(trapOnlyPath)).toBe(false);
-  });
-
   it("keeps shared files regardless of requested item order", () => {
     const sharedPath = join(tempDir, "shared.ts");
     const firstOnlyPath = join(tempDir, "first-only.ts");

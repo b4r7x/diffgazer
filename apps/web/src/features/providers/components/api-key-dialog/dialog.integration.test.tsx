@@ -129,8 +129,12 @@ describe("ApiKeyDialog acknowledgement and write-only secrets", () => {
     const { onCreate } = renderSetupDialog(unconfiguredRow("gemini"));
 
     const dialog = screen.getByRole("dialog");
-    // Down from Paste lands in the key field, Down again reaches Import from Env.
-    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+    // Down from Paste lands in the key field; the secret typed there is abandoned
+    // when Down again reaches Import from Env.
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("sk-typed-then-abandoned");
+    expect(within(dialog).getByLabelText(/Gemini API Key/i)).toHaveValue("sk-typed-then-abandoned");
+    await user.keyboard("{ArrowDown}{Enter}");
 
     await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
     expect(onCreate).toHaveBeenCalledWith(
@@ -139,7 +143,7 @@ describe("ApiKeyDialog acknowledgement and write-only secrets", () => {
       }),
       expect.anything(),
     );
-    expect(dialog.textContent).not.toContain("sk-");
+    expect(dialog.textContent).not.toContain("sk-typed-then-abandoned");
   });
 
   it("announces a failed save inline and marks the key input invalid without a toast", async () => {

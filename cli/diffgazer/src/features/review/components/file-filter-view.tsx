@@ -23,7 +23,13 @@ import { EmptyState } from "../../../components/ui/empty-state";
 import { Panel } from "../../../components/ui/panel";
 import { Spinner } from "../../../components/ui/spinner";
 import { getListWindow } from "../../../lib/list-window";
+import { wrappedRowCount } from "../../../lib/terminal-width";
 import { useTheme } from "../../../theme/provider";
+import {
+  CALLOUT_CHROME_COLUMNS,
+  CALLOUT_CHROME_ROWS,
+  calloutTextRows,
+} from "../lib/callout-geometry";
 
 type FileScope = Exclude<ReviewMode, "files">;
 
@@ -61,15 +67,18 @@ const START_KEY = "s";
  * is longer than the frame.
  */
 const LIST_CHROME_ROWS = 6;
+/** Columns the panel spends per row: its two borders and its horizontal padding. */
+const PANEL_CHROME_COLUMNS = 4;
+const REASON_TITLE = "Narrow the review";
 
-function getFileFilterShortcuts(hasSelection: boolean, ownsScope: boolean): Shortcut[] {
+function getFileFilterShortcuts(canStart: boolean, ownsScope: boolean): Shortcut[] {
   return [
     NAVIGATE_SHORTCUT,
     { key: "Space", label: "Toggle" },
     { key: SELECT_ALL_KEY, label: "All" },
     { key: CLEAR_SELECTION_KEY, label: "None" },
     ...(ownsScope ? [{ key: "Tab", label: "Switch Scope" }] : []),
-    { key: START_KEY, label: "Review Selected", disabled: !hasSelection },
+    { key: START_KEY, label: "Review Selected", disabled: !canStart },
   ];
 }
 
@@ -89,11 +98,10 @@ export function ReviewFileFilterView({
   onBack,
 }: ReviewFileFilterViewProps): ReactElement {
   const { tokens } = useTheme();
-  const { contentRows } = useContentZone();
+  const { contentRows, contentColumns } = useContentZone();
   const gitStatus = useGitStatus();
   const [selected, setSelected] = useState<string[]>([]);
   const [highlighted, setHighlighted] = useState<string | null>(null);
-  const [limitNotice, setLimitNotice] = useState<string | null>(null);
   const [pickedScope, setPickedScope] = useState<FileScope | null>(null);
 
   const ownsScope = mode === undefined;
@@ -115,6 +123,19 @@ export function ReviewFileFilterView({
       : (selectableRows[0]?.path ?? null);
   const selectedPaths = selected.filter((path) => selectableRows.some((row) => row.path === path));
   const hasSelection = selectedPaths.length > 0;
+  // The cap is on the `files[]` the start sends, and a full selection sends
+  // none — so only a subset past the ceiling is over the limit. The selection
+  // itself is always recorded: refusing it would strand the user past the cap
+  // with no way to deselect back under it.
+  const isOverLimit =
+    selectedPaths.length > MAX_REVIEW_FILES && selectedPaths.length !== selectableRows.length;
+  const limitNotice = isOverLimit
+    ? `A review reads at most ${MAX_REVIEW_FILES} files. Deselect ${selectedPaths.length - MAX_REVIEW_FILES} to start.`
+    : null;
+  const canStart = hasSelection && !isOverLimit;
+  const sanitizedReason = reason ? sanitizeTerminalText(reason) : null;
+  const calloutColumns = Math.max(contentColumns - CALLOUT_CHROME_COLUMNS, 1);
+  const panelColumns = Math.max(contentColumns - PANEL_CHROME_COLUMNS, 1);
 
   function start() {
     const [first, ...rest] = selectedPaths;
@@ -123,17 +144,6 @@ export function ReviewFileFilterView({
       mode: scope,
       ...(selectedPaths.length === selectableRows.length ? {} : { files: [first, ...rest] }),
     });
-  }
-
-  function changeSelection(next: string[]) {
-    // The cap is on the `files[]` the start sends, and a full selection sends
-    // none — so only a subset past the ceiling is refused.
-    if (next.length > MAX_REVIEW_FILES && next.length !== selectableRows.length) {
-      setLimitNotice(`A review reads at most ${MAX_REVIEW_FILES} files. Deselect one first.`);
-      return;
-    }
-    setLimitNotice(null);
-    setSelected(next);
   }
 
   useInput(
@@ -146,27 +156,36 @@ export function ReviewFileFilterView({
         setPickedScope(scope === "staged" ? "unstaged" : "staged");
         return;
       }
-      if (input === START_KEY && hasSelection) {
+      if (input === START_KEY && canStart) {
         start();
         return;
       }
       if (input === SELECT_ALL_KEY) {
-        changeSelection(selectableRows.map((row) => row.path));
+        setSelected(selectableRows.map((row) => row.path));
         return;
       }
       if (input === CLEAR_SELECTION_KEY) {
-        changeSelection([]);
+        setSelected([]);
       }
     },
     { isActive: true },
   );
 
   usePageFooter({
-    shortcuts: getFileFilterShortcuts(hasSelection, ownsScope),
+    shortcuts: getFileFilterShortcuts(canStart, ownsScope),
     rightShortcuts: BACK_SHORTCUTS,
   });
 
-  const listRows = Math.max(contentRows - LIST_CHROME_ROWS, 1);
+  // The reason callout above the panel and the limit notice inside it take rows
+  // from the same clipped content zone as the list, and the reason is server
+  // text, so both are measured rather than assumed.
+  const reasonRows = sanitizedReason
+    ? CALLOUT_CHROME_ROWS +
+      calloutTextRows(REASON_TITLE, calloutColumns) +
+      calloutTextRows(sanitizedReason, calloutColumns)
+    : 0;
+  const noticeRows = limitNotice ? wrappedRowCount(limitNotice, panelColumns) : 0;
+  const listRows = Math.max(contentRows - LIST_CHROME_ROWS - reasonRows - noticeRows, 1);
   const highlightedIndex = Math.max(
     rows.findIndex((row) => row.path === highlightedPath),
     0,
@@ -209,7 +228,7 @@ export function ReviewFileFilterView({
         {listWindow.canScrollUp ? <Text color={tokens.muted}>{"▲"}</Text> : null}
         <CheckboxGroup
           value={selectedPaths}
-          onChange={changeSelection}
+          onChange={setSelected}
           highlightedValue={highlightedPath}
           onHighlightChange={setHighlighted}
           navigationItems={rows.map((row) => ({ id: row.path, disabled: row.conflicted }))}
@@ -243,10 +262,10 @@ export function ReviewFileFilterView({
 
   return (
     <Box flexDirection="column" gap={1}>
-      {reason ? (
+      {sanitizedReason ? (
         <Callout variant="warning">
-          <Callout.Title>Narrow the review</Callout.Title>
-          <Callout.Content>{sanitizeTerminalText(reason)}</Callout.Content>
+          <Callout.Title>{REASON_TITLE}</Callout.Title>
+          <Callout.Content>{sanitizedReason}</Callout.Content>
         </Callout>
       ) : null}
       <Panel>

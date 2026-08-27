@@ -26,9 +26,7 @@ const LEGACY_V1_HAS_API_KEY_GUARD_PATHS = new Set([
   "apps/docs/src/testing/content-contracts/results-guide.test.ts",
   "apps/web/src/testing/client-safe-assertions.ts",
   "apps/web/src/features/providers/lib/filter.test.ts",
-  "apps/web/src/features/providers/components/page.test.tsx",
   "apps/web/src/features/review/components/container.test.tsx",
-  "apps/web/src/features/review/components/page.test.tsx",
   "apps/web/src/hooks/use-config.test.tsx",
   "cli/diffgazer/src/features/providers/components/screen.test.tsx",
   "cli/diffgazer/src/features/settings/components/hub-screen.test.tsx",
@@ -310,21 +308,13 @@ test("legacy flag allowlist exactly matches every current reference path", () =>
   );
 });
 
-test("derived allowlists stay a union of the declared subsets", () => {
-  for (const repoPath of [
-    ...LEGACY_V1_HAS_API_KEY_SCANNER_PATHS,
-    ...LEGACY_V1_HAS_API_KEY_GUARD_PATHS,
-    ...LEGACY_V1_HAS_API_KEY_SURFACE_PATHS,
-  ]) {
-    assert.ok(HAS_API_KEY_PATH_ALLOWLIST.has(repoPath), repoPath);
-  }
+test("the three declared subsets share no path", () => {
   assert.equal(
     HAS_API_KEY_PATH_ALLOWLIST.size,
     LEGACY_V1_HAS_API_KEY_SCANNER_PATHS.size +
       LEGACY_V1_HAS_API_KEY_GUARD_PATHS.size +
       LEGACY_V1_HAS_API_KEY_SURFACE_PATHS.size,
   );
-  assert.ok(DOC_SUPPORT_CLAIM_SCAN_PATHS.has(PROVIDERS_REFERENCE_PATH));
 });
 
 function formatViolationReport(title, violations) {

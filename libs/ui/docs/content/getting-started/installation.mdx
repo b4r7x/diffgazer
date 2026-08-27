@@ -7,11 +7,11 @@ description: Initialize a project with dgadd and add `@diffgazer/ui` components 
 
 > **Installing via dgadd:** Components are namespaced (`ui/button`, `ui/dialog`). For the full command and flag reference — `init`, `add`, `list`, `diff`, `remove` — see the [dgadd CLI reference](/app/cli).
 
-> **Note:** Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.
+> **Before publication:** Diffgazer packages are not yet published to npm, so there is no `dgadd` bin until you install one. Follow the canonical [Copy-first mode procedure](https://github.com/b4r7x/diffgazer#copy-first-mode-dgadd) to build and pack `@diffgazer/add`, then install that packed tarball in the target app. The target-app install is what puts `dgadd` on `pnpm exec`.
 
 ## Install
 
-From a local checkout of the repository, run the installer and add a component:
+With the packed `@diffgazer/add` tarball installed in the target app, run the installer and add a component:
 
 ```bash
 pnpm exec dgadd init

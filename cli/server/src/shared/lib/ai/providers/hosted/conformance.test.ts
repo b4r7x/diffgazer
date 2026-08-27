@@ -1,4 +1,3 @@
-import { CREDENTIAL_ENV_VARS } from "@diffgazer/core/providers";
 import { HOSTED_API_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -61,14 +60,26 @@ describe("REQ-086 hosted conformance depth", () => {
 
 describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
   it("uses the canonical credential environment variable for every hosted product", () => {
+    // Written out by hand from libs/core/src/providers/credential-env-vars.ts: an
+    // expectation derived from the same constants the descriptors are built from
+    // moves with them and can never go red.
     expect(
       HOSTED_LIVE_PROBE_DESCRIPTORS.map(({ productId, credentialEnv }) => [
         productId,
         credentialEnv,
       ]),
-    ).toEqual(
-      HOSTED_API_PRODUCT_IDS.map((productId) => [productId, CREDENTIAL_ENV_VARS[productId]]),
-    );
+    ).toEqual([
+      ["gemini", "GOOGLE_API_KEY"],
+      ["zai", "ZAI_API_KEY"],
+      ["openrouter", "OPENROUTER_API_KEY"],
+      ["deepseek", "DEEPSEEK_API_KEY"],
+      ["qwen", "QWEN_API_KEY"],
+      ["moonshot", "MOONSHOT_API_KEY"],
+      ["minimax", "MINIMAX_API_KEY"],
+      ["ollama-cloud", "OLLAMA_API_KEY"],
+      ["opencode-zen", "OPENCODE_API_KEY"],
+    ]);
+    expect(HOSTED_LIVE_PROBE_DESCRIPTORS).toHaveLength(HOSTED_API_PRODUCT_IDS.length);
   });
 
   it("reports skipped live probes without credential or opt-in", () => {

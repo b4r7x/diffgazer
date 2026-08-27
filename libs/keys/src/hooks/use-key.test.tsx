@@ -2,6 +2,7 @@ import { act, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import type { ValidateHotkey } from "../dom/hotkey.js";
 import { fireKey, KeyboardWrapper, StrictKeyboardWrapper } from "../testing/internal/test-utils.js";
 import { useKey } from "./use-key.js";
 import { useScope } from "./use-scope.js";
@@ -417,6 +418,11 @@ describe("hotkey literal validation (types)", () => {
   }
 
   it("accepts canonical hotkeys and rejects typo'd modifiers", () => {
+    expectTypeOf<ValidateHotkey<"mod+k">>().toEqualTypeOf<"mod+k">();
+    expectTypeOf<ValidateHotkey<"ctrl+alt+ArrowUp">>().toEqualTypeOf<"ctrl+alt+ArrowUp">();
+    expectTypeOf<ValidateHotkey<string>>().toEqualTypeOf<string>();
+    expectTypeOf<ValidateHotkey<"ctl+s">>().toBeNever();
+    expectTypeOf<ValidateHotkey<"cmd+k">>().toBeNever();
     expectTypeOf(HotkeyValidation).toBeFunction();
   });
 });

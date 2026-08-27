@@ -6,7 +6,8 @@ import {
   readJsonInRoot,
   readTextInRoot,
 } from "./context.mjs";
-import { LICENSE_MARKERS, PUBLISHABLE_PACKAGE_FILES } from "./packages.mjs";
+import { LICENSE_MARKERS } from "./licenses.mjs";
+import { PUBLISHABLE_PACKAGE_FILES } from "./packages.mjs";
 
 function sliceDocSection(text, heading) {
   const marker = `## ${heading}`;

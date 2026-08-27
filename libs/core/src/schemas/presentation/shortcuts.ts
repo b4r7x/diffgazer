@@ -117,8 +117,8 @@ export const REVIEW_CONSENT_SHORTCUT: Shortcut = { key: "c", label: "Review" };
 // Every entry has a live handler on at least one surface (web: q/s/h/shift+?,
 // list/menu navigation, `/` history search; TUI: q/s/?, `/` history search).
 // The history l/R entries are bound on both surfaces; they read the same there
-// as on the home screen's r/R/l, which are menu items rather than list actions.
-// The home entries are the r/R/l menu bindings both surfaces resolve through
+// as on the home screen's r/R/f/l, which are menu items rather than list actions.
+// The home entries are the r/R/f/l menu bindings both surfaces resolve through
 // MENU_ITEMS; the providers entries are the m/e/v/d accelerators both surfaces
 // resolve through PROVIDER_ACTION_HOTKEYS, plus REVIEW_CONSENT_SHORTCUT.
 // Entries are tagged with the context they apply in and grouped at render time;

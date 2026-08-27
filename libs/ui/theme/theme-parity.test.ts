@@ -7,6 +7,7 @@ import {
   SEMANTIC_TOKEN_KEYS,
 } from "@diffgazer/core/theme";
 import { describe, expect, it } from "vitest";
+import { ruleBody } from "../registry/testing/css-contract";
 import {
   THEME_DOCS_CODE_TOKENS,
   THEME_DOCS_PRIMITIVES,
@@ -27,8 +28,8 @@ const THEME_DOCS_TOKENS: readonly ThemeDocsToken[] = [
 
 const THEME_CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../styles/theme.css");
 
-const DARK_BLOCK_RE = /:root,\s*\[data-theme="dark"\]\s*\{([\s\S]*?)\n\}/;
-const LIGHT_BLOCK_RE = /\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/;
+const DARK_SCOPE = ':root, [data-theme="dark"]';
+const LIGHT_SCOPE = '[data-theme="light"]';
 const DECLARATION_RE = /^\s*(--[a-z0-9-]+):\s*([^;]+);/gm;
 const NON_COLOR_TOKENS = new Set([
   "--base-font-mono",
@@ -51,12 +52,12 @@ const PRIMITIVE_KEY_TO_BASE: Record<PrimitiveTokenKey, `--base-${string}`> = {
   muted: "--base-muted",
 };
 
-function extractDeclarations(blockPattern: RegExp): Map<string, string> {
+function extractDeclarations(scope: string): Map<string, string> {
   const source = readFileSync(THEME_CSS_PATH, "utf8");
-  const block = source.match(blockPattern)?.[1];
+  const block = ruleBody(source, scope);
 
-  if (!block) {
-    throw new Error(`Missing theme.css block for ${blockPattern}`);
+  if (block === null) {
+    throw new Error(`Missing theme.css block for ${scope}`);
   }
 
   const declarations = new Map<string, string>();
@@ -72,8 +73,8 @@ function extractDeclarations(blockPattern: RegExp): Map<string, string> {
   return declarations;
 }
 
-const darkDeclarations = extractDeclarations(DARK_BLOCK_RE);
-const lightDeclarations = extractDeclarations(LIGHT_BLOCK_RE);
+const darkDeclarations = extractDeclarations(DARK_SCOPE);
+const lightDeclarations = extractDeclarations(LIGHT_SCOPE);
 
 /**
  * Diagram edges: semantic ROLE rows whose value is `var(--base-x)`, grouped by

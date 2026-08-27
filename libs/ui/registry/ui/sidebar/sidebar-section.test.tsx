@@ -246,7 +246,7 @@ describe("SidebarSection collapsible", () => {
       </Sidebar.Provider>,
     );
 
-    // Public styling contract (fix-spec-b1 OV-01, Strategy T1 + T3): the padding
+    // Public styling contract: the padding
     // tokens live on the interactive element and the coarse-pointer floor makes
     // the row a >=44px target. jsdom cannot compute layout, so the class tokens
     // are the assertable contract.

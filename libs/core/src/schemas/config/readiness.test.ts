@@ -17,7 +17,6 @@ const READINESS_ACTION_CONTRACT = {
   "acknowledgement-required": { action: "update", remediationCode: "accept-notice" },
   unsupported: { action: "inspect", remediationCode: "review-support" },
   skipped: { action: "test", remediationCode: "enable-live-probe" },
-  "local-conformance-failed": { action: "test", remediationCode: "rerun-conformance" },
   ready: { action: "inspect", remediationCode: "none" },
 } as const satisfies Record<
   ReadinessStatus,
@@ -50,11 +49,6 @@ const STATUS_CONTRACT = {
   },
   unsupported: { ready: false, evidenceStatus: "not-checked", checkedAt: null },
   skipped: { ready: false, evidenceStatus: "skipped", checkedAt: CHECKED_AT },
-  "local-conformance-failed": {
-    ready: false,
-    evidenceStatus: "failed",
-    checkedAt: CHECKED_AT,
-  },
   ready: { ready: true, evidenceStatus: "passed", checkedAt: CHECKED_AT },
 } as const;
 
@@ -77,7 +71,7 @@ function readinessInput(status: ReadinessStatus) {
 
 describe("readiness contract", () => {
   it("pins every readiness status to its action and remediation code", () => {
-    expect(READINESS_STATUSES).toHaveLength(10);
+    expect(READINESS_STATUSES).toHaveLength(9);
 
     for (const status of READINESS_STATUSES) {
       const expected = READINESS_ACTION_CONTRACT[status];
@@ -89,36 +83,11 @@ describe("readiness contract", () => {
       expect(result.explanation.length).toBeGreaterThan(0);
       expect(result.remediation.message.length).toBeGreaterThan(0);
     }
-  });
 
-  it("gives every hosted readiness state distinct, actionable guidance", () => {
-    const statuses = [
-      "unconfigured",
-      "credential-invalid",
-      "model-missing",
-      "conformance-pending",
-      "conformance-failed",
-      "acknowledgement-required",
-      "unsupported",
-      "ready",
-    ] as const;
-
-    for (const status of statuses) {
-      const result = ReadinessSchema.parse(readinessInput(status));
-      expect(result.status).toBe(status);
-      expect(result.explanation.length).toBeGreaterThan(0);
-      expect(result.remediation.message.length).toBeGreaterThan(0);
-    }
-    expect(new Set(statuses)).toHaveLength(statuses.length);
-  });
-
-  it("separates a local conformance failure from the hosted one", () => {
-    const local = ReadinessSchema.parse(readinessInput("local-conformance-failed"));
-    const hosted = ReadinessSchema.parse(readinessInput("conformance-failed"));
-
-    expect(local.ready).toBe(false);
-    expect(local.evidenceStatus).toBe("failed");
-    expect(local.explanation).not.toBe(hosted.explanation);
+    const explanations = READINESS_STATUSES.map(
+      (status) => ReadinessSchema.parse(readinessInput(status)).explanation,
+    );
+    expect(new Set(explanations).size).toBe(READINESS_STATUSES.length);
   });
 
   it("never treats a skipped check as ready or passed", () => {

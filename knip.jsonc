@@ -25,7 +25,11 @@
     "libs/ui/theme/docs-tokens.ts": ["exports", "types"],
     // Dynamic test doubles import this layout helper through a module namespace,
     // which Knip cannot connect to the declaration statically.
-    "cli/diffgazer/src/components/layout/global.tsx": ["exports"]
+    "cli/diffgazer/src/components/layout/global.tsx": ["exports"],
+    // `RUNNABLE_*` and `HOSTED_API_*` are two names for one tuple only because
+    // every runnable product happens to be hosted today. They are separate
+    // concepts with separate call sites, not an alias pair to collapse.
+    "libs/core/src/schemas/config/product-ids.ts": ["duplicates"]
   },
   "workspaces": {
     ".": {
@@ -68,16 +72,11 @@
       "ignoreDependencies": ["@diffgazer/keys", "@diffgazer/ui"]
     },
     "cli/server": {
-      // Directory facades: every consumer outside `cli-compatibility/` and
-      // `hosted/` imports through these files, and their re-export surface is
-      // kept whole rather than pruned to today's callers. Declaring them as
-      // entry points keeps Knip from reading an individually-unimported
-      // re-export as dead code.
-      "entry": [
-        "src/shared/lib/ai/providers/cli-compatibility/compat.ts",
-        "src/shared/lib/ai/providers/cli-compatibility/probe.ts",
-        "src/shared/lib/ai/providers/hosted/transport.ts"
-      ]
+      // Directory facade: every consumer outside `hosted/` imports through this
+      // file, and its re-export surface is kept whole rather than pruned to
+      // today's callers. Declaring it as an entry point keeps Knip from reading
+      // an individually-unimported re-export as dead code.
+      "entry": ["src/shared/lib/ai/providers/hosted/transport.ts"]
     },
     "cli/diffgazer": {
       // capture-review-frames is invoked by scripts/parity-capture.mjs via a

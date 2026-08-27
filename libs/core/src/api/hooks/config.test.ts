@@ -155,19 +155,11 @@ function succeededActionResponse<Action extends ClientConfigurationAction>(
   }) as Extract<ClientConfigurationActionResponse, { action: Action["action"] }>;
 }
 
-function expectSummariesInvalidated(
-  harness: ReturnType<typeof createTestQueryWrapper>,
-  initInvalidated = true,
-  configurationsInvalidated = true,
-) {
+function expectSummariesInvalidated(harness: ReturnType<typeof createTestQueryWrapper>) {
   const initKey = configQueries.init(harness.api).queryKey;
   const configurationsKey = configQueries.configurations(harness.api).queryKey;
-  if (initInvalidated) {
-    expect(harness.queryClient.getQueryState(initKey)?.isInvalidated).toBe(true);
-  }
-  if (configurationsInvalidated) {
-    expect(harness.queryClient.getQueryState(configurationsKey)?.isInvalidated).toBe(true);
-  }
+  expect(harness.queryClient.getQueryState(initKey)?.isInvalidated).toBe(true);
+  expect(harness.queryClient.getQueryState(configurationsKey)?.isInvalidated).toBe(true);
 }
 
 describe("configuration queries", () => {
@@ -502,32 +494,20 @@ function seedSummaries(harness: ReturnType<typeof createTestQueryWrapper>) {
   );
 }
 
-function seedQueryData(
-  queryClient: ReturnType<typeof createTestQueryWrapper>["queryClient"],
-  key: readonly unknown[],
-  data: unknown,
-) {
-  queryClient.setQueryData(key, data);
-}
-
 function seedPerConfigurationCaches(
   harness: ReturnType<typeof createTestQueryWrapper>,
   configuration: Extract<ClientConfigurationSummary, { status: "supported" }>,
 ) {
-  seedQueryData(
-    harness.queryClient,
-    configurationModelsQuery(harness.api, configuration).queryKey,
-    {
-      status: "passed",
-      configurationId: configuration.configurationId,
-      productId: configuration.productId,
-      transportFamily: configuration.transportFamily,
-      models: [],
-      checkedAt: "2026-07-31T12:00:00.000Z",
-      source: "snapshot",
-      cached: false,
-    },
-  );
+  harness.queryClient.setQueryData(configurationModelsQuery(harness.api, configuration).queryKey, {
+    status: "passed",
+    configurationId: configuration.configurationId,
+    productId: configuration.productId,
+    transportFamily: configuration.transportFamily,
+    models: [],
+    checkedAt: "2026-07-31T12:00:00.000Z",
+    source: "snapshot",
+    cached: false,
+  });
 }
 
 function expectPerConfigurationInvalidated(

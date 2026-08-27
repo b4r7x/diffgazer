@@ -50,12 +50,12 @@ describe("ReviewCompleteSummary", () => {
   it("frames a partial run in the warning tone, never success-green", () => {
     render(
       <ReviewCompleteSummary
-        stats={{ runId: "run-1", totalIssues: 2, filesWithIssues: 1, blockerCount: 0 }}
-        severityCounts={{ blocker: 0, high: 0, medium: 2, low: 0, nit: 0 }}
+        stats={{ runId: "run-1", totalIssues: 0, filesWithIssues: 0, blockerCount: 0 }}
+        severityCounts={{ blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }}
         categoryStats={[]}
         topIssues={[]}
         lensStats={[
-          { lensId: "correctness", issueCount: 2, status: "success" },
+          { lensId: "correctness", issueCount: 0, status: "success" },
           { lensId: "security", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
         ]}
       />,
@@ -68,6 +68,9 @@ describe("ReviewCompleteSummary", () => {
       "data-tone",
       "warning",
     );
+    // A lens that never reported cannot make "No issues found" a pass, so the
+    // fact line under the warning headline must not carry the success colour.
+    expect(screen.getByText(/^No issues found/)).not.toHaveClass("text-success-text");
   });
 
   it("keeps the success frame for a fully reported run", () => {

@@ -3,7 +3,7 @@ title: shadcn namespace
 description: Configure shadcn registry aliases for `@diffgazer/ui` and `@diffgazer/keys`.
 ---
 
-> **Note:** Diffgazer packages are not yet published to npm and the hosted registry at `https://r.b4r7.dev` is not yet live, so the shadcn commands on this page are gated until the first release. Until then, install with the `dgadd` CLI (`pnpm exec dgadd add ui/button`) or the runtime package from a local checkout (`npm install @diffgazer/ui @diffgazer/keys`).
+> **Note:** Diffgazer packages are not yet published to npm and the hosted registry at `https://r.b4r7.dev` is not yet live, so the shadcn commands on this page are gated until the first release. Until then, pack the workspace packages from a checkout of the repository and install those tarballs in the target app: either the packed `@diffgazer/add` tarball for the `dgadd` CLI (`pnpm exec dgadd add ui/button`) or the packed `@diffgazer/ui` and `@diffgazer/keys` tarballs for runtime package mode. See the canonical [Consumption Paths](https://github.com/b4r7x/diffgazer#consumption-paths) section.
 
 After the hosted registry is live, the shadcn CLI can install registry items by direct URL or by namespace once `components.json` maps each namespace to a registry URL.
 

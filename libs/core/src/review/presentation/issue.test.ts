@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { EVIDENCE_GAP_MARKER, type EvidenceRef, SavedReviewSchema } from "../../schemas/review/index.js";
+import {
+  EVIDENCE_GAP_MARKER,
+  type EvidenceRef,
+  SavedReviewSchema,
+} from "../../schemas/review/index.js";
 import {
   buildSeverityBreakdownRows,
   formatSeverityFilterLabel,

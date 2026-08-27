@@ -204,7 +204,6 @@ describe("useApiKeyDialogKeyboard hosted flow", () => {
     const input = screen.getByLabelText("Gemini API Key");
     const env = screen.getByRole("radio", { name: "Import from Env" });
     const acknowledgement = screen.getByRole("button", { name: "Accept notice" });
-    const _cancel = screen.getByRole("button", { name: "Cancel" });
 
     await waitFor(() => expect(paste).toHaveFocus());
 

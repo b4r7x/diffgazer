@@ -67,6 +67,12 @@ function prefixWithinJsonBudget(value: string, budget: number): number {
   return end;
 }
 
+function withTruncationMarker(lines: string[]): string[] {
+  const lastIndex = lines.length - 1;
+  lines[lastIndex] = `${lines[lastIndex] ?? ""}${SYNTHESIZED_EVIDENCE_TRUNCATION_MARKER}`;
+  return lines;
+}
+
 function boundSynthesizedLines(lines: string[], forceMarker = false): string[] {
   if (lines.length === 0) return [];
 
@@ -77,10 +83,16 @@ function boundSynthesizedLines(lines: string[], forceMarker = false): string[] {
     separatorBytes,
   );
   const needsMarker = forceMarker || unboundedContentBytes > contentBudget;
-  let remainingBudget =
-    contentBudget -
-    separatorBytes -
-    (needsMarker ? jsonContentBytes(SYNTHESIZED_EVIDENCE_TRUNCATION_MARKER) : 0);
+  const markerBytes = needsMarker ? jsonContentBytes(SYNTHESIZED_EVIDENCE_TRUNCATION_MARKER) : 0;
+
+  // The equal-share pass below is only a way to spend an overrun budget fairly.
+  // An excerpt that already fits keeps every line whole: clamping a long line to
+  // its 1/N share would cut reviewed source mid-line with nothing to say so.
+  if (unboundedContentBytes + markerBytes <= contentBudget) {
+    return needsMarker ? withTruncationMarker([...lines]) : [...lines];
+  }
+
+  let remainingBudget = contentBudget - separatorBytes - markerBytes;
   const boundedLines: string[] = [];
 
   for (const [index, line] of lines.entries()) {
@@ -92,13 +104,7 @@ function boundSynthesizedLines(lines: string[], forceMarker = false): string[] {
     remainingBudget -= jsonContentBytes(boundedLine);
   }
 
-  if (needsMarker) {
-    const lastIndex = boundedLines.length - 1;
-    boundedLines[lastIndex] =
-      `${boundedLines[lastIndex] ?? ""}${SYNTHESIZED_EVIDENCE_TRUNCATION_MARKER}`;
-  }
-
-  return boundedLines;
+  return needsMarker ? withTruncationMarker(boundedLines) : boundedLines;
 }
 
 interface IndexedHunk {

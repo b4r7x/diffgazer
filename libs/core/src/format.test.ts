@@ -190,8 +190,18 @@ describe("formatLocaleDateTimeOrFallback", () => {
   });
 
   it("formats a present timestamp via the platform locale formatter", () => {
-    const value = "2025-01-15T14:05:09Z";
-    expect(formatLocaleDateTimeOrFallback(value)).toBe(new Date(value).toLocaleString());
+    inTimeZone("UTC", () => {
+      const formatted = formatLocaleDateTimeOrFallback("2025-01-15T14:05:09Z");
+      expect(formatted).not.toBe("N/A");
+      expect(formatted).toContain("2025");
+      expect(formatted).toMatch(/2:05:09|14:05:09/);
+    });
+  });
+
+  it("ignores a custom fallback when the value is present", () => {
+    inTimeZone("UTC", () => {
+      expect(formatLocaleDateTimeOrFallback("2025-01-15T14:05:09Z", "—")).not.toBe("—");
+    });
   });
 });
 

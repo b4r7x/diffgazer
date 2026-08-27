@@ -64,8 +64,8 @@ export function summaryForSupportedRecord(
       );
 }
 
-export function succeededActionResponse<Action extends ClientConfigurationActionName>(
-  action: Action,
+export function succeededActionResponse(
+  action: ClientConfigurationActionName,
   payload: { configuration?: ClientConfigurationSummary; readiness?: Readiness } = {},
 ): ClientConfigurationActionResponse {
   return ClientConfigurationActionResponseSchema.parse({

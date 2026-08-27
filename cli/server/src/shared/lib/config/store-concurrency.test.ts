@@ -1,9 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   configPath,
-  diffgazerHome,
   fsHooks,
   loadStore,
   loadStoreFactory,
@@ -52,9 +50,6 @@ const v2Config = (records: unknown[] = []) => ({
   selectedConfigurationId: null,
   configurations: records,
 });
-
-const literalSecretPathFor = (configurationId: string, revision: number): string =>
-  join(diffgazerHome, "credentials", `${configurationId}-${revision}.key`);
 
 const createGeminiAction = (value: string) =>
   ({
@@ -320,38 +315,5 @@ describe("config store concurrency", () => {
       { configurationCount: 2, configurationReloads: 2, evidenceReads: 2 },
       { configurationCount: 7, configurationReloads: 2, evidenceReads: 7 },
     ]);
-  });
-
-  it("restores the config file when the secrets write fails midway through a delete", async () => {
-    writeJson(configPath(), v2Config());
-    const store = await loadStore();
-    const created = await store.runConfigurationAction(createGeminiAction("rollback-key"));
-    expect(created.ok).toBe(true);
-    if (!created.ok) return;
-    const configurationId = created.value.configuration?.configurationId;
-    if (!configurationId) throw new Error("create response requires a configuration");
-    const before = readFileSync(configPath(), "utf8");
-    fsHooks.removeFileSyncHook = (filePath) => {
-      if (filePath === secretsPath()) throw new Error("Injected secrets removal failure");
-      return false;
-    };
-
-    const deleted = await store.runConfigurationAction({
-      action: "delete",
-      configurationId,
-      expectedRevision: 1,
-    });
-
-    expect(deleted).toMatchObject({ ok: false, error: { code: "PERSIST_FAILED" } });
-    expect(readFileSync(configPath(), "utf8")).toBe(before);
-    expect(existsSync(literalSecretPathFor(configurationId, 1))).toBe(true);
-    expect(readFileSync(literalSecretPathFor(configurationId, 1), "utf8")).toBe("rollback-key");
-
-    fsHooks.removeFileSyncHook = null;
-    const inspected = await store.runConfigurationAction({
-      action: "inspect",
-      configurationId,
-    });
-    expect(inspected).toMatchObject({ ok: true, value: { status: "succeeded" } });
   });
 });

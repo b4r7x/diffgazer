@@ -59,12 +59,10 @@ describe("HelpScreen", () => {
     const { lastFrame } = renderRootFrame(100, 39, <HelpScreen />);
 
     await vi.waitFor(() => expect(lastFrame()).toContain("IN HISTORY"));
-    const frame = stripAnsi(lastFrame() ?? "");
-    const rendered = HELP_SHORTCUTS.map(({ key, label }) => `${key}:${label}`);
+    const rows = stripAnsi(lastFrame() ?? "").split("\n");
 
-    expect(new Set(rendered).size).toBe(rendered.length);
-    for (const { label } of HELP_SHORTCUTS) {
-      expect(frame).toContain(label);
+    for (const { key, label } of HELP_SHORTCUTS) {
+      expect(rows.some((row) => row.includes(key) && row.includes(label))).toBe(true);
     }
   });
 });

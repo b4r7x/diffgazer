@@ -1,6 +1,10 @@
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { buildExpectedEvidenceKey, createAdmissionEvidence } from "./admission-evidence.js";
+import {
+  buildExpectedEvidenceKey,
+  createAdmissionEvidence,
+  hashAdmissionEvidenceKeySync,
+} from "./admission-evidence.js";
 import type { SupportedProviderConfigurationRecord } from "./provider-config.js";
 import {
   computeProviderReadiness,
@@ -359,7 +363,7 @@ describe("server V2 readiness calculation", () => {
       status: "ready",
       checkedAt: CHECKED_AT,
       evidenceStatus: "passed",
-      evidenceKeyHash: result.details.evidenceKeyHash,
+      evidenceKeyHash: hashAdmissionEvidenceKeySync(key),
     });
     expect(JSON.stringify(result)).not.toContain("GEMINI_KEY");
     expect(JSON.stringify(result)).not.toContain("3".repeat(64));

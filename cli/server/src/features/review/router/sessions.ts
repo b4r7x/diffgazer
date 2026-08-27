@@ -2,11 +2,11 @@ import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { ActiveReviewSession, CreateReviewResponse } from "@diffgazer/core/schemas/review";
 import { zValidator } from "@hono/zod-validator";
 import { type Context, Hono, type Next } from "hono";
-import {
-  type AdmissionFailure,
-  type AdmissionFailureCode,
-  authorizeReviewExecution,
-} from "../../../shared/lib/ai/admission/service.js";
+import type {
+  AdmissionFailure,
+  AdmissionFailureCode,
+} from "../../../shared/lib/ai/admission/failure.js";
+import { authorizeReviewExecution } from "../../../shared/lib/ai/admission/service.js";
 import {
   createAdmissionServiceDependencies,
   resolveSelectedConfigurationId,

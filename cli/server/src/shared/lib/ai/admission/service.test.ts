@@ -17,11 +17,11 @@ import {
 import { estimateWorstCaseCostUsd, PLANNING_OUTPUT_TOKENS } from "../budget/cost.js";
 import { type BudgetLedger, createBudgetLedger } from "../budget/ledger.js";
 import { ADAPTER_REGISTRY } from "../providers/registry.js";
+import { ExecutionLeaseRegistry } from "./lease-registry.js";
 import {
   type AdmissionServiceDependencies,
   type AdmissionSnapshot,
   authorizeReviewExecution,
-  ExecutionLeaseRegistry,
   STRUCTURED_OUTPUT_FAILURE_GUIDANCE,
   toClientSafeAdmittedPlanJson,
 } from "./service.js";

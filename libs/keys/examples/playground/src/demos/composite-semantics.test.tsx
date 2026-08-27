@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { KeyboardWrapper } from "../testing/keyboard-wrapper";
 import { CommandPaletteDemo } from "./command-palette";
 import { ListNavigationDemo } from "./list-navigation";
@@ -46,10 +46,13 @@ describe("playground composite semantics", () => {
 
   it("keeps playground sidebar buttons activatable while list navigation is open", async () => {
     const user = userEvent.setup();
+    const onActivate = vi.fn();
     render(
       <>
         <nav aria-label="Playground demos">
-          <button type="button">Tab Bar</button>
+          <button type="button" onClick={onActivate}>
+            Tab Bar
+          </button>
         </nav>
         <ListNavigationDemo />
       </>,
@@ -59,9 +62,10 @@ describe("playground composite semantics", () => {
     const sidebarButton = screen.getByRole("button", { name: "Tab Bar" });
     await user.click(sidebarButton);
     expect(document.activeElement).toBe(sidebarButton);
+    expect(onActivate).toHaveBeenCalledTimes(1);
 
     await user.keyboard("{Enter}");
-    expect(document.activeElement).toBe(sidebarButton);
+    expect(onActivate).toHaveBeenCalledTimes(2);
   });
 
   it("links selected horizontal and vertical tabs to their labelled panels", async () => {

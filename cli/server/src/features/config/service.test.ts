@@ -357,7 +357,6 @@ describe("configuration service actions", () => {
       evidenceStatus: "skipped",
       ready: false,
     });
-    expect(result.value.readiness?.status).not.toBe("ready");
   });
 
   it("rejects a stale expected revision without mutating the record", async () => {

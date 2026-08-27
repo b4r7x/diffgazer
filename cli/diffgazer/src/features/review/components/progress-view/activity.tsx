@@ -9,7 +9,7 @@ import { SectionHeader } from "../../../../components/ui/section-header";
 import { useTheme } from "../../../../theme/provider";
 import { ActivityLog } from "../activity-log";
 
-// [ and ] step the lens filter, mirroring the web progress pane; f keeps its forward step.
+// [ and ] step the log's agent filter, mirroring the web progress pane; f keeps its forward step.
 const SOURCE_FILTER_STEPS: Record<string, 1 | -1> = { f: 1, "]": 1, "[": -1 };
 
 export interface ReviewProgressActivityProps {

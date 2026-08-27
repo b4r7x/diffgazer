@@ -176,9 +176,9 @@ function storeSessionEvent(session: ActiveSession, event: FullReviewStreamEvent)
     return { stored: false, firstDrop };
   }
 
-  // Overwrite an older slot, not the final one: once the cap is hit the final slot may
-  // hold the cap warning, and overwriting it would hide the truncation notice from late
-  // SSE replays.
+  // The terminal event takes the final slot; if that slot held the cap warning, move the
+  // warning back one slot instead of dropping it, so late SSE replays still see the
+  // truncation notice.
   const lastIndex = session.events.length - 1;
   if (isCapWarningEvent(session.events[lastIndex])) {
     const overwriteIndex = Math.max(lastIndex - 1, 0);

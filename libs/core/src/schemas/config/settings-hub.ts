@@ -43,7 +43,6 @@ const BILLING_MODE_LABELS = {
   "free-tier": "Evaluation/free quota",
   "pay-as-you-go": "Pay as you go (PAYG)",
   "route-specific": "Route-specific billing",
-  "local-resource": "Local execution costs",
   "subscription-credit": "Subscription credit/rate limits",
 } as const satisfies Record<BillingMode, string>;
 
@@ -54,7 +53,6 @@ function describeVerification(readiness: Readiness): string {
     case "ready":
       return `Verified ${checkedAt}`;
     case "conformance-failed":
-    case "local-conformance-failed":
       return `Failed ${checkedAt}`;
     // The outstanding notice hides the tuple's verdict behind it; the evidence
     // status still says what the last check found.

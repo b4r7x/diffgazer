@@ -46,11 +46,6 @@ describe("mapStepsToProgressData", () => {
       status: "completed",
       substeps: undefined,
     });
-    expect(result[1]?.substeps?.[0]).toMatchObject({
-      id: "detective",
-      tag: "DET",
-      label: "Detective",
-    });
     expect(result[1]?.substeps).toEqual([
       { id: "detective", tag: "DET", label: "Detective", status: "pending", detail: "queued" },
       {

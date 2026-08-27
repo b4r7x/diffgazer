@@ -25,7 +25,6 @@ export type HostedConformanceObservation = Readonly<{
   productId: HostedApiProductId;
   outcome?: TerminalOutcome;
   attemptCount?: number;
-  usageAvailability?: string;
   findingsCount?: number;
   /** Endpoint origin the adapter actually requested, observed from the injected fetch. */
   requestedEndpoint?: string;
@@ -161,10 +160,13 @@ function requestUrl(input: Parameters<typeof fetch>[0]): string {
   return input.url;
 }
 
-function mockResponse(body: unknown, init: { status?: number } = {}): Response {
+function mockResponse(
+  body: unknown,
+  init: { status?: number; headers?: Record<string, string> } = {},
+): Response {
   return new Response(JSON.stringify(body), {
     status: init.status ?? 200,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...init.headers },
   });
 }
 
@@ -263,7 +265,6 @@ export async function runHostedMockConformanceCase(
     productId: testCase.productId,
     outcome: result.receipt.outcome,
     attemptCount: result.receipt.attemptCount,
-    usageAvailability: result.receipt.usageAvailability,
     findingsCount,
     requestedEndpoint,
     source: "mock",
@@ -312,7 +313,14 @@ export const HOSTED_REQ_084_CASES: readonly HostedMockConformanceCase[] = [
     id: "REQ-084:rate-limit",
     requirement: "REQ-084",
     productId: "openrouter",
-    fetch: (async () => mockResponse({ error: "rate limited" }, { status: 429 })) as typeof fetch,
+    // `retry-after: 0` keeps the persistent rate limit real — the adapter still
+    // spends its whole 429 retry budget before terminating — without paying the
+    // default backoff's real-time sleeps in the offline matrix.
+    fetch: (async () =>
+      mockResponse(
+        { error: "rate limited" },
+        { status: 429, headers: { "retry-after": "0" } },
+      )) as typeof fetch,
     expectedOutcome: "transport-failed",
   },
   {
@@ -413,6 +421,17 @@ export const HOSTED_REQ_085_CASES: readonly HostedMockConformanceCase[] = [
     fetch: malformedRetryFetch(),
     expectedOutcome: "schema-failed",
     expectedAttemptCount: 2,
+  },
+  {
+    // Strict json-schema over the openai-compatible wire: a combination no other
+    // offline case covers (gemini is strict/google, openrouter strict/openrouter).
+    id: "REQ-085:moonshot-strict-schema",
+    requirement: "REQ-085",
+    productId: "moonshot",
+    fetch: successFetch("moonshot", { issues: [makeIssue()] }),
+    expectedOutcome: "completed",
+    expectedFindingsCount: 1,
+    expectedEndpoint: defaultEndpoint("moonshot"),
   },
   {
     id: "REQ-085:ollama-cloud-local-schema-validation",
@@ -578,7 +597,6 @@ export async function runHostedLiveProbe(
     productId: descriptor.productId,
     outcome: result.receipt.outcome,
     attemptCount: result.receipt.attemptCount,
-    usageAvailability: result.receipt.usageAvailability,
     findingsCount: result.result.issues.length,
     source: "live",
   };

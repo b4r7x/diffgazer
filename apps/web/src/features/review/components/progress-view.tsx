@@ -77,8 +77,8 @@ export interface ReviewProgressViewProps {
 interface AgentOption {
   id: string;
   name: string;
-  badgeLabel?: string;
-  badgeVariant?: BadgeVariant;
+  badgeLabel: string;
+  badgeVariant: BadgeVariant;
 }
 
 function AgentFilterBar({
@@ -119,7 +119,7 @@ function AgentFilterBar({
           className="h-auto min-h-6 px-2 py-1 text-2xs pointer-coarse:min-h-11 pointer-coarse:px-3"
         >
           <Badge
-            variant={agent.badgeVariant ?? "info"}
+            variant={agent.badgeVariant}
             size="sm"
             className="mr-1 group-data-[state=on]/segmented-item:border-primary-foreground/40 group-data-[state=on]/segmented-item:bg-primary-foreground/15 group-data-[state=on]/segmented-item:text-primary-foreground"
           >

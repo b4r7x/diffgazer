@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { PRODUCT_REGISTRY } from "../../providers/product-registry.js";
-import { READINESS_PRESENTATION, ReadinessSchema } from "../../schemas/config/index.js";
+import {
+  CONFORMANCE_TEST_COST_DISCLOSURE,
+  READINESS_PRESENTATION,
+  ReadinessSchema,
+} from "../../schemas/config/index.js";
 import type { ReadinessStatus } from "../../schemas/config/readiness.js";
-import { TERMINAL_OUTCOMES, type TerminalOutcome } from "../../schemas/review/execution.js";
+import {
+  TERMINAL_OUTCOMES,
+  type TerminalOutcome,
+  type UsageAvailability,
+} from "../../schemas/review/execution.js";
 import {
   CONFIGURATION_ERROR_COPY,
   CONFIGURE_PROVIDER_LABEL,
@@ -18,7 +26,6 @@ import {
   isProviderRecoveryError,
   looksLikeSerializedDiagnostic,
   sanitizePresentationText,
-  USAGE_AVAILABILITY_PRESENTATION,
 } from "./error-guidance.js";
 
 function makeReadiness(status: ReadinessStatus) {
@@ -74,11 +81,11 @@ function makeReadiness(status: ReadinessStatus) {
 
 describe("review error-guidance presentation", () => {
   it("derives setup copy from safe readiness guidance", () => {
-    const readiness = makeReadiness("local-conformance-failed");
+    const readiness = makeReadiness("conformance-failed");
 
     expect(getConfigurationNotReadyCopy({ productLabel: "ollama", readiness })).toEqual({
       title: "Configuration Not Ready (ollama)",
-      body: "The local model failed the structured review conformance check. Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Verify can re-check it.",
+      body: `The exact review path did not satisfy the structured output contract. Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Verify can re-check it. ${CONFORMANCE_TEST_COST_DISCLOSURE}`,
     });
     expect(CONFIGURATION_ERROR_COPY).toEqual({
       title: "Configuration Unavailable",
@@ -88,7 +95,7 @@ describe("review error-guidance presentation", () => {
   });
 
   it.each([
-    "local-conformance-failed",
+    "conformance-failed",
     "unsupported",
     "skipped",
   ] as const)("never says API key for %s readiness", (status) => {
@@ -184,14 +191,27 @@ describe("review error-guidance presentation", () => {
     expect(describeTerminalOutcome(outcome)).toEqual(TERMINAL_OUTCOME_COPY[outcome]);
   });
 
+  // Literal expectations, not the production map: an emptied or swapped usage
+  // entry must fail here rather than move the oracle with the defect.
+  const USAGE_COPY: Record<UsageAvailability, { label: string; detail: string }> = {
+    reported: {
+      label: "Usage reported",
+      detail: "Token usage is available for this review.",
+    },
+    "required-missing": {
+      label: "Usage unavailable",
+      detail: "This provider requires usage reporting, but none was returned.",
+    },
+    unavailable: {
+      label: "Usage unavailable",
+      detail: "Usage reporting is not available for this review.",
+    },
+  };
+
   it("describes usage and budget guidance without raw diagnostics", () => {
-    expect(describeUsageAvailability("reported")).toEqual(USAGE_AVAILABILITY_PRESENTATION.reported);
-    expect(describeUsageAvailability("required-missing")).toEqual(
-      USAGE_AVAILABILITY_PRESENTATION["required-missing"],
-    );
-    expect(describeUsageAvailability("unavailable")).toEqual(
-      USAGE_AVAILABILITY_PRESENTATION.unavailable,
-    );
+    expect(describeUsageAvailability("reported")).toEqual(USAGE_COPY.reported);
+    expect(describeUsageAvailability("required-missing")).toEqual(USAGE_COPY["required-missing"]);
+    expect(describeUsageAvailability("unavailable")).toEqual(USAGE_COPY.unavailable);
     expect(describeTerminalOutcome("budget-exhausted").title).toBe("Budget Exhausted");
   });
 

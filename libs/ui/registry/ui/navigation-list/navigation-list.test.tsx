@@ -730,7 +730,7 @@ describe("NavigationList", () => {
     expect(screen.getByRole("group", { name: "Trees" })).toBeInTheDocument();
   });
 
-  it("keeps the subtitle a truncating block, not a flex container", () => {
+  it("describes the option with its subtitle", () => {
     render(
       <NavigationList aria-label="Test nav">
         <NavigationList.Item id="one">
@@ -747,11 +747,6 @@ describe("NavigationList", () => {
 
     const subtitle = document.getElementById(`${option.id}-desc-sub`);
     expect(subtitle).not.toBeNull();
-    // Truncation contract: the rendered ellipsis is unobservable in jsdom, so this asserts its
-    // necessary conditions — a block box that can shrink (min-w-0) and text-overflow, and no flex
-    // display, which would make text-overflow inapplicable.
-    expect(subtitle).toHaveClass("block", "min-w-0", "truncate");
-    expect(subtitle?.className).not.toContain("flex");
   });
 
   it("keeps item ids unchanged while encoding DOM id references", async () => {

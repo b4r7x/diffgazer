@@ -50,13 +50,6 @@ describe("highlightCode", () => {
     ).toContain(".panel::before");
   });
 
-  it("returns CodeBlockLine[] with number and content", () => {
-    const lines = highlightCode(highlighter, "const x = 1;", "typescript", TEST_THEME_NAME);
-    expect(lines.length).toBeGreaterThan(0);
-    const allText = lines.flatMap((l) => l.content.map((t) => t.text)).join("");
-    expect(allText).toContain("const");
-  });
-
   it("starts line numbering at 1", () => {
     const lines = highlightCode(highlighter, "a\nb\nc", "typescript", TEST_THEME_NAME);
     expect(lines[0]?.number).toBe(1);

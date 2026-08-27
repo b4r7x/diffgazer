@@ -508,40 +508,40 @@ describe("useNavigation", () => {
       expectActiveOptionText("a");
     });
 
-    it("skips disabled items by default", async () => {
-      function DisabledItemList({ skipDisabled }: { skipDisabled?: boolean }) {
-        const ref = useRef<HTMLDivElement>(null);
-        const result = useNavigation({
-          containerRef: ref,
-          role: "option",
-          defaultHighlighted: "a",
-          skipDisabled,
-        });
+    function DisabledItemList({ skipDisabled }: { skipDisabled?: boolean }) {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "option",
+        defaultHighlighted: "a",
+        skipDisabled,
+      });
 
-        return (
-          <div
-            ref={ref}
-            role="listbox"
-            aria-label="Items"
-            aria-activedescendant={
-              result.highlighted === null ? undefined : itemId(result.highlighted)
-            }
-            tabIndex={0}
-            onKeyDown={result.onKeyDown}
-          >
-            <div id="item-a" role="option" data-value="a">
-              A
-            </div>
-            <div id="item-b" role="option" data-value="b" aria-disabled="true">
-              B
-            </div>
-            <div id="item-c" role="option" data-value="c">
-              C
-            </div>
+      return (
+        <div
+          ref={ref}
+          role="listbox"
+          aria-label="Items"
+          aria-activedescendant={
+            result.highlighted === null ? undefined : itemId(result.highlighted)
+          }
+          tabIndex={0}
+          onKeyDown={result.onKeyDown}
+        >
+          <div id="item-a" role="option" data-value="a">
+            A
           </div>
-        );
-      }
+          <div id="item-b" role="option" data-value="b" aria-disabled="true">
+            B
+          </div>
+          <div id="item-c" role="option" data-value="c">
+            C
+          </div>
+        </div>
+      );
+    }
 
+    it("skips disabled items by default", async () => {
       render(<DisabledItemList />);
       const user = await focusListbox();
       await user.keyboard("{ArrowDown}");
@@ -549,39 +549,6 @@ describe("useNavigation", () => {
     });
 
     it("navigates to disabled items when skipDisabled is false", async () => {
-      function DisabledItemList({ skipDisabled }: { skipDisabled?: boolean }) {
-        const ref = useRef<HTMLDivElement>(null);
-        const result = useNavigation({
-          containerRef: ref,
-          role: "option",
-          defaultHighlighted: "a",
-          skipDisabled,
-        });
-
-        return (
-          <div
-            ref={ref}
-            role="listbox"
-            aria-label="Items"
-            aria-activedescendant={
-              result.highlighted === null ? undefined : itemId(result.highlighted)
-            }
-            tabIndex={0}
-            onKeyDown={result.onKeyDown}
-          >
-            <div id="item-a" role="option" data-value="a">
-              A
-            </div>
-            <div id="item-b" role="option" data-value="b" aria-disabled="true">
-              B
-            </div>
-            <div id="item-c" role="option" data-value="c">
-              C
-            </div>
-          </div>
-        );
-      }
-
       render(<DisabledItemList skipDisabled={false} />);
       const user = await focusListbox();
       await user.keyboard("{ArrowDown}");

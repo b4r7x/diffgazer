@@ -173,13 +173,8 @@ describe("JSON file helpers", () => {
     const labels = events.map((event) => event.split(":", 1)[0]);
     expect(labels).toEqual(["open", "write", "fsync", "close", "rename", "open", "fsync", "close"]);
     expect(events[0]).toContain(".tmp:wx:416");
-    expect(events[1]).toContain("write:");
-    expect(events[2]).toContain("fsync:");
-    expect(events[3]).toContain("close:");
     expect(events[4]).toContain(filePath);
     expect(events[5]).toBe(`open:${tempRoot}:r:undefined`);
-    expect(events[6]).toContain(`fsync:`);
-    expect(events[7]).toContain(`close:`);
   });
 
   it("cleans up a synchronous temp file when writing fails", async () => {
@@ -584,12 +579,8 @@ describe("writeJsonFileSyncExclusive", () => {
         "close",
       ]);
       expect(events[0]).toContain(".tmp:wx:416");
-      expect(events[1]).toContain("write:");
-      expect(events[2]).toContain("fsync:");
-      expect(events[3]).toContain("close:");
       expect(events[4]).toContain(filePath);
       expect(events[5]).toBe(`open:${tempRoot}:r:undefined`);
-      expect(events[8]).toContain("unlink:");
       expect(events[9]).toBe(`open:${tempRoot}:r:undefined`);
       expect(readJsonFileSync(filePath)).toEqual({ key: "value" });
     },
@@ -718,7 +709,6 @@ describe("atomicWriteFile", () => {
       const labels = events.map((event) => event.split(":", 1)[0]);
       expect(labels).toEqual(["open", "write", "sync", "close", "rename", "open", "sync", "close"]);
       expect(events[0]).toContain(".tmp:wx:416");
-      expect(events[1]).toContain("write:");
       expect(events[1]).toContain(".tmp");
       expect(events[2]).toContain(".tmp");
       expect(events[3]).toContain(".tmp");

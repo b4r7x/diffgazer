@@ -248,27 +248,34 @@ describe("docs example wiring — examples", () => {
       .filter((ref) => !exampleExists(ref.library, ref.item, ref.name))
       .map((ref) => `${ref.library}/${ref.item}: ${ref.name}`);
 
+    expect(referenced.length, "expected example refs to scan").toBeGreaterThan(0);
     expect(missing).toEqual([]);
   });
 
   it("validates frontmatter -> generated data join and hero refs", () => {
-    const missingData = collectMdxGeneratedDataRefs()
+    const dataRefs = collectMdxGeneratedDataRefs();
+    const heroRefs = collectScaffoldHeroRefs();
+    const missingData = dataRefs
       .filter((ref) => !generatedDataMatchesFrontmatter(ref))
       .map(formatFrontmatterDataRef);
-    const missingHeroes = collectScaffoldHeroRefs()
+    const missingHeroes = heroRefs
       .filter((ref) => !scaffoldHeroExists(ref))
       .map(formatScaffoldHeroRef);
 
+    expect(dataRefs.length, "expected frontmatter data refs to scan").toBeGreaterThan(0);
+    expect(heroRefs.length, "expected scaffold hero refs to scan").toBeGreaterThan(0);
     expect(missingData).toEqual([]);
     expect(missingHeroes).toEqual([]);
   });
 
   it("requires hook pages with example sections to declare source examples", () => {
     const counts = collectHookDocExampleCounts();
-    const missing = collectHookPagesWithExamplesSection().filter(
-      (hook) => (counts.get(hook) ?? 0) === 0,
-    );
+    const hookPages = collectHookPagesWithExamplesSection();
+    const missing = hookPages.filter((hook) => (counts.get(hook) ?? 0) === 0);
 
+    expect(hookPages.length, "expected hook pages with example sections to scan").toBeGreaterThan(
+      0,
+    );
     expect(missing).toEqual([]);
   });
 

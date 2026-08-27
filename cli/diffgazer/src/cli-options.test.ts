@@ -7,20 +7,19 @@ describe("resolveCliAction", () => {
     expect(HELP_TEXT).not.toContain(["Product", "CLI"].join(" "));
   });
 
-  test("starts the web flow by default and opens the browser", () => {
+  test("returns the web action by default", () => {
     expect(resolveCliAction([])).toEqual({
       type: "web",
       mode: "prod",
     });
   });
 
-  test("starts beta TUI only when requested and keeps browser closed", () => {
-    const action = resolveCliAction(["--tui"]);
-
-    if (action.type !== "tui") {
-      expect.fail(`expected tui action, got ${action.type}`);
-    }
-    expect(action.mode).toBe("prod");
+  test("returns the tui action only when --tui is passed", () => {
+    expect(resolveCliAction(["--tui"])).toEqual({
+      type: "tui",
+      mode: "prod",
+      theme: undefined,
+    });
   });
 
   test("keeps dev mode and a supported theme for the TUI flow", () => {

@@ -79,7 +79,7 @@ describe("review start readiness gate", () => {
   it("allows completed saved review resume without readiness or secret access", () => {
     expect(
       canStartReview({
-        readiness: makeReadiness("local-conformance-failed"),
+        readiness: makeReadiness("conformance-failed"),
         allowResumeWithoutSetup: true,
       }),
     ).toBe(true);

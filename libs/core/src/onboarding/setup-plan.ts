@@ -13,9 +13,6 @@ import {
 
 export type SetupProductId = RunnableProductId | CandidateProductId;
 
-type ConfigurationField =
-  RunnableProductDescriptor<RunnableProductId>["configuration"]["fields"][number];
-
 export type RunnableSetupStep =
   | {
       readonly id: "product";
@@ -23,13 +20,11 @@ export type RunnableSetupStep =
     }
   | {
       readonly id: "endpoint-binding";
-      readonly requiredFields: readonly ConfigurationField[];
       readonly endpoints: RunnableProductDescriptor<RunnableProductId>["configuration"]["endpoints"];
     }
   | {
       readonly id: "authentication";
       readonly credentialKind: RunnableProductDescriptor<RunnableProductId>["configuration"]["credentialKind"];
-      readonly requiredFields: readonly ConfigurationField[];
     }
   | {
       readonly id: "model";
@@ -55,7 +50,6 @@ export interface RunnableSetupPlan {
   readonly kind: "runnable";
   readonly productId: RunnableProductId;
   readonly transportFamily: TransportFamily;
-  readonly requiredFields: readonly ConfigurationField[];
   readonly steps: readonly RunnableSetupStep[];
   readonly remediation: SetupRemediation | null;
 }
@@ -78,26 +72,18 @@ function buildRunnablePlan(
   product: RunnableProductDescriptor<RunnableProductId>,
   readiness?: Readiness,
 ): RunnableSetupPlan {
-  const endpointFields = product.configuration.fields.filter((field) => field === "endpoint");
-  const authenticationFields = product.configuration.fields.filter(
-    (field) => field === "credential",
-  );
-  const steps: RunnableSetupStep[] = [{ id: "product", label: product.presentation.setupLabel }];
-
-  if (product.configuration.endpoints.length > 0) {
-    steps.push({
+  const steps: RunnableSetupStep[] = [
+    { id: "product", label: product.presentation.setupLabel },
+    {
       id: "endpoint-binding",
-      requiredFields: endpointFields,
       endpoints: product.configuration.endpoints,
-    });
-  }
-  if (authenticationFields.length > 0) {
-    steps.push({
+    },
+    {
       id: "authentication",
       credentialKind: product.configuration.credentialKind,
-      requiredFields: authenticationFields,
-    });
-  }
+    },
+  ];
+
   steps.push(
     {
       id: "model",
@@ -117,7 +103,6 @@ function buildRunnablePlan(
     kind: "runnable",
     productId: product.id,
     transportFamily: product.transportFamily,
-    requiredFields: product.configuration.fields,
     steps,
     remediation: buildRemediation(readiness),
   };

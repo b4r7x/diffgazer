@@ -158,9 +158,4 @@ describe("hosted configuration input", () => {
   ])("rejects a hosted endpoint tuple outside its product contract", (input) => {
     expect(ClientConfigurationInputSchema.safeParse(input).success).toBe(false);
   });
-
-  it("keeps the exact normalized hosted tuple valid", () => {
-    expect(ClientConfigurationInputSchema.parse(hostedInput)).toEqual(hostedInput);
-    expect(HostedApiEndpointSchema.parse(hostedInput.endpoint)).toBe(hostedInput.endpoint);
-  });
 });

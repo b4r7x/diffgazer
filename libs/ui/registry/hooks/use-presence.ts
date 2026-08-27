@@ -87,8 +87,8 @@ export function usePresence({
       completeExitFromEffect();
       return;
     }
-    // React 19 doesn't expose animationcancel via synthetic props, and fireEvent doesn't reach
-    // portaled descendants — drive animation-based unmount from the DOM, not synthetic events.
+    // React 19 exposes no synthetic animationcancel, so the exit has to be driven from native
+    // listeners on the element itself.
     const handleAnimation = (event: globalThis.AnimationEvent) => {
       if (event.target !== element) return;
       const expected = exitAnimationNamesRef.current;

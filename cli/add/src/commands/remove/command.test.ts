@@ -16,6 +16,7 @@ import type { ResolvedConfig } from "../../context.js";
 import { ctx } from "../../context.js";
 import { MUTATION_LOCK_RELATIVE } from "../../utils/mutation-lock.js";
 import { addCommand } from "../add/command.js";
+import { styledConfig } from "../../testing/css-fixture.js";
 import { removeCommand, resolveRemoveTransactionFiles } from "./command.js";
 
 vi.mock("@clack/prompts", async (importOriginal) => {
@@ -52,42 +53,14 @@ function createRemoveFixtureRoot(): string {
 
 describe("resolveRemoveTransactionFiles", () => {
   test("snapshots the manifest and configured stylesheet for the CLI transaction", () => {
-    const config: ResolvedConfig = {
-      aliases: {
-        components: "@/components/ui",
-        utils: "@/lib/utils",
-        lib: "@/lib",
-        hooks: "@/hooks",
-      },
-      rsc: false,
-      componentsFsPath: "src/components/ui",
-      hooksFsPath: "src/hooks",
-      libFsPath: "src/lib",
-      stylesFsPath: "src/styles",
-      tailwind: { css: "src/styles/styles.css" },
-    };
-
-    expect(resolveRemoveTransactionFiles("/projects/app", config)).toEqual([
+    expect(resolveRemoveTransactionFiles("/projects/app", styledConfig())).toEqual([
       "/projects/app/diffgazer.json",
       "/projects/app/src/styles/styles.css",
     ]);
   });
 
   test("snapshots only the manifest when the project has no configured stylesheet", () => {
-    const config: ResolvedConfig = {
-      aliases: {
-        components: "@/components/ui",
-        utils: "@/lib/utils",
-        lib: "@/lib",
-        hooks: "@/hooks",
-      },
-      rsc: false,
-      componentsFsPath: "src/components/ui",
-      hooksFsPath: "src/hooks",
-      libFsPath: "src/lib",
-      stylesFsPath: "src/styles",
-      tailwind: undefined,
-    };
+    const config: ResolvedConfig = { ...styledConfig(), tailwind: undefined };
 
     expect(resolveRemoveTransactionFiles("/projects/app", config)).toEqual([
       "/projects/app/diffgazer.json",

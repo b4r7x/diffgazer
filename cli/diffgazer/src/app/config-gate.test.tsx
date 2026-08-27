@@ -137,9 +137,11 @@ describe("ConfigGate app integration", () => {
     serverStatusState.current = { status: "connected" };
     serverStatusState.latest = { status: "connected" };
 
-    render(<App mode="prod" />);
+    const { lastFrame } = render(<App mode="prod" />);
 
-    await vi.waitFor(() => expect(initQueryState.current.data).not.toBeUndefined());
+    await vi.waitFor(() => expect(lastFrame()).not.toContain("Checking configuration"));
+    await vi.waitFor(() => expect(lastFrame()).toContain("SELECT PRODUCT"));
+    expect(lastFrame()).not.toContain("Configuration Unavailable");
   });
 });
 

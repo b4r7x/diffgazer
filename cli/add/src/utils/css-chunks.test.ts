@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { editChunkBody, seedChunk, styledConfig } from "../testing/css-fixture.js";
 import { getRegistry, type ResolvedConfig, resolveConfig } from "../context.js";
 import {
   buildExpectedChunkContentsForItem,
@@ -19,23 +20,6 @@ const TAILWIND_CSS_IMPORT_RE =
 
 function countOccurrences(content: string, needle: string): number {
   return content.split(needle).length - 1;
-}
-
-function styledConfig(): ResolvedConfig {
-  return {
-    aliases: {
-      components: "@/components/ui",
-      utils: "@/lib/utils",
-      lib: "@/lib",
-      hooks: "@/hooks",
-    },
-    rsc: false,
-    componentsFsPath: "src/components/ui",
-    hooksFsPath: "src/hooks",
-    libFsPath: "src/lib",
-    stylesFsPath: "src/styles",
-    tailwind: { css: "src/styles/styles.css" },
-  };
 }
 
 beforeEach(() => {
@@ -231,29 +215,9 @@ describe("planComponentCss", () => {
 });
 
 describe("removeCssChunks", () => {
-  function seedChunk(config: ResolvedConfig): { stylesPath: string; hash: string } {
-    mkdirSync(join(root, "src/styles"), { recursive: true });
-    const stylesPath = join(root, "src/styles/styles.css");
-    writeFileSync(stylesPath, "/* base */\n");
-    const plan = planComponentCss(["dialog-shell"], root, config);
-    if (!plan.fileOp) throw new Error("Expected dialog-shell to add a CSS chunk.");
-    writeFileSync(stylesPath, plan.fileOp.content);
-    const [hash] = plan.chunksByItem.get("ui/dialog-shell") ?? [];
-    if (!hash) throw new Error("Expected dialog-shell to record a chunk hash.");
-    return { stylesPath, hash };
-  }
-
-  function editChunkBody(stylesPath: string, hash: string): void {
-    const edited = readFileSync(stylesPath, "utf-8").replace(
-      `/* dgadd:css-end ${hash} */`,
-      `  --user-edit: teal;\n/* dgadd:css-end ${hash} */`,
-    );
-    writeFileSync(stylesPath, edited);
-  }
-
   test("removes a pristine managed chunk", () => {
     const config = styledConfig();
-    const { hash } = seedChunk(config);
+    const { hash } = seedChunk(root, config);
 
     const result = removeCssChunks(new Set([hash]), root, config);
 
@@ -265,7 +229,7 @@ describe("removeCssChunks", () => {
 
   test("preserves an edited chunk instead of deleting the user's work", () => {
     const config = styledConfig();
-    const { stylesPath, hash } = seedChunk(config);
+    const { stylesPath, hash } = seedChunk(root, config);
     editChunkBody(stylesPath, hash);
 
     const result = removeCssChunks(new Set([hash]), root, config);
@@ -279,7 +243,7 @@ describe("removeCssChunks", () => {
 
   test("force removes an edited chunk when the user overrides", () => {
     const config = styledConfig();
-    const { stylesPath, hash } = seedChunk(config);
+    const { stylesPath, hash } = seedChunk(root, config);
     editChunkBody(stylesPath, hash);
 
     const result = removeCssChunks(new Set([hash]), root, config, true);

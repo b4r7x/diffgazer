@@ -16,8 +16,8 @@ import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
+import { ExecutionLeaseRegistry } from "../../shared/lib/ai/admission/lease-registry.js";
 import type { AdmittedExecutionPlan } from "../../shared/lib/ai/admission/service.js";
-import { ExecutionLeaseRegistry } from "../../shared/lib/ai/admission/service.js";
 import { createBudgetLedger } from "../../shared/lib/ai/budget/ledger.js";
 import { buildExecutionResult } from "../../shared/lib/ai/client/generate.js";
 import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
@@ -76,8 +76,6 @@ const DEFAULT_REVIEW_RESULT: ReviewResult = {
 let createReviewSession: ServiceModule["createReviewSession"];
 let buildReviewInputHash: ServiceModule["buildReviewInputHash"];
 let streamActiveSessionToSSE: SseReplayModule["streamActiveSessionToSSE"];
-let addEvent: SessionsModule["addEvent"];
-let cancelSession: SessionsModule["cancelSession"];
 let cancelSessionForUser: SessionsModule["cancelSessionForUser"];
 let createSession: SessionsModule["createSession"];
 let deleteSessionForTests: SessionsModule["deleteSessionForTests"];
@@ -85,7 +83,6 @@ let getSession: SessionsModule["getSession"];
 let getActiveSessionForProject: SessionsModule["getActiveSessionForProject"];
 let buildReviewConfigKey: SessionsModule["buildReviewConfigKey"];
 let buildScopeKey: SessionsModule["buildScopeKey"];
-let markComplete: SessionsModule["markComplete"];
 let markReady: SessionsModule["markReady"];
 let createGitService: GitModule["createGitService"];
 let originalDiffgazerHome: string | undefined;
@@ -243,9 +240,15 @@ function serviceReviewConfigKey(
   });
 }
 
+interface DispatchIdentity {
+  executionFingerprint: string;
+  modelId: string;
+}
+
 function makeAIClient(
   result: ReviewResult = DEFAULT_REVIEW_RESULT,
   executionFingerprint: ExecutionFingerprint = DEFAULT_EXECUTION_FINGERPRINT,
+  dispatchLog?: DispatchIdentity[],
 ): InitializedAIClient {
   const plan = serviceAdmittedPlan(executionFingerprint);
   const ledger = createBudgetLedger(plan.limits);
@@ -275,7 +278,13 @@ function makeAIClient(
     _prompt: string,
     schema: T,
     _options?: { signal?: AbortSignal },
-  ) => ok(schema.parse(result));
+  ) => {
+    dispatchLog?.push({
+      executionFingerprint: plan.executionFingerprint,
+      modelId: plan.evidenceKey.modelId,
+    });
+    return ok(schema.parse(result));
+  };
 
   return {
     provider: executionFingerprint.provider,
@@ -390,8 +399,6 @@ beforeAll(async () => {
   createReviewSession = service.createReviewSession;
   buildReviewInputHash = service.buildReviewInputHash;
   streamActiveSessionToSSE = sseReplay.streamActiveSessionToSSE;
-  addEvent = sessions.addEvent;
-  cancelSession = sessions.cancelSession;
   cancelSessionForUser = sessions.cancelSessionForUser;
   createSession = sessions.createSession;
   deleteSessionForTests = sessions.deleteSessionForTests;
@@ -399,7 +406,6 @@ beforeAll(async () => {
   getActiveSessionForProject = sessions.getActiveSessionForProject;
   buildReviewConfigKey = sessions.buildReviewConfigKey;
   buildScopeKey = sessions.buildScopeKey;
-  markComplete = sessions.markComplete;
   markReady = sessions.markReady;
   createGitService = git.createGitService;
 });
@@ -850,164 +856,6 @@ describe("createReviewSession", () => {
   });
 });
 
-describe("streamActiveSessionToSSE", () => {
-  it("replays buffered events to the SSE stream", async () => {
-    const stream = makeMockStream();
-    const session = createSession("replay-session", {
-      projectPath: projectRoot,
-      headCommit: "abc123",
-      statusHash: "hash123",
-      statusHashKind: "full" as const,
-      mode: "unstaged",
-    });
-    trackSession(session.reviewId);
-    const events: FullReviewStreamEvent[] = [
-      { type: "step_start", step: "diff", timestamp: new Date().toISOString() },
-      {
-        type: "complete",
-        result: { issues: [] },
-        reviewId: session.reviewId,
-      },
-    ];
-    session.events.push(...events);
-    session.isComplete = true;
-
-    await streamActiveSessionToSSE(stream, session);
-
-    expect(parsedEvents(stream)).toEqual(events);
-  });
-
-  it("streams live events until a terminal event arrives", async () => {
-    const stream = makeMockStream();
-    const session = createSession("live-session", {
-      projectPath: projectRoot,
-      headCommit: "abc123",
-      statusHash: "hash123",
-      statusHashKind: "full" as const,
-      mode: "unstaged",
-    });
-    trackSession(session.reviewId);
-
-    const replay = streamActiveSessionToSSE(stream, session);
-    addEvent(session.reviewId, {
-      type: "complete",
-      result: { issues: [] },
-      reviewId: session.reviewId,
-    });
-
-    await replay;
-
-    expect(parsedEvents(stream)).toMatchObject([{ type: "complete", reviewId: session.reviewId }]);
-  });
-
-  it("writes a stale error when the session cannot be subscribed", async () => {
-    const stream = makeMockStream();
-    const session = createSession("stale-session", {
-      projectPath: projectRoot,
-      headCommit: "abc123",
-      statusHash: "hash123",
-      statusHashKind: "full" as const,
-      mode: "unstaged",
-    });
-    trackSession(session.reviewId);
-    deleteSessionForTests(session.reviewId);
-
-    await streamActiveSessionToSSE(stream, session);
-
-    expect(parsedEvents(stream)).toMatchObject([
-      { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
-    ]);
-  });
-
-  it("stops without writing when the client aborts", async () => {
-    const stream = makeMockStream();
-    const session = createSession("abort-session", {
-      projectPath: projectRoot,
-      headCommit: "abc123",
-      statusHash: "hash123",
-      statusHashKind: "full" as const,
-      mode: "unstaged",
-    });
-    const controller = new AbortController();
-    trackSession(session.reviewId);
-
-    const replay = streamActiveSessionToSSE(stream, session, controller.signal);
-    controller.abort();
-
-    await replay;
-
-    expect(stream.events).toEqual([]);
-  });
-
-  it("writes a terminal event delivered via addEvent without depending on a timer", async () => {
-    const stream = makeMockStream();
-    const session = createSession("real-flow", {
-      projectPath: projectRoot,
-      headCommit: "abc123",
-      statusHash: "hash123",
-      statusHashKind: "full" as const,
-      mode: "unstaged",
-    });
-    trackSession(session.reviewId);
-
-    const replay = streamActiveSessionToSSE(stream, session);
-    // Let the function reach its subscribe/onComplete registration.
-    await Promise.resolve();
-    addEvent(session.reviewId, {
-      type: "complete",
-      result: { issues: [] },
-      reviewId: session.reviewId,
-    });
-    markComplete(session.reviewId);
-
-    await replay;
-
-    expect(parsedEvents(stream)).toMatchObject([{ type: "complete", reviewId: session.reviewId }]);
-  });
-
-  it("resolves promptly when the session completes without emitting a terminal event", async () => {
-    const stream = makeMockStream();
-    const session = createSession("silent-complete", {
-      projectPath: projectRoot,
-      headCommit: "abc123",
-      statusHash: "hash123",
-      statusHashKind: "full" as const,
-      mode: "unstaged",
-    });
-    trackSession(session.reviewId);
-
-    const replay = streamActiveSessionToSSE(stream, session);
-    await Promise.resolve();
-    markComplete(session.reviewId);
-
-    await replay;
-    // No terminal event in events[]; consumer-visible behavior is silent close.
-    expect(stream.events).toEqual([]);
-  });
-
-  it("emits the stale error from cancelSession via the subscriber path", async () => {
-    const stream = makeMockStream();
-    const session = createSession("cancel-stream", {
-      projectPath: projectRoot,
-      headCommit: "abc123",
-      statusHash: "hash123",
-      statusHashKind: "full" as const,
-      mode: "unstaged",
-    });
-    trackSession(session.reviewId);
-
-    const replay = streamActiveSessionToSSE(stream, session);
-    await Promise.resolve();
-    cancelSession(session.reviewId);
-
-    await replay;
-
-    expect(parsedEvents(stream)).toMatchObject([
-      { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
-    ]);
-  });
-});
-
 describe("POST-to-stream integration", () => {
   it("creates a review session, streams events, and ends with a terminal complete", async () => {
     const aiClient = makeAIClient();
@@ -1385,8 +1233,8 @@ describe("POST-to-stream integration", () => {
 
 describe("admitted configuration execution", () => {
   it("uses one exact admitted configuration and model tuple for every lens invocation", async () => {
-    const aiClient = makeAIClient();
-    const generate = vi.spyOn(aiClient, "generate");
+    const dispatches: DispatchIdentity[] = [];
+    const aiClient = makeAIClient(DEFAULT_REVIEW_RESULT, DEFAULT_EXECUTION_FINGERPRINT, dispatches);
     const result = await createReviewSession(aiClient, {
       mode: "unstaged",
       projectPath: projectRoot,
@@ -1402,12 +1250,15 @@ describe("admitted configuration execution", () => {
       }
     });
 
-    expect(generate.mock.calls.length).toBeGreaterThanOrEqual(2);
-    for (const call of generate.mock.calls) {
-      expect(call[0]).toEqual(expect.any(String));
+    expect(dispatches.length).toBeGreaterThanOrEqual(2);
+    const admitted = serviceAdmittedPlan();
+    expect(new Set(dispatches.map((dispatch) => JSON.stringify(dispatch))).size).toBe(1);
+    for (const dispatch of dispatches) {
+      expect(dispatch).toEqual({
+        executionFingerprint: admitted.executionFingerprint,
+        modelId: admitted.evidenceKey.modelId,
+      });
     }
-    expect(aiClient.authorization?.plan.evidenceKey.modelId).toBe("openai/gpt-4.1");
-    expect(aiClient.authorization?.plan.configurationId).toBe("openrouter-primary");
   });
 
   it("does not reuse session state when the admitted execution fingerprint changes", async () => {

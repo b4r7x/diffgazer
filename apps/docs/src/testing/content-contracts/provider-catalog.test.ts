@@ -212,6 +212,16 @@ const KEYLESS_MODEL_LIST_URLS = [
   "https://ollama.com/v1/models",
 ] as const;
 
+const KEYLESS_CATALOG_BULLET_LEAD = "**Keyless, for every catalog-backed product.**";
+
+function extractBullet(section: string, lead: string): string {
+  const bullet = section.split("\n").find((line) => line.startsWith(`- ${lead}`));
+  if (bullet === undefined) {
+    throw new Error(`Bullet "${lead}" not found`);
+  }
+  return bullet;
+}
+
 const KEY_BEARING_LIST_PRODUCTS = [
   "zai",
   "opencode-zen",
@@ -237,11 +247,12 @@ describe("provider catalog privacy copy", () => {
     const privacy = readConcept("privacy");
     const catalogSection = extractSection(privacy, "Model-catalog requests, during setup");
 
+    const keylessCatalogBullet = extractBullet(catalogSection, KEYLESS_CATALOG_BULLET_LEAD);
     const sharedCatalogProducts = SELECTABLE_PRODUCT_IDS.filter(
       (productId) => PROVIDER_OVERLAY[productId] !== undefined,
     );
     for (const productId of sharedCatalogProducts) {
-      expect(catalogSection).toContain(PRODUCT_REGISTRY[productId].presentation.name);
+      expect(keylessCatalogBullet).toContain(PRODUCT_REGISTRY[productId].presentation.name);
     }
 
     for (const url of KEYLESS_MODEL_LIST_URLS) {

@@ -346,10 +346,10 @@ describe("ReviewProgressView", () => {
       onCancel: vi.fn(),
     });
 
-    // The Partial Analysis Callout announces on appear via a live status region (F-353c).
+    // The Partial Analysis Callout announces on appear via a live status region.
     const status = screen.getByText("Partial Analysis").closest('[role="status"]');
     if (!status) throw new Error("Partial Analysis callout did not render as a live status region");
-    expect(status).toHaveTextContent("Partial Analysis");
+    expect(status).toHaveTextContent("1 agent failed");
   });
 
   it("returns home from the error screen via Back to Home without cancelling", async () => {
@@ -1674,12 +1674,13 @@ describe("ReviewProgressView elapsed clock", () => {
         }),
       });
 
-      // Between two whole seconds: two clocks with their own intervals report
-      // different seconds here, one shared clock reports the same one twice.
-      act(() => vi.advanceTimersByTime(600));
+      // Past one tick of the shared clock: both readouts then come from the same
+      // `now` sample (T0 + 1000 -> 47s), so a readout that sampled Date.now()
+      // during render would print T0 + 1600 -> 48s and fail here.
+      act(() => vi.advanceTimersByTime(1_600));
 
-      expect(screen.getByText("00:46")).toBeVisible();
-      expect(screen.getByText(/waiting for model response · 46s$/)).toBeVisible();
+      expect(screen.getByText("00:47")).toBeVisible();
+      expect(screen.getByText(/waiting for model response · 47s$/)).toBeVisible();
     } finally {
       vi.useRealTimers();
     }

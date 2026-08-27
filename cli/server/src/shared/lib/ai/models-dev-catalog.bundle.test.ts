@@ -22,8 +22,8 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { assertTempHome } from "../testing/temp-home.js";
 import {
+  catalogProviderModels,
   discoverConfigurationCatalog,
-  getProviderModels,
   modelInfoFromBoundedObservation,
 } from "./models-dev-catalog.js";
 
@@ -33,6 +33,30 @@ const otherBundledCatalogInputs = {
   PROVIDER_DERIVED,
   PRODUCT_REGISTRY,
 };
+
+/**
+ * The picker's newest-first contract, asserted over whatever the regenerated
+ * snapshot currently holds: dated rows descend by release date, ties break on id
+ * ascending, and every dateless row follows every dated one.
+ */
+function expectNewestFirst(models: readonly { id: string; releaseDate?: string }[]): void {
+  let previous: { id: string; releaseDate: string } | null = null;
+  let seenDateless = false;
+  for (const model of models) {
+    if (model.releaseDate === undefined) {
+      seenDateless = true;
+      continue;
+    }
+    expect(seenDateless, `${model.id} is dated but follows a dateless row`).toBe(false);
+    if (previous) {
+      const ordered =
+        previous.releaseDate > model.releaseDate ||
+        (previous.releaseDate === model.releaseDate && previous.id < model.id);
+      expect(ordered, `${model.id} must not precede ${previous.id}`).toBe(true);
+    }
+    previous = { id: model.id, releaseDate: model.releaseDate };
+  }
+}
 
 const snapshotObservations = () =>
   transformCatalogObservation({
@@ -133,7 +157,7 @@ describe("bundled catalog observations", () => {
         .sort();
 
       if (offeredModelIds.length === 0) {
-        const serverModels = await getProviderModels(observation.productId);
+        const serverModels = await catalogProviderModels.get(observation.productId);
         expect(serverModels.source).toBe("snapshot");
         expect(serverModels.cached).toBe(false);
         expect(serverModels.models).toEqual([]);
@@ -161,7 +185,7 @@ describe("bundled catalog observations", () => {
         continue;
       }
 
-      const serverModels = await getProviderModels(observation.productId);
+      const serverModels = await catalogProviderModels.get(observation.productId);
       expect(serverModels.source).toBe("snapshot");
       expect(serverModels.cached).toBe(false);
       expect(serverModels.models.map((model) => model.id).sort()).toEqual(offeredModelIds);
@@ -195,30 +219,18 @@ describe("bundled catalog observations", () => {
   // policy exempts from the withhold; `openrouter/free` is a router that names
   // no downstream model and does not.
   it("fills the OpenRouter picker's free tab with pinned variants and no routers", async () => {
-    const { models } = await getProviderModels("openrouter");
+    const { models } = await catalogProviderModels.get("openrouter");
     const modelIds = models.map(({ id }) => id);
 
-    // Newest release first, per the bundled catalog's own dates.
-    expect(models.filter(({ tier }) => tier === "free").map(({ id }) => id)).toEqual([
-      "stealth/ox-alpha",
-      "dots-studio/dots-3-note-preview:free",
-      "liquid/lfm-2.5-2.6b:free",
-      "nvidia/nemotron-3.5-lightning:free",
-      "thinkingmachines/inkling-small:free",
-      "poolside/laguna-s-2.1:free",
-      "thinkingmachines/inkling:free",
-      "poolside/laguna-xs-2.1:free",
-      "cohere/north-mini-code:free",
-      "z-ai/glm-5.2:free",
-      "nvidia/nemotron-3-ultra-550b-a55b:free",
-      "nvidia/nemotron-3.5-content-safety:free",
-      "minimax/minimax-m3:free",
-      "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-      "google/gemma-4-26b-a4b-it:free",
-      "google/gemma-4-31b-it:free",
-      "minimax/minimax-m2.7:free",
-      "nvidia/nemotron-3-super-120b-a12b:free",
-    ]);
+    const freeModels = models.filter(({ tier }) => tier === "free");
+
+    expect(freeModels.length).toBeGreaterThan(0);
+    for (const { id } of freeModels) {
+      // A pinned variant names its downstream vendor and model; a router does not.
+      expect(id, "a free row must name a downstream vendor route").toMatch(/^[^/]+\/[^/]+$/);
+      expect(id.startsWith("openrouter/"), `${id} is a router, not a pinned variant`).toBe(false);
+    }
+    expectNewestFirst(freeModels);
     expect(modelIds).not.toContain("openrouter/auto");
     expect(modelIds).not.toContain("openrouter/free");
   });
@@ -226,7 +238,7 @@ describe("bundled catalog observations", () => {
   // The picker's Free tab reads `tier === "free"`, so the model
   // policy must admit Z.AI's `-flash` models for that tab to have anything in it.
   it("lists Z.AI's free -flash tiers alongside the paid models", async () => {
-    const zai = await getProviderModels("zai");
+    const zai = await catalogProviderModels.get("zai");
 
     expect(zai.models.map(({ id, tier }) => ({ id, tier }))).toEqual(
       expect.arrayContaining([
@@ -240,28 +252,16 @@ describe("bundled catalog observations", () => {
   // The bundled catalog's own release dates must put Gemini's newer families
   // above the older ones in the picker — the newest-first contract on real data.
   it("orders the Gemini picker newest-first by release date", async () => {
-    const { models } = await getProviderModels("gemini");
-    const position = (id: string): number => {
-      const index = models.findIndex((model) => model.id === id);
-      expect(index, `${id} must be offered`).toBeGreaterThanOrEqual(0);
-      return index;
-    };
+    const { models } = await catalogProviderModels.get("gemini");
 
-    expect(position("gemini-3.5-flash")).toBeLessThan(position("gemini-3.1-flash-lite"));
-    expect(position("gemini-3.1-flash-lite")).toBeLessThan(position("gemini-2.5-flash"));
-    // Every dated row precedes every dateless row.
-    const firstDateless = models.findIndex((model) => model.releaseDate === undefined);
-    if (firstDateless !== -1) {
-      for (const model of models.slice(firstDateless)) {
-        expect(model.releaseDate, model.id).toBeUndefined();
-      }
-    }
+    expect(models.length).toBeGreaterThan(0);
+    expectNewestFirst(models);
   });
 
   // Ollama Cloud is quota-billed, so models.dev prices none of its models: the
   // picker still lists them, unbadged, with the suggested default among them.
   it("lists Ollama Cloud's unpriced models with an unknown tier", async () => {
-    const { models } = await getProviderModels("ollama-cloud");
+    const { models } = await catalogProviderModels.get("ollama-cloud");
 
     expect(models.length).toBeGreaterThan(0);
     expect(models.map(({ id }) => id)).toContain("gpt-oss:20b");

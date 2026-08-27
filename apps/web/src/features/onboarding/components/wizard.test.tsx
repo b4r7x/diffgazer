@@ -1,7 +1,6 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { getInitialWizardData, type OnboardingDraft } from "@diffgazer/core/onboarding";
-import { PRODUCT_REGISTRY, SELECTABLE_PRODUCTS } from "@diffgazer/core/providers";
-import { escapeRegExp } from "@diffgazer/core/redaction";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type {
   ClientConfigurationAction,
   ConfigurationInitResponse,
@@ -242,10 +241,6 @@ function renderWizard() {
   return render(<OnboardingWizard />, { wrapper: Wrapper });
 }
 
-function getRadio(name: RegExp | string) {
-  return screen.getByRole("radio", { name });
-}
-
 async function expectStep(title: RegExp) {
   await waitFor(() =>
     expect(screen.getByRole("heading", { level: 1, name: title })).toBeInTheDocument(),
@@ -301,22 +296,6 @@ describe("OnboardingWizard", () => {
     const progress = screen.getByLabelText("Setup progress");
     expect(within(progress).getAllByRole("listitem")).toHaveLength(5);
     expect(screen.getByText(/Step 1 of 5/i)).toBeInTheDocument();
-  });
-
-  it("shows every selectable product", async () => {
-    renderWizard();
-    await expectStep(/select product/i);
-    expect(screen.getAllByRole("radio")).toHaveLength(9);
-  });
-
-  it("uses shared product names from the registry projection", async () => {
-    renderWizard();
-    await expectStep(/select product/i);
-    const firstProduct = SELECTABLE_PRODUCTS[0];
-    if (!firstProduct) throw new Error("SELECTABLE_PRODUCTS is empty");
-    expect(getRadio(new RegExp(escapeRegExp(firstProduct.name), "i"))).toHaveTextContent(
-      firstProduct.description,
-    );
   });
 
   it("walks a hosted plan through discovered models and explicit acknowledgement without early credential saves", async () => {

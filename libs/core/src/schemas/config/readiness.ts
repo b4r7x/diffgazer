@@ -9,7 +9,6 @@ export const READINESS_STATUSES = [
   "acknowledgement-required",
   "unsupported",
   "skipped",
-  "local-conformance-failed",
   "ready",
 ] as const;
 export type ReadinessStatus = (typeof READINESS_STATUSES)[number];
@@ -68,7 +67,6 @@ export const REVIEW_ATTEMPTABLE_STATUSES = [
   "conformance-pending",
   "skipped",
   "conformance-failed",
-  "local-conformance-failed",
 ] as const satisfies readonly ReadinessStatus[];
 
 export function canAttemptReview(status: ReadinessStatus): boolean {
@@ -143,15 +141,6 @@ export const READINESS_PRESENTATION = {
     remediation: {
       code: "enable-live-probe",
       message: "Satisfy the live-check prerequisites, then run Verify again.",
-    },
-  },
-  "local-conformance-failed": {
-    action: "test",
-    explanation: "The local model failed the structured review conformance check.",
-    remediation: {
-      code: "rerun-conformance",
-      message:
-        "Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Verify can re-check it.",
     },
   },
   ready: {
@@ -284,7 +273,6 @@ export const ReadinessSchema = z.discriminatedUnion("status", [
     CheckedAtSchema,
     ReadinessAcknowledgementSchema,
   ),
-  observedFailure("local-conformance-failed"),
   readinessVariant(
     "ready",
     true,

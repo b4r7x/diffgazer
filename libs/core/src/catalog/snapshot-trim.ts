@@ -17,7 +17,6 @@ function trimModel(model: ModelsDevModel): ModelsDevModel {
   return dropUndefined({
     id: model.id,
     name: model.name,
-    family: model.family,
     cost: model.cost && dropUndefined({ input: model.cost.input, output: model.cost.output }),
     limit:
       model.limit && dropUndefined({ context: model.limit.context, output: model.limit.output }),

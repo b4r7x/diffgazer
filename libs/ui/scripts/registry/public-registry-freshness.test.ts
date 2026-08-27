@@ -29,10 +29,12 @@ describe("committed public registry freshness", () => {
   it(
     "keeps committed public/r in sync with the source registry",
     async () => {
-      const transformModule = resolve(UI_ROOT, "scripts/registry/rewrite-keys-imports.ts");
+      const keysImportModule = resolve(UI_ROOT, "scripts/registry/rewrite-keys-imports.ts");
+      const sourceItemModule = resolve(UI_ROOT, "scripts/registry/public-registry-item.ts");
+      const themeStyleModule = resolve(UI_ROOT, "scripts/registry/theme-style-dedupe.ts");
       const transformUiContent = await loadExport<
         (content: string, options?: { shimHookBasename?: string }) => string
-      >(transformModule, "transformUiPublicRegistryKeysImportContent");
+      >(keysImportModule, "transformUiPublicRegistryKeysImportContent");
       const transformUiPublicRegistrySourceItem = await loadExport<
         (
           item: RegistryItem,
@@ -41,15 +43,15 @@ describe("committed public registry freshness", () => {
             readSourceFile?: (path: string) => string;
           },
         ) => RegistryItem
-      >(transformModule, "transformUiPublicRegistrySourceItem");
+      >(sourceItemModule, "transformUiPublicRegistrySourceItem");
       const createUiThemeStyleStripPolicy = await loadExport<
         (options: {
           rootDir: string;
           sourceRegistryPath?: string;
         }) => (itemName: string, content: string) => boolean
-      >(transformModule, "createUiThemeStyleStripPolicy");
+      >(themeStyleModule, "createUiThemeStyleStripPolicy");
       const skipSourceItem = await loadExport<(item: RegistryItem) => boolean>(
-        transformModule,
+        keysImportModule,
         "isHiddenKeysShim",
       );
       const stylePolicy = createUiThemeStyleStripPolicy({

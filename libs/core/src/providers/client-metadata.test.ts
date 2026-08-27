@@ -18,14 +18,10 @@ type TestReadinessStatus =
   | "conformance-failed"
   | "acknowledgement-required"
   | "unsupported"
-  | "skipped"
-  | "local-conformance-failed";
+  | "skipped";
 
 function readiness(status: TestReadinessStatus, productId: RunnableProductId) {
-  const isObservedFailure =
-    status === "credential-invalid" ||
-    status === "conformance-failed" ||
-    status.startsWith("local-");
+  const isObservedFailure = status === "credential-invalid" || status === "conformance-failed";
   const isChecked =
     isObservedFailure || status === "skipped" || status === "acknowledgement-required";
   let evidenceStatus: "failed" | "skipped" | "passed" | "not-checked" = "not-checked";
@@ -588,13 +584,13 @@ describe("client metadata projection", () => {
     ).toBe(true);
   });
 
-  it("rejects local readiness states on a hosted configuration", () => {
+  it("rejects an unconfigured readiness state on a configured product", () => {
     const hostedPayload = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[0]));
 
     expect(
       ClientMetadataPayloadSchema.safeParse({
         ...hostedPayload,
-        readiness: readiness("local-conformance-failed", "zai"),
+        readiness: readiness("unconfigured", "zai"),
       }).success,
     ).toBe(false);
     expect(

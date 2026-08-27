@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { eachRule } from "./css-contract";
+import { eachRule, ruleIndex } from "./css-contract";
+
+describe("ruleIndex", () => {
+  it("orders two rules by where they are declared", () => {
+    const css = "a { color: red; }\nb { color: blue; }";
+
+    expect(ruleIndex(css, "b")).toBeGreaterThan(ruleIndex(css, "a"));
+  });
+
+  it("throws on a missing selector instead of reporting an index a comparison would pass", () => {
+    expect(() => ruleIndex("a { color: red; }", "b")).toThrow(/missing b/);
+  });
+});
 
 describe("eachRule", () => {
   it("keeps a declaration written after a nested block on its own rule", () => {

@@ -342,7 +342,10 @@ function scaleBudgetEnvelope(
           `$${worstCaseCostUsd.toFixed(2)} against your $${configuredBase.maxCostUsd.toFixed(2)} ` +
           `per-review spend cap. Review fewer files at a time, or raise the cap.`,
         ReviewErrorCode.DIFF_TOO_LARGE,
-        "diff",
+        // The step the abort names is the one the surfaces resolve, and this
+        // refusal is raised after `executeReview` started the review step: the
+        // diff step is long since complete.
+        "review",
       );
     }
   }
@@ -627,8 +630,6 @@ export async function finalizeReview(params: {
       terminalOutcome === "schema-failed"
         ? "This model could not produce Diffgazer's structured review output. Change the model or update the configuration."
         : `Review ended with outcome ${terminalOutcome}.`;
-    // The step the abort names is the one the surfaces resolve: without it the
-    // report step stays painted as running behind the error.
     // The diagnostic's remediation is part of the user-facing message: the
     // screen-level guidance is generic per error code, and "what to do now"
     // (wait, switch Agent Execution to Sequential, fix the key) lives here.
@@ -637,6 +638,8 @@ export async function finalizeReview(params: {
           .filter((part) => part && part !== "none")
           .join(" ")
       : fallbackMessage;
+    // The step the abort names is the one the surfaces resolve: without it the
+    // report step stays painted as running behind the error.
     return err(
       reviewAbort(
         diagnosticMessage,

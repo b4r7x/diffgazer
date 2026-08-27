@@ -439,7 +439,7 @@ describe("ToggleGroup", () => {
     expect(new FormData(form).get("option")).toBe("a");
   });
 
-  // touch-target contract (mobile campaign): pointer-coarse hit-area is the public contract; jsdom
+  // touch-target contract: pointer-coarse hit-area is the public contract; jsdom
   // cannot measure layout.
   it("sm items reserve a 44px coarse-pointer touch target", () => {
     renderGroup({ size: "sm" });

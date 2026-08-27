@@ -8,10 +8,7 @@ import { executeHostedReview } from "./execute.js";
 import { hostedStructuredOutputSchema } from "./profiles.js";
 import type { HostedAdapterDependencies, HostedExecutionContext } from "./types.js";
 
-export {
-  boundedFetchInit,
-  resolveHostedApiEndpoint as validateHostedEndpoint,
-} from "../endpoints.js";
+export { boundedFetchInit } from "../endpoints.js";
 export { executeHostedReview } from "./execute.js";
 export type {
   HostedAdapterDependencies,

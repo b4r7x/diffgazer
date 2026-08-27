@@ -29,14 +29,12 @@ describe("setup plan", () => {
     const plan = runnablePlan("zai");
 
     expect(plan.transportFamily).toBe("hosted-api");
-    expect(plan.requiredFields).toEqual(["credential"]);
     expect(plan.steps).toMatchObject([
       { id: "product" },
-      { id: "endpoint-binding", requiredFields: [] },
+      { id: "endpoint-binding", endpoints: PRODUCT_REGISTRY.zai.configuration.endpoints },
       {
         id: "authentication",
         credentialKind: "hosted-api-key-reference",
-        requiredFields: ["credential"],
       },
       { id: "model" },
       { id: "acknowledgement" },

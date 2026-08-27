@@ -38,7 +38,7 @@ describe("NavigationList indicator variants", () => {
     expect(slots.length).toBeGreaterThan(0);
   });
 
-  it("renders > glyph prefix on active item for arrow indicator", () => {
+  it("renders the > glyph prefix on every row for the arrow indicator", () => {
     renderWithIndicator("arrow");
     const activeItem = screen.getByRole("option", { name: "One" });
     expect(activeItem.textContent).toContain(">");

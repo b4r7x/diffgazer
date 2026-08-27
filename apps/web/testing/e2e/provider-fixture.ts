@@ -16,12 +16,9 @@ import {
   ZAI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import type { Page, Route } from "@playwright/test";
-import {
-  assertClientSafeDom,
-  assertClientSafePayload,
-} from "../../src/testing/client-safe-assertions";
+import { assertClientSafePayload } from "../../src/testing/client-safe-assertions";
 
-export { assertClientSafeDom, assertClientSafePayload };
+export { assertClientSafePayload };
 
 const SETTINGS_FIXTURE: ConfigurationInitResponse["settings"] = {
   theme: "terminal",

@@ -81,7 +81,11 @@ describe("MenuSub", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("ArrowRight on trigger opens submenu", async () => {
+  it.each([
+    "{ArrowRight}",
+    "{Enter}",
+    " ",
+  ])("opens the submenu from the trigger via %s", async (key) => {
     const user = userEvent.setup();
     renderSubmenu();
     const menu = screen.getByRole("menu");
@@ -90,7 +94,7 @@ describe("MenuSub", () => {
     await user.keyboard("{ArrowDown}");
     expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"));
 
-    await user.keyboard("{ArrowRight}");
+    await user.keyboard(key);
     const trigger = getMenuItem("Edit");
     expect(trigger).toHaveAttribute("aria-expanded", "true");
 
@@ -148,42 +152,6 @@ describe("MenuSub", () => {
     expect(getMenuItem("Format")).toHaveAttribute("aria-expanded", "true");
     expect(editMenu).toBeVisible();
     expect(formatMenu).toBeVisible();
-  });
-
-  it("Enter on trigger opens submenu", async () => {
-    const user = userEvent.setup();
-    renderSubmenu();
-    const menu = screen.getByRole("menu");
-    menu.focus();
-
-    await user.keyboard("{ArrowDown}");
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"));
-
-    await user.keyboard("{Enter}");
-    const trigger = getMenuItem("Edit");
-    expect(trigger).toHaveAttribute("aria-expanded", "true");
-
-    await waitFor(() => {
-      const submenus = screen.getAllByRole("menu");
-      expect(submenus.length).toBeGreaterThan(1);
-    });
-  });
-
-  it("Space on trigger opens submenu", async () => {
-    const user = userEvent.setup();
-    renderSubmenu();
-    const menu = screen.getByRole("menu");
-    menu.focus();
-
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard(" ");
-    const trigger = getMenuItem("Edit");
-    expect(trigger).toHaveAttribute("aria-expanded", "true");
-
-    await waitFor(() => {
-      const submenus = screen.getAllByRole("menu");
-      expect(submenus.length).toBeGreaterThan(1);
-    });
   });
 
   it("first item in submenu receives focus when opened", async () => {

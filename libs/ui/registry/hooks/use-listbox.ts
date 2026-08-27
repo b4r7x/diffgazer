@@ -71,8 +71,8 @@ export interface UseListboxOptions<TId extends string = string> {
   wrap?: boolean;
   /**
    * Prefix for generating aria-activedescendant IDs. By default, each option uses
-   `id="${idPrefix}-${encodeURIComponent(itemId)}"` via `getEncodedListboxItemId`; pass
-   `getItemId` to use a different encoding.
+   * `id="${idPrefix}-${encodeURIComponent(itemId)}"` via `getEncodedListboxItemId`; pass
+   * `getItemId` to use a different encoding.
    */
   idPrefix: string;
   /** Focus the container on mount and initialize highlight to the selected item or first navigable item. @default false */

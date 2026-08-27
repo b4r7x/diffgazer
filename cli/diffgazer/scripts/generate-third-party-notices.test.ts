@@ -113,8 +113,6 @@ describe("third-party notice bundle provenance", () => {
   });
 
   it("maps every Vite bundle module to package provenance and retains frozen notices", () => {
-    expect(() => generator.collectBundlePackages(viteModuleIds)).not.toThrow();
-
     const packages = generator.collectBundlePackages(viteModuleIds);
     const names = new Set(packages.map((bundlePackage) => bundlePackage.name));
     for (const packageName of REQUIRED_PACKAGES) expect(names).toContain(packageName);

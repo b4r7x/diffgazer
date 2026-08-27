@@ -2,7 +2,7 @@ import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { Toaster } from "@diffgazer/ui/components/toast";
+import { Toaster, toast } from "@diffgazer/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -200,24 +200,15 @@ describe("GlobalLayout", () => {
     expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
   });
 
-  it("carries the banner wordmark in the shell header on home", () => {
-    routerState.pathname = "/";
-
-    renderShell();
-
-    expect(screen.getByRole("img", { name: "diffgazer" })).toBeInTheDocument();
-  });
-
-  it("opens the setup wizard with the banner wordmark", () => {
-    routerState.pathname = "/onboarding";
-
-    renderShell();
-
-    expect(screen.getByRole("img", { name: "diffgazer" })).toBeInTheDocument();
-  });
-
-  it("renders the ascii wordmark, never a plain-text one, on a work screen", () => {
-    routerState.pathname = "/history";
+  // The tier each route gets is owned by the getWordmarkTier table below; this
+  // only pins that the shell renders exactly one ascii wordmark, never a
+  // plain-text one.
+  it.each([
+    "/",
+    "/onboarding",
+    "/history",
+  ])("shows exactly one ascii wordmark on %s", (pathname) => {
+    routerState.pathname = pathname;
 
     renderShell();
 
@@ -256,14 +247,20 @@ describe("GlobalLayout", () => {
 
   it("raises the outage toast once, surviving shell rerenders without duplicating", async () => {
     vi.mocked(mockApi.request).mockRejectedValue(new Error("connection refused"));
+    // The store dedupes by toast id, so the DOM count alone cannot catch a
+    // re-firing effect: pin the raise itself.
+    const errorSpy = vi.spyOn(toast, "error");
 
     const { rerender } = renderShell();
     await screen.findByText(/server not responding/i);
 
     rerender(shellTree(<p>Help content</p>));
 
+    expect(errorSpy).toHaveBeenCalledOnce();
     expect(screen.getAllByText(/server not responding/i)).toHaveLength(1);
     expect(screen.getAllByRole("button", { name: "Retry" })).toHaveLength(1);
+
+    errorSpy.mockRestore();
   });
 
   it("fires no outage toast while the server answers", async () => {

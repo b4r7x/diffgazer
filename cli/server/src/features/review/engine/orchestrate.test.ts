@@ -1,7 +1,7 @@
 import type { Result } from "@diffgazer/core/result";
 import { err, ok } from "@diffgazer/core/result";
 import { makeIssue } from "@diffgazer/core/testing/factories";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
 import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
 import { makeFileDiff, makeParsedDiff } from "../testing/factories.js";
@@ -58,10 +58,6 @@ function makeClient(results: Array<Result<unknown, AIError>>): AIClient {
 }
 
 describe("orchestrateReview", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns NO_DIFF without emitting orchestration events when no files changed", async () => {
     const events: Array<{ type: string }> = [];
 
@@ -753,7 +749,10 @@ describe("orchestrateReview", () => {
     );
 
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.issues).toHaveLength(1);
+    if (result.ok) {
+      expect(result.value.issues.map((issue) => issue.id)).toEqual(["correctness:issue-1"]);
+      expect(result.value.lensStats.map((lens) => lens.status)).toEqual(["success", "failed"]);
+    }
   });
 
   it("honors the severity filter from review options", async () => {
@@ -915,7 +914,7 @@ describe("orchestrateReview", () => {
 
   it.each([
     1, 2,
-  ])("bounds in-flight AI calls to a concurrency of %i across three lenses and completes them in order once released", async (concurrency) => {
+  ])("bounds in-flight AI calls to a concurrency of %i across three lenses", async (concurrency) => {
     const pendingReleases: Array<() => void> = [];
     let started = 0;
     let inFlight = 0;

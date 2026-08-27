@@ -198,7 +198,8 @@ describe("Select accessibility", () => {
     const trigger = container.querySelector<HTMLElement>('[data-slot="select-trigger"]');
     expect(trigger).not.toHaveAttribute("aria-label");
     expect(trigger).not.toHaveAttribute("aria-labelledby");
-    expect(await axe(container)).not.toHaveNoViolations();
+    const results = await axe(container);
+    expect(results.violations.map((violation) => violation.id)).toContain("button-name");
   });
 
   it("search input uses Field label via aria-labelledby when inside a Field", () => {

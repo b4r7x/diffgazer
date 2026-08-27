@@ -1,12 +1,11 @@
 /**
  * @vitest-environment jsdom
  */
-import { renderHook } from "@testing-library/react";
-import { type ReactNode, useContext } from "react";
+import { render, renderHook } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   __resetShutdownPromiseForTests,
-  ExitPreparationContext,
   useExit,
   useRegisterExitPreparation,
 } from "../../hooks/use-exit";
@@ -51,28 +50,38 @@ describe("ExitPreparationProvider", () => {
     await vi.waitFor(() => expect(exitProcess).toHaveBeenCalledOnce());
   });
 
-  it("unregisters preparation when the registering screen unmounts", () => {
+  it("skips preparation when the registering screen has unmounted", async () => {
     const cleanup = vi.fn(async () => {});
-    let preparationRef: React.MutableRefObject<(() => Promise<void>) | null> | undefined;
+    const exitProcess = vi
+      .spyOn(process, "exit")
+      .mockImplementation((() => undefined) as unknown as typeof process.exit);
+    let handleExit: () => void = () => {};
 
-    function RegistrationProbe() {
-      const context = useContext(ExitPreparationContext);
-      preparationRef = context?.preparationRef;
+    function Registrar() {
       useRegisterExitPreparation(cleanup);
       return null;
     }
 
-    const { unmount } = renderHook(() => null, {
-      wrapper: ({ children }: { children: ReactNode }) => (
-        <ExitPreparationProvider>
-          <RegistrationProbe />
-          {children}
-        </ExitPreparationProvider>
-      ),
-    });
+    function ExitProbe() {
+      handleExit = useExit().handleExit;
+      return null;
+    }
 
-    expect(preparationRef?.current).toBe(cleanup);
-    unmount();
-    expect(preparationRef?.current).toBeNull();
+    function Tree({ registered }: { registered: boolean }) {
+      return (
+        <ExitPreparationProvider>
+          {registered ? <Registrar /> : null}
+          <ExitProbe />
+        </ExitPreparationProvider>
+      );
+    }
+
+    const { rerender } = render(<Tree registered />);
+    rerender(<Tree registered={false} />);
+
+    handleExit();
+
+    expect(cleanup).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(exitProcess).toHaveBeenCalledOnce());
   });
 });

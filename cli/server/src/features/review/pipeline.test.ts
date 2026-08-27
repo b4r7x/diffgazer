@@ -14,11 +14,9 @@ import {
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ExecutionLeaseRegistry } from "../../shared/lib/ai/admission/lease-registry.js";
 import type { AdmittedExecutionPlan } from "../../shared/lib/ai/admission/service.js";
-import {
-  ExecutionLeaseRegistry,
-  toClientSafeAdmittedPlanJson,
-} from "../../shared/lib/ai/admission/service.js";
+import { toClientSafeAdmittedPlanJson } from "../../shared/lib/ai/admission/service.js";
 import { createBudgetLedger } from "../../shared/lib/ai/budget/ledger.js";
 import { buildExecutionResult } from "../../shared/lib/ai/client/generate.js";
 import { promptAttemptEstimate } from "../../shared/lib/ai/providers/execution-receipt.js";
@@ -446,6 +444,9 @@ describe("batched review budget envelope", () => {
     if (result.ok) return;
     expect(result.error.code).toBe(ReviewErrorCode.DIFF_TOO_LARGE);
     expect(result.error.message).toContain("spend cap");
+    // The review step is already in flight when this refusal is raised, so it is
+    // the step the surfaces must resolve.
+    expect(result.error.step).toBe("review");
     expect(orchestrateReview).not.toHaveBeenCalled();
     expect(ledger.snapshot().limits.maxInputTokens).toBe(200_000);
   });
@@ -1653,17 +1654,23 @@ describe("admitted execution lifecycle", () => {
   });
 
   it("exposes no secret values on the client-safe admitted plan surface", () => {
-    const plan = pipelineAdmittedPlan();
-    const { authorization } = authorizePipelineExecution(plan, {
-      productId: "gemini",
-      transportFamily: "hosted-api",
-      execute: vi.fn(),
+    // The sentinel has to be something the plan actually carries: the credential
+    // resolver lives on the authorization, which this surface never sees.
+    const credentialSentinel = `credential-sentinel-${"9".repeat(44)}`;
+    const base = pipelineAdmittedPlan();
+    const plan = Object.freeze({
+      ...base,
+      evidenceKey: Object.freeze({
+        ...base.evidenceKey,
+        credentialReferenceIdentity: credentialSentinel,
+      }),
     });
-    const clientSurface = toClientSafeAdmittedPlanJson(authorization.plan);
+    const clientSurface = toClientSafeAdmittedPlanJson(plan);
 
-    expect(clientSurface).not.toContain("super-secret-token");
+    expect(clientSurface).not.toContain(credentialSentinel);
     expect(clientSurface).not.toContain("credential");
     expect(clientSurface).toContain(plan.executionFingerprint);
+    expect(JSON.parse(clientSurface)).toHaveProperty("evidenceKeyHash");
   });
 });
 

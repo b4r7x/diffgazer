@@ -3,7 +3,6 @@ import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { formatRunId } from "@diffgazer/core/format";
 import { createInitialReviewState, reviewReducer } from "@diffgazer/core/review";
-import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import {
@@ -21,6 +20,7 @@ import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
 import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
+import { assertClientSafePayload } from "@/testing/client-safe-assertions";
 import { makeReviewLifecycleBase } from "../testing/review-lifecycle-base";
 
 type ReviewQueryState =
@@ -1059,15 +1059,12 @@ describe("ReviewPage protected route readiness", () => {
 
     renderPage();
 
+    // The readiness hand-off itself is asserted above; here we only need the
+    // payload to exist before the leak guard reads it.
     await waitFor(() => {
-      expect(capturedOptions?.readiness?.ready).toBe(true);
+      expect(capturedOptions?.readiness).toBeDefined();
     });
-    expect(JSON.stringify(capturedOptions?.readiness ?? {})).not.toMatch(
-      new RegExp(
-        String.raw`\b${LEGACY_V1_HAS_API_KEY_PROPERTY}\b|\bproviderStatus\b|provider-status`,
-        "i",
-      ),
-    );
+    assertClientSafePayload(capturedOptions?.readiness, "readiness");
   });
 
   it("resumes a saved completed review without falsely re-gating setup", async () => {

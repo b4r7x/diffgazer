@@ -69,7 +69,6 @@ describe("createGitDiffError", () => {
     const result = createGitDiffError(new Error(message));
 
     expect(result.message).toBe(`Failed to get git diff: ${message}`);
-    expect(result.message).not.toContain("Not a git repository");
   });
 
   it("formats non-Error values into the generic fallback message", () => {

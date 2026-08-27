@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { CANDIDATE_PRODUCT_IDS } from "../schemas/config/transports.js";
-import { projectClientProduct } from "./client-metadata.js";
-import { SELECTABLE_PRODUCT_IDS as AUTHORITY_PRODUCT_IDS } from "./product-registry.js";
 import * as selectableProducts from "./selectable-products.js";
 
 const SELECTABLE_PRODUCT_IDS = [
@@ -23,12 +21,6 @@ describe("selectable product presentation", () => {
     );
     expect(selectableProducts.SELECTABLE_PRODUCTS.every((product) => product.selectable)).toBe(
       true,
-    );
-  });
-
-  it("matches the canonical safe projection for every selectable product", () => {
-    expect(selectableProducts.SELECTABLE_PRODUCTS).toEqual(
-      AUTHORITY_PRODUCT_IDS.map(projectClientProduct),
     );
   });
 

@@ -1,30 +1,14 @@
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useSeverityFilter } from "./use-severity-filter";
 
-const makeIssue = (id: string, severity: ReviewIssue["severity"]): ReviewIssue => ({
-  id,
-  title: `Issue ${id}`,
-  severity,
-  category: "correctness",
-  file: "src/a.ts",
-  line_start: 1,
-  line_end: null,
-  rationale: "r",
-  recommendation: "x",
-  suggested_patch: null,
-  confidence: 0.9,
-  symptom: "s",
-  whyItMatters: "w",
-  evidence: [],
-});
-
 const issues: ReviewIssue[] = [
-  makeIssue("h1", "high"),
-  makeIssue("m1", "medium"),
-  makeIssue("l1", "low"),
-  makeIssue("h2", "high"),
+  makeIssue({ id: "h1", severity: "high" }),
+  makeIssue({ id: "m1", severity: "medium" }),
+  makeIssue({ id: "l1", severity: "low" }),
+  makeIssue({ id: "h2", severity: "high" }),
 ];
 
 describe("useSeverityFilter", () => {

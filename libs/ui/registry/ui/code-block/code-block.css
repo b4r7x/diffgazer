@@ -224,7 +224,6 @@
     background: color-mix(in oklab, var(--code-block-fg, var(--foreground)) 16%, transparent);
   }
 
-  /* Self-protecting: hide chrome dots if no header is rendered. */
   [data-slot="code-block"]:not(:has([data-slot="code-block-header"]))
     [data-slot="code-block-dots"] {
     display: none;

@@ -318,12 +318,37 @@ ${ISSUE_OUTPUT_CONTRACT}`;
 }
 
 /**
- * How much of the collected-issue digest one synthesis prompt may carry, in
- * characters (~4 per token). Bounded so the digest, the file list, and the
- * scaffold fit the smallest per-call cap (16,384 tokens); the lowest-severity
- * tail is counted, never sent.
+ * How much one synthesis prompt may spend on the two parts that grow with the
+ * review — the changed-file list and the collected-issue digest — in characters
+ * (~4 per token). Bounded so both plus the scaffold fit the smallest per-call
+ * cap (16,384 tokens).
  */
-export const SYNTHESIS_DIGEST_MAX_CHARS = 40_000;
+export const SYNTHESIS_VARIABLE_MAX_CHARS = 40_000;
+
+/**
+ * The file list's share of that budget. Synthesis only runs on a batched review,
+ * where the list is at its longest, so it is bounded on its own rather than
+ * allowed to crowd the digest out; whatever it leaves unspent goes to the digest.
+ */
+const SYNTHESIS_FILE_LIST_MAX_CHARS = SYNTHESIS_VARIABLE_MAX_CHARS / 2;
+
+/** The changed-file list, bounded, with the tail it dropped declared. */
+function buildChangedFileList(fileIdentities: readonly PromptFileIdentity[]): string {
+  const entries: string[] = [];
+  let totalChars = 0;
+  for (const identity of fileIdentities) {
+    const entry = fileIdentityEntry(identity);
+    if (totalChars + entry.length > SYNTHESIS_FILE_LIST_MAX_CHARS) break;
+    totalChars += entry.length;
+    entries.push(entry);
+  }
+
+  const omitted = fileIdentities.length - entries.length;
+  if (omitted > 0) {
+    entries.push(`(${omitted} more changed files omitted to fit the token budget)`);
+  }
+  return entries.join("\n");
+}
 
 function lineRef(issue: ReviewIssue): string {
   if (issue.line_start === null) return "";
@@ -343,11 +368,13 @@ function digestEntry(issue: ReviewIssue, fileIdsByPath: ReadonlyMap<string, stri
 /**
  * The token-bounded digest, severity-first: when the budget cuts, it cuts the
  * least severe findings. Entries carry the issue's file BOTH as the opaque id
- * the model must cite and as the display path it can reason about.
+ * the model must cite and as the display path it can reason about. `maxChars` is
+ * what the changed-file list left of the prompt's variable budget.
  */
 function buildIssueDigest(
   issues: readonly ReviewIssue[],
   fileIdsByPath: ReadonlyMap<string, string>,
+  maxChars: number,
 ): string {
   const bySeverity = issues
     .map((issue, index) => ({ issue, index }))
@@ -361,7 +388,7 @@ function buildIssueDigest(
   let totalChars = 0;
   for (const issue of bySeverity) {
     const entry = digestEntry(issue, fileIdsByPath);
-    if (totalChars + entry.length > SYNTHESIS_DIGEST_MAX_CHARS) break;
+    if (totalChars + entry.length > maxChars) break;
     totalChars += entry.length;
     entries.push(entry);
   }
@@ -378,7 +405,8 @@ function buildIssueDigest(
 
 /**
  * Builds the synthesis dispatch's prompt: no diffs, only the digest of what the
- * per-batch calls found plus the full changed-file list. File identities span
+ * per-batch calls found plus the changed-file list, the two of them sharing one
+ * character budget so the prompt fits a call. File identities span
  * the WHOLE review's diff, so a synthesis issue resolves `file-N` against every
  * changed file rather than one batch's slice.
  */
@@ -390,6 +418,12 @@ export function buildSynthesisPrompt(
 ): ReviewPrompt {
   const fileIdentities = createPromptFileIdentities(diff);
   const fileIdsByPath = new Map(fileIdentities.map(({ id, file }) => [file.filePath, id]));
+  const filesChanged = buildChangedFileList(fileIdentities);
+  const digest = buildIssueDigest(
+    collectedIssues,
+    fileIdsByPath,
+    SYNTHESIS_VARIABLE_MAX_CHARS - filesChanged.length,
+  );
 
   const user = `${projectContextBlock(projectContext)}<severity-rubric>
 - blocker: ${lens.severityRubric.blocker}
@@ -400,11 +434,11 @@ export function buildSynthesisPrompt(
 </severity-rubric>
 
 <files-changed>
-${fileIdentities.map(fileIdentityEntry).join("\n")}
+${filesChanged}
 </files-changed>
 
 <issues-digest data-untrusted="true">
-${buildIssueDigest(collectedIssues, fileIdsByPath)}
+${digest}
 </issues-digest>
 
 The digest lists what each lens found while reading this review in separate batches; no single call saw every file. Report ONLY problems that span more than one changed file. Do NOT restate, rephrase, merge, or re-grade any issue already in the digest, and do NOT report single-file issues. If no cross-file problem is evident, respond with { "issues": [] }.

@@ -6,6 +6,7 @@ import { streamActiveSessionToSSE } from "./replay.js";
 import type { SSEWriter } from "./sse.js";
 import {
   addEvent,
+  cancelSession,
   createSession,
   deleteSessionForTests,
   markComplete,
@@ -61,6 +62,10 @@ function recordingWriter(): RecordingWriter {
     },
     writes,
   };
+}
+
+function parsedEvents(writes: { data: string }[]): FullReviewStreamEvent[] {
+  return writes.map((write) => JSON.parse(write.data) as FullReviewStreamEvent);
 }
 
 function failingTerminalWriter(failOn: readonly string[]): {
@@ -157,5 +162,99 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
     expect(log).not.toHaveBeenCalled();
     // Sanity: SESSION_STALE error never appears in the happy path.
     expect(writes.some((w) => w.data.includes(ReviewErrorCode.SESSION_STALE))).toBe(false);
+  });
+});
+
+describe("streamActiveSessionToSSE — replay and subscription", () => {
+  it("replays buffered events to the SSE stream", async () => {
+    const { stream, writes } = recordingWriter();
+    const session = createTrackedSession("replay-session");
+    const events: FullReviewStreamEvent[] = [stepEvent(), completeEvent(session.reviewId)];
+    session.events.push(...events);
+    session.isComplete = true;
+
+    await streamActiveSessionToSSE(stream, session);
+
+    expect(parsedEvents(writes)).toEqual(events);
+  });
+
+  it("streams live events until a terminal event arrives", async () => {
+    const { stream, writes } = recordingWriter();
+    const session = createTrackedSession("live-session");
+
+    const replay = streamActiveSessionToSSE(stream, session);
+    addEvent(session.reviewId, completeEvent(session.reviewId));
+
+    await replay;
+
+    expect(parsedEvents(writes)).toMatchObject([{ type: "complete", reviewId: session.reviewId }]);
+  });
+
+  it("writes a stale error when the session cannot be subscribed", async () => {
+    const { stream, writes } = recordingWriter();
+    const session = createTrackedSession("stale-session");
+    deleteSessionForTests(session.reviewId);
+
+    await streamActiveSessionToSSE(stream, session);
+
+    expect(parsedEvents(writes)).toMatchObject([
+      { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
+    ]);
+  });
+
+  it("stops without writing when the client aborts", async () => {
+    const { stream, writes } = recordingWriter();
+    const session = createTrackedSession("abort-session");
+    const controller = new AbortController();
+
+    const replay = streamActiveSessionToSSE(stream, session, controller.signal);
+    controller.abort();
+
+    await replay;
+
+    expect(writes).toEqual([]);
+  });
+
+  it("writes a terminal event delivered via addEvent without depending on a timer", async () => {
+    const { stream, writes } = recordingWriter();
+    const session = createTrackedSession("real-flow");
+
+    const replay = streamActiveSessionToSSE(stream, session);
+    // Let the function reach its subscribe/onComplete registration.
+    await Promise.resolve();
+    addEvent(session.reviewId, completeEvent(session.reviewId));
+    markComplete(session.reviewId);
+
+    await replay;
+
+    expect(parsedEvents(writes)).toMatchObject([{ type: "complete", reviewId: session.reviewId }]);
+  });
+
+  it("resolves promptly when the session completes without emitting a terminal event", async () => {
+    const { stream, writes } = recordingWriter();
+    const session = createTrackedSession("silent-complete");
+
+    const replay = streamActiveSessionToSSE(stream, session);
+    await Promise.resolve();
+    markComplete(session.reviewId);
+
+    await replay;
+    // No terminal event in events[]; consumer-visible behavior is silent close.
+    expect(writes).toEqual([]);
+  });
+
+  it("emits the stale error from cancelSession via the subscriber path", async () => {
+    const { stream, writes } = recordingWriter();
+    const session = createTrackedSession("cancel-stream");
+
+    const replay = streamActiveSessionToSSE(stream, session);
+    await Promise.resolve();
+    cancelSession(session.reviewId);
+
+    await replay;
+
+    expect(parsedEvents(writes)).toMatchObject([
+      { type: "error", error: { code: ReviewErrorCode.SESSION_STALE } },
+    ]);
   });
 });

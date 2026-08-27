@@ -4,13 +4,13 @@ import {
   buildShadcnRegistryWithOrigin,
   REGISTRY_ORIGIN,
 } from "@diffgazer/registry";
+import { transformUiPublicRegistryKeysImports } from "./registry/rewrite-keys-imports.js";
 import {
   aggregateThemeStylesInPublicRegistry,
-  applyUiRegistryTargetsInPublicRegistry,
   createUiThemeStyleStripPolicy,
   removeDuplicateThemeStylesInPublicRegistry,
-  transformUiPublicRegistryKeysImports,
-} from "./registry/rewrite-keys-imports.js";
+} from "./registry/theme-style-dedupe.js";
+import { applyUiRegistryTargetsInPublicRegistry } from "./registry/ui-registry-targets.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const SOURCE_REGISTRY_PATH = "registry/registry.json";

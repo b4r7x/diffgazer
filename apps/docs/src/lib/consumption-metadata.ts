@@ -31,13 +31,13 @@ const KEYS_PACKAGE_ONLY = new Set([
 export const PUBLISH_GATED = true;
 
 const PUBLISH_GATE_NOTE =
-  "Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.";
+  "Diffgazer packages are not yet published to npm. Until the first release, pack @diffgazer/ui and @diffgazer/keys from the repository and install those tarballs.";
 
 export const HOSTED_REGISTRY_GATE_NOTE =
   "The hosted registry is not public yet because r.b4r7.dev does not resolve. Use this source checkout or a local registry preview until the endpoint returns 200.";
 
 const LOCAL_DGADD_GATE_NOTE =
-  "dgadd is not public on npm yet. Run this command from a local checkout until the first release.";
+  "dgadd is not public on npm yet. Until the first release, pack @diffgazer/add from the repository and install that tarball into this app, which is what puts dgadd on pnpm exec.";
 
 const KEYS_PACKAGE_GATE_NOTE =
   "Requires KeyboardProvider and the @diffgazer/keys package, which is not public on npm yet.";

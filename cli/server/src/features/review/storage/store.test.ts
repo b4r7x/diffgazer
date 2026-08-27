@@ -472,26 +472,47 @@ describe("reviewStore", () => {
   });
 
   it("keeps a saved review readable when its receipt names a removed provider", async () => {
-    // A run recorded by a build that still shipped deepseek: the receipt no
-    // longer parses, but the review's findings must survive the retirement.
+    // A run recorded by a build that still shipped groq: the fingerprint is
+    // recomputed over the retired identity, so the product enum rejecting an
+    // unknown "groq" is the only reason the receipt no longer parses — and the
+    // review's findings must survive the retirement.
     const { reviewStore } = await loadStore();
     const review = makeReviewWithExecution(REVIEW_ID, "completed", "a");
     const snapshot = review.executionSnapshot;
     expect(snapshot).toBeDefined();
     if (!snapshot) return;
     const { execution: _runtimeView, ...durable } = review;
+    const retired = {
+      ...snapshot.receipt,
+      productId: "groq",
+      modelId: "llama-3.3-70b",
+      normalizedEndpoint: "https://api.groq.com/openai/v1",
+    };
+    const executionFingerprint = sha256CanonicalJsonSync({
+      authentication: null,
+      configurationId: retired.configurationId,
+      configurationRevision: retired.configurationRevision,
+      credentialReferenceIdentity: retired.credentialReferenceIdentity ?? null,
+      installationId: retired.installationId ?? null,
+      productId: retired.productId,
+      transportFamily: retired.transportFamily,
+      modelId: retired.modelId,
+      normalizedEndpoint: retired.normalizedEndpoint,
+      region: null,
+      workspaceAccountReference: null,
+      runtime: retired.runtime ?? null,
+      structuredOutputSchemaSha256: retired.structuredOutputSchemaSha256,
+      noticeVersion: retired.noticeVersion,
+      limits: retired.limits,
+    });
     await writeRawReview(
       REVIEW_ID,
       JSON.stringify({
         ...durable,
         executionSnapshot: {
           ...snapshot,
-          receipt: {
-            ...snapshot.receipt,
-            productId: "deepseek",
-            modelId: "deepseek-v4-flash",
-            normalizedEndpoint: "https://api.deepseek.com/v1",
-          },
+          executionFingerprint,
+          receipt: { ...retired, executionFingerprint },
         },
       }),
     );

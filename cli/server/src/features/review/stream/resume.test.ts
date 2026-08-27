@@ -17,7 +17,6 @@ const gitService = {
   isGitInstalled: vi.fn(),
 };
 const repoAccess = vi.hoisted(() => ({ has: vi.fn(() => true) }));
-// Boundary mock: git service wraps subprocess/git state reads; tests drive reconnect freshness without a real working tree.
 vi.mock("../../../shared/lib/git/service.js", () => ({
   createGitService: () => gitService,
 }));

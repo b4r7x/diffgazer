@@ -208,8 +208,7 @@ describe("DocsContentLayout content breadcrumbs", () => {
     );
 
     const main = screen.getByRole("main");
-    // The shell no longer prints its own PATH row: the header's scope line is
-    // the single copy of the path inside the article column.
+    // The header's scope line is the single copy of the path inside the article column.
     const paths = within(main).getAllByRole("navigation", { name: "Breadcrumb" });
     expect(paths).toHaveLength(1);
 

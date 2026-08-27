@@ -6,10 +6,10 @@ import { Dialog } from "../dialog/index";
 import { Panel } from "../panel/index";
 
 // The compound parts below extend ComponentProps<"tag"> so a
-// consumer can attach a typed ref. This file type-checks that contract for the
-// 12 previously ref-less parts; rendering one confirms the ref actually attaches.
+// consumer can attach a typed ref. This file type-checks that contract for
+// 12 compound parts; rendering one confirms the ref actually attaches.
 describe("compound part ref typing", () => {
-  it("type-checks a ref on every previously ref-less part", () => {
+  it("type-checks a ref on each listed compound part", () => {
     const divRef = createRef<HTMLDivElement>();
     const headingRef = createRef<HTMLHeadingElement>();
     const paragraphRef = createRef<HTMLParagraphElement>();

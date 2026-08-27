@@ -1,7 +1,7 @@
 import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "../providers/product-registry.js";
 import type {
   AgentExecution,
-  HostedApiConfigurationInput,
+  ClientConfigurationInput,
   RunnableProductId,
 } from "../schemas/config/index.js";
 import { HostedApiEndpointSchema } from "../schemas/config/index.js";
@@ -9,7 +9,7 @@ import { SELECTABLE_LENS_IDS, type SelectableLensId } from "../schemas/review/in
 import { buildSetupPlan, type RunnableSetupPlan } from "./setup-plan.js";
 import type { OnboardingAcknowledgement } from "./types.js";
 
-export type OnboardingConfigurationDraft = HostedApiConfigurationInput;
+export type OnboardingConfigurationDraft = ClientConfigurationInput;
 
 export interface OnboardingDraft {
   readonly kind: "runnable";

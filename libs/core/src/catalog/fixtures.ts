@@ -1,4 +1,4 @@
-// Trimmed, hand-captured from models.dev /api.json (cached at /tmp/modelsdev.json).
+// Trimmed, hand-captured from models.dev /api.json.
 // Only fields the catalog reads are kept. Do NOT inline the full 2.1 MB blob.
 
 /** A raw models.dev catalog shaped exactly like the live API (record-of-providers). */

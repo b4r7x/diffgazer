@@ -5,6 +5,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
+import { ruleBody } from "../../testing/css-contract";
 import { Dialog } from "../dialog";
 import { Menu } from "../menu";
 import { Popover } from "../popover";
@@ -23,9 +24,9 @@ const THEME_CSS = readFileSync(
   "utf8",
 );
 
-function themeBlock(pattern: RegExp): string {
-  const block = THEME_CSS.match(pattern)?.[1];
-  if (block === undefined) throw new Error(`Missing theme.css block for ${pattern}`);
+function themeBlock(selector: string): string {
+  const block = ruleBody(THEME_CSS, selector);
+  if (block === null) throw new Error(`Missing or unbalanced theme.css block for ${selector}`);
   return block;
 }
 
@@ -36,8 +37,8 @@ function shadowHard(block: string): string {
 }
 
 describe("overlay elevation tokens", () => {
-  const dark = themeBlock(/:root,\s*\[data-theme="dark"\]\s*\{([\s\S]*?)\n\}/);
-  const light = themeBlock(/\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/);
+  const dark = themeBlock(':root, [data-theme="dark"]');
+  const light = themeBlock('[data-theme="light"]');
 
   it("mixes --shadow-hard from the foreground in both themes so it is visible on either page", () => {
     // A near-black offset over a near-black page composites to ~1.05:1 and

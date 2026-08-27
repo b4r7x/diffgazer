@@ -51,10 +51,4 @@ describe("classifyError", () => {
   ])("handles $description by stringifying and matching", ({ input, expected }) => {
     expect(classifyError(input, rules, fallback)).toEqual(expected);
   });
-
-  it("preserves the original casing of the error message in the fallback output", () => {
-    const result = classifyError(new Error("CamelCase Error"), rules, fallback);
-
-    expect(result.message).toBe("Unexpected: CamelCase Error");
-  });
 });

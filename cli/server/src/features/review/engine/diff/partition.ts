@@ -1,4 +1,8 @@
-import { estimateFileTokens, PROMPT_SCAFFOLD_TOKENS } from "./estimate.js";
+import {
+  estimateFileTokens,
+  PROMPT_SCAFFOLD_TOKENS,
+  PROMPT_TOKENS_PER_CONTEXT_FILE,
+} from "./estimate.js";
 import { computeTotalStats } from "./total-stats.js";
 import type { FileDiff, ParsedDiff } from "./types.js";
 
@@ -14,18 +18,25 @@ import type { FileDiff, ParsedDiff } from "./types.js";
  *
  * A diff that fits one batch comes back as the same object, so a single-batch
  * dispatch is identical to an unbatched one.
+ *
+ * Each batch's prompt also names every file changed elsewhere in the review, so
+ * a batch is charged the full roster up front and refunded one row per file it
+ * takes in. A diff that ends up in one batch is charged nothing for it, which is
+ * exactly what that prompt carries.
  */
 export function partitionDiff(parsed: ParsedDiff, perCallBudgetTokens: number): ParsedDiff[] {
   const batchedFiles: FileDiff[][] = [];
+  const batchBaseTokens =
+    PROMPT_SCAFFOLD_TOKENS + PROMPT_TOKENS_PER_CONTEXT_FILE * parsed.files.length;
   let currentFiles: FileDiff[] = [];
-  let currentTokens = PROMPT_SCAFFOLD_TOKENS;
+  let currentTokens = batchBaseTokens;
 
   for (const file of parsed.files) {
-    const fileTokens = estimateFileTokens(file);
+    const fileTokens = estimateFileTokens(file) - PROMPT_TOKENS_PER_CONTEXT_FILE;
     if (currentFiles.length > 0 && currentTokens + fileTokens > perCallBudgetTokens) {
       batchedFiles.push(currentFiles);
       currentFiles = [];
-      currentTokens = PROMPT_SCAFFOLD_TOKENS;
+      currentTokens = batchBaseTokens;
     }
     currentFiles.push(file);
     currentTokens += fileTokens;

@@ -23,7 +23,7 @@ describe("consumption metadata API", () => {
     expect(meta.paths.copy.available).toBe(false);
     expect(meta.paths.copy.note).toContain("r.b4r7.dev does not resolve");
     expect(meta.paths.dgadd.command).toBe("pnpm exec dgadd add ui/compose-refs");
-    expect(meta.paths.dgadd.note).toContain("local checkout");
+    expect(meta.paths.dgadd.note).toContain("install that tarball");
     expect(meta.paths.package.available).toBe(false);
   });
 
@@ -35,7 +35,7 @@ describe("consumption metadata API", () => {
     expect(meta.paths.copy.available).toBe(false);
     expect(meta.paths.copy.note).toContain("r.b4r7.dev does not resolve");
     expect(meta.paths.dgadd.command).toBe("pnpm exec dgadd add keys/navigation");
-    expect(meta.paths.dgadd.note).toContain("local checkout");
+    expect(meta.paths.dgadd.note).toContain("install that tarball");
   });
 
   it("marks provider-backed keys hooks as package-only while keeping package import metadata", () => {

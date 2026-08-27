@@ -308,9 +308,12 @@ describe("validate-registry-metadata", () => {
       "\"use client\"\n.toString();\nexport const helper = 'helper';\n",
     );
 
-    const { status } = runValidator(root);
+    const { status, stderr } = runValidator(root);
 
     expect(status).not.toBe(0);
+    expect(stderr).toContain(
+      'helper declares meta.client but no source file starts with "use client"',
+    );
   });
 
   it("rejects a binary in expression continued after a line break", () => {
@@ -325,9 +328,12 @@ describe("validate-registry-metadata", () => {
       "\"use client\"\nin obj;\nexport const helper = 'helper';\n",
     );
 
-    const { status } = runValidator(root);
+    const { status, stderr } = runValidator(root);
 
     expect(status).not.toBe(0);
+    expect(stderr).toContain(
+      'helper declares meta.client but no source file starts with "use client"',
+    );
   });
 
   it("rejects re-flagging the keys peer optional when a public item imports keys hooks", () => {

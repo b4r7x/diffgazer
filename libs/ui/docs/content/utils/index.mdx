@@ -15,6 +15,8 @@ Shared, dependency-light utilities the components build on. Each is copyable thr
 
 ## Installing
 
+> **Before publication:** Diffgazer packages are not yet published to npm, so there is no `dgadd` bin until you install one. Follow the canonical [Copy-first mode procedure](https://github.com/b4r7x/diffgazer#copy-first-mode-dgadd) to build and pack `@diffgazer/add`, then install that packed tarball in the target app. The target-app install is what puts `dgadd` on `pnpm exec`.
+
 `composeRefs` and `selectable-collection` install like any other item, into `lib/`. `composeRefs` is a single `lib/compose-refs.ts`; `selectable-collection` writes three files — `lib/selectable-collection.ts`, `lib/selectable-collection-observer.ts`, and `lib/selectable-group.ts` — and additionally resolves the `@diffgazer-keys/focusable` registry item.
 
 ```bash

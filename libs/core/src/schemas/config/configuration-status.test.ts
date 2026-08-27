@@ -71,17 +71,17 @@ describe("resolveSelectedConfiguration", () => {
 });
 
 describe("ConfigurationStatusSchema consistency", () => {
-  it("rejects hosted configurations paired with local readiness statuses", () => {
+  it("rejects configured products paired with an unconfigured readiness status", () => {
     const hosted = configurationStatus("gemini-a");
     const incompatible = ConfigurationStatusSchema.safeParse({
       configuration: hosted.configuration,
       readiness: ReadinessSchema.parse({
-        status: "local-conformance-failed",
+        status: "unconfigured",
         ready: false,
-        evidenceStatus: "failed",
-        checkedAt: CHECKED_AT,
+        evidenceStatus: "not-checked",
+        checkedAt: null,
         acknowledgement: { status: "not-applicable" },
-        ...READINESS_PRESENTATION["local-conformance-failed"],
+        ...READINESS_PRESENTATION.unconfigured,
       }),
     });
 

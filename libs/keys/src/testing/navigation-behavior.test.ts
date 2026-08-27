@@ -11,6 +11,17 @@ import { testNavigationBehavior } from "./navigation-behavior.js";
 
 const readme = readFileSync(resolve(import.meta.dirname, "../../README.md"), "utf8");
 
+const manifest = JSON.parse(
+  readFileSync(resolve(import.meta.dirname, "../../package.json"), "utf8"),
+) as {
+  peerDependencies: Record<string, string>;
+  peerDependenciesMeta: Record<string, { optional?: boolean }>;
+};
+
+const optionalPeers = Object.keys(manifest.peerDependenciesMeta)
+  .map((name) => `${name}@${manifest.peerDependencies[name]}`)
+  .join(" ");
+
 function NavigationFixture() {
   const secondRef = useRef<HTMLButtonElement>(null);
 
@@ -28,9 +39,7 @@ function NavigationFixture() {
 
 describe("testNavigationBehavior", () => {
   it("documents the exact optional peer setup and public import", () => {
-    expect(readme).toContain(
-      "npm install --save-dev @testing-library/react@^16.3.2 @testing-library/user-event@^14.6.1 vitest@^4.1.0",
-    );
+    expect(readme).toContain(`npm install --save-dev ${optionalPeers}`);
     expect(readme).toContain(
       'import { testNavigationBehavior } from "@diffgazer/keys/testing/navigation-behavior";',
     );

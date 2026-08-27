@@ -45,6 +45,7 @@ async function flush(): Promise<void> {
 }
 
 const ARROW_DOWN = "\u001B[B";
+const ARROW_UP = "\u001B[A";
 const ARROW_RIGHT = "\u001B[C";
 const BACKSPACE = "\u007f";
 
@@ -136,6 +137,14 @@ describe("AnalysisScreen", () => {
         <AnalysisScreen />
       </CliThemeProvider>,
     );
+
+    // Toggle a second lens on so the save is blocked by the invalid cap alone, not by a clean form.
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(" ");
+    await flush();
+    view.stdin.write(ARROW_UP);
+    await flush();
 
     await typeIntoCapField(view, "999");
     expect(view.lastFrame()).toContain("Enter a whole number between 16384 and 1048576.");

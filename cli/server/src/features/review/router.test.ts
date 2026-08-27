@@ -354,13 +354,15 @@ function installRealLeaseAuthorization() {
     executionFingerprint: MOCK_EXECUTION_FINGERPRINT,
   };
   let registry: InstanceType<
-    typeof import("../../shared/lib/ai/admission/service.js").ExecutionLeaseRegistry
+    typeof import("../../shared/lib/ai/admission/lease-registry.js").ExecutionLeaseRegistry
   > | null = null;
   let limits: EvidenceKey["limits"] | null = null;
   let issuedLeaseId: string | null = null;
 
   const authorizeReviewExecution = vi.fn(async () => {
-    const { ExecutionLeaseRegistry } = await import("../../shared/lib/ai/admission/service.js");
+    const { ExecutionLeaseRegistry } = await import(
+      "../../shared/lib/ai/admission/lease-registry.js"
+    );
     const base = await buildMockAuthorization();
     registry ??= new ExecutionLeaseRegistry();
     limits ??= { ...base.plan.limits, maxConcurrency: 1 };
@@ -698,6 +700,7 @@ describe("POST /api/review/reviews", () => {
     };
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/json");
     expect(CreateReviewResponseSchema.parse(body)).toEqual(expected);
   });
 
@@ -960,23 +963,6 @@ describe("POST /api/review/reviews", () => {
     expect(response.status).toBe(503);
     const body = (await response.json()) as { error: { code: string } };
     expect(body.error.code).toBe("SETUP_REQUIRED");
-  });
-
-  it("does not return SSE content type", async () => {
-    await trustProject(projectA);
-    const app = await createReviewApp();
-
-    const response = await app.request("/api/review/reviews", {
-      ...requestOptions(projectA),
-      method: "POST",
-      headers: {
-        [PROJECT_ROOT_HEADER]: projectA,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ mode: "unstaged" }),
-    });
-
-    expect(response.headers.get("content-type")).not.toContain("text/event-stream");
   });
 
   it("returns 429 with Retry-After when the route-level creation limit is exceeded", async () => {
@@ -1439,7 +1425,7 @@ describe("POST /api/review/reviews validation", () => {
 });
 
 describe("POST /api/review/reviews files[] input limits", () => {
-  it("rejects files arrays exceeding 200 items", async () => {
+  it("rejects a files array one entry past the cap", async () => {
     await configureSetup(projectA);
     const app = await createReviewApp();
 
@@ -1451,7 +1437,7 @@ describe("POST /api/review/reviews files[] input limits", () => {
       },
       body: JSON.stringify({
         mode: "files",
-        files: Array.from({ length: 201 }, (_, i) => `file-${i}.ts`),
+        files: Array.from({ length: MAX_REVIEW_FILES + 1 }, (_, i) => `file-${i}.ts`),
       }),
     });
 
@@ -1460,7 +1446,7 @@ describe("POST /api/review/reviews files[] input limits", () => {
     expect(body.error.code).toBe("VALIDATION_ERROR");
   });
 
-  it("rejects file paths exceeding 500 characters", async () => {
+  it("rejects a file path one character past the cap", async () => {
     await configureSetup(projectA);
     const app = await createReviewApp();
 
@@ -1472,7 +1458,7 @@ describe("POST /api/review/reviews files[] input limits", () => {
       },
       body: JSON.stringify({
         mode: "files",
-        files: ["a".repeat(501)],
+        files: ["a".repeat(MAX_REVIEW_PATH_LENGTH + 1)],
       }),
     });
 

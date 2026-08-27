@@ -114,9 +114,6 @@ async function runPnpmWorkspaceList(projectPath: string): Promise<string> {
   // The child runs inside the reviewed repository, so it gets the same narrowed
   // environment as a provider CLI: never the shutdown token or a provider key.
   const childEnv = buildCliChildEnvironment();
-  if (!childEnv.ok) {
-    throw new Error(`refusing to spawn pnpm with ${childEnv.error.key} in the environment`);
-  }
 
   // npm/corepack installs of pnpm on Windows are `pnpm.cmd` shims, and Node
   // refuses to spawn batch files without a shell. Route through cmd.exe with the
@@ -130,7 +127,7 @@ async function runPnpmWorkspaceList(projectPath: string): Promise<string> {
       : [...PNPM_LIST_ARGS],
     {
       cwd: projectPath,
-      env: { ...childEnv.value, CI: "1", npm_config_offline: "true" },
+      env: { ...childEnv, CI: "1", npm_config_offline: "true" },
       timeout: PNPM_LIST_TIMEOUT_MS,
       maxBuffer: PNPM_LIST_MAX_BUFFER_BYTES,
       windowsHide: true,

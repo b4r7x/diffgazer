@@ -347,7 +347,7 @@ describe("ReviewResultsView (TUI)", () => {
     expect(frame).toContain("[ ] 2. Third fix step");
   });
 
-  test("j and k move the fix-plan cursor the footer advertises", async () => {
+  test("j and k move the fix-plan cursor while the footer advertises the arrow keys", async () => {
     const { stdin, lastFrame } = render(
       resultsElement([
         makeIssue({

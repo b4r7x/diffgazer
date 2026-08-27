@@ -1,7 +1,6 @@
 import { useEffect, useReducer, useRef } from "react";
 import { getErrorMessage } from "../../errors.js";
 import { err, ok, type Result } from "../../result.js";
-import { isSessionTerminationCode } from "../../review/lifecycle.js";
 import {
   createInitialReviewState,
   type ReviewAction,
@@ -10,7 +9,7 @@ import {
   reviewReducer,
 } from "../../review/state.js";
 import type { StreamReviewError } from "../../review/stream.js";
-import { ReviewErrorCode, type ReviewSizeWarning } from "../../schemas/review/index.js";
+import type { ReviewSizeWarning } from "../../schemas/review/index.js";
 import type { CancelReason } from "../review.js";
 import { useApi } from "./context.js";
 
@@ -200,18 +199,6 @@ export function useReviewStream() {
         const finalIssues = result.value.result.issues;
         dispatch({ type: "COMPLETE_WITH_RESULT", issues: finalIssues });
         return ok(undefined);
-      }
-
-      if (
-        isSessionTerminationCode(result.error.code) ||
-        result.error.code === ReviewErrorCode.SESSION_NOT_FOUND
-      ) {
-        dispatch({
-          type: "ERROR",
-          error: result.error.message,
-          errorCode: result.error.code,
-        });
-        return err(result.error);
       }
 
       dispatch({ type: "ERROR", error: result.error.message, errorCode: result.error.code });

@@ -189,23 +189,6 @@ describe("runLensAnalysis", () => {
     }
   });
 
-  it("omits unused tracing metadata from emitted events", async () => {
-    const client = makeMockAIClient(ok({ issues: [] }));
-    const events: Array<AgentStreamEvent | StepEvent> = [];
-    const promise = runSingleBatchLens(client, makeAnalysisDiff(), (event) => events.push(event));
-
-    await vi.advanceTimersByTimeAsync(100);
-    const result = await promise;
-
-    expect(result.ok).toBe(true);
-    expect(events.length).toBeGreaterThan(0);
-    for (const event of events) {
-      expect(event).not.toHaveProperty("traceId");
-      expect(event).not.toHaveProperty("spanId");
-      expect(event).not.toHaveProperty("parentSpanId");
-    }
-  });
-
   it("gates issue_found and agent_complete.issueCount on the severity threshold", async () => {
     const diff = makeAnalysisDiff(1);
     const issues = [
@@ -635,7 +618,6 @@ describe("runLensAnalysis", () => {
     expect(new Set(result.value.issues.map((issue) => issue.id)).size).toBe(
       MAX_REVIEW_ISSUES_PER_LENS,
     );
-    expect(result.value.droppedOverLensCap).toBe(10);
   });
 
   it("records one dispatch entry per batch with completed outcomes", async () => {

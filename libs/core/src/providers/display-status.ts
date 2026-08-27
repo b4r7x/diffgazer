@@ -28,11 +28,6 @@ const READINESS_BADGES = {
   },
   unsupported: { label: "Unsupported", shortLabel: "unsupported", variant: "warning" },
   skipped: { label: "Verification skipped", shortLabel: "skipped", variant: "warning" },
-  "local-conformance-failed": {
-    label: "Local conformance failed",
-    shortLabel: "failed",
-    variant: "error",
-  },
   ready: { label: "Ready", shortLabel: "ready", variant: "success" },
 } as const satisfies Record<ReadinessStatus, ReadinessBadge>;
 

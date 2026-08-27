@@ -577,6 +577,9 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
       return err(upgraded.error);
     }
 
+    for (const provider of upgraded.value.retiredProviders) {
+      log("warn", "config_v1_provider_dropped", { provider });
+    }
     configDocument = upgraded.value.configDocument;
     secretsDocument = upgraded.value.secretsDocument;
     const persisted = await writeDocuments();

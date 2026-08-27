@@ -99,10 +99,7 @@ function normalizeDiagnosticText(value: string): string {
 }
 
 /** Redacts configured literals and known secret/token/account/path/argv/prompt patterns. */
-export function redactDiagnosticText(
-  value: string,
-  sensitive?: DiagnosticSensitiveContext,
-): string {
+function redactDiagnosticText(value: string, sensitive?: DiagnosticSensitiveContext): string {
   const literals = [...(sensitive?.literalSecrets ?? []), ...(sensitive?.accountIdentifiers ?? [])];
   return redactSecrets(value, literals, CLI_DIAGNOSTIC_RULES);
 }

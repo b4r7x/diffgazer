@@ -272,9 +272,6 @@ describe("ReviewSummaryView", () => {
     await user.keyboard("{ArrowUp}");
     const region = screen.getByRole("region", { name: "Review summary" });
     expect(region).toHaveFocus();
-    // The scroller keeps keyboard scrolling but defers the pane mark to the
-    // Panel: the defusal class is libs/ui's documented outline contract.
-    expect(region).toHaveClass("focus:outline-none");
     expectSingleReticle(container);
   });
 
