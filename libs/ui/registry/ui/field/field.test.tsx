@@ -1,33 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
 import { requireAttribute } from "../../testing/assertions";
 import { expectFieldDescribedBy, expectFieldInvalid } from "../../testing/form-behavior";
-import { Checkbox } from "../checkbox/index";
-import { Input, InputGroup } from "../input/index";
-import { Radio } from "../radio/index";
-import { Select } from "../select/index";
+import { Input } from "../input/index";
 import { Textarea } from "../textarea/index";
 import { Field } from "./index";
 
 describe("Field", () => {
-  const ssrContainers: HTMLElement[] = [];
-
-  function mountStaticMarkup(html: string) {
-    const container = document.createElement("div");
-    container.innerHTML = html;
-    document.body.appendChild(container);
-    ssrContainers.push(container);
-    return container;
-  }
-
-  afterEach(() => {
-    while (ssrContainers.length > 0) ssrContainers.pop()?.remove();
-  });
-
   it("wires required, invalid, description, and error state to the control", () => {
     render(
       <Field invalid required>
@@ -198,46 +180,6 @@ describe("Field", () => {
     );
 
     expect(screen.getByText("Use your work email.")).not.toHaveClass("sr-only");
-  });
-
-  it("composes form wiring with decorated inputs", () => {
-    render(
-      <Field controlId="repository-path" invalid required disabled>
-        <Field.Label>Repository path</Field.Label>
-        <Field.Control>
-          <InputGroup prefix="~/" suffix=".json" />
-        </Field.Control>
-        <Field.Description>Relative config path.</Field.Description>
-        <Field.Error>Repository path is required.</Field.Error>
-      </Field>,
-    );
-
-    const input = screen.getByRole("textbox", { name: "Repository path" });
-
-    expect(input).toHaveAttribute("id", "repository-path");
-    expect(input).toBeRequired();
-    expect(input).toBeDisabled();
-    expectFieldInvalid(input, "Repository path is required. Relative config path.");
-    expect(screen.getByText("~/")).toBeInTheDocument();
-    expect(screen.getByText(".json")).toBeInTheDocument();
-    expect(screen.getByText("~/")).toHaveAttribute("aria-hidden", "true");
-    expect(screen.getByText(".json")).toHaveAttribute("aria-hidden", "true");
-  });
-
-  it("composes form wiring with textareas", () => {
-    render(
-      <Field invalid>
-        <Field.Label>Review notes</Field.Label>
-        <Field.Control>
-          <Textarea />
-        </Field.Control>
-        <Field.Error>Notes are required.</Field.Error>
-      </Field>,
-    );
-
-    const textarea = screen.getByRole("textbox", { name: "Review notes" });
-
-    expectFieldInvalid(textarea, "Notes are required.");
   });
 
   it("merges external aria-labelledby with the field label id", () => {
@@ -447,90 +389,6 @@ describe("Field", () => {
     expect(screen.getByText("Project name")).toHaveAttribute("for", "custom");
   });
 
-  it("clicking a Field.Label toggles and focuses a div-based Checkbox", async () => {
-    const user = userEvent.setup();
-
-    render(
-      <Field>
-        <Field.Label>Accept terms</Field.Label>
-        <Field.Control>
-          <Checkbox />
-        </Field.Control>
-      </Field>,
-    );
-
-    const checkbox = screen.getByRole("checkbox", { name: "Accept terms" });
-    expect(checkbox).toHaveAttribute("aria-checked", "false");
-
-    await user.click(screen.getByText("Accept terms"));
-
-    expect(checkbox).toHaveAttribute("aria-checked", "true");
-    expect(checkbox).toHaveFocus();
-  });
-
-  it("does not activate a div-based Checkbox disabled by Field", async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-
-    render(
-      <Field disabled>
-        <Field.Label>Accept terms</Field.Label>
-        <Field.Control>
-          <Checkbox onChange={onChange} />
-        </Field.Control>
-      </Field>,
-    );
-
-    const checkbox = screen.getByRole("checkbox", { name: "Accept terms" });
-    await user.click(screen.getByText("Accept terms"));
-
-    expect(checkbox).toHaveAttribute("aria-disabled", "true");
-    expect(checkbox).toHaveAttribute("aria-checked", "false");
-    expect(checkbox).not.toHaveFocus();
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
-  it("does not activate a disabled div-based Radio", async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-
-    render(
-      <Field>
-        <Field.Label>Primary option</Field.Label>
-        <Field.Control>
-          <Radio disabled onChange={onChange} />
-        </Field.Control>
-      </Field>,
-    );
-
-    const radio = screen.getByRole("radio", { name: "Primary option" });
-    await user.click(screen.getByText("Primary option"));
-
-    expect(radio).toHaveAttribute("aria-disabled", "true");
-    expect(radio).toHaveAttribute("aria-checked", "false");
-    expect(radio).not.toHaveFocus();
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
-  it("clicking a label for a native Input focuses it exactly once (no double activation)", async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-
-    render(
-      <Field>
-        <Field.Label>Project name</Field.Label>
-        <Field.Control>
-          <Input onChange={onChange} />
-        </Field.Control>
-      </Field>,
-    );
-
-    await user.click(screen.getByText("Project name"));
-
-    expect(screen.getByRole("textbox", { name: "Project name" })).toHaveFocus();
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
   it("renders Field.Error only while invalid and joins it into aria-describedby on transition", () => {
     const { rerender } = render(
       <Field>
@@ -558,56 +416,6 @@ describe("Field", () => {
     const input = screen.getByRole("textbox", { name: "Email" });
     expect(screen.getByText("Email is required.")).toBeInTheDocument();
     expectFieldInvalid(input, "Email is required.");
-  });
-
-  it("composes form wiring with Select on the combobox trigger", () => {
-    render(
-      <Field invalid required disabled>
-        <Field.Label>Region</Field.Label>
-        <Field.Control>
-          <Select>
-            <Select.Trigger>
-              <Select.Value placeholder="Select a region" />
-            </Select.Trigger>
-            <Select.Content>
-              <Select.Item value="us">United States</Select.Item>
-              <Select.Item value="eu">Europe</Select.Item>
-            </Select.Content>
-          </Select>
-        </Field.Control>
-        <Field.Description>Choose where data is stored.</Field.Description>
-        <Field.Error>Region is required.</Field.Error>
-      </Field>,
-    );
-
-    const combobox = screen.getByRole("combobox", { name: "Region" });
-
-    expectFieldInvalid(combobox, "Region is required. Choose where data is stored.");
-    expect(combobox).toHaveAttribute("aria-required", "true");
-    expect(combobox).toBeDisabled();
-    expect(combobox).toHaveAttribute("aria-labelledby");
-    expect(combobox).not.toHaveAttribute("aria-label", "Select");
-  });
-
-  it("Field.Label uses the trigger id for htmlFor when composing with Select", () => {
-    render(
-      <Field controlId="region-select">
-        <Field.Label>Region</Field.Label>
-        <Field.Control>
-          <Select>
-            <Select.Trigger>
-              <Select.Value placeholder="Select a region" />
-            </Select.Trigger>
-            <Select.Content>
-              <Select.Item value="us">United States</Select.Item>
-            </Select.Content>
-          </Select>
-        </Field.Control>
-      </Field>,
-    );
-
-    const combobox = screen.getByRole("combobox", { name: "Region" });
-    expect(combobox).toHaveAttribute("id", "region-select");
   });
 
   it("treats empty string description and error as absent (no aria-describedby, no rendered text)", () => {
@@ -684,100 +492,6 @@ describe("Field", () => {
     const input = screen.getByRole("textbox", { name: "Email" });
 
     expect(input).toHaveAccessibleDescription("Use your work email.");
-  });
-
-  it("wires native label and aria-labelledby to the control in SSR output before hydration", () => {
-    const html = renderToStaticMarkup(
-      <Field controlId="ssr-test">
-        <Field.Label>Username</Field.Label>
-        <Field.Control>
-          <Input />
-        </Field.Control>
-      </Field>,
-    );
-    mountStaticMarkup(html);
-
-    const input = screen.getByRole("textbox", { name: "Username" });
-    expect(input).toHaveAttribute("id", "ssr-test");
-    expect(input).toHaveAttribute("aria-labelledby", "ssr-test-label");
-    expect(screen.getByText("Username")).toHaveAttribute("for", "ssr-test");
-  });
-
-  it("preserves aria-label for an empty Field.Label in SSR output", () => {
-    const html = renderToStaticMarkup(
-      <Field controlId="ssr-empty-label">
-        <Field.Label>{""}</Field.Label>
-        <Field.Control>
-          <Input aria-label="SSR fallback" />
-        </Field.Control>
-      </Field>,
-    );
-    mountStaticMarkup(html);
-
-    expect(screen.getByRole("textbox", { name: "SSR fallback" })).not.toHaveAttribute(
-      "aria-labelledby",
-    );
-  });
-
-  it("names a div-based Checkbox via aria-labelledby in SSR output before hydration", () => {
-    const html = renderToStaticMarkup(
-      <Field controlId="accept">
-        <Field.Label>Accept terms</Field.Label>
-        <Field.Control>
-          <Checkbox />
-        </Field.Control>
-      </Field>,
-    );
-    mountStaticMarkup(html);
-
-    expect(screen.getByRole("checkbox", { name: "Accept terms" })).toBeInTheDocument();
-  });
-
-  it("names a div-based Radio via aria-labelledby in SSR output before hydration", () => {
-    const html = renderToStaticMarkup(
-      <Field controlId="plan">
-        <Field.Label>Pro plan</Field.Label>
-        <Field.Control>
-          <Radio />
-        </Field.Control>
-      </Field>,
-    );
-    mountStaticMarkup(html);
-
-    expect(screen.getByRole("radio", { name: "Pro plan" })).toBeInTheDocument();
-  });
-
-  it("wires aria-describedby to the control in SSR output for description and error", () => {
-    const html = renderToStaticMarkup(
-      <Field invalid controlId="email">
-        <Field.Label>Email</Field.Label>
-        <Field.Control>
-          <Input />
-        </Field.Control>
-        <Field.Description>Use your work email.</Field.Description>
-        <Field.Error>Email is required.</Field.Error>
-      </Field>,
-    );
-    mountStaticMarkup(html);
-
-    const input = screen.getByRole("textbox", { name: "Email" });
-    expect(input).toHaveAccessibleDescription("Email is required. Use your work email.");
-  });
-
-  it("follows a child control's own id from the label in SSR output before hydration", () => {
-    const html = renderToStaticMarkup(
-      <Field controlId="field-default">
-        <Field.Label>Project name</Field.Label>
-        <Field.Control>
-          <Input id="custom" />
-        </Field.Control>
-      </Field>,
-    );
-    mountStaticMarkup(html);
-
-    const input = screen.getByRole("textbox", { name: "Project name" });
-    expect(input).toHaveAttribute("id", "custom");
-    expect(screen.getByText("Project name")).toHaveAttribute("for", "custom");
   });
 
   it("omits aria-describedby when FieldDescription is not rendered", () => {

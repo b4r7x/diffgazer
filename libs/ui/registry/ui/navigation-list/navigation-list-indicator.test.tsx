@@ -54,13 +54,18 @@ describe("NavigationList indicator variants", () => {
     expect(activeItem.textContent).toContain("]");
   });
 
-  it("does not affect keyboard navigation when indicator changes", async () => {
+  it.each([
+    "bar",
+    "bar-thick",
+    "arrow",
+    "bracket",
+  ] as const)("keeps keyboard navigation working with the %s indicator", async (indicator) => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
     render(
       <NavigationList
         aria-label="Test nav"
-        indicator="arrow"
+        indicator={indicator}
         defaultHighlighted="one"
         onSelect={onSelect}
       >

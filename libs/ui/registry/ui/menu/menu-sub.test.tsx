@@ -171,7 +171,11 @@ describe("MenuSub", () => {
     });
   });
 
-  it("ArrowLeft in submenu closes it and returns focus to trigger", async () => {
+  it.each([
+    "{ArrowLeft}",
+    "{Escape}",
+    "{Tab}",
+  ])("%s in a portaled submenu closes it and returns focus to the trigger", async (key) => {
     const user = userEvent.setup();
     renderSubmenu();
     const menu = screen.getByRole("menu");
@@ -189,32 +193,9 @@ describe("MenuSub", () => {
       "submenu",
     );
     submenu.focus();
-    await user.keyboard("{ArrowLeft}");
+    await user.keyboard(key);
 
-    expect(menu).toHaveFocus();
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"));
-  });
-
-  it("Escape in submenu closes it and returns focus to trigger", async () => {
-    const user = userEvent.setup();
-    renderSubmenu();
-    const menu = screen.getByRole("menu");
-    menu.focus();
-
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard("{ArrowRight}");
-
-    await waitFor(() => {
-      expect(screen.getAllByRole("menu").length).toBeGreaterThan(1);
-    });
-
-    const submenu = requireValue(
-      screen.getAllByRole("menu").find((candidate) => candidate !== menu),
-      "submenu",
-    );
-    submenu.focus();
-    await user.keyboard("{Escape}");
-
+    expect(getMenuItem("Edit")).toHaveAttribute("aria-expanded", "false");
     expect(menu).toHaveFocus();
     expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"));
   });
@@ -321,33 +302,6 @@ describe("MenuSub", () => {
 
     await user.keyboard("{ArrowDown}");
     expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-file"));
-  });
-
-  it("Tab inside a portaled submenu returns focus to the parent menu", async () => {
-    const user = userEvent.setup();
-    renderSubmenu();
-    const menu = screen.getByRole("menu");
-    menu.focus();
-
-    await user.keyboard("{ArrowDown}");
-    await user.keyboard("{ArrowRight}");
-
-    await waitFor(() => {
-      expect(screen.getAllByRole("menu").length).toBeGreaterThan(1);
-    });
-
-    const submenu = requireValue(
-      screen.getAllByRole("menu").find((candidate) => candidate !== menu),
-      "submenu",
-    );
-    submenu.focus();
-
-    await user.keyboard("{Tab}");
-
-    const trigger = getMenuItem("Edit");
-    expect(trigger).toHaveAttribute("aria-expanded", "false");
-    expect(menu).toHaveFocus();
-    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"));
   });
 
   it("SubTrigger pins role to menuitem and never renders aria-checked in a selection menu", () => {

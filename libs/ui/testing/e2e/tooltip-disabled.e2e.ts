@@ -1,16 +1,17 @@
 import { expect, test } from "@playwright/test";
 
-test("disabled tooltip exposes one named Tab stop and describes its disabled button in Chromium AX", async ({
+test.beforeEach(async ({ page }) => {
+  await page.goto("/testing/fixtures/popover-focus.html?case=tooltip-disabled");
+});
+
+test("the disabled button's wrapper is the only Tab stop and carries its accessible name", async ({
   page,
 }) => {
-  await page.goto("/testing/fixtures/popover-focus.html?case=tooltip-disabled");
   const before = page.getByRole("button", { name: "Before disabled tooltip" });
   const disabledButton = page.getByRole("button", { name: "Retry review" });
   const wrapper = disabledButton.locator("..");
-  const after = page.getByRole("button", { name: "After disabled tooltip" });
 
   await expect(disabledButton).toBeDisabled();
-  await expect(wrapper).toHaveJSProperty("tagName", "SPAN");
   await expect(wrapper).toHaveAttribute("tabindex", "0");
   await expect(wrapper).toHaveAccessibleName("Retry review");
 
@@ -19,10 +20,14 @@ test("disabled tooltip exposes one named Tab stop and describes its disabled but
   await page.keyboard.press("Tab");
   await expect(wrapper).toBeFocused();
   await expect(disabledButton).not.toBeFocused();
+});
 
-  const tooltip = page.getByRole("tooltip");
-  await expect(tooltip).toBeVisible();
-  await expect(tooltip).toHaveText("Unavailable while the review is running");
+test("the tooltip describes the disabled button in the Chromium accessibility tree", async ({
+  page,
+}) => {
+  const wrapper = page.getByRole("button", { name: "Retry review" }).locator("..");
+  await wrapper.focus();
+  await expect(page.getByRole("tooltip")).toHaveText("Unavailable while the review is running");
 
   const session = await page.context().newCDPSession(page);
   try {
@@ -40,6 +45,19 @@ test("disabled tooltip exposes one named Tab stop and describes its disabled but
   } finally {
     await session.detach();
   }
+});
+
+test("keyboard focus shows the tooltip, Tab away hides it, and Escape dismisses it without losing focus", async ({
+  page,
+}) => {
+  const wrapper = page.getByRole("button", { name: "Retry review" }).locator("..");
+  const after = page.getByRole("button", { name: "After disabled tooltip" });
+  const tooltip = page.getByRole("tooltip");
+
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(wrapper).toBeFocused();
+  await expect(tooltip).toBeVisible();
 
   await page.keyboard.press("Tab");
   await expect(after).toBeFocused();
@@ -48,19 +66,31 @@ test("disabled tooltip exposes one named Tab stop and describes its disabled but
   await page.keyboard.press("Shift+Tab");
   await expect(wrapper).toBeFocused();
   await expect(tooltip).toBeVisible();
+
   await page.keyboard.press("Escape");
   await expect(tooltip).toBeHidden();
   await expect(wrapper).toBeFocused();
+});
 
-  await after.focus();
+test("hovering the wrapper shows the tooltip and hovering elsewhere hides it", async ({ page }) => {
+  const wrapper = page.getByRole("button", { name: "Retry review" }).locator("..");
+  const tooltip = page.getByRole("tooltip");
 
   await wrapper.hover();
   await expect(tooltip).toBeVisible();
+
   await page.getByRole("button", { name: "Before disabled tooltip" }).hover();
   await expect(tooltip).toBeHidden();
+});
+
+test("a touch pointerdown toggles the tooltip without enabling the button", async ({ page }) => {
+  const disabledButton = page.getByRole("button", { name: "Retry review" });
+  const wrapper = disabledButton.locator("..");
+  const tooltip = page.getByRole("tooltip");
 
   await wrapper.dispatchEvent("pointerdown", { pointerType: "touch" });
   await expect(tooltip).toBeVisible();
+
   await wrapper.dispatchEvent("pointerdown", { pointerType: "touch" });
   await expect(tooltip).toBeHidden();
   await expect(disabledButton).toBeDisabled();

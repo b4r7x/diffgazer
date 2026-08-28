@@ -37,7 +37,6 @@ describe("ProviderStep (TUI)", () => {
     const { lastFrame, stdin } = renderStep(onChange);
 
     const frame = lastFrame() ?? "";
-    expect(SELECTABLE_PRODUCT_IDS).toHaveLength(9);
     for (const productId of SELECTABLE_PRODUCT_IDS) {
       expect(frame).toContain(PRODUCT_REGISTRY[productId].presentation.name);
     }

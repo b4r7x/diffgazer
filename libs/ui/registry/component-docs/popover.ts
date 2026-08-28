@@ -90,7 +90,7 @@ export const popoverDoc: ComponentDoc = {
           "Moves normally and closes click-mode content only after focus leaves the trigger/content pair.",
       },
     ],
-    // popover-basic is the page hero; repeating it here rendered the same demo twice.
+    // popover-basic is the page hero; listing it here would duplicate it.
     examples: [],
   },
   dataAttributes: [

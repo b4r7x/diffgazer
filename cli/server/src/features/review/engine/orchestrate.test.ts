@@ -335,7 +335,7 @@ describe("orchestrateReview", () => {
       { concurrency: 1 },
     );
 
-    // One schema failure no longer aborts the run: every lens gets its dispatch.
+    // One schema failure does not abort the run: every lens gets its dispatch.
     expect(generate).toHaveBeenCalledTimes(3);
     expect(result.ok).toBe(false);
     if (!result.ok) {

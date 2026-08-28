@@ -12,7 +12,8 @@ import {
 import { handleStoreError } from "../../../shared/lib/http/store-error.js";
 import { requireRepoAccess } from "../../../shared/middlewares/trust-guard.js";
 import { ReviewIdParamSchema, ReviewListQuerySchema } from "../schemas.js";
-import { getReviewDetail as getStoredReviewDetail, listReviewPage } from "../storage/reviews.js";
+import { listReviewPage } from "../storage/list-page.js";
+import { getReviewDetail as getStoredReviewDetail } from "../storage/reviews.js";
 import { isValidProjectPath, resolvesToSameProject } from "../validation.js";
 
 const historyRouter = new Hono();

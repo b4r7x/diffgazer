@@ -98,11 +98,6 @@ describe("ReviewIssueSchema", () => {
     const parsedResult = ReviewResultSchema.parse({ issues: [input] });
 
     expect(parsedIssue.evidence[0]?.excerpt).toBe("    if (a) {\n      b();\n    }");
-    expect(parsedIssue.evidence[0]?.excerpt.split("\n")).toEqual([
-      "    if (a) {",
-      "      b();",
-      "    }",
-    ]);
     expect(parsedResult.issues[0]?.evidence[0]?.excerpt).toBe(parsedIssue.evidence[0]?.excerpt);
   });
 

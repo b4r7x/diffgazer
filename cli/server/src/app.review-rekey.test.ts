@@ -65,7 +65,8 @@ describe("review re-key wiring", () => {
     // Import after vi.resetModules so createApp, the config store, and the review
     // storage share one module instance (the rekey handler is module-level state).
     const { createApp: freshCreateApp } = await import("./app.js");
-    const { saveReview, listReviewPage } = await import("./features/review/storage/reviews.js");
+    const { saveReview } = await import("./features/review/storage/reviews.js");
+    const { listReviewPage } = await import("./features/review/storage/list-page.js");
 
     const originalRoot = join(diffgazerHome, "original");
     const movedRoot = join(diffgazerHome, "moved");
@@ -127,7 +128,8 @@ describe("review re-key wiring", () => {
 
   it("keeps the old root after a review-write failure and commits it after the next retry", async () => {
     const { createApp: freshCreateApp } = await import("./app.js");
-    const { saveReview, listReviewPage } = await import("./features/review/storage/reviews.js");
+    const { saveReview } = await import("./features/review/storage/reviews.js");
+    const { listReviewPage } = await import("./features/review/storage/list-page.js");
     const atomicWrite = await import("./shared/lib/fs.js");
     const originalRoot = join(diffgazerHome, "retry-original");
     const movedRoot = join(diffgazerHome, "retry-moved");

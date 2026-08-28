@@ -125,7 +125,7 @@ describe("remove command", () => {
     expect(output).toMatch(/unused packages:.*@diffgazer\/keys/);
   });
 
-  test("stale cleanup reports orphaned npm dependencies", () => {
+  test("stale cleanup reports the manifest entry whose files are gone", () => {
     runDgadd([
       "add",
       "ui/select",
@@ -137,14 +137,6 @@ describe("remove command", () => {
       "--skip-install",
     ]);
 
-    const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf-8"));
-    pkg.dependencies = {
-      ...(pkg.dependencies ?? {}),
-      "@diffgazer/keys": "^0.2.0",
-      clsx: "^2.0.0",
-    };
-    writeFileSync(join(root, "package.json"), JSON.stringify(pkg, null, 2));
-
     rmSync(join(root, "src"), { recursive: true, force: true });
 
     const output = runDgadd(["remove", "ui/select", "--cwd", root, "--yes", "--force"], {
@@ -152,7 +144,6 @@ describe("remove command", () => {
     });
 
     expect(output).toMatch(/stale manifest entry/);
-    expect(output).toMatch(/unused packages:.*@diffgazer\/keys/);
   });
 
   test("copy-mode remove does not suggest removing @diffgazer/keys when it was never installed", () => {

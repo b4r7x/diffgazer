@@ -332,6 +332,31 @@ describe("resumeStreamById freshness gating", () => {
     expect(driftNotices(REVIEW_ID)).toHaveLength(1);
   });
 
+  it("retries the drift notice on the next reconnect when the event cap dropped it", async () => {
+    const session = createSession(REVIEW_ID, {
+      projectPath: PROJECT_PATH,
+      headCommit: "abc123",
+      statusHash: "stored-hash",
+      statusHashKind: "full",
+      mode: "unstaged",
+    });
+    markReady(REVIEW_ID);
+    setStatusHash({ kind: "full", hash: "changed-hash" });
+    // Fill the replay buffer past its cap so the notice cannot be buffered.
+    for (let index = 0; index < 10_000; index += 1) {
+      session.events.push({ type: "chunk", content: "filler" });
+    }
+
+    await resume();
+
+    expect(driftNotices(REVIEW_ID)).toHaveLength(0);
+
+    session.events.length = 0;
+    await resume();
+
+    expect(driftNotices(REVIEW_ID)).toHaveLength(1);
+  });
+
   it("keeps streaming when only out-of-scope worktree files changed", async () => {
     const parsedResult = await resolveGitDiff({
       gitService,

@@ -87,7 +87,11 @@ export const checkKeysDistFreshness = createDistFreshnessCheck({
   name: "libs/keys dist is not stale",
   srcDir: "libs/keys/src",
   distDir: "libs/keys/dist",
-  excludedFiles: ["test-setup.ts", "hooks/use-navigation/test-list.tsx"],
+  excludedFiles: [
+    "test-setup.ts",
+    "hooks/use-navigation/test-list.tsx",
+    "hooks/use-focus-trap/trap-harness.ts",
+  ],
   excludedPrefixes: ["testing/internal/"],
   excludedDistPrefixes: ["artifacts/"],
   rebuildCommand: "pnpm --filter @diffgazer/keys exec tsc",

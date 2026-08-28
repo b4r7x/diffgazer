@@ -264,50 +264,14 @@ describe("Stepper focus management", () => {
     expect(s1).toHaveFocus();
   });
 
-  it("tab target skips a hidden active step", () => {
+  it.each<{ readonly label: string; readonly props: Record<string, unknown> }>([
+    { label: "hidden", props: { hidden: true } },
+    { label: "inert", props: { inert: true } },
+    { label: "aria-hidden", props: { "aria-hidden": "true" } },
+  ])("tab target skips a $label active step", ({ props }) => {
     const { container } = render(
       <Stepper>
-        <Stepper.Step stepId="s1" status="active" hidden>
-          <Stepper.Trigger>Step 1</Stepper.Trigger>
-        </Stepper.Step>
-        <Stepper.Step stepId="s2" status="pending">
-          <Stepper.Trigger>Step 2</Stepper.Trigger>
-        </Stepper.Step>
-        <Stepper.Step stepId="s3" status="pending">
-          <Stepper.Trigger>Step 3</Stepper.Trigger>
-        </Stepper.Step>
-      </Stepper>,
-    );
-
-    expect(requireStepTrigger(container, "s1")).toHaveAttribute("tabIndex", "-1");
-    expect(requireStepTrigger(container, "s2")).toHaveAttribute("tabIndex", "0");
-    expect(requireStepTrigger(container, "s3")).toHaveAttribute("tabIndex", "-1");
-  });
-
-  it("tab target skips an inert active step", () => {
-    const { container } = render(
-      <Stepper>
-        <Stepper.Step stepId="s1" status="active" inert>
-          <Stepper.Trigger>Step 1</Stepper.Trigger>
-        </Stepper.Step>
-        <Stepper.Step stepId="s2" status="pending">
-          <Stepper.Trigger>Step 2</Stepper.Trigger>
-        </Stepper.Step>
-        <Stepper.Step stepId="s3" status="pending">
-          <Stepper.Trigger>Step 3</Stepper.Trigger>
-        </Stepper.Step>
-      </Stepper>,
-    );
-
-    expect(requireStepTrigger(container, "s1")).toHaveAttribute("tabIndex", "-1");
-    expect(requireStepTrigger(container, "s2")).toHaveAttribute("tabIndex", "0");
-    expect(requireStepTrigger(container, "s3")).toHaveAttribute("tabIndex", "-1");
-  });
-
-  it("tab target skips an aria-hidden active step", () => {
-    const { container } = render(
-      <Stepper>
-        <Stepper.Step stepId="s1" status="active" aria-hidden="true">
+        <Stepper.Step stepId="s1" status="active" {...props}>
           <Stepper.Trigger>Step 1</Stepper.Trigger>
         </Stepper.Step>
         <Stepper.Step stepId="s2" status="pending">

@@ -243,11 +243,11 @@ describe("BudgetLedger exhaustion", () => {
     const second = ledger.reserveAttempt(estimate({ costUsd: 0.03 }));
     expect(second.ok).toBe(false);
     if (!second.ok) {
-      expect(second.error.outcome).toBe("budget-exhausted");
-      if (second.error.outcome === "budget-exhausted") {
-        expect(second.error.limit).toBe("maxCostUsd");
-      }
-      expect(second.error.result.issues).toEqual([]);
+      expect(second.error).toEqual({
+        outcome: "budget-exhausted",
+        limit: "maxCostUsd",
+        result: ZERO_FINDINGS,
+      });
     }
   });
 
@@ -260,10 +260,11 @@ describe("BudgetLedger exhaustion", () => {
     const second = ledger.reserveAttempt(estimate({ inputTokens: 1 }));
     expect(second.ok).toBe(false);
     if (!second.ok) {
-      expect(second.error.outcome).toBe("budget-exhausted");
-      if (second.error.outcome === "budget-exhausted") {
-        expect(second.error.limit).toBe("maxInputTokens");
-      }
+      expect(second.error).toEqual({
+        outcome: "budget-exhausted",
+        limit: "maxInputTokens",
+        result: ZERO_FINDINGS,
+      });
     }
   });
 });
@@ -398,8 +399,12 @@ describe("BudgetLedger review clock", () => {
     const reserved = ledger.reserveAttempt(estimate());
 
     expect(reserved.ok).toBe(false);
-    if (!reserved.ok && reserved.error.outcome === "budget-exhausted") {
-      expect(reserved.error.limit).toBe("wallTimeMs");
+    if (!reserved.ok) {
+      expect(reserved.error).toEqual({
+        outcome: "budget-exhausted",
+        limit: "wallTimeMs",
+        result: ZERO_FINDINGS,
+      });
     }
   });
 
@@ -442,8 +447,12 @@ describe("BudgetLedger review clock", () => {
     const reserved = ledger.reserveAttempt(estimate({ wallTimeMs: 2_000 }));
 
     expect(reserved.ok).toBe(false);
-    if (!reserved.ok && reserved.error.outcome === "budget-exhausted") {
-      expect(reserved.error.limit).toBe("wallTimeMs");
+    if (!reserved.ok) {
+      expect(reserved.error).toEqual({
+        outcome: "budget-exhausted",
+        limit: "wallTimeMs",
+        result: ZERO_FINDINGS,
+      });
     }
   });
 });

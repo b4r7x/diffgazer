@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createRef } from "react";
+import { type ComponentProps, createRef } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
@@ -591,52 +591,23 @@ describe("NavigationList", () => {
     });
   });
 
-  it("excludes a hidden first item from listbox metadata so autoFocus skips it", async () => {
+  const skippedFirstItems: {
+    name: string;
+    props: Partial<ComponentProps<typeof NavigationList.Item>>;
+  }[] = [
+    { name: "hidden", props: { hidden: true } },
+    { name: "inert", props: { inert: true } },
+    { name: "aria-hidden", props: { "aria-hidden": true } },
+  ];
+
+  it.each(
+    skippedFirstItems,
+  )("excludes a $name first item from listbox metadata so autoFocus skips it", async ({
+    props,
+  }) => {
     render(
       <NavigationList aria-label="Test nav" autoFocus>
-        <NavigationList.Item id="one" hidden>
-          <NavigationList.Title>One</NavigationList.Title>
-        </NavigationList.Item>
-        <NavigationList.Item id="two">
-          <NavigationList.Title>Two</NavigationList.Title>
-        </NavigationList.Item>
-      </NavigationList>,
-    );
-
-    const listbox = screen.getByRole("listbox");
-    await waitFor(() =>
-      expect(listbox).toHaveAttribute(
-        "aria-activedescendant",
-        screen.getByRole("option", { name: "Two" }).id,
-      ),
-    );
-  });
-
-  it("excludes an inert first item from listbox metadata so autoFocus skips it", async () => {
-    render(
-      <NavigationList aria-label="Test nav" autoFocus>
-        <NavigationList.Item id="one" inert>
-          <NavigationList.Title>One</NavigationList.Title>
-        </NavigationList.Item>
-        <NavigationList.Item id="two">
-          <NavigationList.Title>Two</NavigationList.Title>
-        </NavigationList.Item>
-      </NavigationList>,
-    );
-
-    const listbox = screen.getByRole("listbox");
-    await waitFor(() =>
-      expect(listbox).toHaveAttribute(
-        "aria-activedescendant",
-        screen.getByRole("option", { name: "Two" }).id,
-      ),
-    );
-  });
-
-  it("excludes an aria-hidden first item from listbox metadata so autoFocus skips it", async () => {
-    render(
-      <NavigationList aria-label="Test nav" autoFocus>
-        <NavigationList.Item id="one" aria-hidden="true">
+        <NavigationList.Item id="one" {...props}>
           <NavigationList.Title>One</NavigationList.Title>
         </NavigationList.Item>
         <NavigationList.Item id="two">
@@ -728,25 +699,6 @@ describe("NavigationList", () => {
     // grouping semantics the listbox exposes.
     expect(screen.getByRole("group", { name: "Sections (1)" })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Trees" })).toBeInTheDocument();
-  });
-
-  it("describes the option with its subtitle", () => {
-    render(
-      <NavigationList aria-label="Test nav">
-        <NavigationList.Item id="one">
-          <NavigationList.Title>One</NavigationList.Title>
-          <NavigationList.Subtitle>
-            a very long subtitle that will not fit into the available row width at all
-          </NavigationList.Subtitle>
-        </NavigationList.Item>
-      </NavigationList>,
-    );
-
-    const option = screen.getByRole("option", { name: /One/ });
-    expect(option.getAttribute("aria-describedby")).toContain(`${option.id}-desc-sub`);
-
-    const subtitle = document.getElementById(`${option.id}-desc-sub`);
-    expect(subtitle).not.toBeNull();
   });
 
   it("keeps item ids unchanged while encoding DOM id references", async () => {

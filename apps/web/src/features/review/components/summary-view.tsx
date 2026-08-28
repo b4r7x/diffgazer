@@ -41,6 +41,8 @@ import { useFocusWithin } from "@/hooks/use-focus-within";
 export interface SummaryAction {
   label: string;
   onSelect: () => void;
+  /** Held shut while the action it names is already in flight. */
+  disabled?: boolean;
 }
 
 interface ReviewSummaryViewProps {
@@ -218,6 +220,7 @@ export function ReviewSummaryView({
   const footer = useActionRowNavigation({
     enabled: true,
     actionCount: actions.length,
+    disabledActions: actions.map((action) => action.disabled === true),
     // Mount lands on the primary action: it is this screen's focus target, not
     // the summary region. With nothing to act on there is no row, and mount
     // focus falls through to the region below.
@@ -390,6 +393,7 @@ export function ReviewSummaryView({
                 size="lg"
                 bracket
                 highlighted={footer.inActions && footer.focusedIndex === index}
+                disabled={action.disabled}
                 onClick={action.onSelect}
               >
                 {action.label}

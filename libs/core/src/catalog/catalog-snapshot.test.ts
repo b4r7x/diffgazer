@@ -12,7 +12,7 @@ import { getCatalogBillingRange, producesTextOutput } from "./model-capability.j
 import { CATALOG_MODEL_DERIVED } from "./model-derived.js";
 import { PROVIDER_DERIVED } from "./provider-derived.js";
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";
-import { CatalogObservationSchema, ModelsDevCatalogSchema } from "./schema.js";
+import { CatalogObservationSchema } from "./schema.js";
 import {
   type CatalogModelObservation,
   isOfferableObservation,
@@ -124,10 +124,6 @@ describe("CATALOG_SNAPSHOT", () => {
     expect(Object.values(PROVIDER_DERIVED).every(({ displayName }) => displayName.length > 0)).toBe(
       true,
     );
-  });
-
-  it("conforms to the bounded catalog schema", () => {
-    expect(ModelsDevCatalogSchema.safeParse(CATALOG_SNAPSHOT).success).toBe(true);
   });
 
   it("retains every current product overlay source observation", () => {
@@ -265,10 +261,9 @@ describe("CATALOG_SNAPSHOT", () => {
     expect(PROVIDER_DERIVED.openrouter.billing).toBe("mixed");
   });
 
-  // Owner evidence: the free models are the point. Z.AI's `-flash` tier used to
-  // sit behind an opt-in suffix and every model upstream published no
-  // `structured_output` for was withheld; both now reach the picker, and their
-  // zero prices make the product badge honest about the free/paid mix.
+  // Zero-priced `-flash` tier models and models with no upstream
+  // `structured_output` claim must reach the picker, so the product badge
+  // reflects the real free/paid mix.
   it("offers the free-tier models the picker used to withhold", () => {
     const offeredIds = new Map(
       snapshotObservations().map(({ productId, models }) => [

@@ -28,12 +28,13 @@ import {
 import { createRateLimitMiddleware } from "../../../shared/middlewares/rate-limit.js";
 import { requireSetup } from "../../../shared/middlewares/setup-guard.js";
 import { hasRepoReadAccess, requireRepoAccess } from "../../../shared/middlewares/trust-guard.js";
+import { recordPassedConformanceEvidence } from "../conformance-evidence.js";
 import {
   ActiveSessionQuerySchema,
   CreateReviewBodySchema,
   ReviewIdParamSchema,
 } from "../schemas.js";
-import { createReviewSession, recordPassedConformanceEvidence } from "../service.js";
+import { createReviewSession } from "../service.js";
 import { resumeStreamById } from "../stream/resume.js";
 import {
   type ActiveSession,

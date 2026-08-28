@@ -1,6 +1,7 @@
 import { SETTINGS_SCREEN_COPY } from "@diffgazer/core/schemas/config";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
 
 const apiMocks = vi.hoisted(() => ({
@@ -39,10 +40,6 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
-
-async function flush(): Promise<void> {
-  await new Promise((resolve) => setImmediate(resolve));
-}
 
 const ARROW_DOWN = "\u001B[B";
 const ARROW_UP = "\u001B[A";

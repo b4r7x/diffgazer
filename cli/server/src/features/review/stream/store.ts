@@ -330,14 +330,17 @@ startSessionMaintenance();
 // a wedged disk cannot hold the process open instead.
 async function drainPendingPartialPersists(): Promise<void> {
   if (pendingPartialPersists.size === 0) return;
-  const saves = Promise.allSettled([...pendingPartialPersists]);
+  const saves = Promise.allSettled([...pendingPartialPersists]).then(() => "saved" as const);
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<void>((resolve) => {
-    timer = setTimeout(resolve, SHUTDOWN_PERSIST_TIMEOUT_MS);
+  const deadline = new Promise<"timeout">((resolve) => {
+    timer = setTimeout(() => resolve("timeout"), SHUTDOWN_PERSIST_TIMEOUT_MS);
     timer.unref();
   });
-  await Promise.race([saves, deadline]);
+  const outcome = await Promise.race([saves, deadline]);
   clearTimeout(timer);
+  if (outcome === "timeout") {
+    log("warn", "session_partial_persist_timeout", { pending: pendingPartialPersists.size });
+  }
 }
 
 // Tear down all in-memory session state for shutdown/SIGTERM and test teardown: clear
@@ -469,9 +472,10 @@ export function markCommitted(reviewId: string): boolean {
   return true;
 }
 
-export function addEvent(reviewId: string, event: FullReviewStreamEvent): void {
+/** Returns whether the event landed in the replay buffer; live delivery is unconditional. */
+export function addEvent(reviewId: string, event: FullReviewStreamEvent): boolean {
   const session = activeSessions.get(reviewId);
-  if (!session || session.isComplete) return;
+  if (!session || session.isComplete) return false;
 
   const result = storeSessionEvent(session, event);
   // First drop at the cap: store one notice (one-time overflow past the cap) so late
@@ -488,6 +492,7 @@ export function addEvent(reviewId: string, event: FullReviewStreamEvent): void {
   // The cap bounds the replay buffer only — live subscribers always receive the event,
   // otherwise a long-running review goes wire-silent past the cap and stalls clients.
   notifySubscribers(session, event);
+  return result.stored;
 }
 
 // The diff a run reads is captured when it starts, so later worktree edits do
@@ -499,8 +504,13 @@ const DRIFT_NOTICE_CONTENT =
 export function noteSessionDrift(reviewId: string): void {
   const session = activeSessions.get(reviewId);
   if (!session || session.isComplete || session.driftNoticeEmitted) return;
-  session.driftNoticeEmitted = true;
-  addEvent(reviewId, { type: "chunk", content: DRIFT_NOTICE_CONTENT });
+  // A resuming client subscribes only after this call, so the notice reaches it
+  // through the replay buffer alone. Claim it as emitted only once it is buffered;
+  // otherwise the next resume retries it.
+  session.driftNoticeEmitted = addEvent(reviewId, {
+    type: "chunk",
+    content: DRIFT_NOTICE_CONTENT,
+  });
 }
 
 export function markComplete(reviewId: string): void {

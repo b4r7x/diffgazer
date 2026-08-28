@@ -1,11 +1,38 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { applyBenchmarkEnvDefaults, timeRequest } from "./benchmark-server.mjs";
 import { runArgv } from "./smoke-shared/command.mjs";
+
+const benchmarkUrl = new URL("./benchmark-server.mjs", import.meta.url);
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+
+// Regression: the benchmark imported SHUTDOWN_TOKEN_HEADER from core's `api/index.js`,
+// which does not re-export it. The header name came out `undefined`, so every
+// authenticated scenario 401'd and the run measured the rejection path instead of the
+// endpoint. Read the specifier out of the benchmark's own source so pointing it back at a
+// module without that export fails here.
+test("the module the benchmark reads the shutdown-token header from actually exports it", async () => {
+  const source = readFileSync(benchmarkUrl, "utf8");
+  const importExpression = source.match(/SHUTDOWN_TOKEN_HEADER\s*}\s*=\s*await import\(([^;]+)\)/);
+  assert.ok(importExpression, "benchmark-server.mjs must import SHUTDOWN_TOKEN_HEADER");
+  const specifier = importExpression[1].match(/"([^"]+)"/)?.[1];
+  assert.ok(specifier, `no module specifier in ${importExpression[1].trim()}`);
+
+  const modulePath = resolve(repoRoot, specifier);
+  assert.ok(
+    existsSync(modulePath),
+    `${specifier} is missing \u2014 it is build output; run \`pnpm run build\` before \`pnpm run test:scripts\``,
+  );
+
+  const module = await import(pathToFileURL(modulePath).href);
+  assert.equal(typeof module.SHUTDOWN_TOKEN_HEADER, "string");
+  assert.ok(module.SHUTDOWN_TOKEN_HEADER.length > 0);
+});
 
 test("benchmark-server defaults request logging to warn unless explicitly overridden", () => {
   const unsetEnv = {};
@@ -45,9 +72,8 @@ async function assertBenchmarkFailureCleanup({ runner, diagnostic }) {
   const isolatedTemp = mkdtempSync(join(tmpdir(), "dg-benchmark-cleanup-"));
   const before = new Set(readdirSync(isolatedTemp));
   const parentExitCode = process.exitCode;
-  const benchmarkUrl = new URL("./benchmark-server.mjs", import.meta.url).href;
   const script = [
-    `import { main } from ${JSON.stringify(benchmarkUrl)};`,
+    `import { main } from ${JSON.stringify(benchmarkUrl.href)};`,
     `await main(${runner});`,
   ].join("\n");
 

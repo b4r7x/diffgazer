@@ -155,21 +155,6 @@ test("release governance rejects the former local provenance fallback", () => {
   );
 });
 
-test("dropping a guard from the release job if is reported", () => {
-  const workflow = [
-    "jobs:",
-    "  release:",
-    "    if: >-",
-    "      ${{ github.event.workflow_run.conclusion == 'success'",
-    "      && github.event.workflow_run.event == 'push'",
-    "      && github.event.workflow_run.head_branch == 'main' }}",
-  ].join("\n");
-
-  assert.deepEqual(collectReleaseGuardFailures(workflow), [
-    `${RELEASE_WORKFLOW_PATH}: release job \`if\` is missing guard: github.event.workflow_run.head_repository.full_name == github.repository`,
-  ]);
-});
-
 test("a release job with no if guard fails", () => {
   const workflow = ["jobs:", "  release:", "    runs-on: ubuntu-latest"].join("\n");
 
@@ -194,21 +179,6 @@ test("each required guard is enforced independently", () => {
       `${RELEASE_WORKFLOW_PATH}: release job \`if\` is missing guard: ${guard}`,
     ]);
   }
-});
-
-test("the successful workflow conclusion is mandatory", () => {
-  const source = [
-    "jobs:",
-    "  release:",
-    "    if: >-",
-    "      ${{ github.event.workflow_run.event == 'push'",
-    "      && github.event.workflow_run.head_repository.full_name == github.repository",
-    "      && github.event.workflow_run.head_branch == 'main' }}",
-  ].join("\n");
-
-  assert.deepEqual(collectReleaseGuardFailures(source), [
-    `${RELEASE_WORKFLOW_PATH}: release job \`if\` is missing guard: github.event.workflow_run.conclusion == 'success'`,
-  ]);
 });
 
 test("an OR escape hatch cannot weaken the required conjunction", () => {

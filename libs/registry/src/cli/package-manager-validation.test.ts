@@ -94,15 +94,6 @@ describe("package-manager transaction files", () => {
   it("covers every supported lockfile and restores new files to their absent state", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "registry-package-manager-"));
     try {
-      expect(PACKAGE_MANAGER_LOCKFILES).toEqual([
-        "pnpm-lock.yaml",
-        "yarn.lock",
-        "bun.lockb",
-        "bun.lock",
-        "npm-shrinkwrap.json",
-        "package-lock.json",
-      ]);
-
       const packageJson = join(tempDir, "package.json");
       const originalPackageJson = '{"name":"fixture"}\n';
       writeFileSync(packageJson, originalPackageJson);

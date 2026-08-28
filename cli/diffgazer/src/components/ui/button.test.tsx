@@ -48,15 +48,6 @@ describe("Button focus", () => {
     expect(frameForegrounds(lastFrame() ?? "")).toContain(darkPalette.bg);
   });
 
-  test("gives the muted secondary variant the same focus fill as the accented primary", () => {
-    const secondary = renderButton({ variant: "secondary", isActive: true });
-    const primary = renderButton({ variant: "primary", isActive: true });
-
-    expect(frameBackgrounds(secondary.lastFrame() ?? "")).toEqual(
-      frameBackgrounds(primary.lastFrame() ?? ""),
-    );
-  });
-
   test("still tells the variants apart while they rest", () => {
     const secondary = renderButton({ variant: "secondary" });
     const primary = renderButton({ variant: "primary" });

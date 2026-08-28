@@ -106,11 +106,11 @@ describe("SidebarChrome library switching", () => {
     routerBoundary.navigate.mockReset();
     routerBoundary.resolveSwitchPath.mockReset();
     vi.mocked(toast.error).mockReset();
+    stubMatchMedia({ isDesktop: true });
+    Element.prototype.scrollIntoView = () => {};
   });
 
   it("shows a toast and resets switching when the switch fails", async () => {
-    stubMatchMedia({ isDesktop: true });
-    Element.prototype.scrollIntoView = () => {};
     routerBoundary.resolveSwitchPath.mockRejectedValueOnce(new Error("boom"));
     const user = userEvent.setup();
     renderSidebarChrome();
@@ -125,8 +125,6 @@ describe("SidebarChrome library switching", () => {
   });
 
   it("exposes aria-disabled while switching and ignores re-entrant switches", async () => {
-    stubMatchMedia({ isDesktop: true });
-    Element.prototype.scrollIntoView = () => {};
     let resolveSwitch: (value: { library: string; slugs: string[] }) => void = () => {};
     routerBoundary.resolveSwitchPath.mockImplementationOnce(
       () =>
@@ -151,8 +149,6 @@ describe("SidebarChrome library switching", () => {
   });
 
   it("keeps the busy state when a stale switch settles after a newer switch starts", async () => {
-    stubMatchMedia({ isDesktop: true });
-    Element.prototype.scrollIntoView = () => {};
     const first = createDeferred<{ library: string; slugs: string[] }>();
     const second = createDeferred<{ library: string; slugs: string[] }>();
     routerBoundary.resolveSwitchPath
@@ -189,8 +185,6 @@ describe("SidebarChrome library switching", () => {
   });
 
   it("ignores a late library response after the pathname changes", async () => {
-    stubMatchMedia({ isDesktop: true });
-    Element.prototype.scrollIntoView = () => {};
     const deferred = createDeferred<{ library: string; slugs: string[] }>();
     routerBoundary.resolveSwitchPath.mockReturnValueOnce(deferred.promise);
     const user = userEvent.setup();
@@ -213,8 +207,6 @@ describe("SidebarChrome library switching", () => {
   });
 
   it("ignores a late library failure after another route starts loading", async () => {
-    stubMatchMedia({ isDesktop: true });
-    Element.prototype.scrollIntoView = () => {};
     const deferred = createDeferred<{ library: string; slugs: string[] }>();
     routerBoundary.resolveSwitchPath.mockReturnValueOnce(deferred.promise);
     const user = userEvent.setup();
@@ -240,8 +232,6 @@ describe("SidebarChrome library switching", () => {
     "resolve",
     "reject",
   ] as const)("ignores a late %s after the sidebar unmounts", async (settlement) => {
-    stubMatchMedia({ isDesktop: true });
-    Element.prototype.scrollIntoView = () => {};
     const deferred = createDeferred<{ library: string; slugs: string[] }>();
     routerBoundary.resolveSwitchPath.mockReturnValueOnce(deferred.promise);
     const user = userEvent.setup();

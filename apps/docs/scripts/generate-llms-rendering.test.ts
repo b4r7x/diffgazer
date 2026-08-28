@@ -2,6 +2,8 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { HookPageData } from "../src/lib/generated-doc-data.ts";
+import { prepareHookScaffoldData } from "../src/lib/scaffold-data.ts";
 import {
   loadPreparedScaffoldData,
   parseScaffoldPageArtifact,
@@ -186,7 +188,6 @@ describe("generate llms rendering", () => {
       expect(button).toContain("## Examples");
       expect(button).toContain("### Variants");
       expect(button).toContain("## API Reference");
-      expect(button).toContain("Visual style of the button.");
       expect(button).toContain("## Accessibility");
       expect(button).toContain("#### Bracket Mode");
       expect(button).toContain("## Source");
@@ -203,9 +204,7 @@ describe("generate llms rendering", () => {
       expect(uiHook).toContain("const { activeId, scrollTo } = useActiveHeading");
       expect(uiHook).toContain("pnpm exec dgadd add ui/active-heading");
       expect(uiHook).toContain("## Parameters");
-      expect(uiHook).toContain("Ordered list of heading element IDs to observe.");
       expect(uiHook).toContain("## Returns");
-      expect(uiHook).toContain("currently active heading ID");
       expect(uiHook).toContain("### Basic Table of Contents");
       expect(uiHook).toContain("### Activation Modes");
       expect(uiHook).toContain("## Source");
@@ -214,23 +213,49 @@ describe("generate llms rendering", () => {
 
       const keysHook = readFileSync(join(tempDir, "keys/hooks/use-key.md"), "utf-8");
       expect(keysHook).toContain('useKey("Escape", () => setOpen(false))');
-      expect(keysHook).toContain("Requires KeyboardProvider");
-      expect(keysHook).toContain("A single key combo, an array of key combos");
-      expect(keysHook).toContain("This hook does not return a value.");
       expect(keysHook).toContain("### Basic hotkey binding");
       expect(keysHook).toContain("### Three overloads");
       expect(keysHook).toContain("## Source");
       expect(keysHook).toContain("`src/hooks/use-key.ts`");
       expect(keysHook).toContain("export function useKey");
 
+      // Every requested page lands in the bundle, identified by the source
+      // symbol only that page carries.
       const full = readFileSync(join(tempDir, "llms-full.txt"), "utf-8");
-      expect(full).toContain("Visual style of the button.");
-      expect(full).toContain("Ordered list of heading element IDs to observe.");
-      expect(full).toContain("A single key combo, an array of key combos");
+      expect(full).toContain("function ButtonContent");
       expect(full).toContain("export function useActiveHeading");
+      expect(full).toContain("export function useKey");
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+
+  it("carries scaffold descriptions into the rendered tables", () => {
+    const data = parseScaffoldPageArtifact(
+      "hooks",
+      validHookPage,
+      "/generated/keys/hooks/use-example.json",
+    ) as HookPageData;
+    const markdown = sourceToMarkdown(
+      [
+        "---",
+        "title: useExample",
+        "description: Example hook.",
+        "---",
+        "",
+        "<ParameterTable />",
+        "",
+        "<ReturnsTable />",
+        "",
+      ].join("\n"),
+      "Fallback",
+      prepareHookScaffoldData("keys", data),
+    );
+
+    expect(markdown).toContain("> Example hook.");
+    expect(markdown).toContain("Enables the hook.");
+    expect(markdown).toContain("Current state.");
+    expect(markdown).toContain("Whether it is active.");
   });
 
   it("keeps code-block llms markdown structurally valid", () => {

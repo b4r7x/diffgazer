@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { Command } from "commander";
 import type { ConfigLoadResult } from "../config.js";
 import { withErrorHandler } from "../with-error-handler.js";
-import { runInitWorkflow } from "../workflows/init.js";
+import { runInitWorkflow } from "../workflows/init/workflow.js";
 import {
   addExtraOptions,
   type ExtraOption,

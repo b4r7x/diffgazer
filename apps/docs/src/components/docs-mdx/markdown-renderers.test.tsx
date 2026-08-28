@@ -32,14 +32,11 @@ describe("markdownMdxComponents", () => {
     expect(within(region).getByRole("table")).toBeInTheDocument();
   });
 
-  it("exposes an explicit list role on unordered lists", () => {
-    renderComponent("ul", <li>item</li>);
-    expect(screen.getByRole("list")).toBeInTheDocument();
-  });
-
-  it("exposes an explicit list role on ordered lists", () => {
-    renderComponent("ol", <li>item</li>);
-    expect(screen.getByRole("list")).toBeInTheDocument();
+  // The implicit role would satisfy getByRole either way; the attribute is what
+  // survives `list-style: none` in Safari/VoiceOver, so assert the attribute.
+  it.each(["ul", "ol"] as const)("stamps an explicit list role on %s", (tag) => {
+    renderComponent(tag, <li>item</li>);
+    expect(screen.getByRole("list")).toHaveAttribute("role", "list");
   });
 
   it.each([

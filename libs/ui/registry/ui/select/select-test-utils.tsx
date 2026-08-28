@@ -165,3 +165,28 @@ export function renderSelectInline({
     </Select>,
   );
 }
+
+/**
+ * Records every element `scrollIntoView` is called on while `run` executes, then
+ * restores the original method. The recorded elements are the behavior under test
+ * ("the highlighted option was revealed"); the scroll options are implementation.
+ */
+export async function withScrollIntoViewSpy(
+  run: (scrolledElements: Element[]) => Promise<void>,
+): Promise<void> {
+  const original = Element.prototype.scrollIntoView;
+  const scrolledElements: Element[] = [];
+  Element.prototype.scrollIntoView = function (this: Element) {
+    scrolledElements.push(this);
+  };
+
+  try {
+    await run(scrolledElements);
+  } finally {
+    if (original) {
+      Element.prototype.scrollIntoView = original;
+    } else {
+      Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+    }
+  }
+}

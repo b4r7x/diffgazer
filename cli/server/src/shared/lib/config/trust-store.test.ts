@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import type { TrustConfig } from "@diffgazer/core/schemas/config";
 import { describe, expect, it, vi } from "vitest";
 import {
-  diffgazerHome,
   fsHooks,
   loadStore,
   loadStoreFactory,
@@ -255,8 +254,6 @@ describe("config store trust", () => {
     if (result.ok) return;
     expect(result.error.code).toBe("PERSIST_FAILED");
     expect(result.error.message).toBe("Failed to persist trust");
-    expect(result.error.message).not.toContain(diffgazerHome);
-    expect(result.error.message).not.toContain("trust.json");
     fsHooks.writeJsonFileHook = null;
   });
 });

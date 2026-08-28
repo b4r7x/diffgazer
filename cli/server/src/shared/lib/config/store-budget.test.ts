@@ -8,21 +8,21 @@ const ZAI_ENDPOINT = "https://api.z.ai/api/paas/v4";
 const CREATED_AT = "2026-01-01T00:00:00.000Z";
 
 describe("configuration budget ceilings", () => {
-  it("reserves the catalog output ceiling out of the model context window", () => {
+  it.each([
+    ["the catalog output ceiling out of the model context window", 32_768, 98_304],
+    // A ceiling above the planned answer length reserves only what a review plans to spend.
+    ["only the planned answer length out of a large catalog ceiling", 98_304, 98_304],
+    // A ceiling below it is reserved in full: a model that cannot emit 32k
+    // tokens must not have 32k held back from its input.
+    ["a catalog ceiling below the planned answer length in full", 8_192, 122_880],
+    ["nothing when the catalog publishes no output ceiling", undefined, 131_072],
+  ])("reserves %s", (_label, outputTokens, expectedInputTokens) => {
     const clamped = budgetWithinModelObservation(DEFAULT_CONFIGURATION_BUDGET, {
       contextTokens: 131_072,
-      outputTokens: 32_768,
+      ...(outputTokens === undefined ? {} : { outputTokens }),
     });
 
-    expect(clamped.inputTokens).toBe(98_304);
-  });
-
-  it("reserves nothing when the catalog publishes no output ceiling", () => {
-    const clamped = budgetWithinModelObservation(DEFAULT_CONFIGURATION_BUDGET, {
-      contextTokens: 131_072,
-    });
-
-    expect(clamped.inputTokens).toBe(131_072);
+    expect(clamped.inputTokens).toBe(expectedInputTokens);
   });
 
   it("never widens the configured local input cap", () => {

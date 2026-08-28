@@ -100,8 +100,8 @@ describe("HistoryPage loading and error status", () => {
   it("brackets exactly one pane on the loaded screen", async () => {
     const { container } = renderHistoryPage(<HistoryPage />);
 
-    // Brackets follow real focus now, so the assertion waits for the runs list
-    // to actually receive it rather than for the pane to merely render.
+    // Brackets follow real focus, so wait for the runs list to receive it
+    // rather than for the pane to render.
     const runsList = await screen.findByRole("listbox", { name: /review runs/i });
     await waitFor(() => expect(runsList).toHaveFocus());
 
@@ -159,7 +159,7 @@ describe("HistoryPage review detail status", () => {
     setupApiMocks(trustedProject());
   });
 
-  it("keeps run metadata visible while the selected review detail is pending", async () => {
+  it("withholds the verdict while the selected review detail is pending", async () => {
     const detail = createDeferred<ReviewResponse>();
     mockGetReview.mockReturnValue(detail.promise);
 
@@ -169,8 +169,10 @@ describe("HistoryPage review detail status", () => {
     expect(
       within(screen.getByRole("complementary", { name: "Review insights" })).getByRole("status"),
     ).toBe(loadingDetails);
-    // The fixture run passed clean, so its receipt is the metadata on show.
-    expect(screen.getByText("Passed — no issues found")).toBeInTheDocument();
+    // The severity floor lives on the detail record, so until it lands the pane
+    // states no verdict rather than an unqualified pass it has not checked.
+    expect(screen.queryByText("Passed — no issues found")).not.toBeInTheDocument();
+    expect(screen.queryByText(/severity breakdown/i)).not.toBeInTheDocument();
 
     detail.resolve(
       makeReviewResponse("11111111-1111-4111-8111-111111111111", [
@@ -207,7 +209,8 @@ describe("HistoryPage review detail status", () => {
     renderHistoryPage(<HistoryPage />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("detail disk unreadable");
-    expect(screen.getByText("Passed — no issues found")).toBeInTheDocument();
+    // A failed detail load leaves the pass unproven, so no verdict is stated.
+    expect(screen.queryByText("Passed — no issues found")).not.toBeInTheDocument();
 
     const runsList = screen.getByRole("listbox", { name: /review runs/i });
     runsList.focus();

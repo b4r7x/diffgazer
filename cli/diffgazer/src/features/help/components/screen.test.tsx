@@ -27,8 +27,7 @@ describe("HelpScreen", () => {
 
   // Tall enough to show every group at once: the table has grown past what a
   // 30-row terminal fits without scrolling, and the alignment check needs the
-  // first and last group on one screen. The height tracks the table: the home
-  // group gained its f row.
+  // first and last group on one screen.
   test("renders every group with one aligned key column at 100x39", async () => {
     const { lastFrame } = renderRootFrame(100, 39, <HelpScreen />);
 

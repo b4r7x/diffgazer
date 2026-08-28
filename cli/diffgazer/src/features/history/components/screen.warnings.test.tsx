@@ -244,31 +244,6 @@ describe("HistoryScreen unreadable review warnings", () => {
     expect(frame.split("\n")).toHaveLength(24);
   });
 
-  it("opens a bounded warning-target detail view for IDs beyond the sample", async () => {
-    Object.assign(terminalSize, SUPPORT_FLOOR);
-    const warnings: ReviewListWarning[] = Array.from({ length: 50 }, (_, index) => ({
-      kind: "unreadable_review",
-      reviewId: `${index.toString(16).padStart(8, "0")}-1111-4111-8111-111111111111`,
-    }));
-    useHistoryScreenStateMock.mockReturnValue(makeHistoryState({ hasReviews: true, warnings }));
-
-    const view = renderRootFrame(80, 24, <HistoryScreen />);
-    await vi.waitFor(() =>
-      expect(view.lastFrame()).toContain("Press w to view all affected run IDs."),
-    );
-
-    view.stdin.write("w");
-    await flush();
-    expect(view.lastFrame()).toContain("All affected run IDs");
-    expect(view.lastFrame()).not.toContain("00000013-1111-4111-8111-111111111111");
-
-    view.stdin.write("\u001b[F");
-    await flush();
-    const frame = view.lastFrame() ?? "";
-    expect(frame).toContain("00000031-1111-4111-8111-111111111111");
-    expect(frame.split("\n")).toHaveLength(24);
-  });
-
   it("opens all-unreadable warning detail even when no run pane is available", async () => {
     Object.assign(terminalSize, SUPPORT_FLOOR);
     const warnings: ReviewListWarning[] = [
@@ -333,6 +308,7 @@ describe("HistoryScreen unreadable review warnings", () => {
     expect(frame).toContain("All affected run IDs");
     expect(frame).toContain("Press w or Esc to hide IDs.");
     expect(frame).toContain("Readable review");
+    expect(frame).not.toContain("00000031-1111-4111-8111-111111111111");
     expect(frame.split("\n")).toHaveLength(24);
 
     view.stdin.write("\u001b[F");
@@ -454,51 +430,6 @@ describe("HistoryScreen unreadable review warnings", () => {
     await vi.waitFor(() =>
       expect(view.lastFrame()).toContain("Press w to view all affected run IDs."),
     );
-  });
-
-  it("marks only the affected run when two runs are listed", () => {
-    const affectedId = "11111111-1111-4111-8111-111111111111";
-    const unaffectedId = "22222222-2222-4222-8222-222222222222";
-    const runs = [
-      {
-        id: affectedId,
-        displayId: "#11111111",
-        branch: "main",
-        timestamp: "now",
-        summary: "Affected run",
-      },
-      {
-        id: unaffectedId,
-        displayId: "#22222222",
-        branch: "main",
-        timestamp: "earlier",
-        summary: "Unaffected run",
-      },
-    ];
-    useHistoryScreenStateMock.mockReturnValue(
-      makeHistoryScreenState({
-        reviewsQuery: {
-          data: {
-            reviews: [{ id: affectedId }, { id: unaffectedId }],
-            warnings: [{ kind: "invalid_issues_dropped", reviewId: affectedId, count: 1 }],
-          },
-          isLoading: false,
-          error: null,
-        },
-        reviews: [{ id: affectedId }, { id: unaffectedId }],
-        mappedRuns: runs,
-        selectedRunId: affectedId,
-        hasReviews: true,
-      }),
-    );
-
-    const frame = renderHistoryScreen().lastFrame() ?? "";
-    const affectedLine = frame.split("\n").find((line) => line.includes("Affected run"));
-    const unaffectedLine = frame.split("\n").find((line) => line.includes("Unaffected run"));
-
-    if (!affectedLine || !unaffectedLine) throw new Error("Expected both history runs");
-    expect(affectedLine).toContain("[Salvaged]");
-    expect(unaffectedLine).not.toContain("[Salvaged]");
   });
 
   it("shares warning-only collisions with the row and selected insights label", () => {

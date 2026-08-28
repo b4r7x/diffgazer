@@ -17,16 +17,16 @@ const KEYS_PACKAGE_ONLY = new Set([
 
 /**
  * Public package and hosted-registry paths are held behind the pre-release
- * availability switch as of June 6, 2026. Flipping this to `false` enables
- * those paths and drops the pre-release notes below.
+ * availability switch. Flipping this to `false` enables those paths and drops
+ * the pre-release notes below.
  *
  * SOURCE-TEXT CONSUMER: scripts/monorepo/check-live-registry.mjs regex-matches
  * the literal `PUBLISH_GATED = true|false` assignment in THIS file to decide
  * whether CI skips the live host check. When ungated, readiness checks DNS and
  * HEAD reachability only; byte-for-byte comparison runs only when
  * DIFFGAZER_LIVE_REGISTRY_REQUIRED=1 (post-deploy verification). Do not rename,
- * move, or reformat this assignment without updating that script (it now fails
- * loudly if the literal disappears).
+ * move, or reformat this assignment without updating that script, which fails
+ * loudly if the literal disappears.
  */
 export const PUBLISH_GATED = true;
 

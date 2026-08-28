@@ -694,7 +694,6 @@ describe("DiffView", () => {
       expect(scrollWrap).not.toBeNull();
       expect(figure).toHaveAttribute("data-max-h", "true");
       expect(figure?.style.getPropertyValue("--diff-view-max-h")).toBe("120px");
-      // The rows container lives inside the scroll wrapper.
       expect(scrollWrap?.querySelector('[data-slot="diff-view-rows"]')).not.toBeNull();
     });
 

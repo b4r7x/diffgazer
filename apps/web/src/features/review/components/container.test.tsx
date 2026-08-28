@@ -219,8 +219,8 @@ describe("ReviewContainer configuration gates", () => {
     renderReviewContainer();
 
     expect(await screen.findByRole("heading", { name: "Model Incompatible" })).toBeInTheDocument();
-    // The static screen copy no longer promises the fail-fast memo; that
-    // sentence travels only on memo-class failures from the server.
+    // The fail-fast memo sentence travels only on memo-class failures from the
+    // server, never in static screen copy.
     expect(
       screen.getByText(
         "This model could not produce Diffgazer's structured review output. Change the model or update the configuration.",

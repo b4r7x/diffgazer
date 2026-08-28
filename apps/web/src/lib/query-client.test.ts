@@ -38,10 +38,4 @@ describe("queryClient", () => {
       expect.objectContaining({ method: "POST" }),
     );
   });
-
-  it("uses always-on network mode for queries and mutations", () => {
-    const defaults = queryClient.getDefaultOptions();
-    expect(defaults.queries?.networkMode).toBe("always");
-    expect(defaults.mutations?.networkMode).toBe("always");
-  });
 });

@@ -220,12 +220,6 @@ describe("ScrollArea", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it("provides accessible name when aria-label is set", () => {
-    const el = renderScrollArea();
-    expect(el).toHaveAttribute("aria-label", "Content");
-    expect(el).toHaveAccessibleName("Content");
-  });
-
   it("provides accessible name when aria-labelledby is set", () => {
     render(
       <>

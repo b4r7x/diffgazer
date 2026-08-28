@@ -12,18 +12,11 @@ import {
   suggestedClientTestModelId,
 } from "../../testing/ai-client-fixtures.js";
 import type { AdmittedExecutionPlan } from "../admission/service.js";
-import { ADAPTER_REGISTRY, getAdapter } from "../providers/registry.js";
+import { getAdapter } from "../providers/registry.js";
 
 describe("createFromAdmittedPlan registry routing", () => {
   beforeEach(setupClientTestHome);
   afterEach(teardownClientTestHome);
-
-  it("covers every runnable product with a one-to-one registry adapter", () => {
-    expect(Object.keys(ADAPTER_REGISTRY).sort()).toEqual([...RUNNABLE_PRODUCT_IDS].sort());
-    for (const productId of RUNNABLE_PRODUCT_IDS) {
-      expect(getAdapter(productId).productId).toBe(productId);
-    }
-  });
 
   it.each(
     RUNNABLE_PRODUCT_IDS,

@@ -59,7 +59,7 @@ export interface CommandPaletteContentProps
    * Typographic and spacing surface. Switches a token block (--command-palette-row-h,
    * --command-palette-input-py, --command-palette-list-p, --command-palette-text-size, etc.)
    * consumed by every inner slot via [data-density] selectors in
-   * command-palette/command-palette.css. "compact" matches the V1 refined-mono target,
+   * command-palette/command-palette.css. "compact" is the tightest refined-mono density,
    * "comfortable" is Linear-ish breathing room, "dense" is VSCode-tight.
    */
   density?: CommandPaletteDensity | null;

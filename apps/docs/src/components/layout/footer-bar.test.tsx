@@ -1,6 +1,6 @@
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@/hooks/theme-context";
 import { stubMatchMedia } from "@/testing/match-media";
@@ -36,6 +36,11 @@ describe("FooterBar", () => {
     localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
     stubMatchMedia({ isDesktop: true });
+    // Home route by default; the tests that need another route override it.
+    routerBoundary.matches = [
+      { routeId: "__root__", status: "success" },
+      { routeId: "/", status: "success" },
+    ];
   });
 
   afterEach(() => {
@@ -43,10 +48,6 @@ describe("FooterBar", () => {
   });
 
   it("links theme, privacy, and terms to their routes", () => {
-    routerBoundary.matches = [
-      { routeId: "__root__", status: "success" },
-      { routeId: "/", status: "success" },
-    ];
     render(
       <ThemeProvider>
         <KeyboardProvider>
@@ -70,11 +71,13 @@ describe("FooterBar", () => {
     expect(within(footer).getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
   });
 
-  it("toggles the theme in place on F2 instead of navigating away", async () => {
-    routerBoundary.matches = [
-      { routeId: "__root__", status: "success" },
-      { routeId: "/", status: "success" },
-    ];
+  it.each([
+    ["F2", async (user: UserEvent) => user.keyboard("{F2}")],
+    [
+      "the footer hint itself",
+      async (user: UserEvent) => user.click(screen.getByRole("button", { name: /theme/i })),
+    ],
+  ])("toggles the theme in place from %s instead of navigating away", async (_gesture, activate) => {
     const user = userEvent.setup();
     render(
       <ThemeProvider>
@@ -85,41 +88,12 @@ describe("FooterBar", () => {
     );
 
     const before = document.documentElement.getAttribute("data-theme");
-    await user.keyboard("{F2}");
+    await activate(user);
 
     expect(document.documentElement.getAttribute("data-theme")).not.toBe(before);
-    // The F2 affordance stays a button: a link here would navigate away instead
-    // of flipping the theme in place.
-    expect(screen.getByRole("button", { name: /theme/i })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /theme/i })).not.toBeInTheDocument();
-  });
-
-  it("toggles the theme from the footer hint itself", async () => {
-    routerBoundary.matches = [
-      { routeId: "__root__", status: "success" },
-      { routeId: "/", status: "success" },
-    ];
-    const user = userEvent.setup();
-    render(
-      <ThemeProvider>
-        <KeyboardProvider>
-          <FooterBar />
-        </KeyboardProvider>
-      </ThemeProvider>,
-    );
-
-    const before = document.documentElement.getAttribute("data-theme");
-    await user.click(screen.getByRole("button", { name: /theme/i }));
-
-    expect(document.documentElement.getAttribute("data-theme")).not.toBe(before);
-    expect(screen.queryByRole("link", { name: /theme/i })).not.toBeInTheDocument();
   });
 
   it("shows list-navigation hints on the home page", () => {
-    routerBoundary.matches = [
-      { routeId: "__root__", status: "success" },
-      { routeId: "/", status: "success" },
-    ];
     render(
       <ThemeProvider>
         <KeyboardProvider>

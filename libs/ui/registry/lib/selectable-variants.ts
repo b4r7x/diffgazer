@@ -13,9 +13,8 @@ const X_INDICATORS = { checked: "[x]", unchecked: "[ ]" } as const;
 /**
  * Text glyphs for the two radio states. A radio is never indeterminate.
  *
- * Three characters, like every other glyph in the family: the bullet used to be padded to five
- * with non-breaking spaces, which overran the reserved cell and pushed radio labels further right
- * than checkbox labels in any form that mixed the two.
+ * Three characters, like every other glyph in the family: a wider glyph overruns the reserved
+ * cell and shifts radio labels off the checkbox column.
  */
 export const radioIndicators = {
   x: X_INDICATORS,

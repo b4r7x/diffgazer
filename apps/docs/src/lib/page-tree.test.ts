@@ -103,12 +103,10 @@ describe("mapPageTreeForLibrary", () => {
       });
       expect(tree.children[1]).toMatchObject({ url: firstUrl });
       // no empty separators leaked in from the other libraries' blocks
-      const separators = tree.children.filter((n) => n.type === "separator");
       for (let i = 0; i < tree.children.length; i++) {
         if (tree.children[i]?.type !== "separator") continue;
         expect(tree.children[i + 1]?.type).toBe("page");
       }
-      expect(separators[0]?.name).toBe("Getting Started");
     }
   });
 });

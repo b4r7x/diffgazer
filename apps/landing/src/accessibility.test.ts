@@ -72,8 +72,7 @@ describe("landing accessibility contracts", () => {
       // One canonical accessible spelling across landing, web, and docs: the
       // brand is lowercase, however loudly the ascii art renders it.
       expect(wordmark?.getAttribute("aria-label")).toBe("diffgazer");
-      // The figlet is the mark at every width now, so there is no second
-      // letter-spaced variant to hide or to name.
+      // The figlet is the only mark at every width, so it is the only node to hide.
       expect(figlet?.getAttribute("aria-hidden")).toBe("true");
       expect(wordmark?.querySelector(".logo-word")).toBeNull();
     });

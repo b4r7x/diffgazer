@@ -1,10 +1,12 @@
 import { z } from "zod";
+import {
+  type ClientConfigurationNotice,
+  ClientConfigurationNoticeSchema,
+} from "../schemas/config/configuration-notice.js";
 import { refineConfigurationReadinessConsistency } from "../schemas/config/configuration-readiness-consistency.js";
 import {
   type ClientConfigurationActionName,
   ClientConfigurationActionNameSchema,
-  type ClientConfigurationNotice,
-  ClientConfigurationNoticeSchema,
   type ClientConfigurationSummary,
   ClientConfigurationSummarySchema,
 } from "../schemas/config/provider-config.js";

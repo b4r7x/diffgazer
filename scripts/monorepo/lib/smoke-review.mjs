@@ -186,7 +186,7 @@ function isRateLimitedError(error) {
 const REPORTED_SCHEMA_ERRORS = 3;
 
 /**
- * The D7 honesty contract. PASS only on: real streaming observed, every frame
+ * The honesty contract. PASS only on: real streaming observed, every frame
  * matching the published event schema, terminal `complete` inside the cap, and
  * the run fetchable + listed afterwards. A terminal `error` (the pipeline's
  * zero-successful-lenses outcome included), a timeout, a frame that does not

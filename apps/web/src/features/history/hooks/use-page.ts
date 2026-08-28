@@ -7,9 +7,8 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { type RefObject, useRef, useState } from "react";
 import { useHeaderBackButtonRef } from "@/components/layout/header-chrome";
-import type { HistoryCleanRun } from "@/features/history/components/insights-pane";
 import { getRunSummary } from "@/features/history/components/run-summary";
-import type { HistoryFocusZone, Run } from "@/features/history/types";
+import type { HistoryCleanRun, HistoryFocusZone, Run } from "@/features/history/types";
 import {
   HISTORY_DATE_KEY,
   HISTORY_RUN_KEY,
@@ -82,8 +81,9 @@ export function useHistoryPage() {
 
   // The same predicate the row's "Passed with no issues." and the review screen
   // read, so the pane cannot disagree with either. The severity floor is not on
-  // the list metadata, so the qualified statement waits on the detail record —
-  // the only place a run's hidden findings are counted.
+  // the list metadata, so the statement waits on the detail record — the only
+  // place a run's hidden findings are counted. Until it lands the pane states no
+  // verdict at all rather than an unqualified pass it has not checked.
   const selectedRun = history.selectedRun;
   const isSelectedRunClean =
     selectedRun !== null &&
@@ -92,12 +92,13 @@ export function useHistoryPage() {
       failedLensCount: selectedRun.failedLensCount,
       terminalOutcome: selectedRun.terminalOutcome,
     });
+  const reviewDetail = history.reviewDetail;
   const cleanRun: HistoryCleanRun | null =
-    selectedRun && isSelectedRunClean
+    selectedRun && isSelectedRunClean && reviewDetail
       ? {
           statement: buildCleanRunStatement({
-            droppedBelowThreshold: history.reviewDetail?.droppedBelowThreshold,
-            minSeverity: history.reviewDetail?.minSeverity,
+            droppedBelowThreshold: reviewDetail.droppedBelowThreshold,
+            minSeverity: reviewDetail.minSeverity,
           }),
           factLine: buildCleanRunFactLine({
             fileCount: selectedRun.fileCount,
@@ -184,7 +185,8 @@ export function useHistoryPage() {
     setSelectedRunId: history.setSelectedRunId,
     mappedRuns,
     selectedRun: history.selectedRun,
-    severityCounts: history.severityCounts,
+    // A clean run has no breakdown to draw; five zero bars are not the verdict.
+    severityCounts: isSelectedRunClean ? null : history.severityCounts,
     cleanRun,
     sortedIssues: history.sortedIssues,
     duration: history.duration,

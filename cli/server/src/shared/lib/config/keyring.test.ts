@@ -213,42 +213,26 @@ describe("keyring (available)", () => {
     expectLogsOmitSentinels();
   });
 
-  it("logs cleanup failure separately from a successful probe", async () => {
+  it.each([
+    [
+      "throws",
+      async (): Promise<boolean> => {
+        throw createSecretBearingError("cleanup");
+      },
+    ],
+    ["returns false", async (): Promise<boolean> => false],
+  ])("logs cleanup failure separately from a successful probe when deletion %s", async (_label, deleteCredential) => {
     class CleanupFailingEntry {
       getPassword = vi.fn(async () => mockGetPassword());
       setPassword = vi.fn(async (value: string) => {
         mockSetPassword(value);
       });
-      deleteCredential = vi.fn(async () => {
-        throw createSecretBearingError("cleanup");
-      });
+      deleteCredential = vi.fn(deleteCredential);
     }
     mockRequireModule.mockReturnValue({
       Entry: CleanupFailingEntry,
       AsyncEntry: CleanupFailingEntry,
     });
-    const { isKeyringAvailable } = await import("./keyring.js");
-
-    expect(await isKeyringAvailable()).toBe(true);
-    expect(mockLog.mock.calls).toEqual([
-      [
-        "warn",
-        "keyring_test_key_cleanup_failed",
-        { code: "KEYRING_DELETE_FAILED", operation: "delete" },
-      ],
-    ]);
-    expectLogsOmitSentinels();
-  });
-
-  it("logs cleanup failure when credential deletion returns false", async () => {
-    class CleanupFalseEntry {
-      getPassword = vi.fn(async () => mockGetPassword());
-      setPassword = vi.fn(async (value: string) => {
-        mockSetPassword(value);
-      });
-      deleteCredential = vi.fn(async () => false);
-    }
-    mockRequireModule.mockReturnValue({ Entry: CleanupFalseEntry, AsyncEntry: CleanupFalseEntry });
     const { isKeyringAvailable } = await import("./keyring.js");
 
     expect(await isKeyringAvailable()).toBe(true);

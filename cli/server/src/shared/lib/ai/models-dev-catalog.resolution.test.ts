@@ -34,13 +34,10 @@ import { requireValue } from "@diffgazer/core/testing/assertions";
 import { MODELS_DEV_SAMPLE } from "../testing/models-dev-sample.js";
 import { assertTempHome } from "../testing/temp-home.js";
 import { LIVE_LIST_SHAPE_VERSION } from "./live-model-lists.js";
-import * as modelsDevCatalog from "./models-dev-catalog.js";
-import {
-  catalogProviderModels,
-  discoverConfigurationCatalog,
-  ModelsDevCatalogCacheSchema,
-  modelInfoFromBoundedObservation,
-} from "./models-dev-catalog.js";
+import { ModelsDevCatalogCacheSchema } from "./models-dev-catalog/cache.js";
+import * as modelsDevCatalog from "./models-dev-catalog/index.js";
+import { catalogProviderModels, discoverConfigurationCatalog } from "./models-dev-catalog/index.js";
+import { modelInfoFromBoundedObservation } from "./models-dev-catalog/models.js";
 
 const okResponse = (body: unknown, headers?: Record<string, string>): Response =>
   ({ ok: true, status: 200, headers: new Headers(headers), json: async () => body }) as Response;

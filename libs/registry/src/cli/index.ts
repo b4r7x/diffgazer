@@ -52,5 +52,5 @@ export {
 } from "./registry.js";
 export { heading, info, promptSelect, warn } from "./terminal.js";
 export { showSkippedDependencies } from "./workflows/apply-install-plan.js";
-export { type InitWorkflowOptions, runInitWorkflow } from "./workflows/init.js";
+export { type InitWorkflowOptions, runInitWorkflow } from "./workflows/init/workflow.js";
 export { findOrphanedNpmDeps } from "./workflows/remove/orphaned-deps.js";

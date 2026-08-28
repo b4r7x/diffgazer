@@ -8,6 +8,10 @@ export function isEnoent(e: unknown): boolean {
   return err.code === "ENOENT";
 }
 
+export function hasErrorCode(error: unknown, code: string): boolean {
+  return error instanceof Error && "code" in error && error.code === code;
+}
+
 export function ensureWithinDir(targetPath: string, baseDir: string): void {
   const resolvedTarget = resolve(targetPath);
   const resolvedBase = resolve(baseDir);

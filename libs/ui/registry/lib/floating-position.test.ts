@@ -61,8 +61,7 @@ describe("computePosition", () => {
   // The public helper must keep the positional signature so existing plain-JS
   // copy/package consumers (no TS checking) keep getting correct results.
   it("interprets the first argument as the trigger rect, not an options object", () => {
-    // The audited break: an options-object call would read the wrong fields and
-    // return { x: 0, y: 0 }. The positional call must place below the trigger.
+    // An options-object call would read the wrong fields and return { x: 0, y: 0 }.
     expect(computePosition(trigger, content, "bottom", "start", 6, 10)).toEqual({ x: 110, y: 146 });
   });
 });

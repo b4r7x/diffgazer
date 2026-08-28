@@ -6,81 +6,20 @@ const ZAI_ENDPOINT = "https://api.z.ai/api/paas/v4";
 const OPENCODE_ZEN_ENDPOINT = "https://opencode.ai/zen/v1";
 
 describe("resolveHostedApiEndpoint", () => {
-  it("rejects http hosted endpoints before secret resolution", () => {
-    const result = resolveHostedApiEndpoint({
-      productId: "openrouter",
-      endpoint: "http://openrouter.ai/api/v1",
-    });
+  it.each([
+    ["http://openrouter.ai/api/v1", "http-hosted-forbidden"],
+    ["https://user:secret@openrouter.ai/api/v1", "user-info-forbidden"],
+    ["https://openrouter.ai.evil.example/api/v1", "lookalike-endpoint"],
+    ["https://openrouter.ai:8443/api/v1", "unexpected-port"],
+    ["https://openrouter.ai/api/v1/../v1", "unexpected-path"],
+    ["https://openrouter.ai/api/v1?debug=1", "query-forbidden"],
+    ["https://openrouter.ai/api/v1#section", "fragment-forbidden"],
+  ])("rejects %s before secret resolution", (endpoint, code) => {
+    const result = resolveHostedApiEndpoint({ productId: "openrouter", endpoint });
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.error.code).toBe("http-hosted-forbidden");
-  });
-
-  it("rejects user-info in hosted endpoints before secret resolution", () => {
-    const result = resolveHostedApiEndpoint({
-      productId: "openrouter",
-      endpoint: "https://user:secret@openrouter.ai/api/v1",
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error.code).toBe("user-info-forbidden");
-  });
-
-  it("rejects lookalike hosted endpoints before secret resolution", () => {
-    const result = resolveHostedApiEndpoint({
-      productId: "openrouter",
-      endpoint: "https://openrouter.ai.evil.example/api/v1",
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error.code).toBe("lookalike-endpoint");
-  });
-
-  it("rejects unexpected port hosted endpoints before secret resolution", () => {
-    const result = resolveHostedApiEndpoint({
-      productId: "openrouter",
-      endpoint: "https://openrouter.ai:8443/api/v1",
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error.code).toBe("unexpected-port");
-  });
-
-  it("rejects unexpected path hosted endpoints before secret resolution", () => {
-    const result = resolveHostedApiEndpoint({
-      productId: "openrouter",
-      endpoint: "https://openrouter.ai/api/v1/../v1",
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error.code).toBe("unexpected-path");
-  });
-
-  it("rejects unexpected query hosted endpoints before secret resolution", () => {
-    const result = resolveHostedApiEndpoint({
-      productId: "openrouter",
-      endpoint: "https://openrouter.ai/api/v1?debug=1",
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error.code).toBe("query-forbidden");
-  });
-
-  it("rejects fragment-forbidden on hosted endpoints before secret resolution", () => {
-    const result = resolveHostedApiEndpoint({
-      productId: "openrouter",
-      endpoint: "https://openrouter.ai/api/v1#section",
-    });
-
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error.code).toBe("fragment-forbidden");
+    expect(result.error.code).toBe(code);
   });
 
   it("rejects tuple-mismatch for valid HTTPS endpoints on the wrong product before secret resolution", () => {

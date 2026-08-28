@@ -161,7 +161,7 @@ describe("SettingsHubPage", () => {
     await waitFor(() => expect(menu).toHaveFocus());
     expect(region.querySelector('[data-slot="panel-corners"]')).not.toBeNull();
 
-    // Clicking away is the resting state this screen used to claim statically.
+    // Focus leaving the pane drops the brackets.
     await user.click(document.body);
     expect(region.querySelector('[data-slot="panel-corners"]')).toBeNull();
 
@@ -185,6 +185,9 @@ describe("SettingsHubPage", () => {
     // stays a screenshot-level contract.
     expect(within(trustRow).getByText("Trusted")).toHaveAttribute("data-slot", "badge");
     expect(container.textContent).not.toContain("✓");
+    expect(screen.getByRole("menuitem", { name: /^provider\b(?! data)/i })).toHaveTextContent(
+      selectedProductId(trustedShellInit) ?? "Not configured",
+    );
   });
 
   it("renders init-sourced settings while a redundant settings query is still pending", async () => {
@@ -234,19 +237,6 @@ describe("SettingsHubPage", () => {
     await waitFor(() => {
       expect(trustRow).toHaveTextContent("Not trusted");
     });
-  });
-
-  it("carries the trusted row and the selected provider from one init response", async () => {
-    renderPage(trustedShellInit);
-
-    const trustRow = await screen.findByRole("menuitem", { name: /trust & permissions/i });
-    await waitFor(() => {
-      expect(trustRow).toHaveTextContent("Trusted");
-      expect(trustRow).not.toHaveTextContent("Not trusted");
-    });
-    expect(screen.getByRole("menuitem", { name: /^provider\b(?! data)/i })).toHaveTextContent(
-      selectedProductId(trustedShellInit) ?? "Not configured",
-    );
   });
 
   it("reads the provider data notice back from the hub without asking again once accepted", async () => {

@@ -7,7 +7,7 @@ import {
   READINESS_PRESENTATION,
   READINESS_STATUSES,
 } from "@diffgazer/core/schemas/config";
-import { TERMINAL_OUTCOMES } from "@diffgazer/core/schemas/review";
+import { TERMINAL_OUTCOMES, terminalOutcomeKeepsFindings } from "@diffgazer/core/schemas/review";
 import { describe, expect, it } from "vitest";
 
 const operationsRoot = resolve(import.meta.dirname, "../../../content/docs/app/operations");
@@ -166,6 +166,27 @@ describe("troubleshooting and API vocabulary", () => {
     expect(troubleshooting).toContain("enable-live-probe");
     expect(apiReference).toContain("skipped");
     expect(apiReference).toContain("never enables a product");
+  });
+
+  it("names exactly the outcomes that keep findings", () => {
+    const [keep, drop] = TERMINAL_OUTCOMES.reduce<[string[], string[]]>(
+      ([kept, dropped], outcome) =>
+        terminalOutcomeKeepsFindings(outcome)
+          ? [[...kept, outcome], dropped]
+          : [kept, [...dropped, outcome]],
+      [[], []],
+    );
+
+    const sentence = apiReference
+      .split("\n")
+      .find((line) => line.startsWith("Findings are carried by"));
+    expect(sentence, "api.mdx must state which outcomes carry findings").toBeDefined();
+    for (const outcome of keep) {
+      expect(sentence, outcome).toContain(`\`${outcome}\``);
+    }
+    for (const outcome of drop) {
+      expect(sentence, outcome).not.toContain(`\`${outcome}\``);
+    }
   });
 
   it("avoids raw diagnostic or secret guidance and keeps Web/Ink/CLI terminology parity", () => {

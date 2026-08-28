@@ -47,4 +47,32 @@ describe("session maintenance interval", () => {
     expect(vi.getTimerCount()).toBe(1);
     await store.shutdownSessions();
   });
+
+  it("warns when the shutdown drain deadline expires with a partial write still pending", async () => {
+    vi.useFakeTimers();
+    vi.resetModules();
+    const log = vi.fn();
+    vi.doMock("../../../shared/lib/log.js", () => ({ log }));
+    try {
+      const store = await import("./store.js");
+      const reviewId = "shutdown-wedged";
+      store.createSession(reviewId, {
+        projectPath: "/tmp/project",
+        headCommit: "head",
+        statusHash: "status",
+        statusHashKind: "full",
+        mode: "staged",
+        persistPartial: () => new Promise<void>(() => {}),
+      });
+      store.markReady(reviewId);
+
+      const shutdown = store.shutdownSessions();
+      await vi.advanceTimersByTimeAsync(3_000);
+      await shutdown;
+
+      expect(log).toHaveBeenCalledWith("warn", "session_partial_persist_timeout", { pending: 1 });
+    } finally {
+      vi.doUnmock("../../../shared/lib/log.js");
+    }
+  });
 });

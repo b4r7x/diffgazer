@@ -36,10 +36,6 @@ describe("normalizeReviewStreamError", () => {
   it("surfaces GIT_NOT_FOUND as itself instead of collapsing to GENERATION_FAILED", () => {
     const abort = reviewAbort("git missing", ReviewErrorCode.GIT_NOT_FOUND, "diff");
     expect(normalizeReviewStreamError(abort).code).toBe(ReviewErrorCode.GIT_NOT_FOUND);
-    expect(reviewStreamError(abort.message, abort.code)).toEqual({
-      type: "error",
-      error: { code: ReviewErrorCode.GIT_NOT_FOUND, message: "git missing" },
-    });
   });
 
   it("falls back to the default code when untrusted input carries an out-of-union code", () => {

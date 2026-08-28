@@ -3,8 +3,8 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { editChunkBody, seedChunk, styledConfig } from "../testing/css-fixture.js";
 import { getRegistry, type ResolvedConfig, resolveConfig } from "../context.js";
+import { editChunkBody, seedChunk, styledConfig } from "../testing/css-fixture.js";
 import {
   buildExpectedChunkContentsForItem,
   collectCssChunkHashBoundaries,

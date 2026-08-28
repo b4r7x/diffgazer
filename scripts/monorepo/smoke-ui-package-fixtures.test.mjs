@@ -32,18 +32,23 @@ const copiedExamples = [
   { name: "popover-placement", clientCrossing: /\{\(triggerProps\) =>/ },
 ];
 
-test("Next package fixture retains both exceptional client entries in a Server Component", () => {
+function withNextFixture(run) {
   const projectDir = mkdtempSync(join(tmpdir(), "diffgazer-ui-next-fixture-"));
-  const root = resolve(import.meta.dirname, "../..");
 
   try {
-    writeUiNextPackageSmoke(root, projectDir);
-    const page = readFileSync(join(projectDir, "app/page.tsx"), "utf8");
-    const clientBoundary = readFileSync(
-      join(projectDir, "app/highlight-client-boundaries.tsx"),
-      "utf8",
-    );
+    writeUiNextPackageSmoke(resolve(import.meta.dirname, "../.."), projectDir);
+    run({
+      projectDir,
+      page: readFileSync(join(projectDir, "app/page.tsx"), "utf8"),
+      clientBoundary: readFileSync(join(projectDir, "app/highlight-client-boundaries.tsx"), "utf8"),
+    });
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
 
+test("Next package fixture keeps the page a Server Component behind one client boundary", () => {
+  withNextFixture(({ page, clientBoundary }) => {
     assert.doesNotMatch(page, /^["']use client["'];/m);
     assert.match(clientBoundary, /^"use client";/);
     assert.doesNotMatch(clientBoundary, /defaultOpen/);
@@ -51,6 +56,11 @@ test("Next package fixture retains both exceptional client entries in a Server C
       clientBoundary,
       /<CommandPalette open>[\s\S]*<CommandPalette\.Content>[\s\S]*<CommandPalette\.List>[\s\S]*<CommandPaletteHighlightItem\b/,
     );
+  });
+});
+
+test("Next package fixture hands both exceptional client entries across the RSC boundary", () => {
+  withNextFixture(({ page, clientBoundary }) => {
     for (const [binding, prop, specifier] of exceptionalClientEntries) {
       assert.ok(
         page.includes(`import { ${binding} } from '${specifier}';`),
@@ -66,6 +76,11 @@ test("Next package fixture retains both exceptional client entries in a Server C
       );
       assert.match(clientBoundary, new RegExp(`<${binding}\\b`));
     }
+  });
+});
+
+test("copied examples keep their directive policy, route wrapper, and UI stubs", () => {
+  withNextFixture(({ projectDir }) => {
     for (const { name, clientCrossing } of copiedExamples) {
       const source = readFileSync(join(projectDir, `src/examples/${name}.tsx`), "utf8");
       const route = readFileSync(join(projectDir, `app/copied-examples/${name}/page.tsx`), "utf8");
@@ -93,7 +108,5 @@ test("Next package fixture retains both exceptional client entries in a Server C
         );
       }
     }
-  } finally {
-    rmSync(projectDir, { recursive: true, force: true });
-  }
+  });
 });

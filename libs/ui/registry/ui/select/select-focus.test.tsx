@@ -4,7 +4,13 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Select } from "./index";
-import { getSearchInput, getSelectTrigger, PICK_FRUIT, renderSelect } from "./select-test-utils";
+import {
+  getSearchInput,
+  getSelectTrigger,
+  PICK_FRUIT,
+  renderSelect,
+  withScrollIntoViewSpy,
+} from "./select-test-utils";
 
 describe("Select Tab-close focus restore", () => {
   it("restores focus to the trigger when Tab-closing a multiple select", () => {
@@ -237,13 +243,6 @@ describe("Select open-focus stability", () => {
   });
 
   it("focuses and scrolls conditionally mounted content after a controlled open transition", async () => {
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    const scrolledElements: Element[] = [];
-    const scrollFn = vi.fn(function (this: Element) {
-      scrolledElements.push(this);
-    });
-    Element.prototype.scrollIntoView = scrollFn;
-
     function Harness({ open }: { open: boolean }) {
       return (
         <Select variant="default" open={open} defaultValue="banana">
@@ -260,7 +259,7 @@ describe("Select open-focus stability", () => {
       );
     }
 
-    try {
+    await withScrollIntoViewSpy(async (scrolledElements) => {
       const { rerender } = render(<Harness open={false} />);
       rerender(<Harness open />);
 
@@ -268,14 +267,7 @@ describe("Select open-focus stability", () => {
       const banana = screen.getByRole("option", { name: "Banana" });
       await waitFor(() => expect(listbox).toHaveFocus());
       await waitFor(() => expect(scrolledElements).toContain(banana));
-      expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" });
-    } finally {
-      if (originalScrollIntoView) {
-        Element.prototype.scrollIntoView = originalScrollIntoView;
-      } else {
-        Reflect.deleteProperty(Element.prototype, "scrollIntoView");
-      }
-    }
+    });
   });
 
   it.each([
@@ -287,14 +279,8 @@ describe("Select open-focus stability", () => {
     searchable,
   }) => {
     const user = userEvent.setup();
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    const scrolledElements: Element[] = [];
-    const scrollFn = vi.fn(function (this: Element) {
-      scrolledElements.push(this);
-    });
-    Element.prototype.scrollIntoView = scrollFn;
 
-    try {
+    await withScrollIntoViewSpy(async (scrolledElements) => {
       renderSelect({ variant, withSearch: searchable, defaultOpen: true, defaultValue: "banana" });
       await user.click(document.body);
       expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
@@ -306,14 +292,7 @@ describe("Select open-focus stability", () => {
       await waitFor(() => expect(focusOwner).toHaveFocus());
       const banana = screen.getByRole("option", { name: "Banana" });
       await waitFor(() => expect(scrolledElements).toContain(banana));
-      expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" });
-    } finally {
-      if (originalScrollIntoView) {
-        Element.prototype.scrollIntoView = originalScrollIntoView;
-      } else {
-        Reflect.deleteProperty(Element.prototype, "scrollIntoView");
-      }
-    }
+    });
   });
 
   it("focuses the listbox after opening but does not re-steal focus on later re-renders", async () => {

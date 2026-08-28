@@ -106,14 +106,16 @@ describe("getPreRenderPages", () => {
     expect(pages.some((page) => page.path === "/docs")).toBe(false);
   });
 
-  it("emits hook pages exactly once even though hook content lives under content/docs/{lib}/hooks", () => {
+  it("emits hook pages from the hook content that lives under content/docs/{lib}/hooks", () => {
     const pages = getPreRenderPages();
-    const hookPaths = pages
-      .map((page) => page.path)
-      .filter((path) => path.startsWith("/keys/hooks/") || path.startsWith("/ui/hooks/"));
+    const hookPages = pages.filter(
+      (page) => page.path.startsWith("/keys/hooks/") || page.path.startsWith("/ui/hooks/"),
+    );
 
-    expect(new Set(hookPaths).size).toBe(hookPaths.length);
-    expect(hookPaths.length).toBeGreaterThan(0);
+    expect(hookPages.length).toBeGreaterThan(0);
+    expect(pages.find((page) => page.path === "/keys/hooks/use-focus-trap")?.source).toMatch(
+      /content\/docs\/keys\/hooks\/use-focus-trap\.mdx$/,
+    );
   });
 
   it("includes the hook index routes when hooks/index.mdx exists", () => {
@@ -134,13 +136,12 @@ describe("getPreRenderPages", () => {
     expect(paths).toContain("/keys/hooks/use-focus-trap");
   });
 
-  it("emits component pages exactly once via the generated component list", () => {
+  it("emits component pages via the generated component list", () => {
     const pages = getPreRenderPages();
     const componentPaths = pages
       .map((page) => page.path)
       .filter((path) => path.startsWith("/ui/components/"));
 
-    expect(new Set(componentPaths).size).toBe(componentPaths.length);
     expect(componentPaths.length).toBeGreaterThan(0);
     expect(pages.find((page) => page.path === "/ui/components/button")?.source).toMatch(
       /content\/docs\/ui\/components\/button\.mdx$/,

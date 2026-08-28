@@ -137,22 +137,16 @@ describe("server V2 provider configuration records", () => {
     expect("outputTokens" in decoded.record.budget).toBe(false);
   });
 
-  it("floors a persisted retries: 0 budget to the current default on read", () => {
-    const persisted = { ...supportedRecord(), budget: { ...budget, retries: 0 } };
+  it.each([
+    [0, 1],
+    [2, 2],
+  ])("floors a persisted retries: %i budget to %i on read", (persistedRetries, expectedRetries) => {
+    const persisted = { ...supportedRecord(), budget: { ...budget, retries: persistedRetries } };
 
     const decoded = decodeProviderConfigurationRecord(encoder.encode(JSON.stringify(persisted)));
     expect(decoded.status).toBe("supported");
     if (decoded.status !== "supported") return;
-    expect(decoded.record.budget).toEqual({ ...budget, retries: 1 });
-  });
-
-  it("keeps a persisted non-zero retries budget unchanged on read", () => {
-    const decoded = decodeProviderConfigurationRecord(
-      encoder.encode(JSON.stringify(supportedRecord())),
-    );
-    expect(decoded.status).toBe("supported");
-    if (decoded.status !== "supported") return;
-    expect(decoded.record.budget.retries).toBe(budget.retries);
+    expect(decoded.record.budget).toEqual({ ...budget, retries: expectedRetries });
   });
 
   it("decodes a legacy qwen record carrying region and workspace transport fields to unknown", () => {

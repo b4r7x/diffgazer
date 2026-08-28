@@ -266,8 +266,7 @@ describe("ReviewSummaryView", () => {
     const onBack = vi.fn();
     renderSummary({ onBack });
 
-    // The header ← Back is the screen's only Back; the panel's own copy pointed
-    // at the same target and read as a second, different exit.
+    // The header ← Back is the screen's only Back.
     expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
 
     await user.keyboard("{Escape}");

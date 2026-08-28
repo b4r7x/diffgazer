@@ -1,4 +1,4 @@
-import { useCreateReview, useReview } from "@diffgazer/core/api/hooks";
+import { reviewQueries, useApi, useCreateReview, useReview } from "@diffgazer/core/api/hooks";
 import {
   describeReviewStartError,
   hasCompletedLens,
@@ -8,7 +8,9 @@ import {
   toSavedReviewQueryState,
 } from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import { Button } from "@diffgazer/ui/components/button";
 import { toast } from "@diffgazer/ui/components/toast";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useCanGoBack,
   useLocation,
@@ -89,6 +91,12 @@ export function ReviewPage() {
   const navigate = useNavigate();
   const createReview = useCreateReview();
   const providerConsent = useProviderConsent();
+  const api = useApi();
+  const queryClient = useQueryClient();
+  // A second activation can land before React re-renders the row as disabled,
+  // so re-entrancy is refused off a ref rather than off the pending flag alone.
+  const isStartingRef = useRef(false);
+  const [isStartingRerun, setIsStartingRerun] = useState(false);
   const { handleApiError } = useReviewErrorHandler();
 
   const liveReviewId = getLiveReviewId(liveState);
@@ -118,12 +126,60 @@ export function ReviewPage() {
     performBackAction(router, resolveBackAction(pathname, canGoBack));
   };
 
+  // Every start failure the server can describe carries its own way out, so a
+  // refused re-run offers that instead of a dead-end toast: the review already
+  // running is opened, and a provider that needs configuring is one jump away.
+  const reportRerunFailure = async (mode: Exclude<ReviewMode, "files">, error: unknown) => {
+    const { title, message, recovery } = describeReviewStartError(error);
+    const safeMessage = sanitizePresentationText(message);
+    if (recovery === "open-active-review") {
+      const session = await queryClient
+        .fetchQuery(reviewQueries.activeSession(api, mode))
+        .then((read) => read.session)
+        .catch(() => null);
+      if (session) {
+        navigate({
+          to: REVIEW_ROUTE,
+          params: { reviewId: session.reviewId },
+          search: { mode: session.mode, live: true },
+          replace: true,
+        });
+        toast.info("Opened the Running Review", {
+          message:
+            "A review was already running, so Diffgazer opened it instead of starting a new one.",
+        });
+        return;
+      }
+    }
+    // Error toasts persist until dismissed, so a start the providers screen can
+    // fix carries the jump instead of leaving the user to find it.
+    const toastId = toast.error(title, {
+      message: safeMessage,
+      action:
+        recovery === "configure-provider" ? (
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => {
+              toast.dismiss(toastId);
+              navigate({ to: "/settings/providers" });
+            }}
+          >
+            Open Providers
+          </Button>
+        ) : undefined,
+    });
+  };
+
   // A run that found nothing is the one screen where re-running the same scope
   // is the obvious next move: the diff is still on disk and the verdict is one
   // keystroke from being re-checked. It replaces this route so Back does not
   // return to the run the new one supersedes.
   const runAgain = (mode: Exclude<ReviewMode, "files">) => {
     providerConsent.require(() => {
+      if (isStartingRef.current) return;
+      isStartingRef.current = true;
+      setIsStartingRerun(true);
       void (async () => {
         try {
           const { reviewId: nextReviewId } = await createReview.mutateAsync({ mode });
@@ -134,8 +190,10 @@ export function ReviewPage() {
             replace: true,
           });
         } catch (error) {
-          const { title, message } = describeReviewStartError(error);
-          toast.error(title, { message: sanitizePresentationText(message) });
+          await reportRerunFailure(mode, error);
+        } finally {
+          isStartingRef.current = false;
+          setIsStartingRerun(false);
         }
       })();
     });
@@ -147,7 +205,15 @@ export function ReviewPage() {
   // would silently review something else.
   const rerunMode = reviewMode === "files" ? null : reviewMode;
   const liveCleanRunActions: SummaryAction[] = [
-    ...(rerunMode ? [{ label: "Run Again", onSelect: () => runAgain(rerunMode) }] : []),
+    ...(rerunMode
+      ? [
+          {
+            label: "Run Again",
+            onSelect: () => runAgain(rerunMode),
+            disabled: isStartingRerun,
+          },
+        ]
+      : []),
     { label: "Back to Home", onSelect: () => navigate({ to: "/" }) },
   ];
   const savedCleanRunActions: SummaryAction[] = [

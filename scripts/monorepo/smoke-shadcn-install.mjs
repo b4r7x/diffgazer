@@ -302,7 +302,7 @@ async function runSmoke() {
     );
     console.log("OK: shadcn direct namespace install type-checks and builds");
 
-    // NEW-017 regression: a single-component install must transitively pull the theme item, or component
+    // Regression: a single-component install must transitively pull the theme item, or component
     // class names reference tokens that resolve to nothing and the build is unstyled.
     await writeShadcnFixture(soloFixture, registryServer.baseUrl, root, rootPackageManager);
     await runShadcnAdd(soloFixture, [`${registryServer.baseUrl}/ui/button.json`]);

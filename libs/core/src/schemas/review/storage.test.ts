@@ -130,19 +130,18 @@ describe("ReviewMetadataSchema transform — mode backwards compat", () => {
 });
 
 describe("CreateReviewResponseSchema", () => {
-  it("requires the active session returned by review creation", () => {
-    const response = {
+  const response = {
+    reviewId: "550e8400-e29b-41d4-a716-446655440000",
+    session: {
       reviewId: "550e8400-e29b-41d4-a716-446655440000",
-      session: {
-        reviewId: "550e8400-e29b-41d4-a716-446655440000",
-        mode: "staged",
-        startedAt: "2026-01-01T00:00:00.000Z",
-        headCommit: "abc123",
-        statusHash: "hash123",
-      },
-    };
+      mode: "staged",
+      startedAt: "2026-01-01T00:00:00.000Z",
+      headCommit: "abc123",
+      statusHash: "hash123",
+    },
+  };
 
-    expect(CreateReviewResponseSchema.parse(response)).toEqual({ ...response, outcome: "running" });
+  it("requires the active session returned by review creation", () => {
     expect(() =>
       CreateReviewResponseSchema.parse({
         reviewId: "550e8400-e29b-41d4-a716-446655440000",
@@ -151,21 +150,10 @@ describe("CreateReviewResponseSchema", () => {
   });
 
   it("carries the admission outcome and defaults it to a running review", () => {
-    const response = {
-      reviewId: "550e8400-e29b-41d4-a716-446655440000",
-      session: {
-        reviewId: "550e8400-e29b-41d4-a716-446655440000",
-        mode: "staged",
-        startedAt: "2026-01-01T00:00:00.000Z",
-        headCommit: "abc123",
-        statusHash: "hash123",
-      },
-    };
-
+    expect(CreateReviewResponseSchema.parse(response)).toEqual({ ...response, outcome: "running" });
     expect(CreateReviewResponseSchema.parse({ ...response, outcome: "no-diff" }).outcome).toBe(
       "no-diff",
     );
-    expect(CreateReviewResponseSchema.parse(response).outcome).toBe("running");
     expect(() => CreateReviewResponseSchema.parse({ ...response, outcome: "finished" })).toThrow();
   });
 

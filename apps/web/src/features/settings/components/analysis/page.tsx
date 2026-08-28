@@ -158,7 +158,8 @@ export function SettingsAnalysisPage() {
         >
           {hasLensSelection ? null : "Select at least one lens."}
         </output>
-        <div
+        <fieldset
+          aria-label="Per-call token cap"
           onBlur={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget)) setOwnZone("list");
           }}
@@ -206,7 +207,7 @@ export function SettingsAnalysisPage() {
             </div>
             <Field.Error>{TOKEN_CAP_ERROR}</Field.Error>
           </Field>
-        </div>
+        </fieldset>
       </div>
       {error && (
         <Callout tone="error" live>

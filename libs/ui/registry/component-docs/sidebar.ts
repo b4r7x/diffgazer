@@ -141,8 +141,7 @@ export const sidebarDoc: ComponentDoc = {
         action: "Toggles the desktop hidden state, or opens/closes the mobile sheet.",
       },
     ],
-    // Both demos already render above (hero + Examples list); repeating them here
-    // mounted a second Sidebar tree under an identical heading.
+    // Both demos already render above (hero + Examples list).
     examples: [],
   },
   dataAttributes: [

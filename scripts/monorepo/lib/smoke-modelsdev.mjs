@@ -30,8 +30,8 @@ export const PROVIDER_PROBE_REASONS = [
  * mode treats the two non-ready kinds differently:
  *
  * - `not-requested` — the run never asked for live probes (no network, or the
- *   opt-in env is unset). Emitting `skipped` is the truthful REQ-089 record and
- *   is not a strict failure; the offline release smoke is expected to report it.
+ *   opt-in env is unset). Emitting `skipped` is the truthful record and is not
+ *   a strict failure; the offline release smoke is expected to report it.
  * - `unavailable` — live probing WAS requested but a prerequisite is absent (a
  *   credential, a model the provider would name, or a probe runner that was
  *   never built). Strict mode fails on these: the operator asked for evidence
@@ -96,7 +96,7 @@ export function resolveLiveProbeDisposition(tuple, env, networkEnabled) {
 /**
  * `runProbe` returns the completed verdict (`{ passed }`) or, when the probe
  * could not run at all, `{ unavailable: <reason> }` — a missing prerequisite is
- * a skip, never a negative verdict (REQ-089).
+ * a skip, never a negative verdict.
  */
 function resolveProbeOutcome(result) {
   if (result.unavailable) {
@@ -160,6 +160,12 @@ export function finalizeStrictProbeResults(results, strictSkips) {
 
 const RELATIVE_BUNDLE_IMPORT_RE = /(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)(["'])(\.\/[^"']+\.js)\1/g;
 
+/**
+ * Walk the emitted chunk graph from the entry. The regex scans text, so bundled
+ * third-party sources can hand it a specifier that is not an emitted chunk at
+ * all (undici's JSDoc carries `import('./client.js')`); `resolveImport` returns
+ * null for those and the walk skips them instead of reading a missing file.
+ */
 export function collectReachableBundleFiles(entryFile, readFile, resolveImport) {
   const files = [];
   const seen = new Set();
@@ -172,7 +178,8 @@ export function collectReachableBundleFiles(entryFile, readFile, resolveImport) 
     files.push(file);
 
     for (const match of readFile(file).matchAll(RELATIVE_BUNDLE_IMPORT_RE)) {
-      pending.push(resolveImport(file, match[2]));
+      const resolved = resolveImport(file, match[2]);
+      if (resolved !== null) pending.push(resolved);
     }
   }
 

@@ -102,6 +102,50 @@ async function flushInk(times = 4): Promise<void> {
   }
 }
 
+// Both consent-step tests need the same walk from the product step: Tab onto
+// the nav row and Enter through endpoint and authentication (the arrow chain
+// highlights the environment credential method, Space selects it, so the draft
+// gains a credential without typing a literal key), then pick the discovered
+// model and confirm.
+async function walkToConsentStep(
+  stdin: ReturnType<typeof renderRootFrame>["stdin"],
+  frameText: () => string,
+): Promise<void> {
+  const showsStep = (title: string) => frameText().includes(title.toUpperCase());
+
+  await flushInk();
+  stdin.write("\t");
+  await flushInk();
+  stdin.write("\r");
+  await waitUntil(() => showsStep("Configure Endpoint"));
+
+  stdin.write("\t");
+  await flushInk();
+  stdin.write("\u001b[C");
+  await flushInk();
+  stdin.write("\r");
+  await waitUntil(() => showsStep("Configure Authentication"));
+
+  stdin.write("\u001b[B");
+  await flushInk();
+  stdin.write(" ");
+  await flushInk();
+  stdin.write("\u001b[B");
+  await flushInk();
+  stdin.write("\r");
+  await waitUntil(() => showsStep("Select Model"));
+
+  await waitUntil(() => frameText().includes("gemini-2.5-flash"));
+  stdin.write("\r");
+  await flushInk();
+  stdin.write("\t");
+  await flushInk();
+  stdin.write("\u001b[C");
+  await flushInk();
+  stdin.write("\r");
+  await waitUntil(() => showsStep("Provider Consent"));
+}
+
 afterEach(() => {
   cleanup();
   cleanupRootFrames();
@@ -140,6 +184,22 @@ describe("OnboardingWizard", () => {
     expect(frame).toContain("[ Next ]");
   });
 
+  test("names the step in prose when 40 columns cannot fit the progress bar", async () => {
+    terminalDimensions.current = { columns: 40, rows: 24 };
+    const Wrapper = createWrapper();
+    const { lastFrame } = renderRootFrame(
+      40,
+      24,
+      <Wrapper>
+        <OnboardingWizard />
+      </Wrapper>,
+    );
+
+    await flushInk();
+    await vi.waitFor(() => expect(lastFrame()).toMatch(/Step 1 of \d+: Product/));
+    expect(stripAnsi(lastFrame() ?? "")).not.toContain("[o] Product");
+  });
+
   test("goes straight from the model to the product notice without a conformance step", async () => {
     terminalDimensions.current = { columns: 80, rows: 40 };
     mockRunConfigurationAction.mockImplementation(async (action) =>
@@ -159,42 +219,8 @@ describe("OnboardingWizard", () => {
     // Ink re-emits colour codes and re-wraps every line, so both are normalised
     // away before the frame is read as prose.
     const frameText = () => stripAnsi(lastFrame() ?? "").replace(/\s+/g, " ");
-    const showsStep = (title: string) => frameText().includes(title.toUpperCase());
 
-    await flushInk();
-    stdin.write("\t");
-    await flushInk();
-    stdin.write("\r");
-    await waitUntil(() => showsStep("Configure Endpoint"));
-
-    stdin.write("\t");
-    await flushInk();
-    stdin.write("\u001b[C");
-    await flushInk();
-    stdin.write("\r");
-    await waitUntil(() => showsStep("Configure Authentication"));
-
-    // The arrow chain highlights the environment method, Space selects it, and
-    // the next arrow lands on the nav row, so the draft gains a credential
-    // without typing a literal key into the test.
-    stdin.write("\u001b[B");
-    await flushInk();
-    stdin.write(" ");
-    await flushInk();
-    stdin.write("\u001b[B");
-    await flushInk();
-    stdin.write("\r");
-    await waitUntil(() => showsStep("Select Model"));
-
-    await waitUntil(() => frameText().includes("gemini-2.5-flash"));
-    stdin.write("\r");
-    await flushInk();
-    stdin.write("\t");
-    await flushInk();
-    stdin.write("\u001b[C");
-    await flushInk();
-    stdin.write("\r");
-    await waitUntil(() => showsStep("Provider Consent"));
+    await walkToConsentStep(stdin, frameText);
 
     expect(frameText()).toContain("Diffgazer sends repository content");
     expect(frameText()).toContain("Google Gemini notice:");
@@ -222,36 +248,8 @@ describe("OnboardingWizard", () => {
       </Wrapper>,
     );
     const frameText = () => stripAnsi(lastFrame() ?? "").replace(/\s+/g, " ");
-    const showsStep = (title: string) => frameText().includes(title.toUpperCase());
 
-    await flushInk();
-    stdin.write("\t");
-    await flushInk();
-    stdin.write("\r");
-    await waitUntil(() => showsStep("Configure Endpoint"));
-    stdin.write("\t");
-    await flushInk();
-    stdin.write("\u001b[C");
-    await flushInk();
-    stdin.write("\r");
-    await waitUntil(() => showsStep("Configure Authentication"));
-    stdin.write("\u001b[B");
-    await flushInk();
-    stdin.write(" ");
-    await flushInk();
-    stdin.write("\u001b[B");
-    await flushInk();
-    stdin.write("\r");
-    await waitUntil(() => showsStep("Select Model"));
-    await waitUntil(() => frameText().includes("gemini-2.5-flash"));
-    stdin.write("\r");
-    await flushInk();
-    stdin.write("\t");
-    await flushInk();
-    stdin.write("\u001b[C");
-    await flushInk();
-    stdin.write("\r");
-    await waitUntil(() => showsStep("Provider Consent"));
+    await walkToConsentStep(stdin, frameText);
 
     // Nothing left to accept: the recorded consent stands and Complete Setup is live.
     expect(frameText()).toContain("[ Accepted ]");

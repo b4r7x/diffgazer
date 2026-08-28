@@ -33,8 +33,8 @@ export function FieldDescription({ className, children, ref, ...props }: FieldDe
         // under the user's thumb. `sr-only` rather than `null` — the node keeps its id and its
         // place in aria-describedby, so assistive tech still gets the hint.
         hidden ? "sr-only" : "text-xs text-muted-foreground",
-        // The description was already muted, so the old fade compounded on it; disabled only adds
-        // the forced-colors mark, which opacity could never carry.
+        // Already muted, so disabled adds no opacity — only the forced-colors mark, which
+        // opacity cannot carry.
         disabled && "forced-colors:text-[GrayText]",
         className,
       )}

@@ -1,4 +1,8 @@
 export {
+  type ClientConfigurationNotice,
+  ClientConfigurationNoticeSchema,
+} from "./configuration-notice.js";
+export {
   type ConfigurationInitResponse,
   ConfigurationInitResponseSchema,
   type ConfigurationListResponse,
@@ -41,8 +45,6 @@ export {
   ClientConfigurationActionSchema,
   type ClientConfigurationInput,
   ClientConfigurationInputSchema,
-  type ClientConfigurationNotice,
-  ClientConfigurationNoticeSchema,
   type ClientConfigurationSummary,
   ClientConfigurationSummarySchema,
   CONFIGURATION_OPERATION_STATUSES,

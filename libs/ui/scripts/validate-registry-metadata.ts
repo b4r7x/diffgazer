@@ -1,18 +1,18 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { relative, resolve } from "node:path";
-import { extractImportSpecifiers, listPublicRegistryEntries } from "@diffgazer/registry";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { extractImportSpecifiers } from "@diffgazer/registry";
 import { hasUseClientDirective } from "@diffgazer/registry/build-checks";
 import { REGISTRY_ITEM_TYPE, RegistrySchema } from "@diffgazer/registry/schemas";
-import { validatePublicExportShape } from "./registry/exports.js";
 import {
-  extractLocalImports,
-  hasKeysRegistryDependency,
-  isRecord,
-  normalizeRegistryPath,
-  resolveImportToRegistryPath,
-} from "./registry/fs.js";
+  validateExamplesAvoidHiddenPaths,
+  validateExamplesAvoidKeysPackage,
+  validateExamplesDeclareClientBoundary,
+} from "./registry/examples.js";
+import { validatePublicExportShape } from "./registry/exports.js";
+import { hasKeysRegistryDependency, isRecord } from "./registry/fs.js";
 import { validateRegistryImportClosure } from "./registry/imports.js";
 import { validateOrphanFiles } from "./registry/orphans.js";
+import { validateNoBuildEnvReads, validateNoPublicKeysImports } from "./registry/shipped-source.js";
 import type { Registry, RegistryItem } from "./registry/types.js";
 
 interface PackageJson {
@@ -29,19 +29,6 @@ const REGISTRY_SCHEMA = "https://ui.shadcn.com/schema/registry.json";
 const KEYBOARD_NAVIGATION_INTEGRATION = "keyboard-navigation";
 const ALLOWED_REGISTRY_DEP_ORIGINS = ["https://docs.b4r7.dev", "https://r.b4r7.dev"] as const;
 const KEYS_PEER_NAME = "@diffgazer/keys";
-const TEST_SOURCE_RE =
-  /\.(?:test|spec|stories?)\.[jt]sx?$|[.-]test-(?:utils|helpers|harness|support)\./;
-const SHIPPED_REGISTRY_DIRS = [
-  "registry/ui",
-  "registry/hooks",
-  "registry/lib",
-  "registry/examples",
-] as const;
-const BUILD_ENV_TOKENS = ["process.env", "import.meta.env", "NODE_ENV"] as const;
-// A JSX children brace opening an arrow function — `{(props) => …}`. The `=` lookbehind
-// keeps attribute values (`onClick={() => …}`) out, so they are reported as handlers.
-const JSX_RENDER_FUNCTION_CHILD = /(?<!=)\{\s*\([^()]*\)\s*=>/;
-const JSX_EVENT_HANDLER = /\son[A-Z]\w*=\{/;
 
 function readJson(relativePath: string): unknown {
   return JSON.parse(readFileSync(resolve(ROOT, relativePath), "utf-8"));
@@ -136,192 +123,6 @@ function validateDeclaredDependencies(
   for (const dependency of imported) {
     if (peers.required.has(dependency) || declared.has(dependency)) continue;
     errors.push(`${item.name} imports "${dependency}" but omits it from dependencies`);
-  }
-
-  return errors;
-}
-
-function sourceFilesUnder(registryDir: string): string[] {
-  const root = resolve(ROOT, registryDir);
-  if (!existsSync(root)) return [];
-
-  function walk(dir: string): string[] {
-    const entries: string[] = [];
-    for (const entry of readdirSync(dir)) {
-      const entryPath = resolve(dir, entry);
-      if (statSync(entryPath).isDirectory()) {
-        entries.push(...walk(entryPath));
-      } else if (entry.endsWith(".ts") || entry.endsWith(".tsx")) {
-        entries.push(entryPath);
-      }
-    }
-    return entries;
-  }
-
-  return walk(root);
-}
-
-/** Files a copy/dgadd consumer actually receives; test suites never ship. */
-function shippedSourceFiles(registryDir: string): string[] {
-  return sourceFilesUnder(registryDir).filter((file) => !TEST_SOURCE_RE.test(file));
-}
-
-// Examples are the copy/dgadd consumer's reference source: they must import the local
-// hook paths dgadd writes, never the package that copy mode rewrites away.
-function validateExamplesAvoidKeysPackage(): string[] {
-  const errors: string[] = [];
-
-  for (const exampleFile of shippedSourceFiles("registry/examples")) {
-    const residual = extractImportSpecifiers(readFileSync(exampleFile, "utf-8")).filter(
-      ({ specifier }) => specifier === KEYS_PEER_NAME || specifier.startsWith(`${KEYS_PEER_NAME}/`),
-    );
-    if (residual.length === 0) continue;
-
-    errors.push(
-      `${normalizeRegistryPath(relative(ROOT, exampleFile))} imports "${KEYS_PEER_NAME}"; examples must use the copied local hook paths`,
-    );
-  }
-
-  return errors;
-}
-
-// Copy/dgadd consumers paste this source into their own app, where `process` is
-// undeclared under the stock Vite react-ts tsconfig and no bundler define is
-// guaranteed. Shipped registry source therefore reads no build environment at all;
-// diagnostics are hard throws, matching the shadcn copy-paste norm.
-function validateNoBuildEnvReads(): string[] {
-  const errors: string[] = [];
-
-  for (const registryDir of SHIPPED_REGISTRY_DIRS) {
-    for (const sourceFile of shippedSourceFiles(registryDir)) {
-      const source = readFileSync(sourceFile, "utf-8");
-      const matched = BUILD_ENV_TOKENS.filter((token) => source.includes(token));
-      if (matched.length === 0) continue;
-
-      errors.push(
-        `${normalizeRegistryPath(relative(ROOT, sourceFile))} reads ${matched.join(", ")}; shipped registry source must not depend on a build environment`,
-      );
-    }
-  }
-
-  return errors;
-}
-
-// Comments and quoted-literal bodies are dropped so component source shipped as text
-// (code-block examples embed a JSX sample string) never reads as real JSX below.
-function stripLiteralsAndComments(source: string): string {
-  let code = "";
-  let index = 0;
-
-  while (index < source.length) {
-    const char = source[index];
-    const pair = source.slice(index, index + 2);
-
-    if (pair === "//") {
-      const end = source.indexOf("\n", index);
-      index = end === -1 ? source.length : end;
-    } else if (pair === "/*") {
-      const end = source.indexOf("*/", index + 2);
-      index = end === -1 ? source.length : end + 2;
-    } else if (char === '"' || char === "'" || char === "`") {
-      index += 1;
-      while (index < source.length && source[index] !== char) {
-        index += source[index] === "\\" ? 2 : 1;
-      }
-      index += 1;
-    } else {
-      code += char;
-      index += 1;
-    }
-  }
-
-  return code;
-}
-
-// Examples are pasted into consumer apps, including RSC frameworks where a module is a
-// server module until it says otherwise. Handing a function to a component — a render-prop
-// child or a JSX event handler — is exactly what a server module may not do, so an example
-// that does it has to declare the directive or it fails on first paste.
-function validateExamplesDeclareClientBoundary(): string[] {
-  const errors: string[] = [];
-
-  for (const exampleFile of shippedSourceFiles("registry/examples")) {
-    const source = readFileSync(exampleFile, "utf-8");
-    if (hasUseClientDirective(source)) continue;
-
-    const code = stripLiteralsAndComments(source);
-    const crossings: string[] = [];
-    if (JSX_RENDER_FUNCTION_CHILD.test(code)) crossings.push("a render-function child");
-    if (JSX_EVENT_HANDLER.test(code)) crossings.push("a JSX event handler");
-    if (crossings.length === 0) continue;
-
-    errors.push(
-      `${normalizeRegistryPath(relative(ROOT, exampleFile))} passes ${crossings.join(" and ")} but omits "use client"; RSC consumers cannot paste it as a server module`,
-    );
-  }
-
-  return errors;
-}
-
-function validateExamplesAvoidHiddenPaths(items: RegistryItem[]): string[] {
-  const errors: string[] = [];
-  const hiddenFiles = new Set<string>();
-
-  for (const item of items) {
-    if (!item.meta?.hidden) continue;
-    for (const file of item.files) {
-      hiddenFiles.add(normalizeRegistryPath(file.path));
-    }
-  }
-
-  if (hiddenFiles.size === 0) return errors;
-
-  for (const exampleFile of sourceFilesUnder("registry/examples")) {
-    const source = readFileSync(exampleFile, "utf-8");
-    if (source.includes("@hidden-imports-ok")) continue;
-    const exampleRelPath = normalizeRegistryPath(relative(ROOT, exampleFile));
-
-    for (const specifier of extractLocalImports(source)) {
-      const importedPath = resolveImportToRegistryPath(ROOT, exampleRelPath, specifier);
-      if (!importedPath) continue;
-
-      if (hiddenFiles.has(importedPath)) {
-        errors.push(
-          `${exampleRelPath} imports hidden registry path "${specifier}" (resolves to ${importedPath})`,
-        );
-      }
-    }
-  }
-
-  return errors;
-}
-
-function validateNoPublicKeysImports(): string[] {
-  const errors: string[] = [];
-  const registryDir = resolve(ROOT, "public/r");
-  if (!existsSync(registryDir)) return errors;
-
-  for (const { entry, itemPath } of listPublicRegistryEntries(registryDir)) {
-    let data: { files?: { content?: string; path?: string }[] };
-    try {
-      data = JSON.parse(readFileSync(itemPath, "utf-8"));
-    } catch (err) {
-      errors.push(`Public registry item "${entry}" is not valid JSON: ${(err as Error).message}`);
-      continue;
-    }
-
-    for (const file of data.files ?? []) {
-      if (typeof file.content !== "string") continue;
-      const residual = extractImportSpecifiers(file.content).filter(
-        ({ specifier }) => specifier === "@diffgazer/keys",
-      );
-      if (residual.length > 0) {
-        const forms = [...new Set(residual.map(({ kind }) => kind))].join(", ");
-        errors.push(
-          `Public registry item "${entry}" file "${file.path ?? "(unknown)"}" contains unsupported @diffgazer/keys root import (${forms}); public copy source must use rewritten local hooks`,
-        );
-      }
-    }
   }
 
   return errors;
@@ -453,11 +254,11 @@ function validate(): string[] {
 
   errors.push(...validateRegistryImportClosure(ROOT, items));
   errors.push(...validateOrphanFiles(ROOT, items));
-  errors.push(...validateExamplesAvoidHiddenPaths(items));
-  errors.push(...validateExamplesAvoidKeysPackage());
-  errors.push(...validateExamplesDeclareClientBoundary());
-  errors.push(...validateNoBuildEnvReads());
-  errors.push(...validateNoPublicKeysImports());
+  errors.push(...validateExamplesAvoidHiddenPaths(ROOT, items));
+  errors.push(...validateExamplesAvoidKeysPackage(ROOT));
+  errors.push(...validateExamplesDeclareClientBoundary(ROOT));
+  errors.push(...validateNoBuildEnvReads(ROOT));
+  errors.push(...validateNoPublicKeysImports(ROOT));
 
   if (!Object.hasOwn(exportsMap, "./lib/utils")) {
     errors.push("package.json is missing export ./lib/utils");

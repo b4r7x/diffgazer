@@ -354,7 +354,6 @@ describe("Select unified label derivation (JSX children)", () => {
     await user.clear(searchInput);
     await user.type(searchInput, "fruit-a");
     expect(screen.queryByRole("option")).not.toBeInTheDocument();
-    const stale = searchInput.getAttribute("aria-activedescendant");
-    if (stale) expect(document.getElementById(stale)).not.toBeNull();
+    expect(searchInput).not.toHaveAttribute("aria-activedescendant");
   });
 });

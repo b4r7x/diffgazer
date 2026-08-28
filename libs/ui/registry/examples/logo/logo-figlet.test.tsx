@@ -24,12 +24,10 @@ describe("logo-figlet example", () => {
     await waitFor(() => {
       expect(screen.getAllByRole("button", { name: "Retry ASCII render" })).toHaveLength(2);
     });
-    expect(getFigletText).toHaveBeenCalledTimes(2);
 
     getFigletText.mockResolvedValue("ASCII\nART");
     const user = userEvent.setup();
     const [retryButton] = screen.getAllByRole("button", { name: "Retry ASCII render" });
-    expect(retryButton).toBeInstanceOf(HTMLElement);
     if (!(retryButton instanceof HTMLElement)) throw new Error("Expected retry button");
     await user.click(retryButton);
 

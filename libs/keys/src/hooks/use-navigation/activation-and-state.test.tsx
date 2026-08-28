@@ -267,53 +267,19 @@ describe("useNavigation", () => {
         );
       }
 
-      it("does not suppress Enter/Space on a non-navigation button beside an empty list", () => {
+      it("does not suppress any navigation key on a non-navigation button beside an empty list", () => {
         const onSelect = vi.fn();
         render(<EmptyListWithCreate onSelect={onSelect} />);
 
         const create = screen.getByRole("button", { name: "Create" });
         create.focus();
 
-        for (const key of ["Enter", " "]) {
+        for (const key of ["Enter", " ", "Home", "End", "ArrowUp", "ArrowDown"]) {
           const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
           act(() => {
             create.dispatchEvent(event);
           });
-          expect(event.defaultPrevented).toBe(false);
-        }
-        expect(onSelect).not.toHaveBeenCalled();
-      });
-
-      it("does not suppress Home/End on a non-navigation button beside an empty list", () => {
-        const onSelect = vi.fn();
-        render(<EmptyListWithCreate onSelect={onSelect} />);
-
-        const create = screen.getByRole("button", { name: "Create" });
-        create.focus();
-
-        for (const key of ["Home", "End"]) {
-          const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
-          act(() => {
-            create.dispatchEvent(event);
-          });
-          expect(event.defaultPrevented).toBe(false);
-        }
-        expect(onSelect).not.toHaveBeenCalled();
-      });
-
-      it("does not suppress move keys on a non-navigation button beside an empty list", () => {
-        const onSelect = vi.fn();
-        render(<EmptyListWithCreate onSelect={onSelect} />);
-
-        const create = screen.getByRole("button", { name: "Create" });
-        create.focus();
-
-        for (const key of ["ArrowUp", "ArrowDown"]) {
-          const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
-          act(() => {
-            create.dispatchEvent(event);
-          });
-          expect(event.defaultPrevented).toBe(false);
+          expect(event.defaultPrevented, key).toBe(false);
         }
         expect(onSelect).not.toHaveBeenCalled();
       });

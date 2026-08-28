@@ -4,6 +4,16 @@ import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
 import FloatingPanelCustomMenuExample from "./floating-panel-custom-menu";
 
+async function openMenu() {
+  const user = userEvent.setup();
+  render(<FloatingPanelCustomMenuExample />);
+
+  const trigger = screen.getByRole("button", { name: "actions" });
+  await user.click(trigger);
+
+  return { user, trigger, items: screen.getAllByRole("menuitem") };
+}
+
 describe("floating-panel custom menu example", () => {
   it("exposes valid menu→menuitem ownership", async () => {
     const user = userEvent.setup();
@@ -19,16 +29,16 @@ describe("floating-panel custom menu example", () => {
     ).toHaveNoViolations();
   });
 
-  it("focuses the first item on open, moves focus with arrow keys, closes on Escape, and restores focus after selecting an item", async () => {
-    const user = userEvent.setup();
-    render(<FloatingPanelCustomMenuExample />);
+  it("focuses the first item on open", async () => {
+    const { items } = await openMenu();
+    await waitFor(() => expect(items[0]).toHaveFocus());
+  });
 
-    const trigger = screen.getByRole("button", { name: "actions" });
-    await user.click(trigger);
-
-    const items = screen.getAllByRole("menuitem");
+  it("moves focus with arrow keys and Home/End, wrapping at both ends", async () => {
+    const { user, items } = await openMenu();
     const last = items.length - 1;
     await waitFor(() => expect(items[0]).toHaveFocus());
+
     await user.keyboard("{ArrowDown}");
     expect(items[1]).toHaveFocus();
     await user.keyboard("{ArrowUp}");
@@ -42,13 +52,21 @@ describe("floating-panel custom menu example", () => {
     expect(items[last]).toHaveFocus();
     await user.keyboard("{Home}");
     expect(items[0]).toHaveFocus();
+  });
+
+  it("closes on Escape and restores focus to the trigger", async () => {
+    const { user, trigger, items } = await openMenu();
+    await waitFor(() => expect(items[0]).toHaveFocus());
 
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
+  });
 
-    await user.click(trigger);
-    await waitFor(() => expect(screen.getAllByRole("menuitem")[0]).toHaveFocus());
+  it("closes and restores focus to the trigger after selecting an item", async () => {
+    const { user, trigger, items } = await openMenu();
+    await waitFor(() => expect(items[0]).toHaveFocus());
+
     await user.click(screen.getByRole("menuitem", { name: "Duplicate" }));
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();

@@ -232,10 +232,19 @@ describe("SidebarSection collapsible", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
-  it("moves the row padding onto the collapsible toggle so the whole row is tappable", () => {
+  // The row padding is not a public token contract, so these assert only where it
+  // lands (interactive element vs heading), never which utilities spell it.
+  function hasRowPadding(element: HTMLElement) {
+    return /(?:^|\s)p[xtb]-/.test(element.className);
+  }
+
+  it.each<{ readonly label: string; readonly props: { readonly variant?: "tree" } }>([
+    { label: "default", props: {} },
+    { label: "tree", props: { variant: "tree" } },
+  ])("moves the row padding onto the collapsible toggle in the $label variant", ({ props }) => {
     render(
       <Sidebar.Provider>
-        <Sidebar>
+        <Sidebar {...props}>
           <Sidebar.Content>
             <Sidebar.Section collapsible>
               <Sidebar.SectionTitle>Files</Sidebar.SectionTitle>
@@ -246,36 +255,11 @@ describe("SidebarSection collapsible", () => {
       </Sidebar.Provider>,
     );
 
-    // Public styling contract: the padding
-    // tokens live on the interactive element and the coarse-pointer floor makes
-    // the row a >=44px target. jsdom cannot compute layout, so the class tokens
-    // are the assertable contract.
     const toggle = screen.getByRole("button", { name: "Files" });
-    expect(toggle).toHaveClass("px-2", "pt-4", "pb-1.5", "pointer-coarse:min-h-11");
-
-    const heading = screen.getByRole("heading", { name: "Files" });
-    expect(heading).not.toHaveClass("pt-4");
-    expect(heading).not.toHaveClass("pt-2");
-  });
-
-  it("moves the tree-variant row padding onto the collapsible toggle", () => {
-    render(
-      <Sidebar.Provider>
-        <Sidebar variant="tree">
-          <Sidebar.Content>
-            <Sidebar.Section collapsible>
-              <Sidebar.SectionTitle>Files</Sidebar.SectionTitle>
-              <Sidebar.Item>file.txt</Sidebar.Item>
-            </Sidebar.Section>
-          </Sidebar.Content>
-        </Sidebar>
-      </Sidebar.Provider>,
-    );
-
-    // Same public styling contract as above for the tree heading padding scale.
-    const toggle = screen.getByRole("button", { name: "Files" });
-    expect(toggle).toHaveClass("px-2", "pt-2", "pb-1", "pointer-coarse:min-h-11");
-    expect(screen.getByRole("heading", { name: "Files" })).not.toHaveClass("pt-2");
+    expect(hasRowPadding(toggle)).toBe(true);
+    // Documented 44px coarse-pointer floor; jsdom cannot compute layout.
+    expect(toggle).toHaveClass("pointer-coarse:min-h-11");
+    expect(hasRowPadding(screen.getByRole("heading", { name: "Files" }))).toBe(false);
   });
 
   it("keeps the row padding on the heading for non-interactive titles", () => {
@@ -292,10 +276,8 @@ describe("SidebarSection collapsible", () => {
       </Sidebar.Provider>,
     );
 
-    // Public styling contract: a non-interactive title has no toggle to carry
-    // the row padding, so it stays on the heading itself. jsdom cannot compute
-    // layout, so the class tokens are the assertable contract.
-    expect(screen.getByRole("heading", { name: "Files" })).toHaveClass("px-2", "pt-4", "pb-1.5");
+    // No toggle to carry the row padding, so it stays on the heading itself.
+    expect(hasRowPadding(screen.getByRole("heading", { name: "Files" }))).toBe(true);
     expect(screen.queryByRole("button", { name: "Files" })).not.toBeInTheDocument();
   });
 

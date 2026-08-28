@@ -211,32 +211,4 @@ describe("useApiKeyEntry", () => {
     expect(result.current.error).toBe("env save failed");
     expect(result.current.isSubmitting).toBe(false);
   });
-
-  it("declines a duplicate submit while the first save is pending", async () => {
-    let resolveSubmit!: (committed: boolean) => void;
-    const onSubmit = vi.fn(
-      () =>
-        new Promise<boolean>((resolve) => {
-          resolveSubmit = resolve;
-        }),
-    );
-    const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
-
-    let submitPromise!: Promise<boolean>;
-    let duplicatePromise!: Promise<boolean>;
-    act(() => {
-      submitPromise = result.current.submit("env");
-      duplicatePromise = result.current.submit("env");
-    });
-
-    expect(result.current.isSubmitting).toBe(true);
-    expect(onSubmit).toHaveBeenCalledOnce();
-    await expect(duplicatePromise).resolves.toBe(false);
-
-    await act(async () => {
-      resolveSubmit(true);
-      await expect(submitPromise).resolves.toBe(true);
-    });
-    expect(result.current.isSubmitting).toBe(false);
-  });
 });

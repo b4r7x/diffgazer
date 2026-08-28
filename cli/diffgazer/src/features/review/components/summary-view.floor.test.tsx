@@ -95,7 +95,7 @@ describe("ReviewSummaryView root frame", () => {
       .slice(start + 2)
       .filter((line) => /█|\[BLOCKER|\[NIT/.test(line)).length;
 
-    // Was eight rows of half-empty bar tracks; counts now read from the legend.
+    // The breakdown is a ribbon plus legend chips, never one bar row per severity.
     expect(severityRows).toBeLessThanOrEqual(3);
     expect(stripAnsi(lastFrame() ?? "")).toContain("[BLOCKER 1]");
     expect(stripAnsi(lastFrame() ?? "")).not.toContain("░");
@@ -242,7 +242,7 @@ describe("ReviewSummaryView root frame", () => {
       "── ──",
       "Run    : #clean-fl",
       "4 below-threshold issues hidden (threshold: medium)",
-      "Back to Home",
+      "Back",
     ]) {
       expect(frame).toContain(row);
     }

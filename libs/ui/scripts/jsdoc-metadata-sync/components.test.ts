@@ -2,18 +2,20 @@ import { readdirSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  descriptionsAlign,
-  expectMetadataDocumentsJSDocMembers,
   findSourceType,
   getInterfaceMemberDocs,
-  type MemberMetadataExclusion,
   readSource,
   root,
   sourceTypeHasMember,
   sourceTypeHasShape,
   sourceTypeMemberFallbacks,
+} from "./jsdoc-source.js";
+import {
+  descriptionsAlign,
+  expectMetadataDocumentsJSDocMembers,
+  type MemberMetadataExclusion,
   staleMetadataExclusionKeys,
-} from "./support.js";
+} from "./metadata-assertions.js";
 
 declare global {
   interface ImportMeta {
@@ -665,12 +667,6 @@ describe("component metadata JSDoc sync", () => {
     expect(
       staleMetadataExclusionKeys(
         { "missing:Props": [{ member: "staleMember", reason: "must never be accepted" }] },
-        new Set(["button:ButtonProps"]),
-      ),
-    ).toEqual(["missing:Props: stale exclusion key"]);
-    expect(
-      staleMetadataExclusionKeys(
-        { "missing:Props": [{ member: "label", reason: "must never be accepted" }] },
         new Set(["button:ButtonProps"]),
       ),
     ).toEqual(["missing:Props: stale exclusion key"]);

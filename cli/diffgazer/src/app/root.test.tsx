@@ -1,3 +1,4 @@
+import { makeReadyInitResponse } from "@diffgazer/core/testing/provider-fixtures";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { createServerFactories } from "../lib/servers/factories";
@@ -159,23 +160,7 @@ describe("HealthGate startup-failure recovery", () => {
     serverStatusState.current = { status: "connected" };
     serverStatusState.latest = { status: "connected" };
     initQueryState.current = {
-      data: {
-        schemaVersion: 2,
-        configurations: [],
-        unrecognizedConfigurations: [],
-        selectedConfigurationId: "gemini-primary",
-        settings: {
-          theme: "auto",
-          defaultLenses: [],
-          effectiveCallTokenCap: 49_152,
-          defaultProfile: null,
-          severityThreshold: "low",
-          secretsStorage: null,
-          agentExecution: "sequential",
-          providerConsent: null,
-        },
-        project: { path: "/repo", projectId: null, trust: null },
-      },
+      data: makeReadyInitResponse(),
       error: null,
       isLoading: false,
     };

@@ -293,30 +293,20 @@ describe("Panel", () => {
     expect(heading.tagName).toBe("H2");
   });
 
-  it("Panel.Header defaults marker=bar", () => {
+  it.each([
+    { marker: undefined, expected: "bar" },
+    { marker: "none" as const, expected: "none" },
+  ])("Panel.Header publishes data-marker=$expected for marker=$marker", ({ marker, expected }) => {
     const { container } = render(
       <Panel>
-        <Panel.Header>
+        <Panel.Header marker={marker}>
           <Panel.Title>Release</Panel.Title>
         </Panel.Header>
       </Panel>,
     );
 
     const header = container.querySelector('[data-slot="panel-header"]');
-    expect(header).toHaveAttribute("data-marker", "bar");
-  });
-
-  it("Panel.Header marker=none suppresses the marker attribute", () => {
-    const { container } = render(
-      <Panel>
-        <Panel.Header marker="none">
-          <Panel.Title>Release</Panel.Title>
-        </Panel.Header>
-      </Panel>,
-    );
-
-    const header = container.querySelector('[data-slot="panel-header"]');
-    expect(header).toHaveAttribute("data-marker", "none");
+    expect(header).toHaveAttribute("data-marker", expected);
   });
 
   it("Panel.Row renders label and value", () => {

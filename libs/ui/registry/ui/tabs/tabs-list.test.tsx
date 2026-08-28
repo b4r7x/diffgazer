@@ -315,21 +315,6 @@ describe("Tabs.List variants", () => {
     expect(activeTrigger).toHaveTextContent(/^\[\s*Beta\s*\]$/);
     expect(inactiveTrigger).toHaveTextContent(/^\[\s*Alpha\s*\]$/);
   });
-
-  it("marks the active trigger via data-state in variant='default'", () => {
-    render(
-      <Tabs defaultValue="b" variant="default">
-        <Tabs.List>
-          <Tabs.Trigger value="a">Alpha</Tabs.Trigger>
-          <Tabs.Trigger value="b">Beta</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="a">Alpha content</Tabs.Content>
-        <Tabs.Content value="b">Beta content</Tabs.Content>
-      </Tabs>,
-    );
-    expect(screen.getByRole("tab", { name: /alpha/i })).toHaveAttribute("data-state", "inactive");
-    expect(screen.getByRole("tab", { name: /beta/i })).toHaveAttribute("data-state", "active");
-  });
 });
 
 describe("Tabs.List indicator", () => {

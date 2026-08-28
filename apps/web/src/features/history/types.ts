@@ -18,3 +18,10 @@ export interface Run {
   timestamp: string;
   summary: ReactNode;
 }
+
+/** What a run that found nothing has to show in the insights pane instead of five zero bars. */
+export interface HistoryCleanRun {
+  statement: string;
+  /** The shared evidence line both surfaces' clean panes speak. */
+  factLine: string;
+}

@@ -3,7 +3,7 @@ import { scanJsonRejectingDuplicateKeys } from "@diffgazer/core/json";
 import { z } from "zod";
 import { type SecretBinding, SecretBindingSchema } from "../secret-bindings.js";
 import { type SecretsState, V1_MIGRATION_FAILED_MESSAGE } from "../types.js";
-import { scanJsonObjectProperties, splitJsonArrayElements } from "./config.js";
+import { scanJsonObjectProperties, splitJsonArrayElements } from "./json-slices.js";
 
 export const SECRETS_SCHEMA_VERSION_V2 = 2 as const;
 

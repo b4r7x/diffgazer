@@ -263,31 +263,20 @@ describe("parseGitStatusOutput", () => {
     expect(parsed.files.unstaged[0]?.path).toBe("src/app.ts");
   });
 
-  it("excludes .diffgazer/ files from status results", () => {
-    const parsed = parseGitStatusOutput(
-      porcelainOutput(
-        ...branchHeader("main"),
-        untracked(".diffgazer/project.json"),
-        changed(".M", "src/app.ts"),
-      ),
-    );
-
-    expect(parsed.files.untracked).toHaveLength(0);
-    expect(parsed.files.unstaged).toHaveLength(1);
-    expect(parsed.files.unstaged[0]?.path).toBe("src/app.ts");
-  });
-
-  it("omits .diffgazer-only changes from all buckets", () => {
+  it("excludes .diffgazer/ files from every bucket while keeping external files", () => {
     const parsed = parseGitStatusOutput(
       porcelainOutput(
         ...branchHeader("main"),
         untracked(".diffgazer/context.md"),
         changed("A.", ".diffgazer/project.json"),
+        changed(".M", "src/app.ts"),
       ),
     );
 
-    expect(parsed.files.staged).toHaveLength(0);
     expect(parsed.files.untracked).toHaveLength(0);
+    expect(parsed.files.staged).toHaveLength(0);
+    expect(parsed.files.unstaged).toHaveLength(1);
+    expect(parsed.files.unstaged[0]?.path).toBe("src/app.ts");
   });
 
   it("keeps non-.diffgazer files with similar names", () => {

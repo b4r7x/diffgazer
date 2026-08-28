@@ -1,88 +1,24 @@
-import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
-import type { ReviewEvent } from "@diffgazer/core/review";
-import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { GitStatus } from "@diffgazer/core/schemas/git";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import {
   ReviewErrorCode,
   type ReviewMode,
   type ReviewSizeWarning,
 } from "@diffgazer/core/schemas/review";
 import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
-import { makeAllConfigurationsListResponse } from "@diffgazer/core/testing/provider-fixtures";
-import { Text } from "ink";
-import { cleanup, render } from "ink-testing-library";
-import { act, type ReactElement, useEffect } from "react";
+import { cleanup } from "ink-testing-library";
+import { act, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
-import { NavigationProvider } from "../../../app/providers/navigation";
-import { useNavigation } from "../../../hooks/use-navigation";
-import type { Route } from "../../../lib/routes";
-import { ApiBoundary } from "../../../testing/api-boundary";
 import { flush } from "../../../testing/flush";
 import { waitUntil } from "../../../testing/wait-until";
-import { CliThemeProvider } from "../../../theme/provider";
+import {
+  ESC,
+  makeReadyInitResponse,
+  makeUnconfiguredInitResponse,
+  type RenderReviewContainerOptions,
+  renderReviewContainer,
+} from "../testing/container-harness";
 import { frameText, stripAnsi } from "../testing/frame-text";
 import { makeReviewLifecycleBase } from "../testing/review-lifecycle-base";
-
-const shellList = makeAllConfigurationsListResponse();
-
-function makeReadyInitResponse() {
-  return {
-    schemaVersion: 2 as const,
-    configurations: shellList.configurations,
-    selectedConfigurationId: shellList.selectedConfigurationId,
-    settings: {
-      theme: "dark" as const,
-      defaultLenses: [],
-      defaultProfile: null,
-      severityThreshold: "low" as const,
-      secretsStorage: "file" as const,
-      agentExecution: "sequential" as const,
-      // A finished install: the consent is on record, so a switch starts at once.
-      providerConsent: { version: 1 as const, acceptedAt: "2026-08-01T09:00:00.000Z" },
-    },
-    project: {
-      projectId: "project-1",
-      path: "/Users/dev/Projects/diffgazer-workspace",
-      trust: {
-        repoRoot: "/Users/dev/Projects/diffgazer-workspace",
-        capabilities: { readFiles: true, runCommands: false },
-        projectId: "project-1",
-        trustedAt: "2026-01-01T00:00:00.000Z",
-        trustMode: "persistent" as const,
-      },
-    },
-  };
-}
-
-function makeUnconfiguredInitResponse() {
-  return {
-    schemaVersion: 2 as const,
-    configurations: [],
-    selectedConfigurationId: null,
-    settings: {
-      theme: "dark" as const,
-      defaultLenses: [],
-      defaultProfile: null,
-      severityThreshold: "low" as const,
-      secretsStorage: "file" as const,
-      agentExecution: "sequential" as const,
-      providerConsent: null,
-    },
-    project: {
-      projectId: "project-1",
-      path: "/Users/dev/Projects/diffgazer-workspace",
-      trust: {
-        repoRoot: "/Users/dev/Projects/diffgazer-workspace",
-        capabilities: { readFiles: true, runCommands: false },
-        projectId: "project-1",
-        trustedAt: "2026-01-01T00:00:00.000Z",
-        trustMode: "persistent" as const,
-      },
-    },
-  };
-}
 
 const apiMocks = vi.hoisted(() => ({
   clearActiveSession: vi.fn(),
@@ -112,8 +48,6 @@ vi.mock("../../../components/layout/global", () => ({
   useContentZone: () => ({ columns: 100, contentColumns: 100, contentRows: 26 }),
 }));
 
-import { ReviewContainer } from "./container";
-
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -138,95 +72,8 @@ beforeEach(() => {
   });
 });
 
-const ESC = "\u001b";
-
-const PARTIAL_LENS_STATS: LensStat[] = [
-  { lensId: "correctness", issueCount: 1, status: "success" },
-  { lensId: "performance", issueCount: 0, status: "success" },
-  { lensId: "security", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
-  { lensId: "simplicity", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
-  { lensId: "tests", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
-];
-
-const FAILED_LENS_STATS: LensStat[] = PARTIAL_LENS_STATS.map((lens) => ({
-  ...lens,
-  issueCount: 0,
-  status: "failed" as const,
-}));
-
-function makeOrchestratorComplete(lensStats: LensStat[]): ReviewEvent {
-  return {
-    type: "orchestrator_complete",
-    totalIssues: 1,
-    filesAnalyzed: 1,
-    lensStats,
-    timestamp: "2026-01-01T00:00:05.000Z",
-  };
-}
-
-function RouteHarness({
-  onViewRunDetails,
-}: {
-  onViewRunDetails?: (reviewId: string) => void;
-}): ReactElement {
-  const { route } = useNavigation();
-
-  if (route.screen !== "review") {
-    if (route.screen === "home") return <Text>Home route</Text>;
-    const intent = route.screen === "settings/providers" && route.intent ? ` ${route.intent}` : "";
-    return <Text>{`Route: ${route.screen}${intent}`}</Text>;
-  }
-
-  return (
-    <ReviewContainer
-      mode={route.mode}
-      reviewId={route.reviewId}
-      allowResumeWithoutSetup={route.live}
-      onViewRunDetails={onViewRunDetails}
-    />
-  );
-}
-
-function FooterProbe(): ReactElement {
-  const { shortcuts, rightShortcuts } = useFooterData();
-  const left = shortcuts.map((shortcut) => `${shortcut.key} ${shortcut.label}`).join(", ");
-  const right = rightShortcuts.map((shortcut) => `${shortcut.key} ${shortcut.label}`).join(", ");
-
-  return <Text>{`Footer left: ${left || "none"} right: ${right || "none"}`}</Text>;
-}
-
-function renderContainer({
-  initialRoute = { screen: "review", reviewId: "review-123", mode: "staged" },
-  initialShortcuts = [],
-  showFooterProbe = false,
-  onViewRunDetails,
-  gitStatus,
-}: {
-  initialRoute?: Route;
-  initialShortcuts?: Shortcut[];
-  showFooterProbe?: boolean;
-  onViewRunDetails?: (reviewId: string) => void;
-  gitStatus?: GitStatus;
-} = {}) {
-  return render(
-    <ApiBoundary
-      api={{
-        saveSettings: apiMocks.saveSettings,
-        ...(gitStatus ? { getGitStatus: async () => gitStatus } : {}),
-      }}
-    >
-      <CliThemeProvider initialTheme="dark">
-        <TerminalKeyboardProvider>
-          <NavigationProvider initialRoute={initialRoute}>
-            <FooterProvider initialShortcuts={initialShortcuts}>
-              <RouteHarness onViewRunDetails={onViewRunDetails} />
-              {showFooterProbe ? <FooterProbe /> : null}
-            </FooterProvider>
-          </NavigationProvider>
-        </TerminalKeyboardProvider>
-      </CliThemeProvider>
-    </ApiBoundary>,
-  );
+function renderContainer(options: RenderReviewContainerOptions = {}) {
+  return renderReviewContainer({ api: { saveSettings: apiMocks.saveSettings }, ...options });
 }
 
 const STAGED_TWO_FILES: GitStatus = {
@@ -420,243 +267,6 @@ describe("ReviewContainer", () => {
     await waitUntil(() => (lastFrame() ?? "").includes("Home route"));
     expect(cancel).toHaveBeenCalledWith("review-123");
     expect(apiMocks.clearActiveSession).toHaveBeenCalledWith("staged", "review-123");
-  });
-
-  test("generic terminal stream errors show Back/Escape instead of streaming Cancel", async () => {
-    const cancel = vi.fn(async () => ({
-      status: "cancelled" as const,
-      reason: "cancelled" as const,
-    }));
-    apiMocks.useReviewLifecycleBase.mockReturnValue(
-      makeReviewLifecycleBase({
-        cancel,
-        error: "stream exploded",
-        errorCode: "STREAM_ERROR",
-        gate: "terminal-error",
-        isTerminalStreamError: true,
-        reviewId: "review-123",
-      }),
-    );
-
-    const { stdin, lastFrame } = renderContainer();
-
-    expect(lastFrame() ?? "").toContain("stream exploded");
-    expect(lastFrame() ?? "").toContain("Back");
-    expect(lastFrame() ?? "").not.toContain("Cancel");
-
-    stdin.write(ESC);
-
-    await waitUntil(() => (lastFrame() ?? "").includes("Home route"));
-    expect(cancel).not.toHaveBeenCalled();
-    expect(apiMocks.clearActiveSession).toHaveBeenCalledWith("staged", "review-123");
-  });
-
-  test("keeps the streamed run on screen behind the banner when the session is terminated", () => {
-    apiMocks.useReviewLifecycleBase.mockReturnValue(
-      makeReviewLifecycleBase({
-        error: "Review session cancelled because repository state changed.",
-        errorCode: ReviewErrorCode.SESSION_STALE,
-        gate: "terminal-error",
-        isTerminalStreamError: true,
-        reviewId: "review-123",
-      }),
-    );
-
-    const frame = frameText(renderContainer().lastFrame());
-
-    // The run is over, but what it streamed is the point: the progress panes
-    // stay, with the cause named in the banner under them.
-    expect(frame).toContain("Session Expired");
-    expect(frame).toContain("LIVE ACTIVITY LOG");
-    expect(frame).toContain("Issues Found: 1");
-  });
-
-  test("opens the saved run without a keypress when a lens completed before the review failed", async () => {
-    const onViewRunDetails = vi.fn();
-    apiMocks.useReviewLifecycleBase.mockReturnValue(
-      makeReviewLifecycleBase({
-        error: "Review budget exhausted at maxInputTokens (119808).",
-        errorCode: ReviewErrorCode.BUDGET_EXHAUSTED,
-        gate: "terminal-error",
-        isTerminalStreamError: true,
-        reviewId: "review-123",
-        events: [makeOrchestratorComplete(PARTIAL_LENS_STATS)],
-      }),
-    );
-
-    renderContainer({ onViewRunDetails });
-
-    await waitUntil(() => onViewRunDetails.mock.calls.length === 1);
-    expect(onViewRunDetails).toHaveBeenCalledWith("review-123");
-    // The failed run is over: home must not keep offering it as resumable.
-    expect(apiMocks.clearActiveSession).toHaveBeenCalledWith("staged", "review-123");
-
-    // One shot: the hand-off happens once per settled run, not once per render.
-    await flush();
-    await flush();
-    expect(onViewRunDetails).toHaveBeenCalledTimes(1);
-  });
-
-  test("keeps the dead end when no lens completed", async () => {
-    const onViewRunDetails = vi.fn();
-    apiMocks.useReviewLifecycleBase.mockReturnValue(
-      makeReviewLifecycleBase({
-        error: "Review budget exhausted at maxInputTokens (119808).",
-        errorCode: ReviewErrorCode.BUDGET_EXHAUSTED,
-        gate: "terminal-error",
-        isTerminalStreamError: true,
-        reviewId: "review-123",
-        events: [makeOrchestratorComplete(FAILED_LENS_STATS)],
-      }),
-    );
-
-    const { lastFrame } = renderContainer({ onViewRunDetails });
-    await flush();
-
-    const frame = frameText(lastFrame());
-    expect(frame).toContain("Budget Exhausted");
-    expect(frame).not.toContain("View Run Details");
-    expect(frame).toContain("[ Back ]");
-    // Nothing reached disk, so the screen stays put instead of handing off.
-    expect(onViewRunDetails).not.toHaveBeenCalled();
-  });
-
-  test("keeps the dead end when the run ended before it reached disk", () => {
-    apiMocks.useReviewLifecycleBase.mockReturnValue(
-      makeReviewLifecycleBase({
-        error: "Review is no longer pending.",
-        errorCode: ReviewErrorCode.CANCELLED,
-        gate: "terminal-error",
-        isTerminalStreamError: true,
-        reviewId: "review-123",
-        events: [makeOrchestratorComplete(PARTIAL_LENS_STATS)],
-      }),
-    );
-
-    const frame = frameText(renderContainer({ onViewRunDetails: vi.fn() }).lastFrame());
-
-    expect(frame).not.toContain("View Run Details");
-    expect(frame).toContain("[ Back ]");
-  });
-
-  test("keeps the dead end when the run itself could not be saved", () => {
-    apiMocks.useReviewLifecycleBase.mockReturnValue(
-      makeReviewLifecycleBase({
-        error: "Failed to save the review.",
-        errorCode: ReviewErrorCode.INTERNAL_ERROR,
-        gate: "terminal-error",
-        isTerminalStreamError: true,
-        reviewId: "review-123",
-        events: [makeOrchestratorComplete(PARTIAL_LENS_STATS)],
-      }),
-    );
-
-    const frame = frameText(renderContainer({ onViewRunDetails: vi.fn() }).lastFrame());
-
-    expect(frame).not.toContain("View Run Details");
-    expect(frame).toContain("[ Back ]");
-  });
-
-  test("shrinks a recoverable dead end to the recovery CTA and Back", async () => {
-    const onViewRunDetails = vi.fn();
-    apiMocks.useReviewLifecycleBase.mockReturnValue(
-      makeReviewLifecycleBase({
-        error: "Adapter response failed schema validation.",
-        errorCode: ReviewErrorCode.MODEL_INCOMPATIBLE,
-        gate: "terminal-error",
-        isTerminalStreamError: true,
-        reviewId: "review-123",
-        events: [makeOrchestratorComplete(FAILED_LENS_STATS)],
-      }),
-    );
-
-    const { stdin, lastFrame } = renderContainer({ onViewRunDetails, showFooterProbe: true });
-    await flush();
-
-    const frame = frameText(lastFrame());
-    expect(frame).toContain("[ Change model ]");
-    expect(frame).toContain("[ Back ]");
-    expect(frame).not.toContain("View Run Details");
-    expect(frame).toContain(
-      "Footer left: Left/Right Actions, Enter Select, p Change model right: Esc Back",
-    );
-    expect(onViewRunDetails).not.toHaveBeenCalled();
-
-    stdin.write("p");
-
-    await waitUntil(() => (lastFrame() ?? "").includes("Route: settings/providers"));
-  });
-
-  test("leaves a dead end on Esc", async () => {
-    apiMocks.useReviewLifecycleBase.mockReturnValue(
-      makeReviewLifecycleBase({
-        error: "Adapter response failed schema validation.",
-        errorCode: ReviewErrorCode.MODEL_INCOMPATIBLE,
-        gate: "terminal-error",
-        isTerminalStreamError: true,
-        reviewId: "review-123",
-        events: [makeOrchestratorComplete(FAILED_LENS_STATS)],
-      }),
-    );
-
-    const { stdin, lastFrame } = renderContainer({ onViewRunDetails: vi.fn() });
-    await flush();
-
-    stdin.write(ESC);
-
-    await waitUntil(() => (lastFrame() ?? "").includes("Home route"));
-  });
-
-  test("shows the admission fast-fail inline with the server remediation and a providers jump", async () => {
-    const remediation =
-      "This model could not produce Diffgazer's structured review output. Select a different model or update the configuration.";
-    apiMocks.createReview.mockRejectedValue(
-      Object.assign(new Error(remediation), { code: "SETUP_REQUIRED", status: 403 }),
-    );
-    apiMocks.useReviewLifecycleBase.mockReturnValue(makeReviewLifecycleBase());
-
-    const { stdin, lastFrame } = renderContainer({
-      initialRoute: { screen: "review", mode: "unstaged" },
-    });
-
-    await waitUntil(() => (lastFrame() ?? "").includes("Configuration Needs Attention"));
-    const frame = frameText(lastFrame());
-    expect(frame).toContain(remediation);
-    expect(frame).toContain("Press p — Open Providers.");
-    expect(frame).not.toContain("Cancel");
-
-    // The key handler attaches a tick after the error frame lands.
-    await flush();
-    stdin.write("p");
-    await waitUntil(() => (lastFrame() ?? "").includes("Route: settings/providers"));
-  });
-
-  test("routes an incompatible model to the providers screen from the terminal error", async () => {
-    apiMocks.useReviewLifecycleBase.mockReturnValue(
-      makeReviewLifecycleBase({
-        error: "Adapter response failed schema validation.",
-        errorCode: ReviewErrorCode.MODEL_INCOMPATIBLE,
-        gate: "terminal-error",
-        isTerminalStreamError: true,
-        reviewId: "review-123",
-      }),
-    );
-
-    const { stdin, lastFrame } = renderContainer();
-
-    await waitUntil(() => (lastFrame() ?? "").includes("Model Incompatible"));
-    const frame = frameText(lastFrame());
-    expect(frame).toContain("Adapter response failed schema validation.");
-    expect(frame).toContain("Change the model or update the configuration.");
-    // The static screen copy no longer promises the fail-fast memo; the memo
-    // sentence travels only on memo-class failures from the server.
-    expect(frame).not.toContain("fail immediately");
-    // The key is named by the same CTA the web button carries.
-    expect(frame).toContain("Press p — Change model.");
-
-    stdin.write("p");
-    // Change model lands in the model dialog itself, not just on the page.
-    await waitUntil(() => (lastFrame() ?? "").includes("Route: settings/providers select-model"));
   });
 
   test("a reducer-stopped stream no longer exposes Cancel", () => {
@@ -1008,6 +618,41 @@ describe("ReviewContainer", () => {
     await waitUntil(() => apiMocks.createReview.mock.calls.length > 0);
     expect(apiMocks.createReview).toHaveBeenCalledWith(expect.objectContaining({ mode: "staged" }));
     expect(apiMocks.createReview.mock.calls[0]?.[0]).not.toHaveProperty("files");
+  });
+
+  test("re-runs the narrowed file set the finished run started with", async () => {
+    apiMocks.useReviewLifecycleBase.mockImplementation(({ onComplete }) => {
+      useEffect(() => {
+        onComplete();
+      }, [onComplete]);
+
+      return makeReviewLifecycleBase({ issues: [] });
+    });
+
+    const { stdin, lastFrame } = renderContainer({
+      initialRoute: { screen: "review", mode: "staged", pickFiles: true },
+      gitStatus: STAGED_TWO_FILES,
+    });
+    await waitUntil(() => frameText(lastFrame()).includes("src/a.ts"));
+
+    stdin.write(" ");
+    await waitUntil(() => frameText(lastFrame()).includes("1 selected"));
+    stdin.write("s");
+
+    await waitUntil(() => apiMocks.createReview.mock.calls.length === 1);
+    expect(apiMocks.createReview).toHaveBeenCalledWith({ mode: "staged", files: ["src/a.ts"] });
+
+    // Same scope means the same files: Run Again must not widen a narrowed run
+    // back out to the whole staged diff.
+    await flush();
+    await waitUntil(() => frameText(lastFrame()).includes("[ Run Again ]"));
+    stdin.write("\r");
+
+    await waitUntil(() => apiMocks.createReview.mock.calls.length === 2);
+    expect(apiMocks.createReview).toHaveBeenLastCalledWith({
+      mode: "staged",
+      files: ["src/a.ts"],
+    });
   });
 
   test.each([

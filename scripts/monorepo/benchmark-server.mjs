@@ -51,8 +51,9 @@ export function applyBenchmarkEnvDefaults(env = process.env) {
   return env;
 }
 
-// Service Level Objectives. Conservative starting targets for a local,
-// single-process server; tighten once real CI baselines exist.
+// Service Level Objectives for a local, single-process server. `configInit` gates the
+// authenticated read path: serving the configuration snapshot must stay cheap enough for
+// hundreds of requests a second instead of drifting back toward write-path latency.
 const SLO = {
   health: { p95Ms: 50, p99Ms: 100, minRequestsPerSecond: 500 },
   configInit: { p95Ms: 75, p99Ms: 150, minRequestsPerSecond: 300 },
@@ -169,7 +170,7 @@ async function runBenchmark({ shutdownToken }) {
   // Workspace packages are not linked under scripts/, and core's subpath exports
   // are import-only (no CJS require condition), so import the built dist directly.
   const { SHUTDOWN_TOKEN_HEADER } = await import(
-    pathToFileURL(resolve(root, "libs/core/dist/api/index.js")).href
+    pathToFileURL(resolve(root, "libs/core/dist/api/protocol.js")).href
   );
 
   const authHeaders = {

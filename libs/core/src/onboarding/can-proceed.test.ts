@@ -1,22 +1,34 @@
 import { describe, expect, it } from "vitest";
 import { PRODUCT_REGISTRY } from "../providers/product-registry.js";
+import type { RunnableProductId } from "../schemas/config/index.js";
 import { canProceed } from "./can-proceed.js";
 import { getInitialWizardData, type OnboardingDraft } from "./defaults.js";
+
+function hostedDraft(
+  productId: RunnableProductId,
+  overrides: Partial<OnboardingDraft> = {},
+): OnboardingDraft {
+  const initial = getInitialWizardData(productId);
+  if (initial.configurationInput.transportFamily !== "hosted-api") {
+    throw new Error("Expected hosted API configuration");
+  }
+  return {
+    ...initial,
+    configurationInput: {
+      ...initial.configurationInput,
+      credential: { kind: "environment" },
+    },
+    ...overrides,
+  };
+}
 
 describe("setup-plan progression", () => {
   it("never infers acknowledgement from save, test, or HTTP success", () => {
     const notice = PRODUCT_REGISTRY.zai.notice;
-    const initial = getInitialWizardData("zai");
-    if (initial.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
+    // The extra fields are the point: a saved configuration, a passing test and
+    // a 200 are success signals canProceed must not read as an acknowledgement.
     const successfulSignals = {
-      ...initial,
-      configurationInput: {
-        ...initial.configurationInput,
-        credential: { kind: "environment" as const },
-      },
-      selectedModelId: "glm-5-turbo",
+      ...hostedDraft("zai", { selectedModelId: "glm-5-turbo" }),
       saveStatus: "saved",
       testStatus: "passed",
       httpStatus: 200,
@@ -42,16 +54,7 @@ describe("setup-plan progression", () => {
 
   it("rejects acknowledgement for a different notice version", () => {
     const notice = PRODUCT_REGISTRY.zai.notice;
-    const initial = getInitialWizardData("zai");
-    if (initial.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
-    const data = {
-      ...initial,
-      configurationInput: {
-        ...initial.configurationInput,
-        credential: { kind: "environment" },
-      },
+    const data = hostedDraft("zai", {
       selectedModelId: "glm-5-turbo",
       acknowledgement: {
         status: "accepted",
@@ -59,7 +62,7 @@ describe("setup-plan progression", () => {
         noticeVersion: notice.noticeVersion + 1,
         acceptedAt: "2026-07-31T12:00:00.000Z",
       },
-    } satisfies OnboardingDraft;
+    });
 
     expect(canProceed("acknowledgement", data)).toBe(false);
   });
@@ -68,36 +71,16 @@ describe("setup-plan progression", () => {
   // on: only an exact ID that live discovery returned may pass, and a rotating
   // alias may not stand in for one.
   it("requires a live-discovered exact model for a product that suggests none", () => {
-    const initial = getInitialWizardData("opencode-zen");
-    if (initial.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
-    const configured = {
-      ...initial,
-      configurationInput: {
-        ...initial.configurationInput,
-        credential: { kind: "environment" as const },
-      },
-    } satisfies OnboardingDraft;
+    const configured = hostedDraft("opencode-zen");
 
-    expect(initial.selectedModelId).toBeNull();
+    expect(configured.selectedModelId).toBeNull();
     expect(canProceed("model", configured)).toBe(false);
     expect(canProceed("model", { ...configured, selectedModelId: "grok-code" })).toBe(true);
     expect(canProceed("model", { ...configured, selectedModelId: "latest" })).toBe(false);
   });
 
   it("rejects latest aliases even when the product policy accepts discovered exact IDs", () => {
-    const initial = getInitialWizardData("gemini");
-    if (initial.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
-    const configured = {
-      ...initial,
-      configurationInput: {
-        ...initial.configurationInput,
-        credential: { kind: "environment" as const },
-      },
-    } satisfies OnboardingDraft;
+    const configured = hostedDraft("gemini");
 
     expect(canProceed("model", { ...configured, selectedModelId: "gemini-latest" })).toBe(false);
     expect(canProceed("model", { ...configured, selectedModelId: "gemini-2.5-flash" })).toBe(true);
@@ -127,34 +110,11 @@ describe("setup-plan progression", () => {
     "openai/gpt-4.1-mini:free:nitro",
     "openai/gpt-4.1-mini/thinking",
   ] as const)("rejects forged OpenRouter route selector %s", (selectedModelId) => {
-    const initial = getInitialWizardData("openrouter");
-    if (initial.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
-    const configured = {
-      ...initial,
-      configurationInput: {
-        ...initial.configurationInput,
-        credential: { kind: "environment" as const },
-      },
-      selectedModelId,
-    } satisfies OnboardingDraft;
-
-    expect(canProceed("model", configured)).toBe(false);
+    expect(canProceed("model", hostedDraft("openrouter", { selectedModelId }))).toBe(false);
   });
 
   it("requires an exact downstream provider/model pair for OpenRouter", () => {
-    const initial = getInitialWizardData("openrouter");
-    if (initial.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
-    const configured = {
-      ...initial,
-      configurationInput: {
-        ...initial.configurationInput,
-        credential: { kind: "environment" as const },
-      },
-    } satisfies OnboardingDraft;
+    const configured = hostedDraft("openrouter");
 
     expect(
       canProceed("model", {
@@ -191,14 +151,11 @@ describe("setup-plan progression", () => {
   });
 
   it("lets endpoint-binding proceed after clearing a hosted credential on a later step", () => {
-    const initial = getInitialWizardData("gemini");
-    if (initial.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
+    const configured = hostedDraft("gemini");
     const clearedCredential = {
-      ...initial,
+      ...configured,
       configurationInput: {
-        ...initial.configurationInput,
+        ...configured.configurationInput,
         credential: { kind: "literal" as const, value: "" },
       },
     } satisfies OnboardingDraft;
@@ -208,18 +165,7 @@ describe("setup-plan progression", () => {
   });
 
   it("does not let a selected model bypass a changed endpoint or missing authentication", () => {
-    const initial = getInitialWizardData("zai");
-    if (initial.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
-    const configured = {
-      ...initial,
-      configurationInput: {
-        ...initial.configurationInput,
-        credential: { kind: "environment" as const },
-      },
-      selectedModelId: "glm-4.7",
-    } satisfies OnboardingDraft;
+    const configured = hostedDraft("zai", { selectedModelId: "glm-4.7" });
 
     expect(canProceed("model", configured)).toBe(true);
     expect(
@@ -240,35 +186,20 @@ describe("setup-plan progression", () => {
   });
 
   it("requires the hosted configuration fields", () => {
-    const hosted = getInitialWizardData("zai");
-    if (hosted.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
-    expect(canProceed("endpoint-binding", hosted)).toBe(true);
-    expect(canProceed("authentication", hosted)).toBe(false);
-    expect(
-      canProceed("authentication", {
-        ...hosted,
-        configurationInput: {
-          ...hosted.configurationInput,
-          credential: { kind: "environment" },
-        },
-      }),
-    ).toBe(true);
+    const configured = hostedDraft("zai");
+    const withoutCredential = {
+      ...configured,
+      configurationInput: { ...configured.configurationInput, credential: undefined },
+    } satisfies OnboardingDraft;
+
+    expect(canProceed("endpoint-binding", withoutCredential)).toBe(true);
+    expect(canProceed("authentication", withoutCredential)).toBe(false);
+    expect(canProceed("authentication", configured)).toBe(true);
   });
 
   it("blocks model progression until the exact admitted policy holds", () => {
-    const initial = getInitialWizardData("zai");
-    if (initial.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
-    const zai = {
-      ...initial,
-      configurationInput: {
-        ...initial.configurationInput,
-        credential: { kind: "environment" },
-      },
-    } satisfies OnboardingDraft;
+    const zai = hostedDraft("zai");
+
     expect(canProceed("model", zai)).toBe(false);
     expect(canProceed("model", { ...zai, selectedModelId: "glm-latest" })).toBe(false);
     expect(canProceed("model", { ...zai, selectedModelId: "glm-4.7" })).toBe(true);
@@ -276,16 +207,7 @@ describe("setup-plan progression", () => {
   });
 
   it("rechecks the configured transport before accepting the notice", () => {
-    const initial = getInitialWizardData("zai");
-    if (initial.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
-    const configured = {
-      ...initial,
-      configurationInput: {
-        ...initial.configurationInput,
-        credential: { kind: "environment" },
-      },
+    const configured = hostedDraft("zai", {
       selectedModelId: "glm-4.7",
       acknowledgement: {
         status: "accepted",
@@ -293,7 +215,7 @@ describe("setup-plan progression", () => {
         noticeVersion: PRODUCT_REGISTRY.zai.notice.noticeVersion,
         acceptedAt: "2026-07-31T12:00:00.000Z",
       },
-    } satisfies OnboardingDraft;
+    });
 
     expect(canProceed("acknowledgement", configured)).toBe(true);
     expect(
@@ -314,10 +236,8 @@ describe("setup-plan progression", () => {
   });
 
   it("rejects stale product plans after direct tuple mutation", () => {
-    const data = getInitialWizardData("gemini");
-    if (data.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
+    const data = hostedDraft("gemini");
+
     expect(
       canProceed("product", {
         ...data,

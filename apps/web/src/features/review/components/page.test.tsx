@@ -4,7 +4,8 @@ import { FooterProvider } from "@diffgazer/core/footer";
 import { formatRunId } from "@diffgazer/core/format";
 import { createInitialReviewState, reviewReducer } from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import { makeIssue } from "@diffgazer/core/testing/factories";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
+import { makeCreateReviewResponse, makeIssue } from "@diffgazer/core/testing/factories";
 import {
   configurationStatus,
   makeConfigurationInitResponse,
@@ -14,7 +15,7 @@ import {
 import { KeyboardProvider } from "@diffgazer/keys";
 import { Toaster, toast } from "@diffgazer/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -34,6 +35,7 @@ const {
   mockNavigate,
   mockUseReview,
   mockUseReviewLifecycleBase,
+  mockCreateReview,
   routeState,
 } = vi.hoisted(() => ({
   mockBack: vi.fn(),
@@ -41,6 +43,7 @@ const {
   mockNavigate: vi.fn(),
   mockUseReview: vi.fn(),
   mockUseReviewLifecycleBase: vi.fn(),
+  mockCreateReview: vi.fn(),
   routeState: {
     canGoBack: false,
     params: {} as { reviewId?: string },
@@ -67,8 +70,6 @@ vi.mock("@tanstack/react-router", () => ({
 // Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
 vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@diffgazer/core/api/hooks")>();
-  const { makeCreateReviewResponse } = await import("@diffgazer/core/testing/factories");
-
   return {
     ...actual,
     useReview: mockUseReview,
@@ -76,11 +77,7 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
     useReviewSessionCache: () => ({
       clearActiveSession: mockClearActiveSession,
     }),
-    useCreateReview: () => ({
-      mutateAsync: vi.fn(async ({ mode }: { mode: ReviewMode }) =>
-        makeCreateReviewResponse({ reviewId: "rev-alternate", session: { mode } }),
-      ),
-    }),
+    useCreateReview: () => ({ mutateAsync: mockCreateReview }),
   };
 });
 
@@ -111,9 +108,13 @@ function apiError(status: number) {
   return Object.assign(new Error(`HTTP ${status}`), { status });
 }
 
+/** What the server answers when the page asks which review is running. */
+let activeSessionReader: BoundApi["getActiveReviewSession"] = async () => ({ session: null });
+
 function createMockApi(init = makeReadyInitResponse()): BoundApi {
   return {
     ...createApi({ baseUrl: "http://localhost" }),
+    getActiveReviewSession: (mode, signal) => activeSessionReader(mode, signal),
     loadConfigurationInit: vi.fn().mockResolvedValue(init),
     listConfigurations: vi.fn().mockResolvedValue({
       schemaVersion: 2,
@@ -181,6 +182,11 @@ function resetReviewMocks() {
   mockNavigate.mockResolvedValue(undefined);
   mockUseReview.mockReset();
   mockUseReview.mockReturnValue(reviewQuery());
+  activeSessionReader = async () => ({ session: null });
+  mockCreateReview.mockReset();
+  mockCreateReview.mockImplementation(async ({ mode }: { mode: ReviewMode }) =>
+    makeCreateReviewResponse({ reviewId: "rev-alternate", session: { mode } }),
+  );
   mockUseReviewLifecycleBase.mockReset();
   mockUseReviewLifecycleBase.mockReturnValue(
     makeReviewLifecycleBase({ stream: { state: { isStreaming: true } } }),
@@ -1067,6 +1073,134 @@ describe("ReviewPage live review phase transitions", () => {
     // in the page pointed at the same target.
     expect(screen.getByRole("button", { name: /view results/i })).toBeVisible();
     expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("ReviewPage live clean run", () => {
+  const LIVE_REVIEW_ID = "33333333-3333-4333-8333-333333333333";
+  let capturedOnComplete: (() => void) | null;
+
+  async function openCleanSummary() {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("region", { name: "Progress" });
+    await act(async () => {
+      capturedOnComplete?.();
+    });
+    expect(await screen.findByText("Passed — no issues found")).toBeInTheDocument();
+    return user;
+  }
+
+  beforeEach(() => {
+    resetReviewMocks();
+    capturedOnComplete = null;
+    routeState.params = { reviewId: LIVE_REVIEW_ID };
+    routeState.search = { mode: "unstaged", live: true };
+    const completedState = reviewReducer(
+      reviewReducer(createInitialReviewState(), { type: "START" }),
+      { type: "COMPLETE_WITH_RESULT", issues: [] },
+    );
+    mockUseReviewLifecycleBase.mockImplementation((opts: { onComplete?: () => void }) => {
+      capturedOnComplete = opts.onComplete ?? null;
+      return makeReviewLifecycleBase({
+        stream: { state: { ...completedState, reviewId: LIVE_REVIEW_ID } },
+      });
+    });
+  });
+
+  it("re-runs the route's own scope and replaces the route with the new live run", async () => {
+    const user = await openCleanSummary();
+
+    await user.click(screen.getByRole("button", { name: "Run Again" }));
+
+    await waitFor(() => expect(mockCreateReview).toHaveBeenCalledWith({ mode: "unstaged" }));
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/review/{-$reviewId}",
+      params: { reviewId: "rev-alternate" },
+      search: { mode: "unstaged", live: true },
+      replace: true,
+    });
+  });
+
+  // A second activation before the navigation lands would start - and bill - a
+  // second review session.
+  it("refuses a second re-run while the first start is still in flight", async () => {
+    const started = createDeferred<Awaited<ReturnType<typeof makeCreateReviewResponse>>>();
+    mockCreateReview.mockReturnValue(started.promise);
+    const user = await openCleanSummary();
+    const runAgain = screen.getByRole("button", { name: "Run Again" });
+
+    await user.click(runAgain);
+    await waitFor(() => expect(runAgain).toBeDisabled());
+    await user.click(runAgain);
+
+    expect(mockCreateReview).toHaveBeenCalledTimes(1);
+    started.resolve(
+      makeCreateReviewResponse({ reviewId: "rev-alternate", session: { mode: "unstaged" } }),
+    );
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+  });
+
+  // A refused start that names a way out carries it: the running review is
+  // opened rather than described, and a provider that needs configuring is one
+  // click away instead of a dead-end toast.
+  it("opens the review already running when the re-run is refused for it", async () => {
+    const runningId = "44444444-4444-4444-8444-444444444444";
+    mockCreateReview.mockRejectedValue(
+      Object.assign(new Error("in progress"), { status: 409, code: "REVIEW_IN_PROGRESS" }),
+    );
+    const getActiveReviewSession = vi.fn().mockResolvedValue({
+      session: {
+        reviewId: runningId,
+        mode: "unstaged",
+        startedAt: "2026-01-01T00:00:00.000Z",
+        headCommit: "abc",
+        statusHash: "def",
+      },
+    });
+    activeSessionReader = getActiveReviewSession;
+    const user = await openCleanSummary();
+
+    await user.click(screen.getByRole("button", { name: "Run Again" }));
+
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/review/{-$reviewId}",
+        params: { reviewId: runningId },
+        search: { mode: "unstaged", live: true },
+        replace: true,
+      }),
+    );
+  });
+
+  it("offers the providers screen when the re-run needs a provider configured", async () => {
+    mockCreateReview.mockRejectedValue(
+      Object.assign(new Error("no provider"), { status: 400, code: "UNSUPPORTED_PROVIDER" }),
+    );
+    const user = await openCleanSummary();
+
+    await user.click(screen.getByRole("button", { name: "Run Again" }));
+
+    const errorToast = await screen.findByRole("alert");
+    expect(errorToast).toHaveTextContent("Provider Not Configured");
+
+    await user.click(within(errorToast).getByRole("button", { name: "Open Providers" }));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings/providers" });
+  });
+
+  it("reports a refused re-run and leaves the clean state re-runnable", async () => {
+    mockCreateReview.mockRejectedValue(new Error("Review service is unavailable"));
+    const user = await openCleanSummary();
+
+    await user.click(screen.getByRole("button", { name: "Run Again" }));
+
+    const errorToast = await screen.findByRole("alert");
+    expect(errorToast).toHaveTextContent("Failed to Start Review");
+    expect(errorToast).toHaveTextContent("Could not create a review session.");
+    expect(mockNavigate).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Run Again" })).not.toBeDisabled(),
+    );
   });
 });
 

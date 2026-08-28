@@ -216,9 +216,6 @@ describe("saveWizard", () => {
         acknowledgement: data.acknowledgement,
       },
     ]);
-    expect(runConfigurationAction).not.toHaveBeenCalledWith(
-      expect.objectContaining({ action: "test" }),
-    );
   });
 
   it("rejects a select response that does not match the explicit selected tuple", async () => {

@@ -1,5 +1,4 @@
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
-import { usePageFooter } from "@diffgazer/core/footer";
 import { formatDuration } from "@diffgazer/core/format";
 import {
   classifyReviewStreamError,
@@ -7,42 +6,34 @@ import {
   isSessionTerminationCode,
   type LogStreamState,
   type ReviewEvent,
-  type ReviewStreamErrorGuidance,
   sanitizePresentationText,
 } from "@diffgazer/core/review";
 import type { TransportFamily } from "@diffgazer/core/schemas/config";
 import type { AgentState, LensStat } from "@diffgazer/core/schemas/events";
-import {
-  BACK_SHORTCUT,
-  type BadgeVariant,
-  type ProgressStepData,
-  type ReviewProgressMetrics,
-} from "@diffgazer/core/schemas/presentation";
+import type { ProgressStepData, ReviewProgressMetrics } from "@diffgazer/core/schemas/presentation";
 import type { ReviewSizeWarning } from "@diffgazer/core/schemas/review";
-import { clampIndex, useActionRowNavigation } from "@diffgazer/keys";
-import { Badge } from "@diffgazer/ui/components/badge";
+import { clampIndex } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
-import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { type KeyboardEvent, type RefObject, useState } from "react";
-import { chromeReturnShortcut } from "@/components/layout/header-chrome";
+import { useState } from "react";
 import { useFocusWithin } from "@/hooks/use-focus-within";
 import { ReviewClockProvider, useReviewClock } from "../hooks/use-clock";
 import {
   ALL_AGENTS_VALUE,
   type ProgressPaneActionButtonProps,
-  type ProgressZone,
   REVIEW_PROGRESS_CONTROLS,
   useReviewProgressKeyboard,
 } from "../hooks/use-progress-keyboard";
 import { useStreamLiveness } from "../hooks/use-stream-liveness";
 import { ActivityLog } from "./activity-log/log";
 import { AgentBoard } from "./agent-board";
+import { AgentFilterBar } from "./agent-filter-bar";
 import { ContextSnapshotPreview } from "./context-snapshot-preview";
 import { ReviewMetricsFooter } from "./metrics-footer";
+import { buildErrorActions, ProgressErrorPanel } from "./progress-error-panel";
 import { ProgressList } from "./progress-list/list";
 
 export interface ReviewProgressData {
@@ -75,189 +66,6 @@ export interface ReviewProgressViewProps {
   onCancel?: () => void;
   onBack?: () => void;
   cancelDisabled?: boolean;
-}
-
-interface AgentOption {
-  id: string;
-  name: string;
-  badgeLabel: string;
-  badgeVariant: BadgeVariant;
-}
-
-function AgentFilterBar({
-  agents,
-  active,
-  isFocused,
-  onChange,
-  onKeyDown,
-}: {
-  agents: AgentOption[];
-  active: string | null;
-  /** True while the keyboard zone sits on the chip row. */
-  isFocused: boolean;
-  onChange: (v: string | null) => void;
-  onKeyDown: (event: KeyboardEvent) => void;
-}) {
-  return (
-    <ToggleGroup
-      value={active ?? ALL_AGENTS_VALUE}
-      onChange={(value) => onChange(value === ALL_AGENTS_VALUE ? null : value)}
-      // The zone owns the mark, so no chip can keep it after the row loses
-      // focus and paint a second one beside the control the user is on.
-      highlighted={isFocused ? (active ?? ALL_AGENTS_VALUE) : null}
-      onKeyDown={onKeyDown}
-      label="Agent filter"
-      className="items-center pb-2"
-    >
-      <ToggleGroupItem
-        value={ALL_AGENTS_VALUE}
-        className="h-auto min-h-6 px-2 py-1 text-2xs pointer-coarse:min-h-11 pointer-coarse:px-3"
-      >
-        All
-      </ToggleGroupItem>
-      {agents.map((agent) => (
-        <ToggleGroupItem
-          key={agent.id}
-          value={agent.name}
-          className="h-auto min-h-6 px-2 py-1 text-2xs pointer-coarse:min-h-11 pointer-coarse:px-3"
-        >
-          <Badge
-            variant={agent.badgeVariant}
-            size="sm"
-            className="mr-1 group-data-[state=on]/segmented-item:border-primary-foreground/40 group-data-[state=on]/segmented-item:bg-primary-foreground/15 group-data-[state=on]/segmented-item:text-primary-foreground"
-          >
-            {agent.badgeLabel}
-          </Badge>
-          <span>{agent.name}</span>
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
-  );
-}
-
-/** One way out of the error layout, in the order the row walks them. */
-interface ErrorAction {
-  label: string;
-  onAction: () => void;
-  variant: "secondary" | "outline";
-}
-
-/**
- * The ways forward this panel offers. Every settled failure with a full-frame
- * gate card behind it leaves the live screen, so what is left here is a
- * transport that can be picked up again and a terminated session, whose partial
- * run the server saved before it ended.
- */
-function buildErrorActions({
-  guidance,
-  onBack,
-  onRetry,
-  onViewRun,
-}: {
-  guidance: ReviewStreamErrorGuidance;
-  onBack?: () => void;
-  onRetry?: () => void;
-  onViewRun?: () => void;
-}): ErrorAction[] {
-  const actions: ErrorAction[] = [];
-  if (onBack) {
-    actions.push({ label: "Back to Home", onAction: onBack, variant: "secondary" });
-  }
-  if (guidance.kind === "transport" && onRetry) {
-    actions.push({ label: guidance.ctaLabel, onAction: onRetry, variant: "outline" });
-  }
-  if (onViewRun) {
-    actions.push({ label: "View Saved Run", onAction: onViewRun, variant: "outline" });
-  }
-  return actions;
-}
-
-function ErrorDisplay({
-  error,
-  guidance,
-  actions,
-  panelRef,
-  chromeReturnZone,
-  hasBack,
-}: {
-  error: string;
-  guidance: ReviewStreamErrorGuidance;
-  actions: ErrorAction[];
-  /** The error zone's container, owned by the keyboard hook that focuses into it. */
-  panelRef: RefObject<HTMLDivElement | null>;
-  /** The zone the header Back button returns to, for the parked legend. */
-  chromeReturnZone: ProgressZone | null;
-  hasBack: boolean;
-}) {
-  // Only buttons take focus in here, so focus in the panel means the row has it
-  // - the zone alone would keep the mark lit after Tab moved on, and the legend
-  // below names the row's keys only while they are the ones bound.
-  const focus = useFocusWithin<HTMLDivElement>();
-  const row = useActionRowNavigation({
-    enabled: true,
-    actionCount: actions.length,
-    // Mount lands on the first way out: this row is the error layout's focus
-    // target, not the log behind it.
-    defaultZone: "actions",
-    // Scoped to the panel so the row's keys stand down the moment focus leaves
-    // it: in the log or parked on the header Back button, ←/→ must not yank
-    // focus back into the panel, and ↑ belongs to the chrome hand-off.
-    containerRef: panelRef,
-    canExitActions: false,
-    onAction: (index) => actions[index]?.onAction(),
-  });
-  const focusedLabel = actions[row.focusedIndex]?.label;
-
-  // The error layout's only footer writer: the pane hook stands its own down
-  // there, so this names the keys the row binds while it holds focus, and the
-  // way back down while the chrome holds it instead.
-  usePageFooter({
-    shortcuts: focus.focusWithin
-      ? [
-          // A lone way out has nowhere to move to.
-          ...(actions.length > 1 ? [{ key: "←/→", label: "Move Action" }] : []),
-          ...(focusedLabel ? [{ key: "Enter/Space", label: focusedLabel }] : []),
-        ]
-      : chromeReturnShortcut(chromeReturnZone, { error: "Actions" }),
-    rightShortcuts: hasBack ? [BACK_SHORTCUT] : [],
-  });
-
-  return (
-    <div className="shrink-0 px-4 pb-3">
-      {/* No reticle of its own: the enclosing log pane already brackets while
-          focus sits in here, and a screen wears one. */}
-      <Panel
-        ref={panelRef}
-        {...focus.props}
-        tone="error"
-        role="alert"
-        aria-live="assertive"
-        className="max-w-prose text-left"
-      >
-        <Panel.Header>
-          <Panel.Title>{guidance.title}</Panel.Title>
-        </Panel.Header>
-        <Panel.Content>
-          <div className="font-mono text-muted-foreground">{sanitizePresentationText(error)}</div>
-          <div className="text-muted-foreground">{guidance.guidance}</div>
-          <div className="flex flex-wrap gap-3">
-            {actions.map((action, index) => (
-              <Button
-                key={action.label}
-                {...row.getActionProps(index)}
-                variant={action.variant}
-                bracket
-                highlighted={focus.focusWithin && row.focusedIndex === index}
-                onClick={action.onAction}
-              >
-                {action.label}
-              </Button>
-            ))}
-          </div>
-        </Panel.Content>
-      </Panel>
-    </div>
-  );
 }
 
 const SIZE_WARNING_TITLE = "Large Review";
@@ -619,7 +427,7 @@ export function ReviewProgressView({
             )}
 
             {error && errorGuidance && (
-              <ErrorDisplay
+              <ProgressErrorPanel
                 error={error}
                 guidance={errorGuidance}
                 actions={errorActions}

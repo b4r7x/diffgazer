@@ -267,8 +267,6 @@ export function Switch({
     </button>
   );
 
-  // Without a label the render is byte-identical to the pre-label markup, so existing call sites
-  // that hand-roll their own row are untouched.
   const row = hasRow ? (
     <div
       data-slot="switch-row"

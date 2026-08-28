@@ -115,7 +115,8 @@ describe("ReviewScreen", () => {
     expect(frame).toMatch(/review complete/i);
     expect(frame).toContain("✔ Passed — no issues found");
     expect(frame).toContain("Scope  : Staged · 4 files · +31 -12");
-    expect(frame).toContain("[ Back to History ]");
+    // Back pops whatever pushed the review screen, so the button names no route.
+    expect(frame).toContain("[ Back ]");
     expect(frame).not.toContain("Found 0 issues");
     expect(frame).not.toContain("Run Again");
   });

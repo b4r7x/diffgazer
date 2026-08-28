@@ -547,7 +547,7 @@ describe("configuration test action", () => {
     const configurationId = await createAdmittedConfiguration(store);
     succeed(await store.runConfigurationAction({ action: "test", configurationId }));
 
-    succeed(
+    const reselected = succeed(
       await store.runConfigurationAction({
         action: "select",
         configurationId,
@@ -557,6 +557,8 @@ describe("configuration test action", () => {
 
     expect(existsSync(evidencePathFor(configurationId))).toBe(false);
     expect(await readEvidence(store, configurationId)).toBeNull();
+    // The user-visible consequence: the reselected tuple must prove itself again.
+    expect(reselected.readiness).toMatchObject({ status: "conformance-pending" });
   });
 
   it("keeps prior admission evidence when a select persistence failure is safely rolled back", async () => {

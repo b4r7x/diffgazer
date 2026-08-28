@@ -1,5 +1,4 @@
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import { HOSTED_API_PRODUCT_IDS, type HostedApiProductId } from "@diffgazer/core/schemas/config";
 import type {
   ExecutionLimits,
   ExecutionResult,
@@ -9,26 +8,30 @@ import type {
 } from "@diffgazer/core/schemas/review";
 import { log } from "../../../log.js";
 import { composeExecutionDeadline } from "../../deadline.js";
-import {
-  createCorrelationId,
-  MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE,
-  serializeFailureDiagnostic,
-  truncateUtf8,
-} from "../../diagnostics.js";
+import { createCorrelationId, serializeFailureDiagnostic } from "../../diagnostics.js";
 import {
   cancelResponseBody,
   createResponseLimitingFetch,
   readTextResponseWithLimit,
 } from "../../http-json.js";
-import { resolveHostedApiEndpoint } from "../endpoints.js";
 import {
   createCompletedExecutionResult,
   createFailedExecutionResult,
-  estimatePromptTokens,
   promptAttemptEstimate,
 } from "../execution-receipt.js";
+import { accountResponse } from "./accounting.js";
 import { describeExhaustedRateLimit, describeHttpFailure } from "./failure-classification.js";
-import { HOSTED_PROFILES, HTTP_DIAGNOSTIC_MAX_BYTES } from "./profiles.js";
+import {
+  buildOutputCorrection,
+  correctionInputEstimate,
+  type MalformedOutputContext,
+  reportMalformedOutput,
+  reportSalvagedOutput,
+  reportTruncatedOutput,
+  zodIssuePaths,
+} from "./output-correction.js";
+import { validateHostedRequest } from "./preflight.js";
+import { HTTP_DIAGNOSTIC_MAX_BYTES } from "./profiles.js";
 import {
   abortableDelay,
   RATE_LIMIT_RETRY_DELAYS_MS,
@@ -37,9 +40,8 @@ import {
 } from "./rate-limit.js";
 import { recoverJsonObject } from "./recover-json.js";
 import { salvageLensIssues } from "./salvage-issues.js";
-import type { HostedExecuteRequest, HostedProductProfile } from "./types.js";
+import type { HostedExecuteRequest } from "./types.js";
 import {
-  accumulateUsage,
   buildRequestInit,
   buildRequestUrl,
   type OutputCorrection,
@@ -88,40 +90,6 @@ function isLengthFinishReason(finishReason: string | null): boolean {
   return normalized === "length" || normalized === "max_tokens";
 }
 
-/** The failed answer replayed on a corrective retry, bounded so it cannot dominate the re-ask. */
-const CORRECTION_FAILED_OUTPUT_MAX_BYTES = 8 * 1024;
-/** Zod issue paths quoted back to the model; more adds noise, not signal. */
-const CORRECTION_MAX_ISSUE_PATHS = 5;
-
-function buildOutputCorrection(failedOutput: string, problem: string): OutputCorrection {
-  return {
-    failedOutput: truncateUtf8(failedOutput, CORRECTION_FAILED_OUTPUT_MAX_BYTES),
-    instruction: `Your previous response was not valid: ${problem} Respond with ONLY the corrected JSON object — no markdown fences, no commentary, no other text.`,
-  };
-}
-
-function correctionInputEstimate(correction: OutputCorrection): number {
-  return (
-    estimatePromptTokens("assistant") +
-    estimatePromptTokens(correction.failedOutput) +
-    estimatePromptTokens("user") +
-    estimatePromptTokens(correction.instruction)
-  );
-}
-
-function zodIssuePaths(error: { issues: ReadonlyArray<{ path: PropertyKey[] }> }): string[] {
-  const paths = new Set<string>();
-  for (const issue of error.issues) {
-    paths.add(issue.path.length === 0 ? "(root)" : issue.path.map(String).join("."));
-    if (paths.size >= CORRECTION_MAX_ISSUE_PATHS) break;
-  }
-  return [...paths];
-}
-
-function validateNoticeVersion(productId: HostedApiProductId, noticeVersion: number): boolean {
-  return PRODUCT_REGISTRY[productId].notice.noticeVersion === noticeVersion;
-}
-
 const SLOW_ANSWER_REMEDIATION =
   "Free pools queue and reasoning models answer slowly — retry, or pick a faster model.";
 
@@ -137,111 +105,12 @@ const SLOW_ANSWER_REMEDIATION =
  */
 const TIMEOUT_RETRY_MIN_REMAINING_MS = 60_000;
 
-type ResponseAccounting = Readonly<{
-  limits: ExecutionLimits;
-  usage: NormalizedUsage | null;
-  status: "accounted" | "unavailable" | "budget-exhausted";
-}>;
-
-function accountResponse(
-  limits: ExecutionLimits,
-  reportedUsage: NormalizedUsage | null,
-  attemptUsage: NormalizedUsage | null,
-  responseBytes: number,
-): ResponseAccounting {
-  const nextLimits = {
-    ...limits,
-    maxResponseBytes: limits.maxResponseBytes - responseBytes,
-  };
-  if (nextLimits.maxResponseBytes < 0) {
-    return { limits: nextLimits, usage: reportedUsage, status: "budget-exhausted" };
-  }
-  if (!attemptUsage) {
-    return { limits: nextLimits, usage: reportedUsage, status: "unavailable" };
-  }
-
-  const usage = accumulateUsage(reportedUsage, attemptUsage);
-  if (!usage) {
-    return { limits: nextLimits, usage: reportedUsage, status: "unavailable" };
-  }
-
-  // Cumulative input is the enforced token dimension; there is no total-token
-  // bound, so a long answer never retroactively exhausts a paid-for attempt.
-  const nextInputTokens = limits.maxInputTokens - (attemptUsage.inputTokens ?? 0);
-  const overCap = nextInputTokens < 0;
-  return {
-    limits: {
-      ...nextLimits,
-      maxInputTokens: nextInputTokens,
-    },
-    usage,
-    status: overCap ? "budget-exhausted" : "accounted",
-  };
-}
-
 export async function executeHostedReview(request: HostedExecuteRequest): Promise<ExecutionResult> {
   const { evidenceKey, context } = request;
-  const productId = evidenceKey.productId;
-  if (!(HOSTED_API_PRODUCT_IDS as readonly string[]).includes(productId)) {
-    return createFailedExecutionResult(request, "transport-failed", {
-      attemptCount: 0,
-      startedAt: new Date().toISOString(),
-      finishedAt: new Date().toISOString(),
-    });
-  }
-
-  const hostedProductId = productId as HostedApiProductId;
-  const profile: HostedProductProfile = HOSTED_PROFILES[hostedProductId];
-  const now = context.now ?? (() => new Date());
-  const startedAt = now().toISOString();
-
-  if (evidenceKey.transportFamily !== "hosted-api") {
-    return createFailedExecutionResult(request, "transport-failed", {
-      attemptCount: 0,
-      startedAt,
-      finishedAt: now().toISOString(),
-    });
-  }
-
-  if (!validateNoticeVersion(hostedProductId, evidenceKey.noticeVersion)) {
-    return createFailedExecutionResult(request, "transport-failed", {
-      attemptCount: 0,
-      startedAt,
-      finishedAt: now().toISOString(),
-    });
-  }
-
-  const endpointResult = resolveHostedApiEndpoint({
-    productId: hostedProductId,
-    endpoint: evidenceKey.normalizedEndpoint ?? "",
-  });
-  if (!endpointResult.ok) {
-    return createFailedExecutionResult(request, "transport-failed", {
-      attemptCount: 0,
-      startedAt,
-      finishedAt: now().toISOString(),
-    });
-  }
-
-  if (!context.credential) {
-    return createFailedExecutionResult(request, "transport-failed", {
-      attemptCount: 0,
-      startedAt,
-      finishedAt: now().toISOString(),
-    });
-  }
-
-  const structuredOutputMode = context.structuredOutputMode ?? profile.structuredOutput;
-  if (
-    structuredOutputMode === "strict-json-schema" &&
-    context.structuredOutputSchema === undefined
-  ) {
-    return createFailedExecutionResult(request, "transport-failed", {
-      attemptCount: 0,
-      startedAt,
-      finishedAt: now().toISOString(),
-    });
-  }
+  const preflight = validateHostedRequest(request);
+  if (!preflight.ok) return preflight.result;
+  const { hostedProductId, profile, endpoint, credential, structuredOutputMode, now, startedAt } =
+    preflight.value;
 
   const admittedLimits = evidenceKey.limits;
   const promptInputEstimate = promptAttemptEstimate(
@@ -298,7 +167,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         retryable: true,
         message: `The dispatch hit its ${Math.round(admittedLimits.wallTimeMs / 1000)}s wall-time limit after ${elapsedSeconds}s without a complete answer.`,
         remediation: slowAnswerRemediation,
-        sensitive: { literalSecrets: [context.credential] },
+        sensitive: { literalSecrets: [credential] },
       }),
     );
     return failed("timed-out");
@@ -317,7 +186,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         retryable: true,
         message: `${PRODUCT_REGISTRY[hostedProductId].presentation.name} sent no response before the HTTP client's own response timeout (${causeCode}) after ${elapsedSeconds}s.`,
         remediation: SLOW_ANSWER_REMEDIATION,
-        sensitive: { literalSecrets: [context.credential] },
+        sensitive: { literalSecrets: [credential] },
       }),
     );
     return failed("timed-out");
@@ -353,14 +222,10 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         return timedOutOrCancelled();
       }
 
-      const url = buildRequestUrl(
-        hostedProductId,
-        endpointResult.value.endpoint,
-        evidenceKey.modelId,
-      );
+      const url = buildRequestUrl(hostedProductId, endpoint, evidenceKey.modelId);
       const init = buildRequestInit({
         productId: hostedProductId,
-        credential: context.credential,
+        credential,
         evidenceKey,
         prompt: request.prompt,
         systemPrompt: request.systemPrompt,
@@ -435,7 +300,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
             serializeFailureDiagnostic({
               ...describeHttpFailure(hostedProductId, 429),
               capture: { channel: "response", text: capturedText },
-              sensitive: { literalSecrets: [context.credential] },
+              sensitive: { literalSecrets: [credential] },
             }),
           );
           return failed(deadline.expired() ? "timed-out" : "cancelled");
@@ -462,7 +327,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
           ...(captured
             ? { capture: { channel: "response", text: captured.ok ? captured.value : "" } }
             : {}),
-          sensitive: { literalSecrets: [context.credential] },
+          sensitive: { literalSecrets: [credential] },
         });
         log("warn", "hosted_request_failed", {
           productId: hostedProductId,
@@ -545,7 +410,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
           remediation:
             "The upstream provider failed mid-generation; retrying may route to a different provider.",
           ...(parsed.content ? { capture: { channel: "response", text: parsed.content } } : {}),
-          sensitive: { literalSecrets: [context.credential] },
+          sensitive: { literalSecrets: [credential] },
         });
         log("warn", "hosted_provider_generation_error", {
           productId: hostedProductId,
@@ -575,7 +440,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
             message: `The model spent its output on reasoning (${reasoningTokens} reasoning tokens, finish reason "${reportedFinishReason}") and returned no review content.`,
             remediation:
               "Pick a non-reasoning model, or a provider/plan with a larger completion budget.",
-            sensitive: { literalSecrets: [context.credential] },
+            sensitive: { literalSecrets: [credential] },
           }),
         );
         return failed("schema-failed");
@@ -588,42 +453,14 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
       }
 
       // One id for this answer's outcome: whether it ends as a malformed-output
-      // diagnostic or as a salvage warn, the log line names the same dispatch.
-      const outputCorrelationId = createCorrelationId();
-      // The head of the malformed answer, so a field failure leaves a fixture
-      // behind instead of vanishing with the response body. Logged as well as
-      // reported: downstream diagnostics drop truncatedDetails, so the log line
-      // is the only place the fixture survives.
-      const logMalformedOutput = (diagnostic: ReturnType<typeof serializeFailureDiagnostic>) => {
-        log("warn", "hosted_malformed_output", {
-          productId: hostedProductId,
-          code: diagnostic.code,
-          correlationId: diagnostic.correlationId,
-          safeMessage: diagnostic.safeMessage,
-          details: diagnostic.truncatedDetails,
-        });
-      };
-      // Only an answer the corrective retry already faced proves the tuple
-      // cannot conform; malformed content on a first attempt — or after a blind
-      // retry that carried no correction — leaves that question open, so the two
-      // carry different codes and only the corrected one arms the fail-fast memo.
-      const reportMalformedOutput = (stage: string, invalidPaths?: readonly string[]): void => {
-        const diagnostic = serializeFailureDiagnostic({
-          code:
-            correction === null
-              ? "malformed-review-output"
-              : MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE,
-          correlationId: outputCorrelationId,
-          retryable: false,
-          message: `The model's answer failed ${stage} (finish reason "${reportedFinishReason}").`,
-          ...(invalidPaths?.length
-            ? { details: [{ label: "invalid-paths", text: invalidPaths.join(", ") }] }
-            : {}),
-          capture: { channel: "response", text: parsed.content ?? "" },
-          sensitive: { literalSecrets: [context.credential] },
-        });
-        logMalformedOutput(diagnostic);
-        request.reportDiagnostic?.(diagnostic);
+      // diagnostic or as a salvage warning, the log line names the same dispatch.
+      const outputContext: MalformedOutputContext = {
+        productId: hostedProductId,
+        correlationId: createCorrelationId(),
+        finishReason: reportedFinishReason,
+        content: parsed.content ?? "",
+        credential,
+        ...(request.reportDiagnostic ? { reportDiagnostic: request.reportDiagnostic } : {}),
       };
 
       /**
@@ -631,7 +468,10 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
        * findings that validate on their own are kept instead of dying with the
        * malformed answer around them. An answer with nothing salvageable takes
        * the terminal path unchanged, so the conformance memo it arms and the
-       * review-level MODEL_INCOMPATIBLE fold both stay as they were.
+       * review-level MODEL_INCOMPATIBLE fold both stay as they were. A partial
+       * salvage is still qualified — the user is told the answer was incomplete
+       * and how many candidates it cost, rather than being handed the kept
+       * findings as a whole lens.
        */
       const salvageOrFail = (payload: unknown, reportFailure: () => void): ExecutionResult => {
         const salvaged = salvageLensIssues(payload, parsed.content ?? "");
@@ -639,9 +479,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
           reportFailure();
           return failed("schema-failed");
         }
-        log("warn", "hosted_salvaged_output", {
-          productId: hostedProductId,
-          correlationId: outputCorrelationId,
+        reportSalvagedOutput(outputContext, {
           keptCount: salvaged.issues.length,
           droppedCount: salvaged.droppedCount,
         });
@@ -659,20 +497,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         if (lengthFinish) {
           // No retry: the same prompt overruns the same completion cap. The
           // issues the answer completed before the cut are still findings.
-          return salvageOrFail(reviewPayload, () => {
-            const diagnostic = serializeFailureDiagnostic({
-              code: "output-truncated",
-              correlationId: outputCorrelationId,
-              retryable: false,
-              message: `The model ran out of completion budget mid-answer (finish reason "${reportedFinishReason}") and returned truncated review output.`,
-              remediation:
-                "Reduce the review scope, or pick a model or plan with a larger completion limit.",
-              capture: { channel: "response", text: parsed.content ?? "" },
-              sensitive: { literalSecrets: [context.credential] },
-            });
-            logMalformedOutput(diagnostic);
-            request.reportDiagnostic?.(diagnostic);
-          });
+          return salvageOrFail(reviewPayload, () => reportTruncatedOutput(outputContext));
         }
         // The corrective retry replays the failed answer and names what was
         // wrong with it. The correction turns count into the retry's input
@@ -684,7 +509,12 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
           continue;
         }
         if (retry === "budget-exhausted") return failed("budget-exhausted");
-        return salvageOrFail(reviewPayload, () => reportMalformedOutput("JSON parsing"));
+        return salvageOrFail(reviewPayload, () =>
+          reportMalformedOutput(outputContext, {
+            stage: "JSON parsing",
+            corrected: correction !== null,
+          }),
+        );
       }
 
       const validated = context.reviewSchema.safeParse(reviewPayload);
@@ -701,7 +531,11 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         }
         if (retry === "budget-exhausted") return failed("budget-exhausted");
         return salvageOrFail(reviewPayload, () =>
-          reportMalformedOutput("review schema validation", invalidPaths),
+          reportMalformedOutput(outputContext, {
+            stage: "review schema validation",
+            corrected: correction !== null,
+            invalidPaths,
+          }),
         );
       }
 

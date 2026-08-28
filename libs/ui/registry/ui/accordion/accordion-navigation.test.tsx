@@ -35,6 +35,40 @@ function renderAccordion(props: AccordionRenderProps = {}) {
   );
 }
 
+function renderNestedAccordion() {
+  return render(
+    <Accordion defaultValue="one">
+      <Accordion.Item value="one">
+        <Accordion.Header>
+          <Accordion.Trigger>Outer One</Accordion.Trigger>
+        </Accordion.Header>
+        <Accordion.Content>
+          <Accordion>
+            <Accordion.Item value="inner-a">
+              <Accordion.Header>
+                <Accordion.Trigger>Inner A</Accordion.Trigger>
+              </Accordion.Header>
+              <Accordion.Content>Inner A content</Accordion.Content>
+            </Accordion.Item>
+            <Accordion.Item value="inner-b">
+              <Accordion.Header>
+                <Accordion.Trigger>Inner B</Accordion.Trigger>
+              </Accordion.Header>
+              <Accordion.Content>Inner B content</Accordion.Content>
+            </Accordion.Item>
+          </Accordion>
+        </Accordion.Content>
+      </Accordion.Item>
+      <Accordion.Item value="two">
+        <Accordion.Header>
+          <Accordion.Trigger>Outer Two</Accordion.Trigger>
+        </Accordion.Header>
+        <Accordion.Content>Outer Two content</Accordion.Content>
+      </Accordion.Item>
+    </Accordion>,
+  );
+}
+
 describe("Accordion", () => {
   it("has no a11y violations", async () => {
     const { container } = renderAccordion();
@@ -113,37 +147,7 @@ describe("Accordion", () => {
 
   it("does not navigate outer triggers when arrow is pressed inside a nested accordion", async () => {
     const user = userEvent.setup();
-    render(
-      <Accordion defaultValue="one">
-        <Accordion.Item value="one">
-          <Accordion.Header>
-            <Accordion.Trigger>Outer One</Accordion.Trigger>
-          </Accordion.Header>
-          <Accordion.Content>
-            <Accordion>
-              <Accordion.Item value="inner-a">
-                <Accordion.Header>
-                  <Accordion.Trigger>Inner A</Accordion.Trigger>
-                </Accordion.Header>
-                <Accordion.Content>Inner A content</Accordion.Content>
-              </Accordion.Item>
-              <Accordion.Item value="inner-b">
-                <Accordion.Header>
-                  <Accordion.Trigger>Inner B</Accordion.Trigger>
-                </Accordion.Header>
-                <Accordion.Content>Inner B content</Accordion.Content>
-              </Accordion.Item>
-            </Accordion>
-          </Accordion.Content>
-        </Accordion.Item>
-        <Accordion.Item value="two">
-          <Accordion.Header>
-            <Accordion.Trigger>Outer Two</Accordion.Trigger>
-          </Accordion.Header>
-          <Accordion.Content>Outer Two content</Accordion.Content>
-        </Accordion.Item>
-      </Accordion>,
-    );
+    renderNestedAccordion();
 
     const innerA = screen.getByRole("button", { name: "Inner A" });
     const innerB = screen.getByRole("button", { name: "Inner B" });
@@ -155,92 +159,22 @@ describe("Accordion", () => {
     expect(outerTwo).not.toHaveFocus();
   });
 
-  it("End on outer accordion focuses the outer last trigger, not a nested trigger", async () => {
+  it.each([
+    "{End}",
+    "{ArrowDown}",
+  ] as const)("%s on an outer trigger focuses the next outer trigger, not a nested trigger", async (key) => {
     const user = userEvent.setup();
-    render(
-      <Accordion defaultValue="one">
-        <Accordion.Item value="one">
-          <Accordion.Header>
-            <Accordion.Trigger>Outer One</Accordion.Trigger>
-          </Accordion.Header>
-          <Accordion.Content>
-            <Accordion>
-              <Accordion.Item value="inner-a">
-                <Accordion.Header>
-                  <Accordion.Trigger>Inner A</Accordion.Trigger>
-                </Accordion.Header>
-                <Accordion.Content>Inner A content</Accordion.Content>
-              </Accordion.Item>
-              <Accordion.Item value="inner-b">
-                <Accordion.Header>
-                  <Accordion.Trigger>Inner B</Accordion.Trigger>
-                </Accordion.Header>
-                <Accordion.Content>Inner B content</Accordion.Content>
-              </Accordion.Item>
-            </Accordion>
-          </Accordion.Content>
-        </Accordion.Item>
-        <Accordion.Item value="two">
-          <Accordion.Header>
-            <Accordion.Trigger>Outer Two</Accordion.Trigger>
-          </Accordion.Header>
-          <Accordion.Content>Outer Two content</Accordion.Content>
-        </Accordion.Item>
-      </Accordion>,
-    );
+    renderNestedAccordion();
 
     const outerOne = screen.getByRole("button", { name: "Outer One" });
     const outerTwo = screen.getByRole("button", { name: "Outer Two" });
     const innerB = screen.getByRole("button", { name: "Inner B" });
 
     outerOne.focus();
-    await user.keyboard("{End}");
+    await user.keyboard(key);
 
     expect(outerTwo).toHaveFocus();
     expect(innerB).not.toHaveFocus();
-  });
-
-  it("ArrowDown on outer trigger skips nested triggers and goes to next outer trigger", async () => {
-    const user = userEvent.setup();
-    render(
-      <Accordion defaultValue="one">
-        <Accordion.Item value="one">
-          <Accordion.Header>
-            <Accordion.Trigger>Outer One</Accordion.Trigger>
-          </Accordion.Header>
-          <Accordion.Content>
-            <Accordion>
-              <Accordion.Item value="inner-a">
-                <Accordion.Header>
-                  <Accordion.Trigger>Inner A</Accordion.Trigger>
-                </Accordion.Header>
-                <Accordion.Content>Inner A content</Accordion.Content>
-              </Accordion.Item>
-              <Accordion.Item value="inner-b">
-                <Accordion.Header>
-                  <Accordion.Trigger>Inner B</Accordion.Trigger>
-                </Accordion.Header>
-                <Accordion.Content>Inner B content</Accordion.Content>
-              </Accordion.Item>
-            </Accordion>
-          </Accordion.Content>
-        </Accordion.Item>
-        <Accordion.Item value="two">
-          <Accordion.Header>
-            <Accordion.Trigger>Outer Two</Accordion.Trigger>
-          </Accordion.Header>
-          <Accordion.Content>Outer Two content</Accordion.Content>
-        </Accordion.Item>
-      </Accordion>,
-    );
-
-    const outerOne = screen.getByRole("button", { name: "Outer One" });
-    const outerTwo = screen.getByRole("button", { name: "Outer Two" });
-
-    outerOne.focus();
-    await user.keyboard("{ArrowDown}");
-
-    expect(outerTwo).toHaveFocus();
   });
 
   it("keeps header arrow navigation on accordion triggers when an open panel contains sidebar items", async () => {

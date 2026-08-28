@@ -63,11 +63,7 @@ describe("getProjectRoot", () => {
     process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";
     const c = createMockContext({ [PROJECT_ROOT_HEADER]: encodeURIComponent(projectRoot) });
 
-    getProjectRoot(c);
-
-    expect(resolveProjectRoot).toHaveBeenCalledWith(
-      expect.objectContaining({ header: projectRoot }),
-    );
+    expect(getProjectRoot(c)).toBe(`/from-header/${projectRoot}`);
   });
 
   it("rejects malformed project-root transport", () => {
@@ -82,20 +78,18 @@ describe("getProjectRoot", () => {
   it("ignores the client header in dev mode without opt-in", () => {
     delete process.env.DIFFGAZER_PACKAGED;
     delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
+    delete process.env.DIFFGAZER_PROJECT_ROOT;
     const c = createMockContext({ [PROJECT_ROOT_HEADER]: "/user/supplied" });
 
-    getProjectRoot(c);
-
-    expect(resolveProjectRoot).toHaveBeenCalledWith(expect.objectContaining({ header: undefined }));
+    expect(getProjectRoot(c)).toBe("/fallback");
   });
 
   it("ignores the client header in packaged mode", () => {
     process.env.DIFFGAZER_PACKAGED = "1";
+    delete process.env.DIFFGAZER_PROJECT_ROOT;
     const c = createMockContext({ [PROJECT_ROOT_HEADER]: "/malicious/path" });
 
-    getProjectRoot(c);
-
-    expect(resolveProjectRoot).toHaveBeenCalledWith(expect.objectContaining({ header: undefined }));
+    expect(getProjectRoot(c)).toBe("/fallback");
   });
 
   it("falls through to env when packaged and header is present", () => {
@@ -103,10 +97,6 @@ describe("getProjectRoot", () => {
     process.env.DIFFGAZER_PROJECT_ROOT = "/safe/root";
     const c = createMockContext({ [PROJECT_ROOT_HEADER]: "/evil" });
 
-    getProjectRoot(c);
-
-    expect(resolveProjectRoot).toHaveBeenCalledWith(
-      expect.objectContaining({ header: undefined, env: "/safe/root" }),
-    );
+    expect(getProjectRoot(c)).toBe("/safe/root");
   });
 });

@@ -8,14 +8,16 @@ import {
   checkDockerFrozenInstallsCopyPatches,
   checkPnpmPinsMatchRootPackageManager,
 } from "./check-invariants/docker.mjs";
+import {
+  checkSecurityReportingChannelsAgree,
+  checkSurfaceEnvExampleKeysStayInRootExample,
+} from "./check-invariants/docs-drift.mjs";
 import { checkCoreDistFreshness, checkKeysDistFreshness } from "./check-invariants/freshness.mjs";
 import {
   checkAllowBuildsDocumented,
   checkDependencyOverridesDocumented,
   checkLicensedPackagesInGovernanceSplit,
   checkNodeDeclarationsMatchRuntime,
-  checkSecurityReportingChannelsAgree,
-  checkSurfaceEnvExampleKeysStayInRootExample,
 } from "./check-invariants/governance.mjs";
 import { checkLicenseFilesMatch } from "./check-invariants/licenses.mjs";
 import {

@@ -114,7 +114,10 @@ describe("SettingsAgentExecutionPage", () => {
     expect(parallel).toHaveFocus();
   });
 
-  it("commits the highlighted execution mode with Enter inside the radio group", async () => {
+  it.each([
+    "{Enter}",
+    " ",
+  ])("commits the highlighted execution mode with %s inside the radio group", async (key) => {
     const user = userEvent.setup();
     renderPage();
 
@@ -124,7 +127,7 @@ describe("SettingsAgentExecutionPage", () => {
     );
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
-    await user.keyboard("{ArrowDown}{Enter}");
+    await user.keyboard(`{ArrowDown}${key}`);
 
     expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   });
@@ -146,21 +149,6 @@ describe("SettingsAgentExecutionPage", () => {
     await user.keyboard("{Enter}");
 
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-  });
-
-  it("enables Save once a different execution mode is selected", async () => {
-    const user = userEvent.setup();
-    renderPage();
-
-    const modeGroup = screen.getByRole("radiogroup", { name: /agent execution mode/i });
-    await waitFor(() =>
-      expect(within(modeGroup).getByRole("radio", { name: /sequential/i })).toHaveFocus(),
-    );
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-
-    await user.keyboard("{ArrowDown} ");
-
-    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   });
 
   it("saves the selected execution mode and navigates once the mutation resolves", async () => {

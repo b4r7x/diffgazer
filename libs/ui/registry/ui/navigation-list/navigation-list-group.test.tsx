@@ -292,10 +292,13 @@ describe("NavigationListGroup", () => {
     expect(screen.getByRole("option", { name: "src, expand section" })).toBeInTheDocument();
   });
 
-  it("nested tree groups increment depth", () => {
+  it("nested tree groups indent their header and their items one level deeper", () => {
     render(
       <NavigationList aria-label="Test nav">
         <NavigationList.Group label="src" variant="tree">
+          <NavigationList.Item id="top">
+            <NavigationList.Title>index.ts</NavigationList.Title>
+          </NavigationList.Item>
           <NavigationList.Group label="components" variant="tree">
             <NavigationList.Item id="one">
               <NavigationList.Title>Button.tsx</NavigationList.Title>
@@ -305,10 +308,11 @@ describe("NavigationListGroup", () => {
       </NavigationList>,
     );
 
-    const item = screen.getByRole("option", { name: "Button.tsx" });
-    expect(item.textContent).toContain("└──");
+    expect(screen.getByRole("option", { name: /^src,/ }).textContent).not.toContain("──");
+    expect(screen.getByRole("option", { name: /^components,/ }).textContent).toContain("└── ");
 
-    expect(screen.getByRole("group", { name: /components/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "index.ts" }).textContent).toContain("├── ");
+    expect(screen.getByRole("option", { name: "Button.tsx" }).textContent).toContain("    └── ");
   });
 
   it("controlled expanded prop works", async () => {

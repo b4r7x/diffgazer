@@ -2,17 +2,12 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  findRelativeJsSpecifiers,
-  listPublicRegistryEntries,
-  readRegistryItem,
-} from "@diffgazer/registry";
+import { listPublicRegistryEntries, readRegistryItem } from "@diffgazer/registry";
 import type { RegistryItem } from "@diffgazer/registry/schemas";
 import { afterEach, describe, expect, it } from "vitest";
 import { requireValue } from "../src/testing/internal/assertions.js";
 import {
   assertNoRelativeJsImports,
-  deriveKeysRegistryTarget,
   transformKeysPublicRegistryImports,
   transformKeysPublicRegistrySourceItem,
 } from "./transform-public-registry-imports.js";
@@ -25,22 +20,7 @@ function loadPublicItem(name: string): RegistryItem {
   return readRegistryItem(join(PUBLIC_DIR, `${name}.json`));
 }
 
-describe("deriveKeysRegistryTarget", () => {
-  it("maps src/hooks targets to @hooks/ for shadcn alias resolution", () => {
-    expect(
-      deriveKeysRegistryTarget({
-        path: "src/dom/focusable.ts",
-        target: "src/hooks/utils/focusable.ts",
-      }),
-    ).toBe("@hooks/utils/focusable.ts");
-    expect(
-      deriveKeysRegistryTarget({
-        path: "src/hooks/use-navigation.ts",
-        target: "src/hooks/use-navigation.ts",
-      }),
-    ).toBe("@hooks/use-navigation.ts");
-  });
-
+describe("transformKeysPublicRegistrySourceItem", () => {
   it("stamps @hooks targets onto public items during source transform", () => {
     const item = transformKeysPublicRegistrySourceItem({
       name: "navigation",
@@ -71,42 +51,27 @@ describe("public registry import rewriting", () => {
     entry.replace(/\.json$/, ""),
   );
 
-  for (const itemName of publicItems) {
-    describe(itemName, () => {
-      const item = loadPublicItem(itemName);
-
-      it("keeps the shadcn $schema metadata", () => {
-        const raw: unknown = JSON.parse(
-          readFileSync(join(PUBLIC_DIR, `${itemName}.json`), "utf-8"),
-        );
-        expect(raw).toMatchObject({
-          $schema: "https://ui.shadcn.com/schema/registry-item.json",
-        });
+  it("keeps the shadcn $schema metadata on every committed public item", () => {
+    for (const itemName of publicItems) {
+      const raw: unknown = JSON.parse(readFileSync(join(PUBLIC_DIR, `${itemName}.json`), "utf-8"));
+      expect(raw, itemName).toMatchObject({
+        $schema: "https://ui.shadcn.com/schema/registry-item.json",
       });
+    }
+  });
 
-      it("has no relative .js imports in content", () => {
-        for (const file of item.files) {
-          if (typeof file.content !== "string") continue;
-          const jsImports = findRelativeJsSpecifiers(file.content);
-          expect(
-            jsImports,
-            `${file.target ?? file.path} has .js imports: ${jsImports.join(", ")}`,
-          ).toEqual([]);
-        }
-      });
-
-      it("has no @diffgazer/keys package imports in content", () => {
-        const packageImport = /(?:from|import)\s+["']@diffgazer\/keys["']/;
-        for (const file of item.files) {
-          if (typeof file.content !== "string") continue;
-          expect(
-            file.content,
-            `${file.target ?? file.path} has @diffgazer/keys package import`,
-          ).not.toMatch(packageImport);
-        }
-      });
-    });
-  }
+  it("leaves no @diffgazer/keys package imports in committed public content", () => {
+    const packageImport = /(?:from|import)\s+["']@diffgazer\/keys["']/;
+    for (const itemName of publicItems) {
+      for (const file of loadPublicItem(itemName).files) {
+        if (typeof file.content !== "string") continue;
+        expect(
+          file.content,
+          `${file.target ?? file.path} has @diffgazer/keys package import`,
+        ).not.toMatch(packageImport);
+      }
+    }
+  });
 });
 
 describe("target-layout import rewriting", () => {

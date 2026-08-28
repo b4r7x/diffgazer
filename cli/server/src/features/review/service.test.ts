@@ -38,6 +38,7 @@ vi.mock("../../shared/lib/git/service.js", () => ({
 
 type GitService = ReturnType<typeof createGitServiceType>;
 type ServiceModule = typeof import("./service.js");
+type ConformanceEvidenceModule = typeof import("./conformance-evidence.js");
 type SseReplayModule = typeof import("./stream/replay.js");
 type SessionsModule = typeof import("./stream/store.js");
 type GitModule = typeof import("../../shared/lib/git/service.js");
@@ -75,7 +76,7 @@ const DEFAULT_REVIEW_RESULT: ReviewResult = {
 
 let createReviewSession: ServiceModule["createReviewSession"];
 let buildReviewInputHash: ServiceModule["buildReviewInputHash"];
-let recordPassedConformanceEvidence: ServiceModule["recordPassedConformanceEvidence"];
+let recordPassedConformanceEvidence: ConformanceEvidenceModule["recordPassedConformanceEvidence"];
 let streamActiveSessionToSSE: SseReplayModule["streamActiveSessionToSSE"];
 let cancelSessionForUser: SessionsModule["cancelSessionForUser"];
 let createSession: SessionsModule["createSession"];
@@ -394,12 +395,13 @@ beforeAll(async () => {
   );
 
   const service = await import("./service.js");
+  const conformanceEvidence = await import("./conformance-evidence.js");
   const sseReplay = await import("./stream/replay.js");
   const sessions = await import("./stream/store.js");
   const git = await import("../../shared/lib/git/service.js");
   createReviewSession = service.createReviewSession;
   buildReviewInputHash = service.buildReviewInputHash;
-  recordPassedConformanceEvidence = service.recordPassedConformanceEvidence;
+  recordPassedConformanceEvidence = conformanceEvidence.recordPassedConformanceEvidence;
   streamActiveSessionToSSE = sseReplay.streamActiveSessionToSSE;
   cancelSessionForUser = sessions.cancelSessionForUser;
   createSession = sessions.createSession;
@@ -975,6 +977,89 @@ describe("POST-to-stream integration", () => {
       expect(saved.metadata.terminalOutcome).toBe("cancelled");
       expect(saved.result.issues).toEqual([
         expect.objectContaining({ title: "Subtraction used in addition helper" }),
+      ]);
+    } finally {
+      stalledLens.resolve();
+    }
+  });
+
+  it("deduplicates and orders the findings it saves for an interrupted run", async () => {
+    const stalledLens = createDeferred<void>();
+    const sharedFinding = {
+      title: "Shared finding",
+      file: "file-1",
+      line_start: 2,
+      line_end: 2,
+      category: "correctness" as const,
+      severity: "high" as const,
+    };
+    let dispatches = 0;
+    const stalling: InitializedAIClient = {
+      ...makeAIClient(),
+      generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
+        dispatches += 1;
+        if (dispatches === 1) {
+          return ok(schema.parse({ issues: [makeIssue({ ...sharedFinding, id: "issue-dup-a" })] }));
+        }
+        if (dispatches === 2) {
+          return ok(
+            schema.parse({
+              issues: [
+                makeIssue({ ...sharedFinding, id: "issue-dup-b" }),
+                makeIssue({
+                  id: "issue-blocker",
+                  severity: "blocker",
+                  title: "Blocking finding",
+                  file: "file-1",
+                  line_start: 3,
+                  line_end: 3,
+                }),
+              ],
+            }),
+          );
+        }
+        await stalledLens.promise;
+        return ok(schema.parse({ issues: [] }));
+      },
+    };
+
+    try {
+      const superseded = await createReviewSession(stalling, {
+        mode: "unstaged",
+        projectPath: projectRoot,
+        lenses: ["correctness", "security", "performance"],
+      });
+
+      expect(superseded.ok).toBe(true);
+      if (!superseded.ok) return;
+      const supersededId = superseded.value.reviewId;
+      trackSessionWithRunner(supersededId);
+      const session = requireValue(getSession(supersededId), "superseded session");
+      await vi.waitFor(() => {
+        const streamed = session.events.filter((event) => event.type === "issue_found");
+        if (streamed.length < 3) throw new Error("duplicate findings not streamed yet");
+      });
+
+      const superseding = await createReviewSession(makeAIClient(), {
+        mode: "unstaged",
+        projectPath: projectRoot,
+        lenses: ["correctness"],
+      });
+
+      expect(superseding.ok).toBe(true);
+      if (!superseding.ok) return;
+      trackSessionWithRunner(superseding.value.reviewId);
+
+      const { getReviewDetail } = await import("./storage/reviews.js");
+      const saved = await vi.waitFor(async () => {
+        const detail = await getReviewDetail(supersededId);
+        if (!detail.ok) throw new Error("partial review not written yet");
+        return detail.value.review;
+      });
+
+      expect(saved.result.issues.map((issue) => issue.title)).toEqual([
+        "Blocking finding",
+        "Shared finding",
       ]);
     } finally {
       stalledLens.resolve();

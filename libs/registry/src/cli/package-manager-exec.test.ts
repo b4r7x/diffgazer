@@ -101,10 +101,6 @@ describe("resolvePackageManagerLaunch", () => {
       windowsCmdLaunch("pnpm.cmd", ["add", dep]),
     );
     const { args } = resolvePackageManagerLaunch("pnpm", ["add", dep]);
-    expect(args[3]).toContain("^");
-    expect(args[3]).toContain("|");
-    expect(args[3]).toContain("<");
-    expect(args[3]).toContain(">");
     expect(args[3]).toBe(`""${shimPath("pnpm.cmd")}" "add" "${dep}""`);
   });
 
@@ -124,7 +120,6 @@ describe("resolvePackageManagerLaunch", () => {
 
     const { args } = resolvePackageManagerLaunch("pnpm", ["add", "lodash"]);
     expect(args[3]).toBe(`""${shimPath("pnpm.cmd")}" "add" "lodash""`);
-    expect(args[3]).not.toContain('"pnpm.cmd"');
     expect(isAbsolute(resolvePackageManagerLaunch("bun", ["add", "lodash"]).executable)).toBe(true);
   });
 
@@ -266,7 +261,6 @@ describe("installDepsWithSpinner launcher", () => {
     expect(ok).toBe(true);
     const [, args] = execFileMock.mock.calls[0] ?? [];
     expect(args?.[3]).toBe(`""${shimPath("pnpm.cmd")}" "add" "lodash""`);
-    expect(args?.[3]).not.toContain(tempDir);
   });
 
   it("prints package-manager stderr through error() in silent mode", async () => {

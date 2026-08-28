@@ -61,27 +61,20 @@ beforeEach(() => {
 });
 
 describe("useReviewLifecycle state passthrough", () => {
-  test("exposes the reducer's canonical streaming state", () => {
+  test("exposes the reducer's canonical streaming state and completion timestamp", () => {
+    const completedAt = new Date("2026-01-01T00:00:05.000Z");
     apiMocks.useReviewLifecycleBase.mockReturnValue(
-      makeReviewLifecycleBase({ error: "Review failed", isStreaming: true }),
+      makeReviewLifecycleBase({ completedAt, error: "Review failed", isStreaming: true }),
     );
 
     const { result } = renderHook(() => useReviewLifecycle());
 
     expect(result.current.state.isStreaming).toBe(true);
+    expect(result.current.state.completedAt).toBe(completedAt);
   });
 });
 
 describe("getDisplayPhase", () => {
-  test("forwards the shared lifecycle completion timestamp", () => {
-    const completedAt = new Date("2026-01-01T00:00:05.000Z");
-    apiMocks.useReviewLifecycleBase.mockReturnValue(makeReviewLifecycleBase({ completedAt }));
-
-    const { result } = renderHook(() => useReviewLifecycle());
-
-    expect(result.current.state.completedAt).toBe(completedAt);
-  });
-
   test("returns 'summary' when the start request failed", () => {
     const result = getDisplayPhase({
       hasStartFailed: true,

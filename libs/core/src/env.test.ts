@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildLocalhostOrigin, DEFAULT_API_PORT, parsePortEnv } from "./env.js";
 
-describe("DEFAULT_API_PORT", () => {
-  it("is the shared default API port", () => {
-    expect(DEFAULT_API_PORT).toBe(3000);
-  });
-});
-
 describe("buildLocalhostOrigin", () => {
   it("builds the 127.0.0.1 origin for a port", () => {
     expect(buildLocalhostOrigin(DEFAULT_API_PORT)).toBe("http://127.0.0.1:3000");

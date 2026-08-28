@@ -14,6 +14,7 @@
     "src/testing/internal",
     "**/*.test.ts",
     "**/*.test.tsx",
-    "src/hooks/use-navigation/test-list.tsx"
+    "src/hooks/use-navigation/test-list.tsx",
+    "src/hooks/use-focus-trap/trap-harness.ts"
   ]
 }

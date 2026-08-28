@@ -30,7 +30,8 @@ import type {
 import type { SecretBinding } from "../secret-bindings.js";
 import { type ConfigurationActionError, configurationActionFailure } from "../types.js";
 import { credentialReferenceIdentityFor } from "./credential-lifecycle.js";
-import { type DocumentStore, evidenceReferenceFor } from "./document-store.js";
+import type { DocumentStore } from "./document-store.js";
+import { evidenceReferenceFor } from "./evidence-store.js";
 
 type ConformanceActionDependencies = Readonly<{
   documents: DocumentStore;

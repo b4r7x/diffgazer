@@ -249,9 +249,20 @@ describe("getComposedEventTarget", () => {
     host.remove();
   });
 
-  it("falls back to event.target when composedPath is empty", () => {
-    const event = new KeyboardEvent("keydown");
-    expect(getComposedEventTarget(event)).toBe(event.target);
+  it("returns the light-DOM target for a non-composed event", () => {
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+
+    let captured: EventTarget | null = null;
+    const onKeyDown = (event: Event) => {
+      captured = getComposedEventTarget(event);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    input.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true }));
+    document.removeEventListener("keydown", onKeyDown);
+
+    expect(captured).toBe(input);
+    input.remove();
   });
 });
 

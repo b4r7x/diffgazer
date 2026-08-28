@@ -69,7 +69,6 @@ function SavedReviewView({
           modelId: saved.modelId,
           createdAt: saved.createdAt,
         }}
-        backLabel="Back to History"
         onContinue={() => setPhase("results")}
         onBack={onClose}
       />

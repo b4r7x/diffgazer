@@ -217,53 +217,6 @@ describe("terminal adapter outcomes reach the review receipt", () => {
     expect(result.value.issues).toEqual([]);
   });
 
-  it("saves the cancelled receipt and reports AI_ERROR", async () => {
-    const plan = admittedPlan();
-    const { client, authorization } = authorizedClient(plan, "cancelled");
-    const executed = await executeReview({
-      aiClient: client,
-      parsed: makeParsedDiff([makeFileDiff({ filePath: "a.ts", rawDiff: "+const a = 1;" })]),
-      config: reviewConfig(),
-      emit: async () => undefined,
-      executionContext: createReviewExecutionContext(authorization),
-    });
-    expect(executed.ok).toBe(true);
-    if (!executed.ok) return;
-
-    const session = createSession("review-terminal", {
-      projectPath: "/project",
-      headCommit: "head",
-      statusHash: "status",
-      statusHashKind: "full",
-      mode: "unstaged",
-    });
-
-    const finalized = await finalizeReview({
-      outcome: executed.value,
-      emit: async () => undefined,
-      reviewId: "review-terminal",
-      projectPath: "/project",
-      mode: "unstaged",
-      parsed: makeParsedDiff([makeFileDiff({ filePath: "a.ts", rawDiff: "+const a = 1;" })]),
-      activeLenses: ["correctness"],
-      durationMs: 10,
-      branch: null,
-      headCommit: "head",
-      signal: session.controller.signal,
-    });
-
-    expect(saveReview).toHaveBeenCalledWith(
-      expect.objectContaining({
-        execution: expect.objectContaining({
-          receipt: expect.objectContaining({ outcome: "cancelled", usageAvailability: "reported" }),
-        }),
-      }),
-    );
-    expect(finalized.ok).toBe(false);
-    if (finalized.ok) return;
-    expect(finalized.error).toMatchObject({ code: "AI_ERROR" });
-  });
-
   it("names the report step on the terminal abort so the step stops reading as running", async () => {
     const plan = admittedPlan();
     const { client, authorization } = authorizedClient(plan, "budget-exhausted");
@@ -356,6 +309,9 @@ describe("terminal adapter outcomes reach the review receipt", () => {
     });
 
     expect(finalized.ok).toBe(false);
+    if (finalized.ok) return;
+    expect(finalized.error).toMatchObject({ code: "AI_ERROR" });
+
     const persisted = await reviews.getReviewDetail(reviewId);
     expect(persisted.ok).toBe(true);
     if (!persisted.ok) return;

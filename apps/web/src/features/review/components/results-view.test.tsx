@@ -163,8 +163,7 @@ describe("ReviewResultsView run id chip", () => {
     expect(listPane.querySelector('[data-slot="panel-label"]')).toHaveTextContent(
       "Issues · 2 · #review-1",
     );
-    // The chip cannot name the run for assistive tech, so the screen still owns
-    // a run-identity heading - it is just no longer a full-width banner row.
+    // The chip is aria-hidden, so the screen still owns a run-identity heading.
     expect(screen.getByRole("heading", { level: 2, name: "Review #review-1" })).toBeInTheDocument();
   });
 });
@@ -910,8 +909,8 @@ describe("ReviewResultsView keyboard regression", () => {
   it("no longer carries the passed-review empty copy, which the clean-run screen owns", () => {
     renderView([]);
 
-    // A run that found nothing never reaches this screen, so the copy that
-    // congratulated it here is gone rather than left unreachable.
+    // A run that found nothing never reaches this screen; the clean-run screen
+    // owns that copy.
     expect(screen.queryByText("No issues found")).not.toBeInTheDocument();
     expect(screen.queryByText("No issues in this review")).not.toBeInTheDocument();
     expect(screen.queryByText("This analysis passed without issues.")).not.toBeInTheDocument();

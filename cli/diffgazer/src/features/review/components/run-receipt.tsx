@@ -44,7 +44,9 @@ function buildRunValue({ runLabel, createdAt }: ReviewRunReceipt): string {
 /**
  * The run's facts as a left-aligned ledger. The labels stay muted and the values
  * foreground: on the clean state the pass statement above is the screen's one
- * accent, so no row here spends it a second time.
+ * accent, so no row here spends it a second time. A row whose fact the record
+ * does not carry is left out rather than filled with a placeholder, matching the
+ * web receipt.
  */
 export function RunReceiptLedger({ receipt }: { receipt: ReviewRunReceipt }): ReactElement {
   const { tokens } = useTheme();
@@ -71,11 +73,13 @@ export function RunReceiptLedger({ receipt }: { receipt: ReviewRunReceipt }): Re
           labelWidth={LABEL_WIDTH}
         />
       ) : null}
-      <KeyValue
-        label={CLEAN_RUN_RECEIPT_LABELS.elapsed}
-        value={formatDuration(receipt.durationMs)}
-        labelWidth={LABEL_WIDTH}
-      />
+      {receipt.durationMs !== undefined ? (
+        <KeyValue
+          label={CLEAN_RUN_RECEIPT_LABELS.elapsed}
+          value={formatDuration(receipt.durationMs)}
+          labelWidth={LABEL_WIDTH}
+        />
+      ) : null}
       {/* The ErrorGatePanel stitch: the run row reads as the stub torn off the bottom. */}
       <Text color={tokens.muted} dimColor>
         ── ──

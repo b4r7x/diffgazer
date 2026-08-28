@@ -18,20 +18,14 @@ afterEach(() => {
 });
 
 describe("integration modes", () => {
-  test("copy integration installs keys transitive files with bundler-safe relative imports", () => {
+  test("copied keys transitive files import each other without a bundler-hostile .js suffix", () => {
     runDgadd(["add", "ui/select", "--cwd", root, "--yes", "--skip-install"]);
 
-    expect(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts"))).toBe(true);
-    expect(existsSync(join(root, "src/hooks/utils/navigation-items.ts"))).toBe(true);
-    expect(readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8")).not.toMatch(
-      /from "\.\/utils\/navigation-dispatch\.js"/,
-    );
-    expect(readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8")).toMatch(
-      /from "\.\/utils\/navigation-dispatch"/,
-    );
-    expect(readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8")).toMatch(
-      /from "\.\/utils\/navigation-items"/,
-    );
+    const navigation = readFileSync(join(root, "src/hooks/use-navigation.ts"), "utf-8");
+
+    expect(navigation).not.toMatch(/from "\.\/utils\/navigation-dispatch\.js"/);
+    expect(navigation).toMatch(/from "\.\/utils\/navigation-dispatch"/);
+    expect(navigation).toMatch(/from "\.\/utils\/navigation-items"/);
   });
 
   test("migrating one copy-mode component retains hooks shared by another", () => {
@@ -385,98 +379,70 @@ describe("integration modes", () => {
     expect(navigation?.files?.every((file) => file.integrationMode === "copy")).toBe(true);
   });
 
-  test("copy integration rewrites package-root keys imports to copied sources", () => {
-    runDgadd([
-      "add",
-      "ui/accordion",
-      "--integration",
-      "copy",
-      "--cwd",
-      root,
-      "--yes",
-      "--skip-install",
-    ]);
+  const copyIntegrationCases = [
+    {
+      item: "ui/select",
+      hookFiles: [
+        "src/hooks/use-navigation.ts",
+        "src/hooks/utils/navigation-dispatch.ts",
+        "src/hooks/utils/navigation-items.ts",
+      ],
+      importer: "src/components/ui/select/use-content-navigation.ts",
+      expectedImport: /@\/hooks\/use-navigation/,
+      alsoKeysFree: ["src/components/ui/select/select-content.tsx"],
+    },
+    {
+      item: "ui/accordion",
+      hookFiles: ["src/hooks/utils/navigation-items.ts", "src/hooks/utils/focusable.ts"],
+      importer: "src/components/ui/accordion/accordion.tsx",
+      expectedImport: /@\/hooks\/utils\/navigation-items/,
+      alsoKeysFree: [],
+    },
+    {
+      item: "ui/popover",
+      hookFiles: ["src/hooks/utils/focusable.ts"],
+      importer: "src/components/ui/popover/use-auto-focus.ts",
+      expectedImport: /@\/hooks\/utils\/focusable/,
+      alsoKeysFree: [],
+    },
+    {
+      item: "ui/command-palette",
+      hookFiles: ["src/hooks/use-focus-restore.ts", "src/hooks/utils/focus-restore.ts"],
+      importer: "src/components/ui/command-palette/command-palette-content.tsx",
+      expectedImport: /@\/hooks\/use-focus-restore/,
+      alsoKeysFree: [],
+    },
+    {
+      item: "ui/radio",
+      hookFiles: [
+        "src/hooks/use-navigation.ts",
+        "src/hooks/utils/navigation-dispatch.ts",
+        "src/hooks/utils/navigation-items.ts",
+      ],
+      importer: "src/components/ui/radio/use-radio-group-navigation.ts",
+      expectedImport: /@\/hooks\/use-navigation/,
+      alsoKeysFree: ["src/components/ui/radio/radio-group.tsx"],
+    },
+  ];
 
-    expect(existsSync(join(root, "src/hooks/utils/navigation-items.ts"))).toBe(true);
-    expect(existsSync(join(root, "src/hooks/utils/focusable.ts"))).toBe(true);
+  test.each(
+    copyIntegrationCases,
+  )("copy integration installs $item keys dependencies and rewrites its imports to them", ({
+    item,
+    hookFiles,
+    importer,
+    expectedImport,
+    alsoKeysFree,
+  }) => {
+    runDgadd(["add", item, "--integration", "copy", "--cwd", root, "--yes", "--skip-install"]);
 
-    const content = readFileSync(join(root, "src/components/ui/accordion/accordion.tsx"), "utf-8");
-    expect(content).not.toMatch(/@diffgazer\/keys/);
-    expect(content).toMatch(/@\/hooks\/utils\/navigation-items/);
-  });
-
-  test("copy integration installs focusable utilities for popover-backed UI", () => {
-    runDgadd([
-      "add",
-      "ui/popover",
-      "--integration",
-      "copy",
-      "--cwd",
-      root,
-      "--yes",
-      "--skip-install",
-    ]);
-
-    expect(existsSync(join(root, "src/hooks/utils/focusable.ts"))).toBe(true);
-
-    const content = readFileSync(
-      join(root, "src/components/ui/popover/use-auto-focus.ts"),
-      "utf-8",
-    );
-    expect(content).not.toMatch(/@diffgazer\/keys/);
-    expect(content).toMatch(/@\/hooks\/utils\/focusable/);
-  });
-
-  test("copy integration installs focus restore for dialog-backed UI", () => {
-    runDgadd([
-      "add",
-      "ui/command-palette",
-      "--integration",
-      "copy",
-      "--cwd",
-      root,
-      "--yes",
-      "--skip-install",
-    ]);
-
-    expect(existsSync(join(root, "src/hooks/use-focus-restore.ts"))).toBe(true);
-    expect(existsSync(join(root, "src/hooks/utils/focus-restore.ts"))).toBe(true);
-
-    const content = readFileSync(
-      join(root, "src/components/ui/command-palette/command-palette-content.tsx"),
-      "utf-8",
-    );
-    expect(content).not.toMatch(/@diffgazer\/keys/);
-    expect(content).toMatch(/@\/hooks\/use-focus-restore/);
-  });
-
-  test("copy integration installs navigation for radio-backed UI", () => {
-    runDgadd([
-      "add",
-      "ui/radio",
-      "--integration",
-      "copy",
-      "--cwd",
-      root,
-      "--yes",
-      "--skip-install",
-    ]);
-
-    expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(true);
-    expect(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts"))).toBe(true);
-    expect(existsSync(join(root, "src/hooks/utils/navigation-items.ts"))).toBe(true);
-
-    const groupSource = readFileSync(
-      join(root, "src/components/ui/radio/radio-group.tsx"),
-      "utf-8",
-    );
-    expect(groupSource).not.toMatch(/@diffgazer\/keys/);
-    const navigationSource = readFileSync(
-      join(root, "src/components/ui/radio/use-radio-group-navigation.ts"),
-      "utf-8",
-    );
-    expect(navigationSource).not.toMatch(/@diffgazer\/keys/);
-    expect(navigationSource).toMatch(/@\/hooks\/use-navigation/);
+    for (const hookFile of hookFiles) {
+      expect(existsSync(join(root, hookFile))).toBe(true);
+    }
+    for (const source of [...alsoKeysFree, importer]) {
+      expect(readFileSync(join(root, source), "utf-8")).not.toMatch(/@diffgazer\/keys/);
+    }
+    expect(readFileSync(join(root, importer), "utf-8")).toMatch(expectedImport);
   });
 
   test("none integration is rejected when selected components require keys hooks", () => {

@@ -81,13 +81,9 @@ describe("useModelSource", () => {
     );
   });
 
-  it.each([
-    { configuration: configurations.hosted, modelId: "anthropic/claude-sonnet-4" },
-    { configuration: configurations.gemini, modelId: "gemini-2.5-flash" },
-  ])("surfaces discovered models for $configuration.productId", async ({
-    configuration,
-    modelId,
-  }) => {
+  it("surfaces discovered models for a configuration", async () => {
+    const configuration = configurations.hosted;
+    const modelId = "anthropic/claude-sonnet-4";
     getConfigurationModels.mockResolvedValue(passedResponse(configuration, [modelId]));
     const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
     const { result } = renderHook(() => useModelSource(true, configuration), { wrapper: Wrapper });

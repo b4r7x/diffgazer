@@ -21,39 +21,28 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("REQ-084 hosted production-path conformance", () => {
-  it.each(HOSTED_REQ_084_CASES)("$id exercises the production path", async (testCase) => {
+describe("hosted mock conformance matrix", () => {
+  it.each([
+    ...HOSTED_REQ_084_CASES,
+    ...HOSTED_REQ_085_CASES,
+    ...HOSTED_REQ_086_CASES,
+  ])("$id exercises the production path", async (testCase) => {
     const observation = await runHostedMockConformanceCase(testCase);
-    expect(observation.status).toBe("passed");
-    expect(observation.outcome).toBe(testCase.expectedOutcome);
-    expect(canProduceReadyEvidence(observation)).toBe(false);
-  });
-});
 
-describe("REQ-085 JSON-object provider conformance", () => {
-  it.each(
-    HOSTED_REQ_085_CASES,
-  )("$id enforces local schema validation and retry bounds", async (testCase) => {
-    const observation = await runHostedMockConformanceCase(testCase);
-    expect(observation.status).toBe("passed");
     expect(observation.outcome).toBe(testCase.expectedOutcome);
+    // Only a completed case may carry findings, and only as many as it declares.
+    const expectedFindingsCount =
+      testCase.expectedOutcome === "completed" ? testCase.expectedFindingsCount : 0;
+    if (expectedFindingsCount !== undefined) {
+      expect(observation.findingsCount).toBe(expectedFindingsCount);
+    }
     if (testCase.expectedAttemptCount !== undefined) {
       expect(observation.attemptCount).toBe(testCase.expectedAttemptCount);
     }
-    expect(canProduceReadyEvidence(observation)).toBe(false);
-  });
-});
-
-describe("REQ-086 hosted conformance depth", () => {
-  it.each(
-    HOSTED_REQ_086_CASES,
-  )("$id covers long/nullable/refusal/malformed behavior", async (testCase) => {
-    const observation = await runHostedMockConformanceCase(testCase);
-    expect(observation.status).toBe("passed");
-    expect(observation.outcome).toBe(testCase.expectedOutcome);
-    if (testCase.expectedAttemptCount !== undefined) {
-      expect(observation.attemptCount).toBe(testCase.expectedAttemptCount);
+    if (testCase.expectedEndpoint !== undefined) {
+      expect(observation.requestedEndpoint).toBe(new URL(testCase.expectedEndpoint).origin);
     }
+    // A mock run never proves a live product works, whatever it observed.
     expect(canProduceReadyEvidence(observation)).toBe(false);
   });
 });
@@ -190,7 +179,6 @@ describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
     if (!httpOnly) return;
 
     const observation = await runHostedMockConformanceCase(httpOnly);
-    expect(observation.status).toBe("passed");
     expect(observation.outcome).toBe("schema-failed");
     expect(canProduceReadyEvidence(observation)).toBe(false);
   });

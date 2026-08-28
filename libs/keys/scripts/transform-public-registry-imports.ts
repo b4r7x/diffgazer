@@ -46,7 +46,7 @@ const HOOKS_TARGET_PREFIX = "@hooks/";
 // ignoring `resolvedPaths.hooks`. Pinning `@hooks/<subpath>` makes shadcn resolve
 // each file within the configured hooks alias root (mirrors the UI `@ui/` handoff).
 // Source registry keeps `src/hooks/...` targets for copy/package install paths.
-export function deriveKeysRegistryTarget(file: {
+function deriveKeysRegistryTarget(file: {
   path?: string;
   type?: string;
   target?: string;

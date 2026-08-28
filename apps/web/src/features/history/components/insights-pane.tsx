@@ -12,13 +12,7 @@ import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent, Ref } from "react";
 import { SeverityBreakdown } from "@/components/shared/severity/breakdown";
 import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
-
-/** What a run that found nothing has to show here instead of five zero bars. */
-export interface HistoryCleanRun {
-  statement: string;
-  /** The shared evidence line both surfaces' clean panes speak. */
-  factLine: string;
-}
+import type { HistoryCleanRun } from "@/features/history/types";
 
 export interface HistoryInsightsPaneProps {
   runId: string | null;

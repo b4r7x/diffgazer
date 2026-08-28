@@ -518,13 +518,11 @@ describe("Select disabled options", () => {
 
     await user.click(getSelectTrigger());
     const listbox = screen.getByRole("listbox");
-    const disabledOption = screen.getByRole("option", { name: /banana/i });
     const blueberryOption = screen.getByRole("option", { name: /blueberry/i });
 
     listbox.focus();
     await user.keyboard("{ArrowDown}");
     expect(listbox).toHaveAttribute("aria-activedescendant", blueberryOption.id);
-    expect(listbox).not.toHaveAttribute("aria-activedescendant", disabledOption.id);
 
     if (commit === "Enter") {
       await user.keyboard("b");

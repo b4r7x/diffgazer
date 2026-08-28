@@ -135,7 +135,7 @@ export function createSnapshotSettingsActions(deps: SnapshotSettingsDependencies
   const readConfigurationSnapshot = async (): Promise<
     Result<ConfigurationSnapshot, ConfigurationActionError>
   > => {
-    const captured = await deps.documents.runMutation(async () =>
+    const captured = await deps.documents.runRead(async () =>
       ok<CapturedConfigurationSnapshot>({
         rows: deps.documents.getConfigDocument().configurations.map((record) => {
           if (record.status === "unknown") return { kind: "unknown", record };

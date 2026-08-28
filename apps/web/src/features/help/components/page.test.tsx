@@ -171,8 +171,8 @@ describe("HelpPage", () => {
     expect(region.firstElementChild).toBeEmptyDOMElement();
   });
 
-  // Help documents the keyboard contract and nothing else: the product tagline
-  // that used to head the sheet belongs to the screens that sell the product.
+  // Help documents the keyboard contract and nothing else; the product tagline
+  // belongs to the screens that sell the product.
   it("carries no product blurb", async () => {
     await renderPage();
 

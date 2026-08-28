@@ -104,14 +104,14 @@ function ConnectedFooter(): ReactElement {
   return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
 }
 
-function renderHub() {
+function renderHub(settings: SettingsConfig = SETTINGS) {
   apiMocks.useConfigurationInit.mockReturnValue({
     data: makeInitResponse(),
     isLoading: false,
     error: null,
   });
   apiMocks.useSettings.mockReturnValue({
-    data: SETTINGS,
+    data: settings,
     isLoading: false,
     error: null,
   });
@@ -276,33 +276,10 @@ describe("SettingsHubScreen", () => {
   });
 
   test("reads an accepted provider data notice back with its date and a Close action", async () => {
-    apiMocks.useSettings.mockReturnValue({
-      data: {
-        ...SETTINGS,
-        providerConsent: { version: 1, acceptedAt: "2026-08-18T10:00:00.000Z" },
-      },
-      isLoading: false,
-      error: null,
+    const view = renderHub({
+      ...SETTINGS,
+      providerConsent: { version: 1, acceptedAt: "2026-08-18T10:00:00.000Z" },
     });
-    apiMocks.useConfigurationInit.mockReturnValue({
-      data: makeInitResponse(),
-      isLoading: false,
-      error: null,
-    });
-    const view = render(
-      <ApiBoundary api={{ saveSettings: apiMocks.saveSettings }}>
-        <CliThemeProvider initialTheme="dark">
-          <NavigationContext
-            value={{ route: { screen: "settings" }, navigate, goBack, canGoBack: true }}
-          >
-            <FooterProvider>
-              <SettingsHubScreen />
-              <ConnectedFooter />
-            </FooterProvider>
-          </NavigationContext>
-        </CliThemeProvider>
-      </ApiBoundary>,
-    );
     await flush();
     expect(stripAnsi(view.lastFrame() ?? "")).toMatch(
       /Provider data notice\s+ACCEPTED 2026-08-1[89]/,

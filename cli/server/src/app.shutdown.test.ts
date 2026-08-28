@@ -48,59 +48,30 @@ describe("shutdown route", () => {
     vi.restoreAllMocks();
   });
 
-  it("rejects requests without the per-run shutdown token", async () => {
+  it.each([
+    undefined,
+    "wrong-token",
+  ])("rejects requests without a matching per-run shutdown token: %s", async (token) => {
     process.env.DIFFGAZER_CLI_PID = "4321";
     const app = createApp();
     const killSpy = vi.spyOn(process, "kill");
 
     const res = await app.request("/api/shutdown", {
       method: "POST",
-      headers: { Host: "localhost:3000" },
+      headers:
+        token === undefined
+          ? { Host: "localhost:3000" }
+          : { Host: "localhost:3000", [SHUTDOWN_TOKEN_HEADER]: token },
     });
 
     expect(res.status).toBe(401);
     const body = (await res.json()) as { error: { message: string } };
     expect(body.error.message).toBe("Unauthorized");
-    expect(killSpy).not.toHaveBeenCalled();
-  });
-
-  it("rejects requests with the wrong per-run shutdown token", async () => {
-    process.env.DIFFGAZER_CLI_PID = "4321";
-    const app = createApp();
-    const killSpy = vi.spyOn(process, "kill");
-
-    const res = await app.request("/api/shutdown", {
-      method: "POST",
-      headers: {
-        Host: "localhost:3000",
-        [SHUTDOWN_TOKEN_HEADER]: "wrong-token",
-      },
-    });
-
-    expect(res.status).toBe(401);
-    const body = (await res.json()) as { error: { message: string } };
-    expect(body.error.message).toBe("Unauthorized");
-    expect(killSpy).not.toHaveBeenCalled();
-  });
-
-  it("returns 503 when CLI pid is unavailable", async () => {
-    delete process.env.DIFFGAZER_CLI_PID;
-    const app = createApp();
-    const killSpy = vi.spyOn(process, "kill");
-
-    const res = await app.request("/api/shutdown", {
-      method: "POST",
-      headers: shutdownHeaders,
-    });
-
-    expect(res.status).toBe(503);
-    const body = (await res.json()) as { error: { message: string; code: string } };
-    expect(body.error.message).toBe("Shutdown is not available in this environment.");
-    expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
     expect(killSpy).not.toHaveBeenCalled();
   });
 
   it.each([
+    undefined,
     "abc",
     "1",
     "4321junk",
@@ -111,8 +82,12 @@ describe("shutdown route", () => {
     "0x10e1",
     "04321",
     "9007199254740992",
-  ])("returns 503 when CLI pid is invalid: %s", async (pid) => {
-    process.env.DIFFGAZER_CLI_PID = pid;
+  ])("returns 503 when CLI pid is missing or invalid: %s", async (pid) => {
+    if (pid === undefined) {
+      delete process.env.DIFFGAZER_CLI_PID;
+    } else {
+      process.env.DIFFGAZER_CLI_PID = pid;
+    }
     const app = createApp();
     const killSpy = vi.spyOn(process, "kill");
 

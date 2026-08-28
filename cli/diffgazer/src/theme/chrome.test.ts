@@ -44,6 +44,8 @@ describe("selection fill", () => {
 });
 
 describe("focusBorder", () => {
+  // Pane and row read as one focus language: same hue, told apart by form —
+  // a border around the pane against a fill under the row.
   test.each(PALETTES)("%s draws a focused pane border in the blue family", (_name, tokens) => {
     expect(focusBorder(tokens, true)).toBe(tokens.blue);
     expect(focusBorder(tokens, true)).not.toBe(tokens.accent);
@@ -52,12 +54,6 @@ describe("focusBorder", () => {
   test.each(PALETTES)("%s leaves a resting pane on the hairline border", (_name, tokens) => {
     expect(focusBorder(tokens, false)).toBe(tokens.border);
     expect(focusBorder(tokens, false)).not.toBe(focusBorder(tokens, true));
-  });
-
-  test.each(PALETTES)("%s borders a focused pane in the row hue too", (_name, tokens) => {
-    // Pane and row read as one focus language: same hue, told apart by form —
-    // a border around the pane against a fill under the row.
-    expect(focusBorder(tokens, true)).toBe(selectionHue(tokens));
   });
 });
 

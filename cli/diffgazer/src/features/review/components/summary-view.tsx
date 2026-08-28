@@ -49,8 +49,6 @@ export interface ReviewSummaryViewProps {
   onContinue?: () => void;
   /** Re-runs the same scope. Absent for a saved run, whose diff has moved on. */
   onRunAgain?: () => void;
-  /** Names where Back leads, since the clean state spends a button on it. */
-  backLabel?: string;
   onBack?: () => void;
 }
 
@@ -62,6 +60,9 @@ const SUMMARY_SHORTCUTS_LEFT: Shortcut[] = [
 const SUMMARY_SHORTCUTS_RIGHT: Shortcut[] = [BACK_SHORTCUT];
 const ACTIONS_SHORTCUT: Shortcut = { key: "Left/Right", label: "Actions" };
 const RUN_AGAIN_LABEL = "Run Again";
+// Back pops whatever pushed this screen, which the view cannot name, so the
+// button stays neutral rather than promising a destination.
+const BACK_LABEL = "Back";
 // Header rule only: the shortcut bar is the single action surface, so the view
 // spends no rows restating [Enter] View Results as a button.
 const SUMMARY_FIXED_ROWS = 2;
@@ -78,7 +79,6 @@ export function ReviewSummaryView({
   runFacts,
   onContinue,
   onRunAgain,
-  backLabel = "Back to Home",
   onBack,
 }: ReviewSummaryViewProps): ReactElement {
   const { tokens } = useTheme();
@@ -94,7 +94,7 @@ export function ReviewSummaryView({
   // The clean state has no results behind it, so it carries its own way out.
   const cleanActions: { label: string; run: () => void }[] = [];
   if (isClean && onRunAgain) cleanActions.push({ label: RUN_AGAIN_LABEL, run: onRunAgain });
-  if (isClean && onBack) cleanActions.push({ label: backLabel, run: onBack });
+  if (isClean && onBack) cleanActions.push({ label: BACK_LABEL, run: onBack });
   const actionRow = useActionRow({
     actionCount: cleanActions.length,
     isActive: isClean,

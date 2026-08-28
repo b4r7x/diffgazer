@@ -302,3 +302,23 @@ test("collectReachableBundleFiles excludes stale chunks outside the current entr
     ["/dist/index.js", "/dist/current.js", "/dist/lazy.js", "/dist/shared.js"],
   );
 });
+
+test("collectReachableBundleFiles skips specifiers that resolve to no emitted chunk", () => {
+  const contents = {
+    "/dist/index.js": `import "./current.js";`,
+    // Bundled third-party JSDoc, not an emitted chunk.
+    "/dist/current.js": `/** @param {import('./client.js')} client */ export const value = true;`,
+  };
+
+  assert.deepEqual(
+    collectReachableBundleFiles(
+      "/dist/index.js",
+      (file) => contents[file],
+      (_file, specifier) => {
+        const candidate = `/dist/${specifier.slice(2)}`;
+        return candidate in contents ? candidate : null;
+      },
+    ),
+    ["/dist/index.js", "/dist/current.js"],
+  );
+});

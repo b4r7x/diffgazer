@@ -1,27 +1,26 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { NavigableMenuAction } from "@diffgazer/core/navigation";
 import { isMenuActionDisabled, resolveHomeMenuActivation } from "@diffgazer/core/navigation";
-import { describeReviewStartError, type ReviewStartErrorDescription } from "@diffgazer/core/review";
 import type { HomeContextInfo, MenuAction, Shortcut } from "@diffgazer/core/schemas/presentation";
 import {
   MAIN_MENU_SHORTCUTS,
   MENU_ITEMS,
   TRUST_PERMISSION_SHORTCUTS,
 } from "@diffgazer/core/schemas/presentation";
-import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { DECLINE, useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
-import { Button } from "@diffgazer/ui/components/button";
 import { toast } from "@diffgazer/ui/components/toast";
 import type { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { TrustPanel } from "@/components/shared/trust-panel";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
-import {
-  FilePickerDialog,
-  type ReviewFileScope,
-} from "@/features/home/components/file-picker-dialog";
+import { FilePickerDialog } from "@/features/home/components/file-picker-dialog/dialog";
 import { HomeMenu } from "@/features/home/components/menu";
-import { useIsMountedRef } from "@/hooks/use-is-mounted";
+import {
+  type ActiveSessionRead,
+  type CreateReview,
+  type ResumableSession,
+  useStartReview,
+} from "@/features/home/hooks/use-start-review";
 import {
   HISTORY_DATE_KEY,
   HISTORY_RUN_KEY,
@@ -31,19 +30,6 @@ import { INVALID_REVIEW_ID_COPY } from "@/lib/review-error-copy";
 import { reportShutdownResult, type ShutdownResult } from "@/lib/shutdown";
 
 type Navigate = ReturnType<typeof useNavigate>;
-type CreateReview = (input: {
-  mode: Exclude<ReviewMode, "files">;
-  /** Pathspecs the review is narrowed to. Absent means the whole mode diff. */
-  files?: string[];
-}) => Promise<{ reviewId: string }>;
-type ResumableSession = { reviewId: string; mode: ReviewMode };
-/**
- * A re-read that answered is tagged apart from one that could not: an
- * authoritative "no session" must not be papered over with the mount-time value.
- */
-export type ActiveSessionRead =
-  | { status: "read"; session: ResumableSession | null }
-  | { status: "unreadable" };
 
 // The trust prompt hides the menu, so the web footer keeps advertising the two
 // app-wide jump keys it would otherwise show as menu rows. The TUI trust panel
@@ -116,18 +102,20 @@ export function HomePagePresentation({
   clearScopedRouteState,
   shutdown,
 }: HomePagePresentationProps) {
-  // The action being started is what the menu renders, so that single value also
-  // stands in for "in flight". A second activation can land before React
-  // re-renders the menu as disabled, so re-entrancy is refused off a ref.
-  const [startingAction, setStartingAction] = useState<MenuAction | null>(null);
+  const { startingAction, startReview, resumeReview, startFilteredReview } = useStartReview({
+    navigate,
+    createReview,
+    resumableSession,
+    isResumeUnavailable,
+    refetchActiveSession,
+    requireProviderConsent,
+  });
   const [isFilePickerOpen, setIsFilePickerOpen] = useState(false);
-  const isStartingRef = useRef(false);
   const isStartingReview = startingAction !== null;
   // A failed active-session request proves nothing about whether a run is live,
   // so the row stays reachable and says it cannot tell rather than holding
   // itself shut behind "there is nothing to resume".
   const hasResumableSession = resumableSession != null || isResumeUnavailable;
-  const isMountedRef = useIsMountedRef();
   const invalidIdReportedRef = useRef(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
@@ -147,116 +135,6 @@ export function HomePagePresentation({
 
   const handleQuit = async () => {
     reportShutdownResult(await shutdown());
-  };
-
-  const navigateToReview = (reviewId: string, mode: ReviewMode) => {
-    navigate({
-      to: "/review/{-$reviewId}",
-      params: { reviewId },
-      search: { mode, live: true },
-    });
-  };
-
-  // The server refuses a second review while one is live. The running review is
-  // what the user asked for, so the same mode opens it outright; another mode
-  // cannot be swapped for it and is offered instead of forced.
-  const openRunningReview = async (
-    mode: Exclude<ReviewMode, "files">,
-    refusal: ReviewStartErrorDescription,
-  ) => {
-    // A re-read that fails leaves the running review as unknown as it was before
-    // it, so the refusal falls back to what the mount-time read already knew. A
-    // re-read that answered is trusted outright, including its "none" — the
-    // mount-time value may name a review that has since finished.
-    const read = await refetchActiveSession().catch(
-      (): ActiveSessionRead => ({ status: "unreadable" }),
-    );
-    const session = read.status === "unreadable" ? resumableSession : read.session;
-    if (!isMountedRef.current) return;
-    if (session === null) {
-      toast.error(refusal.title, { message: refusal.message });
-      return;
-    }
-    if (session.mode === mode) {
-      navigateToReview(session.reviewId, mode);
-      toast.info("Opened the Running Review", {
-        message:
-          "A review was already running, so Diffgazer opened it instead of starting a new one.",
-      });
-      return;
-    }
-    const toastId = toast.error(refusal.title, {
-      message: `The running review covers ${session.mode} changes. Open it, or cancel it before starting one for ${mode} changes.`,
-      action: (
-        <Button
-          variant="link"
-          size="sm"
-          onClick={() => {
-            toast.dismiss(toastId);
-            navigateToReview(session.reviewId, session.mode);
-          }}
-        >
-          Open Running Review
-        </Button>
-      ),
-    });
-  };
-
-  const startReview = async (
-    mode: Exclude<ReviewMode, "files">,
-    action: MenuAction,
-    files?: string[],
-  ) => {
-    if (isStartingRef.current) return;
-    isStartingRef.current = true;
-    setStartingAction(action);
-    try {
-      const { reviewId } = await createReview({ mode, ...(files ? { files } : {}) });
-      if (isMountedRef.current) navigateToReview(reviewId, mode);
-    } catch (error) {
-      if (!isMountedRef.current) return;
-      const description = describeReviewStartError(error);
-      if (description.recovery === "open-active-review") {
-        await openRunningReview(mode, description);
-        return;
-      }
-      const { title, message, recovery } = description;
-      // Error toasts persist until dismissed, so a start the providers screen
-      // can fix carries the jump instead of leaving the user to find it.
-      const toastId = toast.error(title, {
-        message,
-        action:
-          recovery === "configure-provider" ? (
-            <Button
-              variant="link"
-              size="sm"
-              onClick={() => {
-                toast.dismiss(toastId);
-                navigate({ to: "/settings/providers" });
-              }}
-            >
-              Open Providers
-            </Button>
-          ) : undefined,
-      });
-    } finally {
-      isStartingRef.current = false;
-      setStartingAction(null);
-    }
-  };
-
-  const resumeReview = () => {
-    if (resumableSession) {
-      navigateToReview(resumableSession.reviewId, resumableSession.mode);
-      return;
-    }
-    if (isResumeUnavailable) {
-      toast.error("Active Review Unavailable", {
-        message: "The active review could not be read. Check History before starting a new one.",
-      });
-      return;
-    }
-    toast.warning("No Active Review", { message: "Start a new review from the menu." });
   };
 
   const navigateToMenuTarget = (target: NavigableMenuAction) => {
@@ -393,14 +271,6 @@ export function HomePagePresentation({
   const openFilePicker = () => {
     if (isStartingReview || !isTrusted) return;
     setIsFilePickerOpen(true);
-  };
-
-  // The narrowed start is the menu's start with a pathspec filter: same consent
-  // gate, same in-flight guard, same navigation. The row it marks as working is
-  // the row whose diff was narrowed.
-  const startFilteredReview = ({ mode, files }: { mode: ReviewFileScope; files?: string[] }) => {
-    const action: MenuAction = mode === "staged" ? "review-staged" : "review-unstaged";
-    requireProviderConsent(() => void startReview(mode, action, files));
   };
 
   // The sidebar's settings rows carry the same jump treatment as [o]: t and p

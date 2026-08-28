@@ -307,7 +307,7 @@ describe("GET /config/providers/:configurationId/models", () => {
   });
 
   async function spyCatalogModels(models: ProviderModelsResponse["models"]) {
-    const catalogModule = await import("../../shared/lib/ai/models-dev-catalog.js");
+    const catalogModule = await import("../../shared/lib/ai/models-dev-catalog/index.js");
     return vi
       .spyOn(catalogModule.catalogProviderModels, "get")
       .mockResolvedValue(catalogResponse(models));
@@ -535,33 +535,6 @@ describe("POST /config/actions route contract", () => {
   });
 });
 
-describe("POST /config/actions service delegation", () => {
-  it("delegates create, inspect, select, test, update, and delete to runConfigurationAction", async () => {
-    const app = await loadRouter();
-    const service = await import("./service.js");
-    const runSpy = vi.spyOn(service, "runConfigurationAction");
-    const configurationId = await seedGeminiConfiguration(app);
-
-    const actions = [
-      { action: "inspect", configurationId },
-      { action: "select", configurationId, modelId: "gemini-2.5-flash" },
-      { action: "test", configurationId },
-      updateGeminiAction(configurationId, 1),
-      { action: "delete", configurationId, expectedRevision: 2 },
-    ] as const;
-
-    for (const action of actions) {
-      const response = await postConfigurationAction(app, action);
-      expect(response.status).toBe(200);
-      expect(runSpy).toHaveBeenCalledWith(action);
-    }
-
-    expect(runSpy).toHaveBeenCalledWith(
-      createGeminiAction({ kind: "literal", value: "sk-proj-router-secret" }),
-    );
-  });
-});
-
 describe("POST /config/actions response schemas", () => {
   it("returns a closed safe response schema for every configuration action", async () => {
     const app = await loadRouter();
@@ -597,34 +570,25 @@ describe("POST /config/actions response schemas", () => {
 });
 
 describe("POST /config/actions protected delete and update", () => {
-  it("requires repository trust for update actions", async () => {
+  it.each([
+    ["update", (configurationId: string) => updateGeminiAction(configurationId, 1)],
+    [
+      "delete",
+      (configurationId: string) =>
+        ({ action: "delete", configurationId, expectedRevision: 1 }) as const,
+    ],
+  ])("requires repository trust for %s actions", async (_name, buildAction) => {
     const app = await loadRouter();
     const configurationId = await seedGeminiConfiguration(app);
-    const service = await import("./service.js");
-    const runSpy = vi.spyOn(service, "runConfigurationAction");
 
-    const response = await postConfigurationAction(app, updateGeminiAction(configurationId, 1), {
+    const response = await postConfigurationAction(app, buildAction(configurationId), {
       trusted: false,
     });
 
     expect(response.status).toBe(403);
-    expect(runSpy).not.toHaveBeenCalled();
-  });
-
-  it("requires repository trust for delete actions", async () => {
-    const app = await loadRouter();
-    const configurationId = await seedGeminiConfiguration(app);
-    const service = await import("./service.js");
-    const runSpy = vi.spyOn(service, "runConfigurationAction");
-
-    const response = await postConfigurationAction(
-      app,
-      { action: "delete", configurationId, expectedRevision: 1 },
-      { trusted: false },
-    );
-
-    expect(response.status).toBe(403);
-    expect(runSpy).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "TRUST_REQUIRED" },
+    });
   });
 
   it("rejects stale delete revisions with CONFIGURATION_CONFLICT", async () => {

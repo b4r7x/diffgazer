@@ -2,16 +2,12 @@
  * @vitest-environment jsdom
  */
 import { type BoundApi, createApi } from "@diffgazer/core/api";
-import { FooterProvider } from "@diffgazer/core/footer";
 import { getInitialWizardData } from "@diffgazer/core/onboarding";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { act, renderHook } from "@testing-library/react";
-import { render as renderInk } from "ink-testing-library";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { NavigationProvider } from "../../../app/providers/navigation";
-import { CliThemeProvider } from "../../../theme/provider";
-import { OnboardingWizard } from "../components/wizard";
 import { useOnboardingWizard } from "./use-wizard";
 
 const terminalDimensions = vi.hoisted(() => ({ current: { columns: 80, rows: 24 } }));
@@ -42,12 +38,6 @@ function createWrapper() {
     );
 }
 
-async function flushInk(times = 4): Promise<void> {
-  for (let index = 0; index < times; index += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
-
 describe("useOnboardingWizard", () => {
   beforeEach(() => {
     terminalDimensions.current = { columns: 80, rows: 24 };
@@ -59,40 +49,6 @@ describe("useOnboardingWizard", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
-
-  it("keeps progress labels readable in 40-column and wide frames", async () => {
-    const Wrapper = createWrapper();
-    terminalDimensions.current = { columns: 40, rows: 24 };
-    const narrow = renderInk(
-      <Wrapper>
-        <CliThemeProvider initialTheme="dark">
-          <FooterProvider initialShortcuts={[]}>
-            <OnboardingWizard />
-          </FooterProvider>
-        </CliThemeProvider>
-      </Wrapper>,
-    );
-
-    await flushInk();
-    expect(narrow.lastFrame()).toMatch(/Step 1 of \d+: Product/);
-    narrow.unmount();
-
-    terminalDimensions.current = { columns: 120, rows: 24 };
-    const wide = renderInk(
-      <Wrapper>
-        <CliThemeProvider initialTheme="dark">
-          <FooterProvider initialShortcuts={[]}>
-            <OnboardingWizard />
-          </FooterProvider>
-        </CliThemeProvider>
-      </Wrapper>,
-    );
-
-    await flushInk();
-    expect(wide.lastFrame()).toContain("[o] Product");
-    expect(wide.lastFrame()).not.toMatch(/Step 1 of \d+/);
-    wide.unmount();
   });
 
   it("does not persist credentials when advancing through hosted authentication", async () => {
@@ -248,17 +204,5 @@ describe("useOnboardingWizard", () => {
     expect(warned).toContain("Draft removal was rejected");
     expect(warned).not.toContain("\u001b");
     expect(warned).not.toContain("]52;c;");
-  });
-
-  it("keeps Back and Next nav focus exclusive via navIndex", () => {
-    const wrapper = createWrapper();
-    const hook = renderHook(() => useOnboardingWizard(), { wrapper });
-
-    act(() => hook.result.current.handleNext());
-    act(() => hook.result.current.cycleFocusZone());
-
-    expect(hook.result.current.navIndex).toBe(0);
-    act(() => hook.result.current.moveNavIndex(1));
-    expect(hook.result.current.navIndex).toBe(1);
   });
 });

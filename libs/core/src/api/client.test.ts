@@ -351,61 +351,23 @@ describe("createApiClient", () => {
       }
     });
 
-    it("fails closed when a response has no readable body stream", async () => {
+    it.each([
+      { label: "a declared small length", headers: { "content-length": "256" } as HeadersInit },
+      { label: "no declared length", headers: {} as HeadersInit },
+      {
+        label: "a declared length smaller than the mocked text",
+        headers: { "content-length": "32" } as HeadersInit,
+      },
+    ])("fails closed without materializing a body-less response with $label", async ({
+      headers,
+    }) => {
       const response = {
         ok: false,
         status: 500,
         body: null,
-        headers: new Headers({ "content-length": "256" }),
-        text: vi.fn().mockRejectedValue(new Error("text unavailable")),
-        json: vi.fn().mockResolvedValue({
-          error: {
-            message: "provider stderr bearer fallback-secret",
-            code: "INTERNAL_ERROR",
-          },
-        }),
-      } as unknown as Response;
-      mockFetch.mockResolvedValue(response);
-
-      await expect(client.get("/api/test")).rejects.toMatchObject({
-        message: "HTTP 500",
-        status: 500,
-      });
-      expect(response.text).not.toHaveBeenCalled();
-      expect(response.json).not.toHaveBeenCalled();
-    });
-
-    it("fails closed without materializing an unknown-length body-less response", async () => {
-      const response = {
-        ok: false,
-        status: 500,
-        body: null,
-        headers: new Headers(),
-        text: vi.fn().mockResolvedValue(`${"x".repeat(70_000)}`),
+        headers: new Headers(headers),
+        text: vi.fn().mockResolvedValue("x".repeat(70_000)),
         json: vi.fn().mockResolvedValue({ error: { message: "x".repeat(70_000) } }),
-      } as unknown as Response;
-      mockFetch.mockResolvedValue(response);
-
-      await expect(client.get("/api/test")).rejects.toMatchObject({
-        message: "HTTP 500",
-        status: 500,
-      });
-      expect(response.text).not.toHaveBeenCalled();
-      expect(response.json).not.toHaveBeenCalled();
-    });
-
-    it("rejects oversized streamed text before parsing", async () => {
-      const response = {
-        ok: false,
-        status: 500,
-        body: null,
-        headers: new Headers({ "content-length": "32" }),
-        text: vi
-          .fn()
-          .mockResolvedValue(
-            `${JSON.stringify({ error: { message: "ok" } })}${"x".repeat(70_000)}`,
-          ),
-        json: vi.fn().mockRejectedValue(new Error("json must not be called")),
       } as unknown as Response;
       mockFetch.mockResolvedValue(response);
 

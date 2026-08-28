@@ -11,16 +11,25 @@ import {
 } from "./store.test-support.js";
 
 const { readProbe } = vi.hoisted(() => ({
-  readProbe: { active: false, configurationReloads: 0, evidenceReads: 0 },
+  readProbe: { active: false, configurationReloads: 0, evidenceReads: 0, failConfigReads: false },
 }));
 
 vi.mock("node:fs", async (importOriginal) => {
   const real = await importOriginal<typeof import("node:fs")>();
   const observedReadFileSync = ((...args: Parameters<typeof real.readFileSync>) => {
-    if (readProbe.active) {
+    if (readProbe.active || readProbe.failConfigReads) {
       const filePath = String(args[0]).replaceAll("\\", "/");
-      if (filePath.endsWith("/config.json")) readProbe.configurationReloads += 1;
-      if (filePath.includes("/evidence/")) readProbe.evidenceReads += 1;
+      const isConfigDocument = filePath.endsWith("/config.json");
+      if (readProbe.active) {
+        if (isConfigDocument) readProbe.configurationReloads += 1;
+        if (filePath.includes("/evidence/")) readProbe.evidenceReads += 1;
+      }
+      // Fd exhaustion fails `open`, never the inode: `stat` keeps vouching for the
+      // same file, so this is the one read failure that leaves every fingerprint
+      // exactly where the store last saw it.
+      if (isConfigDocument && readProbe.failConfigReads) {
+        throw Object.assign(new Error("EMFILE: too many open files"), { code: "EMFILE" });
+      }
     }
     return real.readFileSync(...args);
   }) as typeof real.readFileSync;
@@ -259,61 +268,104 @@ describe("config store concurrency", () => {
     ).toBe(true);
   });
 
-  it("keeps store revalidation bounded and evidence reads linear as configurations grow", async () => {
-    const createStore = await loadStoreFactory();
-    const readsByConfigurationCount = [];
-
-    for (const configurationCount of [2, 7]) {
-      const configurations = Array.from({ length: configurationCount }, (_, index) => {
-        const configurationId = `cfg-snapshot-${configurationCount}-${index}`;
-        return {
-          schemaVersion: 2,
-          status: "supported",
-          configurationId,
-          revision: 1,
+  it("serves a snapshot from memory without re-reading documents or evidence", async () => {
+    const configurations = Array.from({ length: 2 }, (_, index) => {
+      const configurationId = `cfg-snapshot-${index}`;
+      return {
+        schemaVersion: 2,
+        status: "supported",
+        configurationId,
+        revision: 1,
+        transportFamily: "hosted-api",
+        productId: "gemini",
+        input: {
           transportFamily: "hosted-api",
           productId: "gemini",
-          input: {
-            transportFamily: "hosted-api",
-            productId: "gemini",
-            endpoint: GEMINI_ENDPOINT,
-          },
-          selectedModelId: "gemini-2.5-flash",
-          acknowledgement: {
-            noticeId: "gemini-hosted-api",
-            noticeVersion: 1,
-            acceptedAt: CREATED_AT,
-          },
-          evidenceReference: `evidence-${configurationId}`,
-          budget: DEFAULT_BUDGET,
-          createdAt: CREATED_AT,
-          updatedAt: CREATED_AT,
-        };
-      });
-      writeJson(configPath(), v2Config(configurations));
-      const store = createStore();
-      expect(await store.ready()).toEqual({ ok: true, value: undefined });
+          endpoint: GEMINI_ENDPOINT,
+        },
+        selectedModelId: "gemini-2.5-flash",
+        acknowledgement: {
+          noticeId: "gemini-hosted-api",
+          noticeVersion: 1,
+          acceptedAt: CREATED_AT,
+        },
+        evidenceReference: `evidence-${configurationId}`,
+        budget: DEFAULT_BUDGET,
+        createdAt: CREATED_AT,
+        updatedAt: CREATED_AT,
+      };
+    });
+    writeJson(configPath(), v2Config(configurations));
+    const store = await loadStore();
+    expect(await store.ready()).toEqual({ ok: true, value: undefined });
 
-      readProbe.configurationReloads = 0;
-      readProbe.evidenceReads = 0;
-      readProbe.active = true;
-      const snapshot = await store.readConfigurationSnapshot().finally(() => {
-        readProbe.active = false;
-      });
+    readProbe.configurationReloads = 0;
+    readProbe.evidenceReads = 0;
+    readProbe.active = true;
+    const snapshot = await store.readConfigurationSnapshot().finally(() => {
+      readProbe.active = false;
+    });
 
-      expect(snapshot.ok).toBe(true);
-      if (!snapshot.ok) return;
-      expect(snapshot.value.configurations).toHaveLength(configurationCount);
-      readsByConfigurationCount.push({
-        configurationCount,
-        configurationReloads: readProbe.configurationReloads,
-        evidenceReads: readProbe.evidenceReads,
-      });
-    }
+    expect(snapshot.ok).toBe(true);
+    if (!snapshot.ok) return;
+    expect(snapshot.value.configurations).toHaveLength(configurations.length);
+    expect({
+      configurationReloads: readProbe.configurationReloads,
+      evidenceReads: readProbe.evidenceReads,
+    }).toEqual({ configurationReloads: 0, evidenceReads: 0 });
+  });
 
-    expect(readsByConfigurationCount).toEqual([
-      { configurationCount: 2, configurationReloads: 2, evidenceReads: 2 },
-      { configurationCount: 7, configurationReloads: 2, evidenceReads: 7 },
-    ]);
+  it("serves the snapshot after this store's own write from memory", async () => {
+    writeJson(configPath(), v2Config());
+    const store = await loadStore();
+    const created = await store.runConfigurationAction(createGeminiAction("post-commit-key"));
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    // Both documents are rewritten here, so the fingerprints the read compares against
+    // can only be the ones this commit left behind.
+    expect(await store.updateSettings({ theme: "dark" })).toMatchObject({ ok: true });
+
+    readProbe.configurationReloads = 0;
+    readProbe.evidenceReads = 0;
+    readProbe.active = true;
+    const snapshot = await store.readConfigurationSnapshot().finally(() => {
+      readProbe.active = false;
+    });
+
+    expect(snapshot.ok).toBe(true);
+    if (!snapshot.ok) return;
+    expect(snapshot.value.settings.theme).toBe("dark");
+    expect(snapshot.value.configurations).toHaveLength(1);
+    expect({
+      configurationReloads: readProbe.configurationReloads,
+      evidenceReads: readProbe.evidenceReads,
+    }).toEqual({ configurationReloads: 0, evidenceReads: 0 });
+  });
+
+  it("revalidates a read whose last reload failed while both documents stood still", async () => {
+    writeJson(configPath(), v2Config());
+    const store = await loadStore();
+    expect(await store.ready()).toEqual({ ok: true, value: undefined });
+    expect(await store.updateSettings({ theme: "dark" })).toMatchObject({ ok: true });
+
+    // Nothing is written and nothing on disk moves, so the store comes out of this
+    // holding documents that still match every fingerprint it captured — and only the
+    // load failure it latched keeps the next read off them.
+    readProbe.failConfigReads = true;
+    const failed = await store.updateSettings({ theme: "light" }).finally(() => {
+      readProbe.failConfigReads = false;
+    });
+    expect(failed).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
+
+    readProbe.configurationReloads = 0;
+    readProbe.active = true;
+    const snapshot = await store.readConfigurationSnapshot().finally(() => {
+      readProbe.active = false;
+    });
+
+    expect(snapshot.ok).toBe(true);
+    if (!snapshot.ok) return;
+    expect(snapshot.value.settings.theme).toBe("dark");
+    expect(readProbe.configurationReloads).toBeGreaterThan(0);
   });
 });

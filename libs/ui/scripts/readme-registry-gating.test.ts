@@ -105,10 +105,12 @@ describe("hosted-registry gating", () => {
     ).toEqual([]);
   });
 
-  it("README points consumers at a currently-available install path", () => {
-    const readme = read("README.md");
-    expect(readme).toContain("pnpm exec dgadd add ui/button");
-    expect(readme).toMatch(/Until then/);
+  it.each(
+    GATED_SURFACES,
+  )("%s points consumers at a currently-available install path", (surface) => {
+    const doc = read(surface);
+    expect(doc).toContain("pnpm exec dgadd add ui/button");
+    expect(doc).toMatch(/Until then/);
   });
 
   it("maps lowlight guidance to the exported highlight entry and its caller-owned dependency", () => {
@@ -185,12 +187,6 @@ describe("hosted-registry gating", () => {
     ).toBeGreaterThan(-1);
     expect(dgaddIndex, "Copy-first registry mode must run pnpm exec dgadd").toBeGreaterThan(-1);
     expect(prerequisiteIndex).toBeLessThan(dgaddIndex);
-  });
-
-  it("shadcn namespace docs point consumers at a currently-available install path", () => {
-    const doc = read("docs/content/utils/shadcn-namespace.mdx");
-    expect(doc).toContain("pnpm exec dgadd add ui/button");
-    expect(doc).toMatch(/Until then/);
   });
 
   it("installation docs lead the Install section with a currently-available path", () => {

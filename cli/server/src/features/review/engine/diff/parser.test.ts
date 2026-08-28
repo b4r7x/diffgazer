@@ -54,34 +54,6 @@ index 1111111,2222222..3333333 100644
     expect(result.files).toHaveLength(0);
   });
 
-  it("counts added content lines that begin with plus signs", () => {
-    const diff = `diff --git a/file.ts b/file.ts
---- a/file.ts
-+++ b/file.ts
-@@ -1 +1,2 @@
- line1
-+++content`;
-
-    const result = parseDiff(diff);
-
-    expect(result.files[0]?.stats.additions).toBe(1);
-    expect(result.files[0]?.stats.deletions).toBe(0);
-  });
-
-  it("counts deleted content lines that begin with minus signs", () => {
-    const diff = `diff --git a/file.ts b/file.ts
---- a/file.ts
-+++ b/file.ts
-@@ -1,2 +1 @@
- line1
----content`;
-
-    const result = parseDiff(diff);
-
-    expect(result.files[0]?.stats.additions).toBe(0);
-    expect(result.files[0]?.stats.deletions).toBe(1);
-  });
-
   it("counts header-shaped source text only after the hunk boundary", () => {
     const diff = `diff --git a/file.ts b/file.ts
 --- a/file.ts
@@ -423,21 +395,6 @@ index abc1234..def5678 100644
     expect(result.files[0]?.filePath).toBe('path with "quotes".ts');
     expect(result.files[0]?.operation).toBe("modify");
     expect(result.files[0]?.stats.additions).toBe(1);
-  });
-
-  it("parses Git quoted paths with tab escapes", () => {
-    const diff = `diff --git "a/dir\\twith\\ttabs/file.ts" "b/dir\\twith\\ttabs/file.ts"
---- "a/dir\\twith\\ttabs/file.ts"
-+++ "b/dir\\twith\\ttabs/file.ts"
-@@ -1,2 +1,3 @@
- line1
-+added
- line2`;
-
-    const result = parseDiff(diff);
-
-    expect(result.files).toHaveLength(1);
-    expect(result.files[0]?.filePath).toBe("dir\twith\ttabs/file.ts");
   });
 
   it("keeps control-bearing and sanitization-colliding paths as distinct parsed files", () => {

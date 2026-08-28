@@ -1,8 +1,8 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { LensStat } from "@diffgazer/core/schemas/events";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { cleanup, render } from "ink-testing-library";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { flush } from "../../../testing/flush";
 import { waitUntil } from "../../../testing/wait-until";
@@ -34,31 +34,19 @@ afterEach(() => {
   cleanup();
 });
 
-function renderSummary(props?: {
-  droppedDuplicates?: number;
-  droppedBelowThreshold?: number;
-  minSeverity?: ReviewIssue["severity"];
-  lensStats?: LensStat[];
-  issues?: ReviewIssue[];
-  terminalOutcome?: ReviewSummaryViewProps["terminalOutcome"];
-  onContinue?: () => void;
-  onBack?: () => void;
-}) {
+function renderSummary(props: Partial<ReviewSummaryViewProps> = {}, children?: ReactNode) {
   return render(
     <FooterProvider initialShortcuts={[]}>
       <CliThemeProvider initialTheme="dark">
         <ReviewSummaryView
-          issues={props?.issues ?? [makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
+          issues={[makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
           reviewId="review-1"
           durationMs={1200}
-          droppedDuplicates={props?.droppedDuplicates}
-          droppedBelowThreshold={props?.droppedBelowThreshold}
-          minSeverity={props?.minSeverity}
-          lensStats={props?.lensStats}
-          terminalOutcome={props?.terminalOutcome}
-          onContinue={props?.onContinue ?? vi.fn()}
-          onBack={props?.onBack ?? vi.fn()}
+          onContinue={vi.fn()}
+          onBack={vi.fn()}
+          {...props}
         />
+        {children}
       </CliThemeProvider>
     </FooterProvider>,
   );
@@ -133,18 +121,7 @@ describe("ReviewSummaryView (TUI)", () => {
 
   test("sends Enter through the rendered frame and calls onContinue once", async () => {
     const onContinue = vi.fn();
-    const { stdin } = render(
-      <FooterProvider initialShortcuts={[]}>
-        <CliThemeProvider initialTheme="dark">
-          <ReviewSummaryView
-            issues={[makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
-            reviewId="review-1"
-            durationMs={1200}
-            onContinue={onContinue}
-          />
-        </CliThemeProvider>
-      </FooterProvider>,
-    );
+    const { stdin } = renderSummary({ onBack: undefined, onContinue });
 
     stdin.write("\r");
     await new Promise((resolve) => setImmediate(resolve));
@@ -153,36 +130,17 @@ describe("ReviewSummaryView (TUI)", () => {
   });
 
   test("advertises scrolling in the shortcut bar alongside View Results", async () => {
-    const { lastFrame } = render(
-      <FooterProvider initialShortcuts={[]}>
-        <CliThemeProvider initialTheme="dark">
-          <ReviewSummaryView
-            issues={[makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
-            reviewId="review-1"
-            durationMs={1200}
-            onContinue={vi.fn()}
-          />
-          <FooterProbe />
-        </CliThemeProvider>
-      </FooterProvider>,
-    );
+    const { lastFrame } = renderSummary({ onBack: undefined }, <FooterProbe />);
 
     await vi.waitFor(() => expect(lastFrame() ?? "").toContain("↑/↓ Scroll, Enter View Results"));
   });
 
   test("formats a full review id with the shared compact label on the receipt", () => {
-    const { lastFrame } = render(
-      <FooterProvider initialShortcuts={[]}>
-        <CliThemeProvider initialTheme="dark">
-          <ReviewSummaryView
-            issues={[]}
-            reviewId="12345678-1234-4123-8123-123456789abc"
-            durationMs={1200}
-            onContinue={vi.fn()}
-          />
-        </CliThemeProvider>
-      </FooterProvider>,
-    );
+    const { lastFrame } = renderSummary({
+      issues: [],
+      onBack: undefined,
+      reviewId: "12345678-1234-4123-8123-123456789abc",
+    });
 
     expect(lastFrame() ?? "").toContain("Run    : #12345678");
     expect(lastFrame() ?? "").not.toContain("12345678-1234");
@@ -241,6 +199,13 @@ describe("ReviewSummaryView clean run (TUI)", () => {
     expect(frame).not.toContain("0 issues");
   });
 
+  test("omits the elapsed row when the record carries no duration", () => {
+    const frame = renderClean({ durationMs: undefined }).lastFrame() ?? "";
+
+    expect(frame).toContain("Scope  : Unstaged · 12 files · +248 -96");
+    expect(frame).not.toContain("Elapsed");
+  });
+
   test("offers no results entry, by button, shortcut, or Enter", async () => {
     const onContinue = vi.fn();
     const { stdin, lastFrame } = renderClean({ onContinue });
@@ -269,15 +234,13 @@ describe("ReviewSummaryView clean run (TUI)", () => {
     expect(onRunAgain).toHaveBeenCalledTimes(1);
   });
 
-  test("moves to Back to Home with the arrow keys and names it in the legend", async () => {
+  test("moves to Back with the arrow keys and names it in the legend", async () => {
     const onRunAgain = vi.fn();
     const onBack = vi.fn();
     const { stdin, lastFrame } = renderClean({ onRunAgain, onBack });
 
     stdin.write(`${ESCAPE}[C`);
-    await vi.waitFor(() =>
-      expect(lastFrame() ?? "").toContain("Left/Right Actions, Enter Back to Home"),
-    );
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("Left/Right Actions, Enter Back"));
 
     stdin.write("\r");
     await waitUntil(() => onBack.mock.calls.length === 1);
@@ -286,12 +249,12 @@ describe("ReviewSummaryView clean run (TUI)", () => {
   });
 
   test("collapses a saved run to its single labelled exit", async () => {
-    const { lastFrame } = renderClean({ onRunAgain: undefined, backLabel: "Back to History" });
+    const { lastFrame } = renderClean({ onRunAgain: undefined });
 
-    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("Enter Back to History"));
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("Enter Back"));
     const frame = lastFrame() ?? "";
 
-    expect(frame).toContain("[ Back to History ]");
+    expect(frame).toContain("[ Back ]");
     expect(frame).not.toContain("Run Again");
     expect(frame).not.toContain("Left/Right Actions");
   });

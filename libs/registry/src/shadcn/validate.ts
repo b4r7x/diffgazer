@@ -137,9 +137,6 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
         item: sourceItem,
       }) ?? sourceItem;
 
-    // Visible items must appear in the public registry index.
-    // Hidden items are stripped from the index by afterBuild transforms,
-    // so skip the index-level check for them.
     if (!isHidden) {
       const publicItem = publicByName.get(sourceItem.name);
       if (!publicItem) {

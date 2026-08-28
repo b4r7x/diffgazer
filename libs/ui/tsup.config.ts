@@ -78,7 +78,6 @@ function aliasPlugin(): Plugin {
   return {
     name: "diffgazerUiResolver",
     setup(build) {
-      // Drop CSS imports — component CSS is aggregated into styles.css in onSuccess
       build.onResolve({ filter: /\.css$/ }, () => ({
         path: "css-noop",
         namespace: "css-noop",

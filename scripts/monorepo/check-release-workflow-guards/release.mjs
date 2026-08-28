@@ -89,7 +89,7 @@ export function collectReleaseChangesetsFailures(source) {
     const teardown = steps.find((candidate) => candidate?.name === GIT_CREDENTIALS_TEARDOWN_STEP);
     const changesets = steps.find((candidate) => candidate?.name === changesetsName);
 
-    // Checkout leaves no ambient push credential (F-1467). Ephemeral credentials are
+    // Checkout leaves no ambient push credential. Ephemeral credentials are
     // configured only for the changesets step so version commits and release tags target
     // the checked-out HEAD (workflow_run.head_sha / release_sha), not GITHUB_SHA.
     if (checkout?.with?.["persist-credentials"] !== false) {

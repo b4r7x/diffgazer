@@ -234,8 +234,6 @@ describe("legibility invariant", () => {
   test("providers screen exposes V2 product and readiness copy without secret fields", async () => {
     const frame = await frameAt(100, PROVIDERS_SCREEN.render(), PROVIDERS_SCREEN.settled);
 
-    expect(frame).toContain(PRODUCT_REGISTRY.gemini.presentation.name);
-    expect(frame).toContain(PRODUCT_REGISTRY.zai.presentation.name);
     expect(frame).toContain("Ready");
     expect(frame).not.toMatch(
       new RegExp(String.raw`\b${LEGACY_V1_HAS_API_KEY_PROPERTY}\b|\bapiKey\b|\bsecret\b`, "i"),

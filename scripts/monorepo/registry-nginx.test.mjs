@@ -47,19 +47,25 @@ function renderRegistryConfig(proxyIp) {
   return rendered;
 }
 
-test("deployment wires an explicit registry Traefik peer into the image build", () => {
+test("the registry config trusts one explicit proxy peer, never a private supernet", () => {
   assert.match(registryConfig, /set_real_ip_from 127\.0\.0\.1\/32;/);
   assert.match(registryConfig, /real_ip_recursive off;/);
   assert.doesNotMatch(
     registryConfig,
     /set_real_ip_from (?:10\.0\.0\.0\/8|172\.16\.0\.0\/12|192\.168\.0\.0\/16);/,
   );
+});
+
+test("the registry image pins its nginx digest and validates the proxy CIDR it builds with", () => {
   assert.match(registryDockerfile, /ARG REGISTRY_TRAEFIK_PROXY_CIDR=127\.0\.0\.1\/32/);
   assert.match(
     registryDockerfile,
     /FROM nginx:1\.30\.4-alpine@sha256:97d490c12ba55b4946b01546d1c3ed324e8d41ab1c9fcb2a616aa470620e5b46 AS runtime/,
   );
   assert.match(registryDockerfile, /validate-registry-proxy-cidr\.mjs/);
+});
+
+test("the deploy workflow passes the proxy CIDR variable into the image build and validates it", () => {
   assert.match(
     deployWorkflow,
     /REGISTRY_TRAEFIK_PROXY_CIDR: \$\{\{ vars\.REGISTRY_TRAEFIK_PROXY_CIDR \}\}/,

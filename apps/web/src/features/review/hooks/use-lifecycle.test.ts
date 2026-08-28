@@ -743,7 +743,7 @@ describe("useReviewLifecycle completion cache cleanup", () => {
     mockToastError.mockReset();
   });
 
-  it("clears the active session before emitting completion", () => {
+  it("clears the active session before emitting completion", async () => {
     const onComplete = vi.fn();
     let emitComplete: (() => void) | undefined;
     mockUseReviewLifecycleBase.mockImplementation((options) => {
@@ -767,9 +767,10 @@ describe("useReviewLifecycle completion cache cleanup", () => {
 
     renderHook(() => useReviewLifecycle({ mode: "staged", onComplete }), { wrapper: Wrapper });
 
-    act(() => {
+    await act(async () => {
       emitComplete?.();
     });
+    await waitFor(() => expect(onComplete).toHaveBeenCalled());
 
     expect(mockClearActiveSession).toHaveBeenCalledWith(
       "staged",
@@ -790,11 +791,15 @@ describe("useReviewLifecycle completion cache cleanup", () => {
     expect(clearCallOrder).toBeLessThan(completeCallOrder);
   });
 
-  it("emits completion from the View Results event path", () => {
+  it("emits completion from the View Results event path", async () => {
     const onComplete = vi.fn();
     const base = makeRunningBaseReturn();
+    // One stable mock across re-renders: completion now settles asynchronously,
+    // so the hook re-renders before the assertions read it back.
+    const skipDelay = vi.fn();
+    base.completion.skipDelay = skipDelay;
     mockUseReviewLifecycleBase.mockImplementation((options) => {
-      base.completion.skipDelay = vi.fn(() => options.onComplete());
+      skipDelay.mockImplementation(() => options.onComplete());
       return base;
     });
 
@@ -802,11 +807,12 @@ describe("useReviewLifecycle completion cache cleanup", () => {
       wrapper: Wrapper,
     });
 
-    act(() => {
+    await act(async () => {
       result.current.handleViewResults();
     });
+    await waitFor(() => expect(onComplete).toHaveBeenCalled());
 
-    expect(base.completion.skipDelay).toHaveBeenCalled();
+    expect(skipDelay).toHaveBeenCalled();
     expect(mockClearActiveSession).toHaveBeenCalledWith(
       "staged",
       "11111111-1111-4111-8111-111111111111",
@@ -816,6 +822,72 @@ describe("useReviewLifecycle completion cache cleanup", () => {
         reviewId: "11111111-1111-4111-8111-111111111111",
         issues: [],
       }),
+    );
+  });
+
+  it("attributes the completed run to its own receipt, not the current selection", async () => {
+    const onComplete = vi.fn();
+    let emitComplete: (() => void) | undefined;
+    mockApi.getReview = vi.fn().mockResolvedValue({
+      review: {
+        metadata: makeReviewMetadata({ id: "11111111-1111-4111-8111-111111111111" }),
+        result: { issues: [] },
+        executionSnapshot: {
+          schemaVersion: 1,
+          executionFingerprint: "a".repeat(64),
+          receipt: {
+            outcome: "completed",
+            usageAvailability: "reported",
+            productId: "zai",
+            modelId: "glm-4.6",
+          },
+        },
+      },
+    });
+    mockUseReviewLifecycleBase.mockImplementation((options) => {
+      emitComplete = options.onComplete;
+      return makeRunningBaseReturn();
+    });
+
+    // The selection on screen is Gemini; the run on disk was produced by Z.ai.
+    const { result } = await renderLoadedReviewLifecycle("staged");
+    expect(result.current.selectedConfiguration?.productId).toBe("gemini");
+    renderHook(() => useReviewLifecycle({ mode: "staged", onComplete }), { wrapper: Wrapper });
+
+    await act(async () => {
+      emitComplete?.();
+    });
+
+    await waitFor(() =>
+      expect(onComplete).toHaveBeenCalledWith(
+        expect.objectContaining({ productId: "zai", modelId: "glm-4.6" }),
+      ),
+    );
+  });
+
+  it("reports no model when the completed run's record carries no receipt", async () => {
+    const onComplete = vi.fn();
+    let emitComplete: (() => void) | undefined;
+    mockApi.getReview = vi.fn().mockResolvedValue({
+      review: {
+        metadata: makeReviewMetadata({ id: "11111111-1111-4111-8111-111111111111" }),
+        result: { issues: [] },
+      },
+    });
+    mockUseReviewLifecycleBase.mockImplementation((options) => {
+      emitComplete = options.onComplete;
+      return makeRunningBaseReturn();
+    });
+
+    renderHook(() => useReviewLifecycle({ mode: "staged", onComplete }), { wrapper: Wrapper });
+
+    await act(async () => {
+      emitComplete?.();
+    });
+
+    await waitFor(() => expect(onComplete).toHaveBeenCalled());
+    expect(onComplete).toHaveBeenCalledWith(
+      expect.objectContaining({ productId: undefined, modelId: undefined }),
     );
   });
 

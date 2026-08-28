@@ -81,8 +81,8 @@ const READY_GEMINI = configurationStatus(
   "ready",
 );
 
-// The audited regression: key stored and model selected, but the structured
-// review conformance check has not run yet, so readiness.ready is false.
+// Key stored and model selected, but the conformance check has not run, so
+// readiness.ready is false.
 const PENDING_ZEN = configurationStatus(
   {
     configurationId: "zen-pending",

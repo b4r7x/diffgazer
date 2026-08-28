@@ -35,10 +35,26 @@ overrides:
   fast-uri: ">=3.1.2"
   express-rate-limit: ">=8.2.2"
   qs: ">=6.15.2"
+  nanoid: "^3.3.18"
   "js-yaml@4": "^4.3.0"
   sharp: "^0.35.0"
   h3: ">=2.0.1-rc.18"
   h3-v2: "npm:h3@>=2.0.1-rc.18"
+
+auditConfig:
+  # GHSA-w3rx-r6r6-pgpr (ICNS parser infinite loop) and GHSA-5p2g-fcmc-qvqq (JXL/HEIF
+  # parser infinite loops), both high, both against `image-size`. Every published
+  # version is affected: the advisories name `>=2.0.3` as patched and npm's latest is
+  # 2.0.2, so there is no version to override to. Reached only through
+  # `apps/docs > fumadocs-core`, which sizes images referenced by the MDX in this repo
+  # at build time; no workspace package declares `image-size`, no source imports it,
+  # and it is absent from the dependency closure of all four published packages
+  # (@diffgazer/add, @diffgazer/ui, @diffgazer/keys, diffgazer). The DoS needs an
+  # attacker-supplied ICNS/JXL/HEIF file, and apps/docs accepts no user uploads.
+  # Drop both the moment `image-size` publishes 2.0.3 and fumadocs-core resolves it.
+  ignoreGhsas:
+    - GHSA-w3rx-r6r6-pgpr
+    - GHSA-5p2g-fcmc-qvqq
 
 patchedDependencies:
   nitro@3.0.260429-beta: patches/nitro@3.0.260429-beta.patch

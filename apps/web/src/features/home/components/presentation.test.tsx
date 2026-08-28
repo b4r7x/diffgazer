@@ -1,170 +1,31 @@
 import { createApi } from "@diffgazer/core/api";
-import { ApiProvider, useProviderConsentGate } from "@diffgazer/core/api/hooks";
-import { FooterProvider } from "@diffgazer/core/footer";
+import { ApiProvider } from "@diffgazer/core/api/hooks";
 import type { GitStatus } from "@diffgazer/core/schemas/git";
-import type { HomeContextInfo } from "@diffgazer/core/schemas/presentation";
-import { KeyboardProvider, useKey } from "@diffgazer/keys";
-import { Toaster } from "@diffgazer/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ProviderConsentDialog } from "@/components/shared/provider-consent-dialog";
+import {
+  HomePagePresentation,
+  type HomePagePresentationProps,
+} from "@/features/home/components/presentation";
+import {
+  baseContext,
+  buildProps,
+  createNavigateMock,
+  renderConsentGatedHome,
+  renderPresentation,
+  renderPresentationStrict,
+  renderPresentationWithApi,
+  Wrapper,
+} from "@/features/home/testing/presentation-harness";
 import type { ShutdownResult } from "@/lib/shutdown";
-
-import { FooterView } from "@/testing/footer-view";
 import { expectSingleReticle } from "@/testing/reticle";
 import { drainToasts } from "@/testing/toast-fixtures";
-import { HomePagePresentation, type HomePagePresentationProps } from "./presentation";
-
-type Navigate = HomePagePresentationProps["navigate"];
-
-function createNavigateMock() {
-  const mock = vi.fn<(options: object) => Promise<void>>(() => Promise.resolve());
-  const navigate: Navigate = (options) => mock(options);
-
-  return { navigate, mock };
-}
-
-function Wrapper({ children }: { children: ReactNode }) {
-  return (
-    <FooterProvider>
-      <KeyboardProvider>
-        {children}
-        <Toaster />
-      </KeyboardProvider>
-    </FooterProvider>
-  );
-}
-
-const baseContext: HomeContextInfo = {
-  providerName: "openrouter",
-  providerModel: "openrouter/test-model",
-  trustedDir: "/repo",
-};
-
-function buildProps(overrides: Partial<HomePagePresentationProps> = {}): HomePagePresentationProps {
-  return {
-    context: baseContext,
-    isTrusted: true,
-    needsTrust: false,
-    repoRoot: "/repo",
-    resumableSession: null,
-    highlighted: null,
-    searchError: undefined,
-    onHighlightChange: vi.fn(),
-    navigate: createNavigateMock().navigate,
-    createReview: vi.fn(async () => ({ reviewId: "rev-new" })),
-    refetchActiveSession: vi.fn(async () => ({ status: "read" as const, session: null })),
-    requireProviderConsent: (action) => action(),
-    clearScopedRouteState: vi.fn(),
-    shutdown: vi.fn(async (): Promise<ShutdownResult> => ({ status: "closed" })),
-    ...overrides,
-  };
-}
-
-function renderPresentation(props: HomePagePresentationProps) {
-  return render(<HomePagePresentation {...props} />, { wrapper: Wrapper });
-}
-
-/** Stands in for the next handler home's declined keys have to reach. */
-function TrustKeyProbe({ onPress }: { onPress: () => void }) {
-  useKey("t", onPress, { scope: "home" });
-  return null;
-}
-
-function renderPresentationWithApi(props: HomePagePresentationProps) {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  });
-  const api = {
-    ...createApi({ baseUrl: "http://localhost" }),
-    saveTrust: vi.fn(async () => ({
-      trust: {
-        projectId: "proj-1",
-        repoRoot: "/some/repo",
-        capabilities: { readFiles: true, runCommands: false },
-        trustMode: "persistent" as const,
-        trustedAt: "2026-01-01T00:00:00.000Z",
-      },
-    })),
-  };
-
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <ApiProvider value={api}>
-        <HomePagePresentation {...props} />
-        <FooterView />
-      </ApiProvider>
-    </QueryClientProvider>,
-    { wrapper: Wrapper },
-  );
-}
-
-// The real gate and notice, wired the way the app shell wires them, so the
-// consent-gated start path runs end to end: r opens the notice, Accept saves
-// the consent and continues the held start.
-function ConsentGatedHome(props: HomePagePresentationProps) {
-  const gate = useProviderConsentGate(null);
-  return (
-    <>
-      <HomePagePresentation {...props} requireProviderConsent={gate.require} />
-      <ProviderConsentDialog
-        open={gate.isOpen}
-        onOpenChange={(open) => {
-          if (!open) gate.decline();
-        }}
-        consent={gate.readBack}
-        continues={gate.continues}
-        isAccepting={gate.isAccepting}
-        error={gate.error}
-        onAccept={gate.accept}
-      />
-    </>
-  );
-}
-
-function renderConsentGatedHome(props: HomePagePresentationProps) {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  });
-  const api = {
-    ...createApi({ baseUrl: "http://localhost" }),
-    saveSettings: vi.fn(async () => {}),
-  };
-
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <ApiProvider value={api}>
-        <ConsentGatedHome {...props} />
-      </ApiProvider>
-    </QueryClientProvider>,
-    { wrapper: Wrapper },
-  );
-}
 
 beforeEach(async () => {
   await drainToasts();
 });
-
-function StrictWrapper({ children }: { children: ReactNode }) {
-  return (
-    <StrictMode>
-      <Wrapper>{children}</Wrapper>
-    </StrictMode>
-  );
-}
-
-function renderPresentationStrict(props: HomePagePresentationProps) {
-  return render(<HomePagePresentation {...props} />, { wrapper: StrictWrapper });
-}
 
 describe("HomePagePresentation — first-run trust prompt", () => {
   beforeEach(() => {
@@ -334,23 +195,6 @@ describe("HomePagePresentation — composition", () => {
 
     expect(screen.queryByRole("img", { name: "diffgazer" })).not.toBeInTheDocument();
     expect(screen.queryByText("─ ✦ ─ ✧ ─")).not.toBeInTheDocument();
-  });
-
-  it("lets each pane keep its own height instead of stretching both to one line", () => {
-    renderPresentation(buildProps());
-
-    const menu = screen.getByRole("region", { name: /main menu/i });
-    const context = screen.getByRole("region", { name: /context/i });
-    const paneRow = menu.parentElement;
-
-    expect(paneRow).not.toBeNull();
-    expect(context.parentElement).toBe(paneRow);
-    // jsdom computes no layout, so the guard pins the corrective class the fix
-    // depends on: `align-items` defaults to stretch, so the desktop dead band
-    // returns the moment `lg:items-start` leaves the shared row — no
-    // `items-stretch` class is ever written. Word-bounded so a longer utility
-    // that merely contains this name cannot satisfy it.
-    expect(paneRow?.className).toMatch(/\blg:items-start\b/);
   });
 });
 
@@ -563,9 +407,8 @@ describe("HomePagePresentation — startReview error surfacing", () => {
     });
 
     expect(await screen.findByText("Failed to Start Review")).toBeInTheDocument();
-    // Without the resolve arm the failed start leaves the whole menu
-    // aria-disabled under a spinner that never stops — the original complaint,
-    // one abort later — so every row must be activatable again.
+    // Without the resolve arm the failed start leaves every row aria-disabled
+    // under a spinner that never stops.
     const startedRow = screen.getByRole("menuitem", { name: "Review Unstaged" });
     expect(startedRow).not.toHaveAttribute("aria-disabled");
     expect(startedRow).not.toHaveAttribute("aria-busy");
@@ -848,170 +691,6 @@ describe("HomePagePresentation — review-start pending state", () => {
   });
 });
 
-describe("HomePagePresentation — pane Tab cycle", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  /** Stands in for the shell chrome outside the panes — the skip link, the header. */
-  function renderWithChrome(props: HomePagePresentationProps) {
-    return render(
-      <>
-        <button type="button">Before the panes</button>
-        <HomePagePresentation {...props} />
-      </>,
-      { wrapper: Wrapper },
-    );
-  }
-
-  it("hops Tab between the menu and the context pane instead of leaving the page", async () => {
-    const user = userEvent.setup();
-    renderPresentation(buildProps());
-
-    const menu = screen.getByRole("menu");
-    const providerRow = screen.getByRole("button", { name: "Configure provider settings" });
-    await waitFor(() => expect(menu).toHaveFocus());
-
-    await user.tab();
-    await waitFor(() => expect(providerRow).toHaveFocus());
-
-    await user.tab();
-    await waitFor(() => expect(menu).toHaveFocus());
-
-    // Shift+Tab reverses the same two-pane cycle rather than falling out of it.
-    await user.tab({ shift: true });
-    await waitFor(() => expect(providerRow).toHaveFocus());
-  });
-
-  it("keeps Tab native while focus sits outside both panes", async () => {
-    const user = userEvent.setup();
-    renderWithChrome(buildProps());
-
-    const chromeControl = screen.getByRole("button", { name: "Before the panes" });
-    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
-    await user.click(chromeControl);
-    expect(chromeControl).toHaveFocus();
-
-    // The containers-scoped cycle declines here, so Tab walks into the page in
-    // DOM order; a claimed Tab would have jumped straight to the context pane.
-    await user.tab();
-    expect(screen.getByRole("menu")).toHaveFocus();
-  });
-
-  it("stands the cycle down while a review is starting so Tab stays native", async () => {
-    const createReview = vi.fn(() => new Promise<{ reviewId: string }>(() => {}));
-    const user = userEvent.setup();
-    renderWithChrome(buildProps({ createReview }));
-
-    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
-    await user.keyboard("r");
-    await waitFor(() => expect(createReview).toHaveBeenCalled());
-
-    // The start turns the sidebar inert, so a claimed Shift+Tab would land the
-    // cycle in a pane with nothing to focus; native Tab walks out instead.
-    await user.tab({ shift: true });
-    expect(screen.getByRole("button", { name: "Before the panes" })).toHaveFocus();
-  });
-
-  it("leaves Tab native while the trust prompt replaces both panes", async () => {
-    const user = userEvent.setup();
-    renderPresentationWithApi(
-      buildProps({ isTrusted: false, needsTrust: true, repoRoot: "/some/repo" }),
-    );
-
-    const action = await screen.findByRole("button", { name: "Trust & Continue" });
-    // Neither pane is mounted, so a live cycle would claim Tab document-wide
-    // and freeze focus on the body it starts from.
-    await user.tab();
-
-    expect(action).toHaveFocus();
-  });
-});
-
-describe("HomePagePresentation — pane arrow hop", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  const hopContext: HomeContextInfo = {
-    ...baseContext,
-    lastRunId: "12345678-1234-4123-8123-123456789abc",
-    lastRunIssueCount: 2,
-  };
-
-  it("enters the context rows on ArrowLeft, skipping the static trust row, and stops at both ends", async () => {
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ context: hopContext }));
-
-    const providerRow = screen.getByRole("button", { name: "Configure provider settings" });
-    const scopeRow = screen.getByRole("button", { name: "Choose files to review" });
-    const lastRunRow = screen.getByRole("button", { name: /open last review/i });
-    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
-
-    await user.keyboard("{ArrowLeft}");
-    await waitFor(() => expect(providerRow).toHaveFocus());
-
-    await user.keyboard("{ArrowDown}");
-    expect(scopeRow).toHaveFocus();
-    await user.keyboard("{ArrowDown}");
-    expect(lastRunRow).toHaveFocus();
-
-    await user.keyboard("{ArrowDown}");
-    expect(lastRunRow).toHaveFocus();
-    await user.keyboard("{ArrowUp}");
-    await user.keyboard("{ArrowUp}");
-    expect(providerRow).toHaveFocus();
-    await user.keyboard("{ArrowUp}");
-    expect(providerRow).toHaveFocus();
-  });
-
-  it("returns to the menu on ArrowRight with the highlight where it was left", async () => {
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ context: hopContext, highlighted: "review-staged" }));
-
-    const menu = screen.getByRole("menu");
-    await waitFor(() => expect(menu).toHaveFocus());
-    const highlightedRow = screen.getByRole("menuitem", { name: "Review Staged" });
-    expect(menu).toHaveAttribute("aria-activedescendant", highlightedRow.id);
-
-    await user.keyboard("{ArrowLeft}");
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Configure provider settings" })).toHaveFocus(),
-    );
-
-    await user.keyboard("{ArrowRight}");
-    await waitFor(() => expect(menu).toHaveFocus());
-    expect(menu).toHaveAttribute("aria-activedescendant", highlightedRow.id);
-  });
-
-  it("walks the rows with the arrows after Tab reaches the pane", async () => {
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ context: hopContext }));
-
-    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
-    await user.tab();
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Configure provider settings" })).toHaveFocus(),
-    );
-
-    await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("button", { name: "Choose files to review" })).toHaveFocus();
-  });
-
-  it("holds the arrow hop while a review is starting", async () => {
-    const createReview = vi.fn(() => new Promise<{ reviewId: string }>(() => {}));
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ context: hopContext, createReview }));
-
-    await waitFor(() => expect(screen.getByRole("menu")).toHaveFocus());
-    await user.keyboard("r");
-    await waitFor(() => expect(createReview).toHaveBeenCalled());
-
-    await user.keyboard("{ArrowLeft}");
-    expect(screen.getByRole("menu")).toHaveFocus();
-  });
-});
-
 describe("HomePagePresentation — file picker entry", () => {
   const PICKER_STATUS: GitStatus = {
     isGitRepo: true,
@@ -1224,150 +903,5 @@ describe("HomePagePresentation — quit result surfacing", () => {
 
     expect(await screen.findByText(title)).toBeInTheDocument();
     expect(screen.getByText(message)).toBeInTheDocument();
-  });
-});
-
-describe("HomePagePresentation — menu jump keys", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("starts an unstaged review from the advertised r key", async () => {
-    const createReview = vi.fn(async () => ({ reviewId: "rev-new" }));
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ createReview }));
-
-    await user.keyboard("r");
-
-    await waitFor(() => expect(createReview).toHaveBeenCalledWith({ mode: "unstaged" }));
-  });
-
-  it("starts a staged review from the advertised shifted R key", async () => {
-    const createReview = vi.fn(async () => ({ reviewId: "rev-new" }));
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ createReview }));
-
-    await user.keyboard("{Shift>}R{/Shift}");
-
-    await waitFor(() => expect(createReview).toHaveBeenCalledWith({ mode: "staged" }));
-  });
-
-  it("resumes the cached session from the advertised l key", async () => {
-    const navigateMock = createNavigateMock();
-    const user = userEvent.setup();
-    renderPresentation(
-      buildProps({
-        resumableSession: { reviewId: "rev-unstaged", mode: "unstaged" },
-        navigate: navigateMock.navigate,
-      }),
-    );
-
-    await user.keyboard("l");
-
-    expect(navigateMock.mock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: "/review/{-$reviewId}",
-        params: { reviewId: "rev-unstaged" },
-      }),
-    );
-  });
-
-  it("opens the last run from the advertised o key", async () => {
-    const navigateMock = createNavigateMock();
-    const user = userEvent.setup();
-    renderPresentation(
-      buildProps({
-        context: { ...baseContext, lastRunId: "rev-last", lastRunIssueCount: 4 },
-        navigate: navigateMock.navigate,
-      }),
-    );
-
-    await user.keyboard("o");
-
-    expect(navigateMock.mock).toHaveBeenCalledWith({
-      to: "/review/{-$reviewId}",
-      params: { reviewId: "rev-last" },
-    });
-  });
-
-  it("opens provider settings from the advertised p key", async () => {
-    const navigateMock = createNavigateMock();
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ navigate: navigateMock.navigate }));
-
-    await user.keyboard("p");
-
-    expect(navigateMock.mock).toHaveBeenCalledWith({ to: "/settings/providers" });
-  });
-
-  it("opens trust permissions from the advertised t key while untrusted", async () => {
-    const navigateMock = createNavigateMock();
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ isTrusted: false, navigate: navigateMock.navigate }));
-
-    await user.keyboard("t");
-
-    expect(navigateMock.mock).toHaveBeenCalledWith({ to: "/settings/trust-permissions" });
-  });
-
-  it("holds the sidebar jump keys while a review is starting", async () => {
-    const createReview = vi.fn(() => new Promise<{ reviewId: string }>(() => {}));
-    const navigateMock = createNavigateMock();
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ createReview, navigate: navigateMock.navigate }));
-
-    await user.keyboard("r");
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/starting review/i));
-    await user.keyboard("p");
-
-    expect(navigateMock.mock).not.toHaveBeenCalled();
-  });
-
-  it("declines t once the repository is trusted instead of swallowing it", async () => {
-    const navigateMock = createNavigateMock();
-    const onFallthrough = vi.fn();
-    const user = userEvent.setup();
-    // Registered first, so it sits behind home's own binding in the dispatch
-    // order and only runs if home declines the key.
-    render(
-      <>
-        <TrustKeyProbe onPress={onFallthrough} />
-        <HomePagePresentation {...buildProps({ navigate: navigateMock.navigate })} />
-      </>,
-      { wrapper: Wrapper },
-    );
-
-    await user.keyboard("t");
-
-    expect(navigateMock.mock).not.toHaveBeenCalled();
-    expect(onFallthrough).toHaveBeenCalledOnce();
-  });
-
-  it("leaves o inert when there is no previous run", async () => {
-    const navigateMock = createNavigateMock();
-    const user = userEvent.setup();
-    renderPresentation(buildProps({ navigate: navigateMock.navigate }));
-
-    await user.keyboard("o");
-
-    expect(navigateMock.mock).not.toHaveBeenCalled();
-  });
-
-  it("ignores the jump keys of items the menu renders as disabled", async () => {
-    const createReview = vi.fn(async () => ({ reviewId: "rev-new" }));
-    const navigateMock = createNavigateMock();
-    const user = userEvent.setup();
-    // Untrusted disables both review starts; no resumable session disables resume.
-    renderPresentation(
-      buildProps({ isTrusted: false, createReview, navigate: navigateMock.navigate }),
-    );
-
-    await user.keyboard("r");
-    await user.keyboard("{Shift>}R{/Shift}");
-    await user.keyboard("l");
-
-    expect(createReview).not.toHaveBeenCalled();
-    expect(navigateMock.mock).not.toHaveBeenCalled();
-    expect(screen.queryByText("Repository Not Trusted")).not.toBeInTheDocument();
   });
 });

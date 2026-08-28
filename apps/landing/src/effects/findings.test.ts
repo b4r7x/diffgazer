@@ -153,35 +153,20 @@ describe("initFindings", () => {
     cleanup();
   });
 
-  it("does not steal j/k from an interactive element outside the widget", () => {
+  it.each([
+    "a[data-link='docs']",
+    "#gz-diff",
+  ])("does not steal j/k from %s outside the widget", (selector) => {
     mountLanding();
 
     const cleanup = initFindings(document, { reduced: true, finePointer: false });
     const selected = () =>
       document.querySelector<HTMLElement>(".finding-row[aria-selected='true']");
-    const docsLink = document.querySelector<HTMLElement>("a[data-link='docs']");
+    const outside = document.querySelector<HTMLElement>(selector);
 
-    docsLink?.focus();
+    outside?.focus();
     const event = new KeyboardEvent("keydown", { key: "j", bubbles: true, cancelable: true });
-    docsLink?.dispatchEvent(event);
-
-    expect(event.defaultPrevented).toBe(false);
-    expect(selected()?.textContent).toContain(demoFindings[0].title);
-
-    cleanup();
-  });
-
-  it("does not steal j/k from a focusable region outside the widget", () => {
-    mountLanding();
-
-    const cleanup = initFindings(document, { reduced: true, finePointer: false });
-    const selected = () =>
-      document.querySelector<HTMLElement>(".finding-row[aria-selected='true']");
-    const diffRegion = document.querySelector<HTMLElement>("#gz-diff");
-
-    diffRegion?.focus();
-    const event = new KeyboardEvent("keydown", { key: "j", bubbles: true, cancelable: true });
-    diffRegion?.dispatchEvent(event);
+    outside?.dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(false);
     expect(selected()?.textContent).toContain(demoFindings[0].title);

@@ -21,11 +21,8 @@ import {
 } from "@diffgazer/core/testing/catalog-bundle-evidence";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { assertTempHome } from "../testing/temp-home.js";
-import {
-  catalogProviderModels,
-  discoverConfigurationCatalog,
-  modelInfoFromBoundedObservation,
-} from "./models-dev-catalog.js";
+import { catalogProviderModels, discoverConfigurationCatalog } from "./models-dev-catalog/index.js";
+import { modelInfoFromBoundedObservation } from "./models-dev-catalog/models.js";
 
 const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 const otherBundledCatalogInputs = {

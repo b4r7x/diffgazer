@@ -56,7 +56,7 @@ test.describe("Docs security headers", () => {
       expectNonceCsp(response);
 
       const csp = response.headers()["content-security-policy"] ?? "";
-      // Fonts are now self-hosted; no Google allowances remain in the CSP.
+      // Fonts are self-hosted, so no font CDN origin may appear.
       expect(csp).not.toContain("fonts.googleapis");
       expect(csp).not.toContain("fonts.gstatic");
 

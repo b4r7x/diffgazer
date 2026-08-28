@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -8,7 +8,6 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const configPath = join(repoRoot, ".dependency-cruiser.cjs");
-const configSource = readFileSync(configPath, "utf8");
 const depcruiseBin = join(
   repoRoot,
   "node_modules",
@@ -63,10 +62,17 @@ test("components-not-features matches resolved cli/diffgazer feature paths", () 
 });
 
 test("package-exported catalog bundle evidence is exempt as testing support", () => {
-  assert.ok(
-    configSource.includes('"^libs/core/src/testing/catalog-bundle-evidence\\\\.ts$"'),
-    "the package-exported catalog bundle-evidence helper must remain an explicit no-orphans exemption",
+  const violations = cruiseFixture(
+    {
+      "libs/core/src/testing/catalog-bundle-evidence.ts": "export const evidence = 1;\n",
+      "libs/core/src/testing/unclaimed-helper.ts": "export const unclaimed = 1;\n",
+    },
+    { scanTarget: "libs" },
   );
+
+  assert.deepEqual(violations, [
+    "no-orphans: libs/core/src/testing/unclaimed-helper.ts -> libs/core/src/testing/unclaimed-helper.ts",
+  ]);
 });
 
 test("a relative import into a sibling app feature is rejected", () => {

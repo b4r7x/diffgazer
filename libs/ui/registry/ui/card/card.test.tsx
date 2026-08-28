@@ -88,18 +88,6 @@ describe("Card", () => {
     expect(card).toHaveAttribute("data-surface", "flat");
   });
 
-  it("renders as article with a surface variant", () => {
-    render(
-      <Card as="article" surface="stacked" aria-label="Release">
-        Article stacked
-      </Card>,
-    );
-
-    const card = screen.getByRole("article", { name: "Release" });
-    expect(card).toHaveAttribute("data-surface", "stacked");
-    expect(card).toHaveAttribute("data-slot", "card");
-  });
-
   it("renders an interactive card as a focusable button", async () => {
     const user = userEvent.setup();
     render(

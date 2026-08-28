@@ -15,7 +15,7 @@ import {
   ConfigurationListResponseSchema,
   ConfigurationModelsResponseSchema,
 } from "@diffgazer/core/schemas/config";
-import { discoverConfigurationCatalog } from "../../shared/lib/ai/models-dev-catalog.js";
+import { discoverConfigurationCatalog } from "../../shared/lib/ai/models-dev-catalog/index.js";
 import { getStore } from "../../shared/lib/config/store.js";
 import type { ConfigurationActionError } from "../../shared/lib/config/types.js";
 

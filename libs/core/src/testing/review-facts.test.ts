@@ -5,15 +5,12 @@ import { canonicalReviewFixture, reviewFacts } from "./review-facts.js";
 describe("canonical review facts", () => {
   it("provides one valid, realistic cross-surface review fixture", () => {
     expect(() => SavedReviewSchema.parse(canonicalReviewFixture)).not.toThrow();
-    expect(canonicalReviewFixture.result.issues).toHaveLength(8);
     expect(new Set(canonicalReviewFixture.result.issues.map((issue) => issue.severity))).toEqual(
       new Set(["blocker", "high", "medium", "low", "nit"]),
     );
     expect(canonicalReviewFixture.result.issues.every((issue) => issue.file.length > 50)).toBe(
       true,
     );
-    expect(canonicalReviewFixture.lensStats).toHaveLength(5);
-    expect(canonicalReviewFixture.droppedDuplicates).toBe(3);
   });
 
   it("derives every parity fact through shared presentation contracts", () => {

@@ -2,244 +2,162 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RegistryItem } from "@diffgazer/registry/schemas";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createThemeStyleStripPolicy,
   removeDuplicateThemeStylesInPublicRegistry,
 } from "./theme-style-dedupe.js";
 
+const AGGREGATE_THEME_CSS = "/* panel */\n/* dialog */\n/* shared */";
+
+// The published item JSONs carry the CSS payloads; the index mirrors them for
+// every item except the shared `mixed.css` carrier, which the shadcn builder
+// emits without content.
+const publicItems = {
+  panel: {
+    name: "panel",
+    files: [
+      { path: "registry/ui/panel/panel.tsx", type: "registry:ui" },
+      { path: "registry/ui/panel/panel.css", type: "registry:style", content: "/* panel */" },
+    ],
+  },
+  theme: {
+    name: "theme",
+    type: "registry:theme",
+    files: [
+      {
+        path: "styles/styles.css",
+        type: "registry:style",
+        target: "~/styles/styles.css",
+        content: AGGREGATE_THEME_CSS,
+      },
+    ],
+  },
+  "dialog-shell": {
+    name: "dialog-shell",
+    files: [
+      { path: "registry/ui/shared/dialog.css", type: "registry:style", content: "/* dialog */" },
+    ],
+  },
+  unique: {
+    name: "unique",
+    files: [
+      { path: "registry/ui/unique/unique.css", type: "registry:style", content: "/* panel */" },
+    ],
+  },
+  themed: {
+    name: "themed",
+    files: [
+      { path: "registry/ui/shared/mixed.css", type: "registry:style", content: "/* shared */" },
+    ],
+  },
+  unthemed: {
+    name: "unthemed",
+    files: [
+      { path: "registry/ui/shared/mixed.css", type: "registry:style", content: "/* shared */" },
+    ],
+  },
+};
+
+const sourceItem = (
+  name: string,
+  registryDependencies: string[],
+  extra: Partial<RegistryItem> = {},
+): RegistryItem => ({
+  name,
+  type: "registry:ui",
+  dependencies: [],
+  registryDependencies,
+  files: [],
+  ...extra,
+});
+
+const sourceItems: RegistryItem[] = [
+  sourceItem("panel", ["theme"]),
+  sourceItem("dialog", ["dialog-shell", "theme"]),
+  sourceItem("dialog-shell", [], { meta: { hidden: true } }),
+  sourceItem("unique", []),
+  sourceItem("theme", [], { type: "registry:theme" }),
+  sourceItem("themed", ["shared-style", "theme"]),
+  sourceItem("unthemed", ["shared-style"]),
+  sourceItem("shared-style", [], { meta: { hidden: true } }),
+];
+
+function writeDedupeFixture(): string {
+  const outputDir = mkdtempSync(join(tmpdir(), "dg-ui-public-styles-"));
+  writeFileSync(
+    join(outputDir, "registry.json"),
+    JSON.stringify({
+      items: Object.values(publicItems).map((item) =>
+        item.name === "themed" || item.name === "unthemed"
+          ? { ...item, files: item.files.map(({ content: _content, ...file }) => file) }
+          : item,
+      ),
+    }),
+  );
+  for (const item of Object.values(publicItems)) {
+    writeFileSync(join(outputDir, `${item.name}.json`), JSON.stringify(item));
+  }
+  return outputDir;
+}
+
 describe("removeDuplicateThemeStylesInPublicRegistry", () => {
-  it("strips only CSS payloads duplicated byte-for-byte in the aggregate theme", () => {
-    const outputDir = mkdtempSync(join(tmpdir(), "dg-ui-public-styles-"));
-    try {
-      writeFileSync(
-        join(outputDir, "registry.json"),
-        JSON.stringify({
-          items: [
-            {
-              name: "panel",
-              files: [
-                { path: "registry/ui/panel/panel.tsx", type: "registry:ui" },
-                {
-                  path: "registry/ui/panel/panel.css",
-                  type: "registry:style",
-                  content: "/* panel */",
-                },
-              ],
-            },
-            {
-              name: "theme",
-              type: "registry:theme",
-              files: [
-                {
-                  path: "styles/styles.css",
-                  type: "registry:style",
-                  target: "~/styles/styles.css",
-                  content: "/* panel */\n/* dialog */\n/* shared */",
-                },
-              ],
-            },
-            {
-              name: "dialog-shell",
-              files: [
-                {
-                  path: "registry/ui/shared/dialog.css",
-                  type: "registry:style",
-                  content: "/* dialog */",
-                },
-              ],
-            },
-            {
-              name: "unique",
-              files: [
-                {
-                  path: "registry/ui/unique/unique.css",
-                  type: "registry:style",
-                  content: "/* panel */",
-                },
-              ],
-            },
-            {
-              name: "themed",
-              files: [{ path: "registry/ui/shared/mixed.css", type: "registry:style" }],
-            },
-            {
-              name: "unthemed",
-              files: [{ path: "registry/ui/shared/mixed.css", type: "registry:style" }],
-            },
-          ],
-        }),
-      );
-      writeFileSync(
-        join(outputDir, "panel.json"),
-        JSON.stringify({
-          name: "panel",
-          files: [
-            { path: "registry/ui/panel/panel.tsx", type: "registry:ui" },
-            {
-              path: "registry/ui/panel/panel.css",
-              type: "registry:style",
-              content: "/* panel */",
-            },
-          ],
-        }),
-      );
-      writeFileSync(
-        join(outputDir, "theme.json"),
-        JSON.stringify({
-          name: "theme",
-          type: "registry:theme",
-          files: [
-            {
-              path: "styles/styles.css",
-              type: "registry:style",
-              target: "~/styles/styles.css",
-              content: "/* panel */\n/* dialog */\n/* shared */",
-            },
-          ],
-        }),
-      );
-      writeFileSync(
-        join(outputDir, "dialog-shell.json"),
-        JSON.stringify({
-          name: "dialog-shell",
-          files: [
-            {
-              path: "registry/ui/shared/dialog.css",
-              type: "registry:style",
-              content: "/* dialog */",
-            },
-          ],
-        }),
-      );
-      writeFileSync(
-        join(outputDir, "unique.json"),
-        JSON.stringify({
-          name: "unique",
-          files: [
-            {
-              path: "registry/ui/unique/unique.css",
-              type: "registry:style",
-              content: "/* panel */",
-            },
-          ],
-        }),
-      );
-      writeFileSync(
-        join(outputDir, "themed.json"),
-        JSON.stringify({
-          name: "themed",
-          files: [
-            {
-              path: "registry/ui/shared/mixed.css",
-              type: "registry:style",
-              content: "/* shared */",
-            },
-          ],
-        }),
-      );
-      writeFileSync(
-        join(outputDir, "unthemed.json"),
-        JSON.stringify({
-          name: "unthemed",
-          files: [
-            {
-              path: "registry/ui/shared/mixed.css",
-              type: "registry:style",
-              content: "/* shared */",
-            },
-          ],
-        }),
-      );
+  describe("stripping payloads duplicated byte-for-byte in the aggregate theme", () => {
+    let outputDir: string;
 
-      const stylePolicy = createThemeStyleStripPolicy(
-        [
-          {
-            name: "panel",
-            type: "registry:ui",
-            dependencies: [],
-            registryDependencies: ["theme"],
-            files: [],
-          },
-          {
-            name: "dialog",
-            type: "registry:ui",
-            dependencies: [],
-            registryDependencies: ["dialog-shell", "theme"],
-            files: [],
-          },
-          {
-            name: "dialog-shell",
-            type: "registry:ui",
-            dependencies: [],
-            registryDependencies: [],
-            meta: { hidden: true },
-            files: [],
-          },
-          {
-            name: "unique",
-            type: "registry:ui",
-            dependencies: [],
-            registryDependencies: [],
-            files: [],
-          },
-          {
-            name: "theme",
-            type: "registry:theme",
-            dependencies: [],
-            registryDependencies: [],
-            files: [],
-          },
-          {
-            name: "themed",
-            type: "registry:ui",
-            dependencies: [],
-            registryDependencies: ["shared-style", "theme"],
-            files: [],
-          },
-          {
-            name: "unthemed",
-            type: "registry:ui",
-            dependencies: [],
-            registryDependencies: ["shared-style"],
-            files: [],
-          },
-          {
-            name: "shared-style",
-            type: "registry:ui",
-            dependencies: [],
-            registryDependencies: [],
-            meta: { hidden: true },
-            files: [],
-          },
-        ],
-        "/* panel */\n/* dialog */\n/* shared */",
-      );
-      removeDuplicateThemeStylesInPublicRegistry(outputDir, stylePolicy);
+    const readItem = (name: string) =>
+      JSON.parse(readFileSync(join(outputDir, `${name}.json`), "utf8")) as {
+        files: Array<{ path: string; content?: string }>;
+      };
+    const readIndexItem = (name: string) => {
+      const index = JSON.parse(readFileSync(join(outputDir, "registry.json"), "utf8")) as {
+        items: Array<{ name: string; files: Array<{ path: string }> }>;
+      };
+      const item = index.items.find((entry) => entry.name === name);
+      if (!item) throw new Error(`index is missing ${name}`);
+      return item;
+    };
 
-      const index = JSON.parse(readFileSync(join(outputDir, "registry.json"), "utf8"));
-      const panel = JSON.parse(readFileSync(join(outputDir, "panel.json"), "utf8"));
-      const theme = JSON.parse(readFileSync(join(outputDir, "theme.json"), "utf8"));
-      const dialog = JSON.parse(readFileSync(join(outputDir, "dialog-shell.json"), "utf8"));
-      const unique = JSON.parse(readFileSync(join(outputDir, "unique.json"), "utf8"));
-      const themed = JSON.parse(readFileSync(join(outputDir, "themed.json"), "utf8"));
-      const unthemed = JSON.parse(readFileSync(join(outputDir, "unthemed.json"), "utf8"));
-      expect(index.items[0].files).toHaveLength(1);
-      expect(index.items[1].files).toHaveLength(1);
-      expect(index.items[2].files).toHaveLength(0);
-      expect(index.items[3].files).toHaveLength(1);
-      expect(panel.files).toHaveLength(1);
-      expect(dialog.files).toHaveLength(0);
-      expect(theme.files).toHaveLength(1);
-      expect(unique.files).toHaveLength(1);
-      expect(unique.files[0].content).toBe("/* panel */");
-      expect(index.items[4].files).toHaveLength(0);
-      expect(index.items[5].files).toHaveLength(1);
-      expect(themed.files).toHaveLength(0);
-      expect(unthemed.files).toHaveLength(1);
-    } finally {
+    beforeEach(() => {
+      outputDir = writeDedupeFixture();
+      removeDuplicateThemeStylesInPublicRegistry(
+        outputDir,
+        createThemeStyleStripPolicy(sourceItems, AGGREGATE_THEME_CSS),
+      );
+    });
+
+    afterEach(() => {
       rmSync(outputDir, { recursive: true, force: true });
-    }
+    });
+
+    it("strips the CSS payload of an item that depends on the theme", () => {
+      expect(readItem("panel").files.map((file) => file.path)).toEqual([
+        "registry/ui/panel/panel.tsx",
+      ]);
+      expect(readIndexItem("panel").files).toHaveLength(1);
+    });
+
+    it("strips the CSS payload reached through a hidden dependency", () => {
+      expect(readItem("dialog-shell").files).toHaveLength(0);
+      expect(readIndexItem("dialog-shell").files).toHaveLength(0);
+    });
+
+    it("keeps an identical payload on an item with no theme dependency", () => {
+      expect(readItem("unique").files.map((file) => file.content)).toEqual(["/* panel */"]);
+      expect(readIndexItem("unique").files).toHaveLength(1);
+    });
+
+    it("keeps the theme item's own payload", () => {
+      expect(readItem("theme").files).toHaveLength(1);
+      expect(readIndexItem("theme").files).toHaveLength(1);
+    });
+
+    it("strips a shared carrier for the themed owner only", () => {
+      expect(readItem("themed").files).toHaveLength(0);
+      expect(readIndexItem("themed").files).toHaveLength(0);
+      expect(readItem("unthemed").files).toHaveLength(1);
+      expect(readIndexItem("unthemed").files).toHaveLength(1);
+    });
   });
 
   // The shadcn builder emits a content-less index: every file payload lives only in

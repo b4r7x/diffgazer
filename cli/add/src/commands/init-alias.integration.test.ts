@@ -5,7 +5,7 @@ import { createCli } from "@diffgazer/registry/cli";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { detectProject } from "../utils/detect.js";
 import { addCommand } from "./add/command.js";
-import { initCommand } from "./init.js";
+import { initCommand } from "./init/command.js";
 
 let root: string;
 

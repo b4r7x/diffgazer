@@ -20,10 +20,10 @@ export const DOCS_BASE_SECURITY_HEADERS = {
   "Cache-Control": "public, max-age=0, must-revalidate",
 } satisfies Record<string, string>;
 
-// script-src carries the per-request nonce (TanStack Start stamps it on every
-// SSR-injected inline script via router.options.ssr.nonce), so 'unsafe-inline'
-// is gone. Fonts are self-hosted, so the former Google Fonts allowances are
-// dropped. style-src keeps 'unsafe-inline' for the styles Tailwind/Start inline.
+// script-src relies on the per-request nonce instead of 'unsafe-inline'
+// (TanStack Start stamps the nonce on every SSR-injected inline script via
+// router.options.ssr.nonce); style-src still needs 'unsafe-inline' for styles
+// Tailwind/Start inject. Fonts are self-hosted, so no font CDN origins.
 export function buildDocsContentSecurityPolicy(nonce: string): string {
   return [
     "default-src 'self'",

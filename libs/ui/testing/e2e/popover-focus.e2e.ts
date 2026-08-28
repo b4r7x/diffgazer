@@ -2,6 +2,10 @@ import { expect, type Locator, type Page, test } from "@playwright/test";
 
 type ActivationMode = "keyboard" | "pointer" | "programmatic";
 
+function boundaryFixtureUrl(mode: "controlled" | "uncontrolled", activation: ActivationMode) {
+  return `/testing/fixtures/popover-focus.html?case=${mode}&activation=${activation}`;
+}
+
 async function activatePopover(page: Page, trigger: Locator, activation: ActivationMode) {
   if (activation === "pointer") {
     await trigger.click();
@@ -30,8 +34,7 @@ for (const mode of ["controlled", "uncontrolled"] as const) {
     test(`${mode} ${activation} popover preserves its focus pair and closes once on focus exit`, async ({
       page,
     }) => {
-      const fixtureUrl = `/testing/fixtures/popover-focus.html?case=${mode}&activation=${activation}`;
-      await page.goto(fixtureUrl);
+      await page.goto(boundaryFixtureUrl(mode, activation));
       const trigger = page.getByRole("button", { name: "Boundary trigger" });
       const contentAction = page.getByRole("button", { name: "Boundary action" });
       const outside = page.getByRole("button", { name: "Outside" });
@@ -49,8 +52,17 @@ for (const mode of ["controlled", "uncontrolled"] as const) {
       await expect(outside).toBeFocused();
       await expect(trigger).toHaveAttribute("aria-expanded", "false");
       await expect(closeRequests).toHaveText("1");
+    });
 
-      await page.goto(fixtureUrl);
+    test(`${mode} ${activation} popover closes once when focus leaves content directly`, async ({
+      page,
+    }) => {
+      await page.goto(boundaryFixtureUrl(mode, activation));
+      const trigger = page.getByRole("button", { name: "Boundary trigger" });
+      const contentAction = page.getByRole("button", { name: "Boundary action" });
+      const outside = page.getByRole("button", { name: "Outside" });
+      const closeRequests = page.getByRole("status", { name: "Close requests" });
+
       await activatePopover(page, trigger, activation);
       await contentAction.focus();
       await outside.focus();

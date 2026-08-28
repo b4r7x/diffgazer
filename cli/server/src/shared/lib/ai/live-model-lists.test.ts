@@ -170,20 +170,27 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it("degrades to null when the endpoint refuses the credential", async () => {
-    const configurationId = await seedConfiguration(
-      "opencode-zen",
-      KEY_BEARING_INPUTS["opencode-zen"],
-      "zen-secret",
-    );
+  it.each([
+    ["opencode-zen", KEY_BEARING_INPUTS["opencode-zen"], 401],
+    [
+      "gemini",
+      { endpoint: PRODUCT_REGISTRY.gemini.configuration.endpoints[0]?.endpoint ?? "" },
+      404,
+    ],
+  ] as [
+    HostedApiProductId,
+    { endpoint: string },
+    number,
+  ][])("degrades %s to null and caches nothing when the list endpoint refuses the credential", async (productId, input, status) => {
+    const configurationId = await seedConfiguration(productId, input, `${productId}-secret`);
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
-      status: 401,
+      status,
       headers: new Headers(),
     } as Response);
     const { resolveLiveModelList } = await loadLiveModelLists();
 
-    expect(await resolveLiveModelList({ configurationId, productId: "opencode-zen" })).toBeNull();
+    expect(await resolveLiveModelList({ configurationId, productId })).toBeNull();
     expect(existsSync(join(diffgazerHome, "model-lists"))).toBe(false);
   });
 });
@@ -351,22 +358,5 @@ describe("resolveLiveModelList — Gemini's OpenAI-compat list", () => {
       { id: "gemini-2.5-pro", tier: "unknown" },
       { id: "gemma-4-31b-it", tier: "unknown" },
     ]);
-  });
-
-  it("degrades to null when the Gemini endpoint refuses the credential", async () => {
-    const configurationId = await seedConfiguration(
-      "gemini",
-      { endpoint: GEMINI_ENDPOINT },
-      "gemini-secret",
-    );
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: false,
-      status: 404,
-      headers: new Headers(),
-    } as Response);
-    const { resolveLiveModelList } = await loadLiveModelLists();
-
-    expect(await resolveLiveModelList({ configurationId, productId: "gemini" })).toBeNull();
-    expect(existsSync(join(diffgazerHome, "model-lists"))).toBe(false);
   });
 });

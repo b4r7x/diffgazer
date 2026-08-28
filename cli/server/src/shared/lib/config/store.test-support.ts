@@ -88,7 +88,7 @@ vi.mock("../fs.js", async (importOriginal) => {
     },
   };
 });
-vi.mock("../ai/models-dev-catalog.js", () => catalog);
+vi.mock("../ai/models-dev-catalog/index.js", () => catalog);
 
 export let diffgazerHome: string;
 

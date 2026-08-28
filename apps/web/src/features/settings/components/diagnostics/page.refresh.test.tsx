@@ -76,7 +76,6 @@ describe("SettingsDiagnosticsPage diagnostics refresh", () => {
   it.each([
     "{Enter}",
     "r",
-    "R",
   ])("keeps focus inside the panel while %s runs refresh-all and returns it to the action row", async (key) => {
     const user = userEvent.setup();
     let resolveHealth: ((value: Awaited<ReturnType<BoundApi["request"]>>) => void) | undefined;

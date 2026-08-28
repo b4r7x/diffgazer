@@ -104,73 +104,100 @@ describe("server V2 readiness calculation", () => {
     }
   });
 
-  it("returns every core state with its exact actionable remediation", () => {
+  const hostedBinding = () => {
     const record = hostedRecord();
-    const key = hostedEvidenceKey(record);
-    const binding = createEnvironmentSecretBinding(
-      record.configurationId,
-      record.revision,
-      "GEMINI_KEY",
-    );
-    const ready = computeProviderReadiness({
-      configuration: record,
-      binding,
-      evidence: passedEvidence(key),
-      ...SERVER_OWNED_INPUTS,
-      now: NOW,
-    });
-    expect(ready.status).toBe("ready");
-    expect(ready.action).toBe("inspect");
-    expect(ready.remediation.code).toBe("none");
+    return createEnvironmentSecretBinding(record.configurationId, record.revision, "GEMINI_KEY");
+  };
 
-    expect(computeProviderReadiness({ configuration: null }).status).toBe("unconfigured");
-    expect(
-      computeProviderReadiness({
+  it.each<[string, () => ProviderReadinessInput, string]>([
+    [
+      "an admitted record with passed evidence",
+      () => ({
+        configuration: hostedRecord(),
+        binding: hostedBinding(),
+        evidence: passedEvidence(hostedEvidenceKey()),
+        ...SERVER_OWNED_INPUTS,
+        now: NOW,
+      }),
+      "ready",
+    ],
+    ["no configuration at all", () => ({ configuration: null }), "unconfigured"],
+    [
+      "a configuration this build cannot parse",
+      () => ({
         configuration: { status: "unknown", rawBytes: new TextEncoder().encode("opaque") },
-      }).status,
-    ).toBe("unsupported");
-    expect(computeProviderReadiness({ configuration: record, binding: null }).status).toBe(
+      }),
+      "unsupported",
+    ],
+    [
+      "a record whose credential is unbound",
+      () => ({ configuration: hostedRecord(), binding: null }),
       "credential-invalid",
-    );
-    expect(
-      computeProviderReadiness({
-        configuration: record,
-        binding,
+    ],
+    [
+      "a bound record with no evidence yet",
+      () => ({
+        configuration: hostedRecord(),
+        binding: hostedBinding(),
         evidence: null,
         ...SERVER_OWNED_INPUTS,
-      }).status,
-    ).toBe("conformance-pending");
-    expect(
-      computeProviderReadiness({
-        configuration: record,
-        binding,
+      }),
+      "conformance-pending",
+    ],
+    [
+      "a bound record whose evidence failed",
+      () => ({
+        configuration: hostedRecord(),
+        binding: hostedBinding(),
         evidence: createAdmissionEvidence({
-          evidenceKey: key,
+          evidenceKey: hostedEvidenceKey(),
           checkedAt: CHECKED_AT,
           status: "failed",
         }),
         ...SERVER_OWNED_INPUTS,
         now: NOW,
-      }).status,
-    ).toBe("conformance-failed");
-    expect(
-      computeProviderReadiness({
+      }),
+      "conformance-failed",
+    ],
+    [
+      "a record with no selected model",
+      () => ({
         configuration: hostedRecord({ selectedModelId: null }),
-        binding,
+        binding: hostedBinding(),
         evidence: null,
-      }).status,
-    ).toBe("model-missing");
-    expect(
-      computeProviderReadiness({
+      }),
+      "model-missing",
+    ],
+    [
+      "a record acknowledging a superseded notice version",
+      () => ({
         configuration: hostedRecord({
           acknowledgement: { noticeId: "gemini-hosted-api", noticeVersion: 0, acceptedAt: null },
         }),
-        binding,
-        evidence: passedEvidence(key),
+        binding: hostedBinding(),
+        evidence: passedEvidence(hostedEvidenceKey()),
         ...SERVER_OWNED_INPUTS,
         now: NOW,
-      }).status,
-    ).toBe("acknowledgement-required");
+      }),
+      "acknowledgement-required",
+    ],
+  ])("reads %s as %s", (_label, buildInput, expectedStatus) => {
+    expect(computeProviderReadiness(buildInput()).status).toBe(expectedStatus);
+  });
+
+  it("asks a ready configuration for nothing beyond inspection", () => {
+    const record = hostedRecord();
+    const ready = computeProviderReadiness({
+      configuration: record,
+      binding: hostedBinding(),
+      evidence: passedEvidence(hostedEvidenceKey(record)),
+      ...SERVER_OWNED_INPUTS,
+      now: NOW,
+    });
+
+    expect(ready.status).toBe("ready");
+    expect(ready.action).toBe("inspect");
+    expect(ready.remediation.code).toBe("none");
   });
 
   it("refuses an unacknowledged record before any evidence exists", () => {

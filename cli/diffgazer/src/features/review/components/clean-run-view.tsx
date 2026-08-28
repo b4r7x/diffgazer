@@ -6,7 +6,7 @@ import { Button } from "../../../components/ui/button";
 import { useTheme } from "../../../theme/provider";
 import { type ReviewRunReceipt, RunReceiptLedger } from "./run-receipt";
 
-export interface CleanRunAction {
+interface CleanRunAction {
   label: string;
   isActive: boolean;
   onPress: () => void;

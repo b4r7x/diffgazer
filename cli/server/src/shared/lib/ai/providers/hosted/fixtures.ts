@@ -18,6 +18,19 @@ export type HostedConformanceSkipReason =
   | "credential-missing"
   | "model-unresolved";
 
+/** What a mock case actually observed; the pass/fail verdict belongs to the test. */
+export type HostedMockObservation = Readonly<{
+  requirement: HostedConformanceRequirement;
+  caseId: string;
+  productId: HostedApiProductId;
+  outcome: TerminalOutcome;
+  attemptCount: number;
+  findingsCount: number;
+  /** Endpoint origin the adapter actually requested, observed from the injected fetch. */
+  requestedEndpoint: string | undefined;
+  source: "mock";
+}>;
+
 export type HostedConformanceObservation = Readonly<{
   status: "passed" | "failed" | "skipped";
   requirement: HostedConformanceRequirement;
@@ -188,7 +201,9 @@ export function isHostedLiveProbeOptIn(): boolean {
   return process.env[HOSTED_LIVE_PROBE_OPT_IN_ENV] === "1";
 }
 
-export function canProduceReadyEvidence(observation: HostedConformanceObservation): boolean {
+export function canProduceReadyEvidence(
+  observation: HostedConformanceObservation | HostedMockObservation,
+): boolean {
   if (observation.source === "mock") return false;
   if (observation.status === "skipped") return false;
   return observation.status === "passed" && observation.outcome === "completed";
@@ -218,7 +233,7 @@ export function resolveHostedLiveSkipReason(
 
 export async function runHostedMockConformanceCase(
   testCase: HostedMockConformanceCase,
-): Promise<HostedConformanceObservation> {
+): Promise<HostedMockObservation> {
   const evidenceKey = evidenceKeyFor(testCase.productId, testCase.evidencePatch ?? {});
   const controller = new AbortController();
   if (testCase.aborted) controller.abort();
@@ -243,29 +258,13 @@ export async function runHostedMockConformanceCase(
     context: hostedContext(observingFetch),
   });
 
-  const findingsCount = result.result.issues.length;
-  const findingsAsExpected =
-    testCase.expectedOutcome === "completed"
-      ? testCase.expectedFindingsCount === undefined ||
-        findingsCount === testCase.expectedFindingsCount
-      : findingsCount === 0;
-
-  const passed =
-    result.receipt.outcome === testCase.expectedOutcome &&
-    findingsAsExpected &&
-    (testCase.expectedAttemptCount === undefined ||
-      result.receipt.attemptCount === testCase.expectedAttemptCount) &&
-    (testCase.expectedEndpoint === undefined ||
-      requestedEndpoint === new URL(testCase.expectedEndpoint).origin);
-
   return {
-    status: passed ? "passed" : "failed",
     requirement: testCase.requirement,
     caseId: testCase.id,
     productId: testCase.productId,
     outcome: result.receipt.outcome,
     attemptCount: result.receipt.attemptCount,
-    findingsCount,
+    findingsCount: result.result.issues.length,
     requestedEndpoint,
     source: "mock",
   };

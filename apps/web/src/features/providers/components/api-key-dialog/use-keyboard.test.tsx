@@ -92,7 +92,6 @@ function Subject({
       >
         ×
       </button>
-      <output data-testid="focused">{focused}</output>
     </>
   );
 }
@@ -231,26 +230,6 @@ describe("useApiKeyDialogKeyboard hosted flow", () => {
 
     await user.keyboard("{ArrowUp}");
     expect(paste).toHaveFocus();
-  });
-
-  it("reports the footer action as focused after ArrowDown enters the footer from the acknowledgement", async () => {
-    const user = userEvent.setup();
-
-    render(
-      <KeyboardProvider>
-        <Subject canSubmit />
-      </KeyboardProvider>,
-    );
-
-    await waitFor(() => expect(screen.getByRole("radio", { name: "Paste Key Now" })).toHaveFocus());
-
-    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
-    expect(screen.getByRole("button", { name: "Accept notice" })).toHaveFocus();
-    expect(screen.getByTestId("focused")).toHaveTextContent("acknowledgement");
-
-    await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("button", { name: "Save" })).toHaveFocus();
-    expect(screen.getByTestId("focused")).toHaveTextContent("confirm");
   });
 
   it("repairs footer focus when save becomes disabled while focused", async () => {

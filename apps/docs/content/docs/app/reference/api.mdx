@@ -128,7 +128,7 @@ Saved reviews persist an immutable execution snapshot, normalized usage when ava
 | `schema-failed` | **Schema Validation Failed** — output did not match the review schema. |
 | `budget-exhausted` | **Budget Exhausted** — a configured budget limit was reached. |
 
-Non-completed outcomes do not carry findings. Receipts and usage summaries are client-safe and contain no secrets.
+Findings are carried by `completed`, `budget-exhausted`, and `cancelled` outcomes only — a cancelled run keeps the partial findings its lenses produced before it was stopped, written by the cancel and shutdown drain. Every other failed outcome carries none. Receipts and usage summaries are client-safe and contain no secrets.
 
 ## Shutdown
 

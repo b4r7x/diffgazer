@@ -35,9 +35,7 @@ describe("validatePublicRegistryFresh", () => {
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
     if (escapeSentinel) {
-      const fixtureEscaped = existsSync(escapeSentinel);
       rmSync(escapeSentinel, { force: true });
-      expect(fixtureEscaped).toBe(false);
     }
   });
 

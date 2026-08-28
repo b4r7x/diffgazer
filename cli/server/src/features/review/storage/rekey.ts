@@ -2,6 +2,7 @@ import { unlink } from "node:fs/promises";
 import type { ReviewMetadata, SavedReview } from "@diffgazer/core/schemas/review";
 import { isNodeError } from "../../../shared/lib/fs.js";
 import { log } from "../../../shared/lib/log.js";
+import { scanReviewsForCertification } from "./list-page.js";
 import { withReviewLock } from "./lock.js";
 import {
   clearCursorIndexMarker,
@@ -17,7 +18,6 @@ import {
   withProjectIndexLock,
   writeCursorProjectIndex,
 } from "./project-index.js";
-import { scanReviewsForCertification } from "./reviews.js";
 import { reviewStore } from "./store.js";
 
 // Move a project's stored review history to a new path (repo dir moved/renamed):

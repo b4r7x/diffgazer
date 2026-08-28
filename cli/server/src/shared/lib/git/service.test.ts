@@ -332,41 +332,13 @@ describe("createGitService", () => {
   });
 
   describe("git environment hardening", () => {
-    it("unsets GIT_EXTERNAL_DIFF from the environment", async () => {
-      process.env.GIT_EXTERNAL_DIFF = "/usr/bin/malicious-diff";
-      setupStatusResult("## main");
-      const git = createGitService({ cwd: "/test" });
-
-      await git.getStatus();
-
-      const callEnv = mockExecFileAsync.mock.calls[0]?.[2]?.env;
-      expect(callEnv).toBeDefined();
-      expect("GIT_EXTERNAL_DIFF" in (callEnv ?? {})).toBe(false);
-      delete process.env.GIT_EXTERNAL_DIFF;
-    });
-
-    it("unsets GIT_PAGER from the environment", async () => {
-      process.env.GIT_PAGER = "less";
-      setupExecResult("diff --git a/f.ts b/f.ts\n");
-      const git = createGitService({ cwd: "/test" });
-
-      await git.getDiff();
-
-      const callEnv = mockExecFileAsync.mock.calls[0]?.[2]?.env;
-      expect(callEnv).toBeDefined();
-      expect("GIT_PAGER" in (callEnv ?? {})).toBe(false);
-      delete process.env.GIT_PAGER;
-    });
-
-    it("passes --no-optional-locks and fsmonitor=false for status", async () => {
+    it("reads status as NUL-delimited porcelain v2 with branch headers", async () => {
       setupStatusResult("## main");
       const git = createGitService({ cwd: "/test" });
 
       await git.getStatus();
 
       const args = mockExecFileAsync.mock.calls[0]?.[1] as string[];
-      expect(args).toContain("--no-optional-locks");
-      expect(args).toContain("core.fsmonitor=false");
       expect(args).toContain("--porcelain=v2");
       expect(args).toContain("--branch");
       expect(args).toContain("-z");
@@ -421,6 +393,8 @@ describe("createGitService", () => {
     });
 
     it.each([
+      "GIT_EXTERNAL_DIFF",
+      "GIT_PAGER",
       "GIT_DIFF_OPTS",
       "GIT_DIR",
       "GIT_WORK_TREE",

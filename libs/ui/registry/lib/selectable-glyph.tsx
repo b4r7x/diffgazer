@@ -13,9 +13,7 @@ export interface SelectableGlyphOptions {
  * Splits a bracket glyph into dim chrome and a full-contrast mark.
  *
  * `[` and `]` are chrome and go muted; the inner character is content and keeps the surrounding
- * tone at bold weight. Before this, a checked `[x]` rendered at exactly the label's color and
- * weight, so a marked row differed from an unmarked one by one character shape at zero contrast
- * delta — the eye had to read every bracket in a checklist instead of jumping to the marked ones.
+ * tone at bold weight.
  *
  * The mark carries no color of its own: it inherits whatever the indicator or stepper glyph
  * variant resolved (checked, status, disabled), so this adds hierarchy without adding a token.

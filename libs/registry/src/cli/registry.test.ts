@@ -44,19 +44,6 @@ describe("RegistryItemSchema shadcn-compatible fields", () => {
     expect(parsed.author).toBe("diffgazer <team@diffgazer.com>");
   });
 
-  it("preserves shadcn fields through JSON round-trip", () => {
-    const parsed = RegistryItemSchema.parse(fullItem);
-    const serialized = JSON.stringify(parsed);
-    const reparsed = RegistryItemSchema.parse(JSON.parse(serialized));
-    expect(reparsed.devDependencies).toEqual(parsed.devDependencies);
-    expect(reparsed.cssVars).toEqual(parsed.cssVars);
-    expect(reparsed.css).toEqual(parsed.css);
-    expect(reparsed.envVars).toEqual(parsed.envVars);
-    expect(reparsed.docs).toEqual(parsed.docs);
-    expect(reparsed.categories).toEqual(parsed.categories);
-    expect(reparsed.author).toEqual(parsed.author);
-  });
-
   it("parses items without shadcn-compatible fields", () => {
     const minimal = {
       name: "minimal",

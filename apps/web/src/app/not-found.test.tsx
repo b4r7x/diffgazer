@@ -44,8 +44,9 @@ describe("NotFoundPage", () => {
   it("names the status art 404 and keeps the glyph rows out of the accessible name", () => {
     renderNotFound();
 
-    const art = screen.getByRole("img", { name: "404" });
+    const art = screen.getByRole("img");
     expect(art).toHaveAccessibleName("404");
+    expect(art.querySelector("pre")).toHaveAttribute("aria-hidden", "true");
   });
 
   it("reads the attempted route back as a labelled readout", () => {

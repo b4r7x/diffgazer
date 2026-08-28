@@ -108,7 +108,8 @@ describe("getHistoryWarningTargetIds", () => {
 });
 
 describe("buildHistoryWarningMessages", () => {
-  it.each([20, 50])("keeps every warning target in web copy for %d ids", (count) => {
+  it("keeps every warning target in web copy", () => {
+    const count = 50;
     const ids = Array.from(
       { length: count },
       (_, index) => `${index.toString(16).padStart(8, "0")}-1111-4111-8111-111111111111`,

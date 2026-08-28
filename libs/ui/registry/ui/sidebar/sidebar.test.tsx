@@ -459,6 +459,5 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: "One" })).toHaveFocus();
     await user.tab();
     expect(screen.getByRole("link", { name: "Three" })).toHaveFocus();
-    expect(screen.getByRole("link", { name: "Two" })).not.toHaveFocus();
   });
 });

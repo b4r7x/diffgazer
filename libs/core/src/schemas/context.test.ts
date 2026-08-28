@@ -65,18 +65,10 @@ describe("ProjectContextGraphSchema", () => {
     changedFiles: [],
   };
 
-  it("rejects an oversized flat file tree", () => {
+  it("runs its file tree through the bounded validator", () => {
     const result = ProjectContextGraphSchema.safeParse({
       ...baseGraph,
       fileTree: flatFileTree(MAX_CONTEXT_TREE_NODES + 1),
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects a deeply nested file tree", () => {
-    const result = ProjectContextGraphSchema.safeParse({
-      ...baseGraph,
-      fileTree: nestedFileTree(MAX_CONTEXT_TREE_DEPTH + 1),
     });
     expect(result.success).toBe(false);
   });

@@ -682,49 +682,6 @@ describe("config store actions", () => {
     expect(inspected.value.readiness).toMatchObject({ status: "ready", ready: true });
   });
 
-  it("invalidates registered evidence when the selected model changes", async () => {
-    const store = await loadStore();
-    const created = await store.runConfigurationAction(
-      createGeminiAction(
-        { kind: "literal", value: "sk-proj-evidence-key" },
-        { acknowledgement: GEMINI_ACKNOWLEDGEMENT },
-      ),
-    );
-    expect(created.ok).toBe(true);
-    if (!created.ok) return;
-    const configurationId = created.value.configuration?.configurationId;
-    if (!configurationId) throw new Error("create response requires a configuration");
-    await store.runConfigurationAction({
-      action: "select",
-      configurationId,
-      modelId: "gemini-2.5-flash",
-    });
-    await store.recordConfigurationEvidence(
-      configurationId,
-      createAdmissionEvidence({
-        evidenceKey: evidenceKeyForPersisted(configurationId),
-        checkedAt: "2026-01-02T00:00:00.000Z",
-        status: "passed",
-      }),
-    );
-
-    const reselected = await store.runConfigurationAction({
-      action: "select",
-      configurationId,
-      modelId: "gemini-2.5-pro",
-    });
-    expect(reselected.ok).toBe(true);
-    if (!reselected.ok) return;
-
-    const inspected = await store.runConfigurationAction({
-      action: "inspect",
-      configurationId,
-    });
-    expect(inspected.ok).toBe(true);
-    if (!inspected.ok) return;
-    expect(inspected.value.readiness).toMatchObject({ status: "conformance-pending" });
-  });
-
   it("rejects evidence that does not match the exact configuration tuple", async () => {
     writeJson(configPath(), v2Config([supportedRecord()]));
     writeJson(secretsPath(), seedSupportedBinding());

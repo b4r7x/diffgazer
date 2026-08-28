@@ -307,26 +307,24 @@ describe("Select accessibility", () => {
 });
 
 describe("Select respects prefers-reduced-motion", () => {
-  // jsdom evaluates no @media and does not compile the Tailwind open-state rules,
-  // so animationName is not observable. The fixture lifts the reduced-motion
-  // :root overrides out of @media; the assertions read the resolved variables.
+  // The full --ui-content-* token table is asserted once, in floating-panel.test.tsx.
+  // What Select owns is opening its dropdown on a resolved side, so only that
+  // side's token is read here. jsdom compiles no Tailwind, so animationName stays
+  // unobservable.
   applyReducedMotionFixture();
 
-  it("neutralizes dropdown enter and exit motion when the listbox is open", async () => {
+  it("opens the dropdown onto the fade-only enter motion for the side it resolved", async () => {
     renderSelect({ defaultOpen: true, variant: "default" });
 
     const listbox = await screen.findByRole("listbox");
+    expect(listbox).toHaveAttribute("data-state", "open");
+    const side = listbox.getAttribute("data-side");
+    expect(side).toBeTruthy();
+
     const root = listbox.ownerDocument.documentElement;
     const resolved = (name: string) => getComputedStyle(root).getPropertyValue(name).trim();
-
-    expect(resolved("--ui-content-enter-from-top")).toMatch(/^ui-content-enter-fade\b/);
-    expect(resolved("--ui-content-enter-from-bottom")).toMatch(/^ui-content-enter-fade\b/);
-    expect(resolved("--ui-content-enter-from-left")).toMatch(/^ui-content-enter-fade\b/);
-    expect(resolved("--ui-content-enter-from-right")).toMatch(/^ui-content-enter-fade\b/);
-    expect(resolved("--ui-content-exit-to-top")).toMatch(/^ui-content-exit-fade\b/);
-    expect(resolved("--ui-content-exit-to-bottom")).toMatch(/^ui-content-exit-fade\b/);
-    expect(resolved("--ui-content-exit-to-left")).toMatch(/^ui-content-exit-fade\b/);
-    expect(resolved("--ui-content-exit-to-right")).toMatch(/^ui-content-exit-fade\b/);
+    expect(resolved(`--ui-content-enter-from-${side}`)).toMatch(/^ui-content-enter-fade\b/);
+    expect(resolved(`--ui-content-exit-to-${side}`)).toMatch(/^ui-content-exit-fade\b/);
   });
 });
 

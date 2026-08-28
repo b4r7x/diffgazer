@@ -71,22 +71,17 @@ function declarationsOf(relativePath) {
   );
 }
 
-test("both sanitizer copies carry the same escape grammar", () => {
+test("both sanitizer copies still declare the whole escape grammar", () => {
   const core = declarationsOf(CORE_SANITIZER);
   const registry = declarationsOf(REGISTRY_SANITIZER);
 
   for (const name of SHARED_DECLARATIONS) {
     assert.ok(core.has(name), `${CORE_SANITIZER}: \`${name}\` is gone.`);
     assert.ok(registry.has(name), `${REGISTRY_SANITIZER}: \`${name}\` is gone.`);
-    assert.equal(
-      registry.get(name),
-      core.get(name),
-      `\`${name}\` differs between ${CORE_SANITIZER} and ${REGISTRY_SANITIZER}. These copies strip terminal escapes (CWE-150); apply the change to both.`,
-    );
   }
 });
 
-test("the registry copy declares nothing core lacks", () => {
+test("the registry copy declares nothing core lacks, and every shared body matches", () => {
   const core = declarationsOf(CORE_SANITIZER);
 
   for (const [name, body] of declarationsOf(REGISTRY_SANITIZER)) {

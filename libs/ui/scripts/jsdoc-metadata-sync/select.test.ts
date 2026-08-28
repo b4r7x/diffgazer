@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { selectDoc } from "../../registry/component-docs/select.js";
-import { getInterfaceMember, jsDocDescription, readSource } from "./support.js";
+import { getInterfaceMember, jsDocDescription, readSource } from "./jsdoc-source.js";
 
 type PropMetadata = {
   type?: string;

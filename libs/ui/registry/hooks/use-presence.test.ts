@@ -1,7 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { type AnimationEvent, createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { presenceDoc } from "../hook-docs/presence";
 import { usePresence } from "./use-presence";
 
 function animationEvent(
@@ -55,13 +54,6 @@ describe("usePresence", () => {
   it("starts present when open=true", () => {
     const { result } = renderHook(() => usePresence({ open: true }));
     expect(result.current.present).toBe(true);
-  });
-
-  it("documents that present remains true while exiting, matching the public return reference", () => {
-    if (!presenceDoc.returns) throw new Error("Presence return documentation is missing");
-    const exitingProperty = presenceDoc.returns.properties?.find(({ name }) => name === "exiting");
-    expect(exitingProperty?.description).toContain("while present remains true");
-    expect(exitingProperty?.description).toContain("Both become false after");
   });
 
   it("transitions hidden→open when open changes to true", () => {

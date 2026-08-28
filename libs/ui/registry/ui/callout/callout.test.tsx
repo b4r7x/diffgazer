@@ -139,16 +139,8 @@ describe("Callout live-region semantics", () => {
     expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 
-  it("applies role=status for tone='info' when live", () => {
-    render(
-      <Callout tone="info" live>
-        <Callout.Content>FYI</Callout.Content>
-      </Callout>,
-    );
-    expect(screen.getByRole("status")).toBeInTheDocument();
-  });
-
   it.each([
+    "info",
     "warning",
     "success",
   ] as const)("applies role=status for tone='%s' when live", (tone) => {

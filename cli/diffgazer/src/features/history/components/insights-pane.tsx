@@ -75,7 +75,9 @@ export function HistoryInsightsPane({
   });
   const visibleIssues = issues.slice(issueWindow.start, issueWindow.end);
   // A run that passed has nothing to break down: five zero bars claim a chart
-  // where the pass statement and the run's facts are the whole story.
+  // where the pass statement and the run's facts are the whole story. The
+  // statement itself waits for the detail, which carries the floor that
+  // qualifies it.
   const cleanRun =
     metadata &&
     isCleanRun({
@@ -157,7 +159,7 @@ export function HistoryInsightsPane({
         </Box>
       ) : (
         <ScrollArea height={scrollHeight} isActive={isActive}>
-          {cleanRun ? (
+          {cleanRun && detailState.status === "ready" ? (
             <Box marginTop={1} flexDirection="column">
               <Text color={tokens.success} bold>
                 {`✔ ${buildCleanRunStatement({ droppedBelowThreshold, minSeverity })}`}

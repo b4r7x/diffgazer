@@ -204,12 +204,15 @@ describe("configuration lease authority", () => {
     await expect(drainPromise).resolves.toBe("drained");
   });
 
-  it("skips sessions registered under a different project key", () => {
+  it("cancels only the sessions registered under the requested project key", () => {
+    const cancelMatching = vi.fn();
     const cancelOther = vi.fn();
-    registerSession("session-a", { projectKey: "/other", cancel: cancelOther });
+    registerSession("session-a", { projectKey: "/project", cancel: cancelMatching });
+    registerSession("session-b", { projectKey: "/other", cancel: cancelOther });
 
     cancelSessionsForProject("/project");
 
+    expect(cancelMatching).toHaveBeenCalled();
     expect(cancelOther).not.toHaveBeenCalled();
   });
 });

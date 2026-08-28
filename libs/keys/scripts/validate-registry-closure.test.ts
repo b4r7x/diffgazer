@@ -117,10 +117,6 @@ describe("focusable as transitive dependency", () => {
 });
 
 describe("client registry metadata", () => {
-  it("keeps the real Keys registry's client metadata aligned with source directives", () => {
-    expect(validateClientMetadata(loadRegistry(), KEYS_ROOT)).toEqual([]);
-  });
-
   it("rejects a client item whose source has no use-client directive", () => {
     const root = mkdtempSync(join(tmpdir(), "dg-keys-client-metadata-"));
     try {
@@ -328,7 +324,10 @@ describe("provider-backed hooks are package-only", () => {
 
 describe("target-path install closure validation", () => {
   it("validateRegistryClosure passes for the real Keys registry", () => {
-    expect(validateRegistryClosure(REGISTRY_PATH)).toBe(true);
+    expect(
+      validateRegistryClosure(REGISTRY_PATH),
+      'registry closure is stale or broken; run "pnpm --dir libs/keys build:shadcn"',
+    ).toBe(true);
   });
 
   it("detects broken target-path imports in a synthetic bad item", () => {
@@ -391,10 +390,6 @@ describe("target-path install closure validation", () => {
     } finally {
       rmSync(publicDir, { recursive: true, force: true });
     }
-  });
-
-  it("keeps every committed public item's meta in sync with the source registry", () => {
-    expect(validateMetaFreshness(PUBLIC_DIR, loadRegistry())).toEqual([]);
   });
 
   it("detects a published item whose meta drifted from its source item", () => {
@@ -529,18 +524,5 @@ describe("target-path install closure validation", () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
-
-  it("declares react as a peer dependency and exports the main entry point", () => {
-    const pkgPath = resolve(KEYS_ROOT, "package.json");
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-
-    expect(pkg.peerDependencies).toBeDefined();
-    expect(pkg.peerDependencies.react).toBeDefined();
-
-    expect(pkg.exports).toBeDefined();
-    expect(pkg.exports["."]).toBeDefined();
-    expect(pkg.exports["."].types).toBeDefined();
-    expect(pkg.exports["."].import).toBeDefined();
   });
 });

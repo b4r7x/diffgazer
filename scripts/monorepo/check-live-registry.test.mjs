@@ -176,6 +176,16 @@ test("publicRegistryIsGated ignores documentation prose before the exported decl
     );
 
     assert.equal(await publicRegistryIsGated(metadataFilePath), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("--print-disposition reports an ungated metadata file as a run", () => {
+  const dir = mkdtempSync(join(tmpdir(), "live-registry-disposition-"));
+  try {
+    const metadataFilePath = join(dir, "metadata.ts");
+    writeFileSync(metadataFilePath, "export const PUBLISH_GATED = false;\n");
 
     const child = spawnSync(
       process.execPath,
@@ -190,8 +200,19 @@ test("publicRegistryIsGated ignores documentation prose before the exported decl
         env: { ...process.env, DIFFGAZER_LIVE_REGISTRY_REQUIRED: "0" },
       },
     );
+
     assert.equal(child.status, 0, child.stderr);
     assert.equal(child.stdout.trim(), "run");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("an ungated run accepts an origin whose bodies match the committed registry", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "live-registry-fresh-"));
+  try {
+    const metadataFilePath = join(dir, "metadata.ts");
+    writeFileSync(metadataFilePath, "export const PUBLISH_GATED = false;\n");
 
     let networkCalls = 0;
     const expectedBodies = new Map(

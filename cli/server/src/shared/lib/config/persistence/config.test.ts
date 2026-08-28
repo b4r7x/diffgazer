@@ -294,9 +294,24 @@ describe("V2 configuration persistence", () => {
     expect(input).toEqual(original);
   });
 
-  it("classifies duplicate nested data under a unique top-level V2 marker as invalid V2", () => {
-    const raw =
-      '{"schemaVersion":2,"settings":{"secret-sentinel":"first","secret\\u002dsentinel":"second"},"selectedConfigurationId":null,"configurations":[]}';
+  it.each([
+    [
+      "duplicate nested data under a unique marker",
+      '{"schemaVersion":2,"settings":{"secret-sentinel":"first","secret\\u002dsentinel":"second"},"selectedConfigurationId":null,"configurations":[]}',
+    ],
+    [
+      "a unique marker before another duplicated root property",
+      '{"schemaVersion":2,"settings":{"secret-sentinel":1},"s\\u0065ttings":{},"selectedConfigurationId":null,"configurations":[]}',
+    ],
+    [
+      "a unique marker after another duplicated root property",
+      '{"settings":{"secret-sentinel":1},"s\\u0065ttings":{},"schemaVersion":2,"selectedConfigurationId":null,"configurations":[]}',
+    ],
+    [
+      "an escaped unique marker",
+      '{"schema\\u0056ersion":2,"settings":{"secret-sentinel":1,"secret\\u002dsentinel":2},"selectedConfigurationId":null,"configurations":[]}',
+    ],
+  ])("classifies %s as invalid V2 without leaking the document", (_label, raw) => {
     const input = encoder.encode(raw);
     const original = new Uint8Array(input);
 
@@ -308,36 +323,6 @@ describe("V2 configuration persistence", () => {
     expect(errorText).not.toContain("secret-sentinel");
     expect(errorText).not.toContain("duplicate");
     expect(errorText).not.toContain("position");
-  });
-
-  it("keeps a unique top-level V2 marker when another root property is duplicated", () => {
-    const raw =
-      '{"schemaVersion":2,"settings":{"secret-sentinel":1},"s\\u0065ttings":{},"selectedConfigurationId":null,"configurations":[]}';
-
-    const cause = captureError(() => decodeConfigFile(encoder.encode(raw)));
-
-    expect(cause.message).toBe("Configuration file contains invalid JSON");
-    expect(collectStrings(cause).join("\n")).not.toContain("secret-sentinel");
-  });
-
-  it("finds a unique top-level V2 marker after another duplicate root property", () => {
-    const raw =
-      '{"settings":{"secret-sentinel":1},"s\\u0065ttings":{},"schemaVersion":2,"selectedConfigurationId":null,"configurations":[]}';
-
-    const cause = captureError(() => decodeConfigFile(encoder.encode(raw)));
-
-    expect(cause.message).toBe("Configuration file contains invalid JSON");
-    expect(collectStrings(cause).join("\n")).not.toContain("secret-sentinel");
-  });
-
-  it("recognizes an escaped unique top-level V2 marker", () => {
-    const raw =
-      '{"schema\\u0056ersion":2,"settings":{"secret-sentinel":1,"secret\\u002dsentinel":2},"selectedConfigurationId":null,"configurations":[]}';
-
-    const cause = captureError(() => decodeConfigFile(encoder.encode(raw)));
-
-    expect(cause.message).toBe("Configuration file contains invalid JSON");
-    expect(collectStrings(cause).join("\n")).not.toContain("secret-sentinel");
   });
 
   it("keeps a unique top-level V2 marker when later JSON is unclosed", () => {

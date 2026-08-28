@@ -358,6 +358,30 @@ describe("HistoryInsightsPane (TUI)", () => {
     expect(frame).not.toContain("Passed — no issues found");
   });
 
+  test("holds the pass statement until the floor that qualifies it has loaded", () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <HistoryInsightsPane
+          runId="#a1b2"
+          metadata={makeReviewMetadata({
+            issueCount: 0,
+            fileCount: 12,
+            lenses: ["correctness", "security", "tests"],
+            durationMs: 8200,
+          })}
+          detailState={{ status: "loading" }}
+          severityCounts={{ blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }}
+          issues={[]}
+          duration="8s"
+        />
+      </CliThemeProvider>,
+    );
+
+    const frame = lastFrame() ?? "";
+    expect(frame).not.toContain("Passed — no issues found");
+    expect(frame).toContain("Loading review details...");
+  });
+
   test("keeps the breakdown for a zero-issue run whose lens failed", () => {
     const { lastFrame } = render(
       <CliThemeProvider initialTheme="dark">

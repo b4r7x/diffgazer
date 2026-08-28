@@ -135,8 +135,7 @@ export function ReviewCompleteSummary({
               </p>
             )}
             {/* The same ledger the clean state is made of: scope, lenses, model
-                and elapsed, with the run id torn off below the stitch. It is what
-                used to be a bare fact line and a loose duration row. */}
+                and elapsed, with the run id torn off below the stitch. */}
             <RunReceipt rows={receiptRows} stub={receiptStub} className="mt-4" />
           </Panel.Content>
         </Panel>

@@ -370,7 +370,14 @@ describe("per-issue salvage", () => {
     expect(result.result.issues).toEqual([validIssue]);
     // Salvage is the last tier: the corrective retry ran first.
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(reportDiagnostic).not.toHaveBeenCalled();
+    // The kept findings are not a whole lens: the user is told what the answer cost.
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "output-salvaged",
+        retryable: false,
+        safeMessage: expect.stringContaining("1 finding(s) were salvaged and 1 candidate(s)"),
+      }),
+    );
     expect(vi.mocked(log)).toHaveBeenCalledWith(
       "warn",
       "hosted_salvaged_output",
@@ -395,7 +402,13 @@ describe("per-issue salvage", () => {
     expect(result.receipt.outcome).toBe("completed");
     expect(result.result.issues).toEqual([validIssue]);
     expect(fetch).toHaveBeenCalledTimes(1);
-    expect(reportDiagnostic).not.toHaveBeenCalled();
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "output-salvaged",
+        retryable: false,
+        safeMessage: expect.stringContaining("incomplete"),
+      }),
+    );
   });
 
   it("salvages for a strict-json-schema product too", async () => {
@@ -584,8 +597,15 @@ describe("wall-time deadline diagnostic", () => {
 
     expect(result.receipt.outcome).toBe("timed-out");
     expect(fetch).toHaveBeenCalledTimes(2);
+    // Node's fetch caps a silent response at its default headers/body timeout
+    // regardless of the dispatch wall, and reports it as a generic
+    // "fetch failed" whose cause carries the undici code the diagnostic names.
     expect(reportDiagnostic).toHaveBeenCalledWith(
-      expect.objectContaining({ code: "timed-out", retryable: true }),
+      expect.objectContaining({
+        code: "timed-out",
+        retryable: true,
+        safeMessage: expect.stringContaining("UND_ERR_HEADERS_TIMEOUT"),
+      }),
     );
   });
 
@@ -602,31 +622,6 @@ describe("wall-time deadline diagnostic", () => {
 
     expect(result.receipt.outcome).toBe("timed-out");
     expect(fetch).toHaveBeenCalledTimes(1);
-  });
-
-  it("reports the runtime's own response timeout as timed out, not a bare transport failure", async () => {
-    // Node's fetch caps a silent response at its default headers/body timeout
-    // regardless of the dispatch wall, and reports it as a generic
-    // "fetch failed" whose cause carries the undici code.
-    const fetch = vi.fn(async () => {
-      throw new TypeError("fetch failed", {
-        cause: Object.assign(new Error("Headers Timeout Error"), {
-          code: "UND_ERR_HEADERS_TIMEOUT",
-        }),
-      });
-    }) as unknown as FetchFn;
-    const reportDiagnostic = vi.fn();
-
-    const result = await executeHostedReview({ ...trapRequest("zai", fetch), reportDiagnostic });
-
-    expect(result.receipt.outcome).toBe("timed-out");
-    expect(reportDiagnostic).toHaveBeenCalledWith(
-      expect.objectContaining({
-        code: "timed-out",
-        retryable: true,
-        safeMessage: expect.stringContaining("UND_ERR_HEADERS_TIMEOUT"),
-      }),
-    );
   });
 });
 

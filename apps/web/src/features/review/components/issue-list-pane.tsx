@@ -60,10 +60,7 @@ export function IssueListPane({
   const counts = calculateSeverityCounts(allIssues);
   // A run that found nothing never reaches this screen, so the only emptiness
   // the list can show is a filter that matched none of the issues it holds.
-  const emptyMessage =
-    filter.activeFilter.size > 0
-      ? "No issues match the current filters — press [Reset] to clear"
-      : "No issues match filter";
+  const emptyMessage = "No issues match the current filters — press [Reset] to clear";
 
   return (
     <Panel

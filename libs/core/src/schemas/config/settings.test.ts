@@ -27,15 +27,12 @@ describe("SettingsConfigSchema", () => {
     });
 
     expect(settings.defaultLenses).toEqual(["security", "correctness", "tests"]);
-  });
-
-  it("canonicalizes duplicate-heavy input before applying the finite lens set", () => {
-    const settings = SettingsConfigSchema.parse({
-      ...baseSettings,
-      defaultLenses: Array.from({ length: 20 }, () => "correctness"),
-    });
-
-    expect(settings.defaultLenses).toEqual(["correctness"]);
+    expect(
+      SettingsConfigSchema.parse({
+        ...baseSettings,
+        defaultLenses: Array.from({ length: 20 }, () => "correctness"),
+      }).defaultLenses,
+    ).toEqual(["correctness"]);
   });
 
   it("refuses the engine-only synthesis lens as a persisted default", () => {

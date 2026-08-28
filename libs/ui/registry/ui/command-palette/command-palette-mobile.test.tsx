@@ -82,3 +82,60 @@ describe("CommandPalette Esc close control", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 });
+
+describe("CommandPaletteContent mobile viewport contract", () => {
+  function ModalPalette({ open, modal = true }: { open: boolean; modal?: boolean }) {
+    return (
+      <CommandPalette open={open}>
+        <CommandPalette.Content modal={modal} label="Mobile palette">
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>
+    );
+  }
+
+  // Public styling contract exception: the dvh unit IS the fix and jsdom cannot
+  // compute viewport-relative layout.
+  it("caps the surface against the dynamic viewport height", () => {
+    render(<ModalPalette open />);
+    const content = screen.getByRole("dialog", { name: "Mobile palette" });
+    expect(content).toHaveClass("max-h-[80dvh]");
+    expect(content).not.toHaveClass("max-h-[80vh]");
+  });
+
+  it("locks background scrolling while the modal palette is open and releases it on close", () => {
+    document.body.style.overflow = "auto";
+    const { rerender } = render(<ModalPalette open />);
+
+    expect(document.body).toHaveAttribute("data-scroll-locked");
+    expect(document.body.style.overflow).toBe("hidden");
+
+    rerender(<ModalPalette open={false} />);
+
+    expect(document.body).not.toHaveAttribute("data-scroll-locked");
+    expect(document.body.style.overflow).toBe("auto");
+  });
+
+  it("never locks background scrolling for an inline palette", () => {
+    document.body.style.overflow = "auto";
+    render(<ModalPalette open modal={false} />);
+
+    expect(document.body).not.toHaveAttribute("data-scroll-locked");
+    expect(document.body.style.overflow).toBe("auto");
+  });
+
+  // Public styling contract exception: overscroll containment is not observable
+  // in jsdom.
+  it("contains overscroll inside the results scroller", () => {
+    render(<ModalPalette open />);
+    expect(screen.getByRole("listbox")).toHaveClass("overscroll-contain");
+  });
+
+  it("leaves the search input font-size to CSS so touch densities can floor it at 16px", () => {
+    render(<ModalPalette open />);
+    expect(screen.getByRole("combobox").style.fontSize).toBe("");
+  });
+});

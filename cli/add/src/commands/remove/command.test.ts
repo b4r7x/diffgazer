@@ -14,9 +14,9 @@ import { withFileLock } from "@diffgazer/registry/cli";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { ResolvedConfig } from "../../context.js";
 import { ctx } from "../../context.js";
+import { styledConfig } from "../../testing/css-fixture.js";
 import { MUTATION_LOCK_RELATIVE } from "../../utils/mutation-lock.js";
 import { addCommand } from "../add/command.js";
-import { styledConfig } from "../../testing/css-fixture.js";
 import { removeCommand, resolveRemoveTransactionFiles } from "./command.js";
 
 vi.mock("@clack/prompts", async (importOriginal) => {

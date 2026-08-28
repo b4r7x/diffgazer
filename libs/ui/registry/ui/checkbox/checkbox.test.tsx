@@ -52,8 +52,7 @@ describe("Checkbox", () => {
 
   it("draws every glyph in the same three-character column", () => {
     // The glyph column is the alignment contract for any form that mixes checkboxes and radios:
-    // in a monospace column a wider glyph moves the label, so a five-character radio bullet used
-    // to push radio labels 2ch right of the checkbox labels next to them.
+    // in a monospace column a wider glyph moves the label off the shared checkbox/radio column.
     for (const variant of ["x", "bullet"] as const) {
       for (const checked of [true, false, "indeterminate"] as const) {
         const { unmount } = render(<Checkbox checked={checked} variant={variant} label="Accept" />);

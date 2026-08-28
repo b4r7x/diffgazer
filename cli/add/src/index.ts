@@ -3,7 +3,7 @@
 import { createCli, runCli } from "@diffgazer/registry/cli";
 import { addCommand } from "./commands/add/command.js";
 import { diffCommand } from "./commands/diff.js";
-import { initCommand } from "./commands/init.js";
+import { initCommand } from "./commands/init/command.js";
 import { listCommand } from "./commands/list.js";
 import { removeCommand } from "./commands/remove/command.js";
 import { VERSION } from "./context.js";

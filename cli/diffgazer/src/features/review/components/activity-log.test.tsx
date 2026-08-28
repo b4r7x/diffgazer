@@ -205,62 +205,39 @@ describe("ActivityLog (TUI)", () => {
 
     expect(columns).toHaveLength(3);
     expect(new Set(columns).size).toBe(1);
-    // The agent is named once, by its tag badge; the duplicate name column is gone.
+    // The agent is named once, by its tag badge.
     expect(frame).not.toContain("[Guardian]");
   });
-  test("never renders per-agent heartbeats, so real transitions stay in the viewport", async () => {
-    const heartbeats: ReviewEvent[] = Array.from({ length: 20 }, (_, index) => ({
-      type: "agent_progress",
+
+  // Twenty heartbeats against a three-row viewport: were any of them rendered,
+  // the real transition would be pushed out of the frame.
+  const HEARTBEAT_EVENTS: ReviewEvent[] = [
+    {
+      type: "agent_thinking",
       agent: "detective",
-      progress: 50,
-      message: "Waiting for model response",
-      timestamp: `2024-01-01T00:00:${String(index).padStart(2, "0")}Z`,
-    }));
-    const events: ReviewEvent[] = [
-      {
-        type: "agent_thinking",
-        agent: "detective",
-        timestamp: "2024-01-01T00:00:00Z",
-        thought: "REAL-transition",
-      },
-      ...heartbeats,
-    ];
-
-    const { lastFrame } = render(
-      <CliThemeProvider initialTheme="dark">
-        <Box width={80}>
-          <ActivityLog events={events} height={3} />
-        </Box>
-      </CliThemeProvider>,
-    );
-    await flush();
-
-    const frame = stripAnsi(lastFrame() ?? "");
-    expect(frame).toContain("REAL-transition");
-    expect(frame).not.toContain("Waiting for model response");
-  });
-
-  test("keeps heartbeats out of the log under an active agent filter", async () => {
-    const events: ReviewEvent[] = [
-      {
-        type: "agent_thinking",
-        agent: "detective",
-        timestamp: "2024-01-01T00:00:00Z",
-        thought: "REAL-transition",
-      },
-      {
+      timestamp: "2024-01-01T00:00:00Z",
+      thought: "REAL-transition",
+    },
+    ...Array.from(
+      { length: 20 },
+      (_, index): ReviewEvent => ({
         type: "agent_progress",
         agent: "detective",
         progress: 50,
         message: "Waiting for model response",
-        timestamp: "2024-01-01T00:00:01Z",
-      },
-    ];
+        timestamp: `2024-01-01T00:00:${String(index).padStart(2, "0")}Z`,
+      }),
+    ),
+  ];
 
+  test.each([
+    undefined,
+    "Detective",
+  ])("never renders per-agent heartbeats (sourceFilter %s)", async (sourceFilter) => {
     const { lastFrame } = render(
       <CliThemeProvider initialTheme="dark">
         <Box width={80}>
-          <ActivityLog events={events} height={3} sourceFilter="Detective" />
+          <ActivityLog events={HEARTBEAT_EVENTS} height={3} sourceFilter={sourceFilter} />
         </Box>
       </CliThemeProvider>,
     );

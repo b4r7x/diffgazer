@@ -52,20 +52,12 @@ describe("StatusBar", () => {
     expect(screen.getByRole("link", { name: "Keys" })).not.toHaveAttribute("aria-current");
   });
 
-  it("marks no nav link active on the root path", () => {
-    routerBoundary.pathname = "/";
-    renderStatusBar();
-
-    expect(screen.getByRole("link", { name: "Docs" })).not.toHaveAttribute("aria-current");
-    expect(screen.getByRole("link", { name: "Components" })).not.toHaveAttribute("aria-current");
-    expect(screen.getByRole("link", { name: "Keys" })).not.toHaveAttribute("aria-current");
-  });
-
   it.each([
+    "/",
     "/uix",
     "/application",
     "/keysmith",
-  ])("marks no library link active on the root 404 path %s", (pathname) => {
+  ])("marks no library link active on %s", (pathname) => {
     routerBoundary.pathname = pathname;
     renderStatusBar();
 

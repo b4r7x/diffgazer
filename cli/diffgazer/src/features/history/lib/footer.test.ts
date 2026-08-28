@@ -23,12 +23,6 @@ describe("getHistoryFooter", () => {
     expect(footer.rightShortcuts).toEqual([{ key: "Esc", label: "Back" }]);
   });
 
-  test("insights zone exposes Open Review", () => {
-    const footer = getHistoryFooter("insights");
-    expect(footer.shortcuts.some((s) => s.label === "Open Review")).toBeTruthy();
-    expect(footer.rightShortcuts).toEqual([{ key: "Esc", label: "Back" }]);
-  });
-
   test("warning detail owns scrolling and exposes both close keys", () => {
     const footer = getHistoryFooter("warning-detail");
 
@@ -37,15 +31,6 @@ describe("getHistoryFooter", () => {
       { key: "w", label: "Hide IDs" },
     ]);
     expect(footer.rightShortcuts).toEqual([{ key: "Esc", label: "Close IDs" }]);
-  });
-
-  test("insights detail errors expose retry without replacing the pane shortcuts", () => {
-    const footer = getHistoryFooter("insights", "error");
-
-    expect(footer.shortcuts).toContainEqual({ key: "r", label: "Retry Details" });
-    expect(footer.shortcuts).not.toContainEqual({ key: "Enter", label: "Open Review" });
-    expect(footer.shortcuts).toContainEqual({ key: "Tab", label: "Switch Pane" });
-    expect(footer.rightShortcuts).toEqual([{ key: "Esc", label: "Back" }]);
   });
 
   test("ignores review-detail status outside Insights", () => {
@@ -75,6 +60,8 @@ describe("getHistoryFooter", () => {
 
     expect(footer.shortcuts.some((shortcut) => shortcut.key === "Enter")).toBe(canOpen);
     expect(footer.shortcuts.some((shortcut) => shortcut.key === "r")).toBe(canRetry);
+    expect(footer.shortcuts).toContainEqual({ key: "Tab", label: "Switch Pane" });
+    expect(footer.rightShortcuts).toEqual([{ key: "Esc", label: "Back" }]);
   });
 
   test("every zone exposes / search except search itself", () => {

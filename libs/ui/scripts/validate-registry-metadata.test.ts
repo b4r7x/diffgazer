@@ -189,6 +189,16 @@ function createKeysMissingPeerFixture() {
   });
 }
 
+function seedClientMetaFixture() {
+  const root = createKeysRequiredPeerFixture();
+  const registryPath = resolve(root, "registry/registry.json");
+  const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
+  const helper = registry.items.find((item: { name?: string }) => item.name === "helper");
+  helper.meta = { client: true };
+  writeJson(registryPath, registry);
+  return root;
+}
+
 function runValidator(root: string) {
   const result = spawnSync(process.execPath, ["--import", "tsx", scriptPath], {
     encoding: "utf8",
@@ -202,12 +212,11 @@ function writeExample(root: string, name: string, source: string) {
   writeFile(resolve(root, `registry/examples/widget/${name}`), source);
 }
 
-function writePublicItem(root: string, content: string, hidden = false) {
+function writePublicItem(root: string, content: string) {
   mkdirSync(resolve(root, "public/r"), { recursive: true });
   writeJson(resolve(root, "public/r/keys-leak.json"), {
     name: "keys-leak",
     type: "registry:ui",
-    ...(hidden ? { meta: { hidden: true } } : {}),
     files: [{ path: "keys-leak.ts", content }],
   });
 }
@@ -244,12 +253,7 @@ describe("validate-registry-metadata", () => {
   });
 
   it('rejects meta.client true when no source file starts with "use client"', () => {
-    const root = createKeysRequiredPeerFixture();
-    const registryPath = resolve(root, "registry/registry.json");
-    const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
-    const helper = registry.items.find((item: { name?: string }) => item.name === "helper");
-    helper.meta = { client: true };
-    writeJson(registryPath, registry);
+    const root = seedClientMetaFixture();
 
     const { status, stderr } = runValidator(root);
 
@@ -260,12 +264,7 @@ describe("validate-registry-metadata", () => {
   });
 
   it("accepts a client directive after a BOM and license comments", () => {
-    const root = createKeysRequiredPeerFixture();
-    const registryPath = resolve(root, "registry/registry.json");
-    const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
-    const helper = registry.items.find((item: { name?: string }) => item.name === "helper");
-    helper.meta = { client: true };
-    writeJson(registryPath, registry);
+    const root = seedClientMetaFixture();
     writeFile(
       resolve(root, "registry/lib/helper.ts"),
       "﻿/* license */\n// generated\n'use client';\nexport const helper = 'helper';\n",
@@ -276,56 +275,21 @@ describe("validate-registry-metadata", () => {
     expect(status).toBe(0);
   });
 
-  it("rejects an expression that only prefixes the client directive", () => {
-    const root = createKeysRequiredPeerFixture();
-    const registryPath = resolve(root, "registry/registry.json");
-    const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
-    const helper = registry.items.find((item: { name?: string }) => item.name === "helper");
-    helper.meta = { client: true };
-    writeJson(registryPath, registry);
+  it.each([
+    { label: "an expression that only prefixes the directive", source: '"use client".toString();' },
+    {
+      label: "a member expression continued after a line break",
+      source: '"use client"\n.toString();',
+    },
+    {
+      label: "a binary in expression continued after a line break",
+      source: '"use client"\nin obj;',
+    },
+  ])("rejects $label", ({ source }) => {
+    const root = seedClientMetaFixture();
     writeFile(
       resolve(root, "registry/lib/helper.ts"),
-      "\"use client\".toString();\nexport const helper = 'helper';\n",
-    );
-
-    const { status, stderr } = runValidator(root);
-
-    expect(status).not.toBe(0);
-    expect(stderr).toContain(
-      'helper declares meta.client but no source file starts with "use client"',
-    );
-  });
-
-  it("rejects a member expression continued after a line break", () => {
-    const root = createKeysRequiredPeerFixture();
-    const registryPath = resolve(root, "registry/registry.json");
-    const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
-    const helper = registry.items.find((item: { name?: string }) => item.name === "helper");
-    helper.meta = { client: true };
-    writeJson(registryPath, registry);
-    writeFile(
-      resolve(root, "registry/lib/helper.ts"),
-      "\"use client\"\n.toString();\nexport const helper = 'helper';\n",
-    );
-
-    const { status, stderr } = runValidator(root);
-
-    expect(status).not.toBe(0);
-    expect(stderr).toContain(
-      'helper declares meta.client but no source file starts with "use client"',
-    );
-  });
-
-  it("rejects a binary in expression continued after a line break", () => {
-    const root = createKeysRequiredPeerFixture();
-    const registryPath = resolve(root, "registry/registry.json");
-    const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
-    const helper = registry.items.find((item: { name?: string }) => item.name === "helper");
-    helper.meta = { client: true };
-    writeJson(registryPath, registry);
-    writeFile(
-      resolve(root, "registry/lib/helper.ts"),
-      "\"use client\"\nin obj;\nexport const helper = 'helper';\n",
+      `${source}\nexport const helper = 'helper';\n`,
     );
 
     const { status, stderr } = runValidator(root);
@@ -350,56 +314,12 @@ describe("validate-registry-metadata", () => {
     expect(stderr).toContain('package.json peerDependencies must declare "@diffgazer/keys"');
   });
 
-  it("rejects every unsupported root keys import form in public copy content", () => {
-    const root = createKeysRequiredPeerFixture();
-    writePublicItem(
-      root,
-      [
-        'import keys from "@diffgazer/keys";',
-        'import * as namespace from "@diffgazer/keys";',
-        'import "@diffgazer/keys";',
-        'export * from "@diffgazer/keys";',
-        'const dynamic = import("@diffgazer/keys");',
-        'const required = require("@diffgazer/keys");',
-      ].join("\n"),
-    );
-
-    const { status, stderr } = runValidator(root);
-
-    expect(status).not.toBe(0);
-    // The reported forms follow the order the specifiers appear in the file above,
-    // not the ImportSpecifierKind union order: extractImportSpecifiers returns
-    // matches in source order and the validator dedupes them first-occurrence first.
-    expect(stderr).toContain(
-      "unsupported @diffgazer/keys root import (import, side-effect, export, dynamic-import, require)",
-    );
-  });
-
-  it("rejects unsupported root keys imports in hidden public dependencies", () => {
-    const root = createKeysRequiredPeerFixture();
-    writePublicItem(
-      root,
-      [
-        'import keys from "@diffgazer/keys";',
-        'const dynamic = import("@diffgazer/keys");',
-        'const required = require("@diffgazer/keys");',
-      ].join("\n"),
-      true,
-    );
-
-    const { status, stderr } = runValidator(root);
-
-    expect(status).not.toBe(0);
-    expect(stderr).toContain(
-      "unsupported @diffgazer/keys root import (import, dynamic-import, require)",
-    );
-  });
-
   it("rejects a declared dependency that no file in the item imports", () => {
     const root = createKeysRequiredPeerFixture();
     const registryPath = resolve(root, "registry/registry.json");
     const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
-    registry.items[1].dependencies = ["class-variance-authority"];
+    const helper = registry.items.find((item: { name?: string }) => item.name === "helper");
+    helper.dependencies = ["class-variance-authority"];
     writeJson(registryPath, registry);
 
     const { status, stderr } = runValidator(root);
@@ -429,7 +349,8 @@ describe("validate-registry-metadata", () => {
     const root = createKeysRequiredPeerFixture();
     const registryPath = resolve(root, "registry/registry.json");
     const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
-    registry.items[1].dependencies = ["class-variance-authority"];
+    const helper = registry.items.find((item: { name?: string }) => item.name === "helper");
+    helper.dependencies = ["class-variance-authority"];
     writeJson(registryPath, registry);
     writeFile(
       resolve(root, "registry/lib/helper.ts"),
@@ -442,147 +363,27 @@ describe("validate-registry-metadata", () => {
     expect(stdout).toContain("[ui] registry metadata OK");
   });
 
-  it("rejects a keys package import in any example, not just the ones with a sibling test", () => {
+  it("surfaces the example and shipped-source scanners through the validator", () => {
     const root = createKeysRequiredPeerFixture();
     writeExample(root, "widget-keyboard.tsx", 'import { useNavigation } from "@diffgazer/keys";\n');
-    writeExample(root, "widget-scoped.tsx", 'import { useKey } from "@diffgazer/keys/use-key";\n');
-
-    const { status, stderr } = runValidator(root);
-
-    expect(status).not.toBe(0);
-    expect(stderr).toContain("registry/examples/widget/widget-keyboard.tsx");
-    expect(stderr).toContain("registry/examples/widget/widget-scoped.tsx");
-    expect(stderr).toContain('imports "@diffgazer/keys"');
-  });
-
-  it.each([
-    { token: "process.env", source: 'export const dev = process.env.NODE_ENV !== "production";\n' },
-    { token: "import.meta.env", source: "export const dev = import.meta.env.DEV;\n" },
-  ])("rejects $token in shipped registry source", ({ token, source }) => {
-    const root = createKeysRequiredPeerFixture();
-    writeFile(resolve(root, "registry/lib/helper.ts"), source);
-
-    const { status, stderr } = runValidator(root);
-
-    expect(status).not.toBe(0);
-    expect(stderr).toContain(`registry/lib/helper.ts reads ${token}`);
-  });
-
-  it.each([
-    {
-      crossing: "a render-function child",
-      source: [
-        'import { Widget } from "@/components/ui/widget";',
-        "export default function Example() {",
-        "  return <Widget>{(props) => <a {...props}>go</a>}</Widget>;",
-        "}",
-        "",
-      ].join("\n"),
-    },
-    {
-      crossing: "a JSX event handler",
-      source: [
-        "export default function Example() {",
-        '  return <button type="button" onClick={() => undefined} />;',
-        "}",
-        "",
-      ].join("\n"),
-    },
-  ])('rejects an example that passes $crossing without "use client"', ({ crossing, source }) => {
-    const root = createKeysRequiredPeerFixture();
-    writeExample(root, "widget-boundary.tsx", source);
+    writeExample(
+      root,
+      "widget-boundary.tsx",
+      'export default function Example() {\n  return <button type="button" onClick={() => undefined} />;\n}\n',
+    );
+    writeFile(resolve(root, "registry/lib/helper.ts"), "export const dev = import.meta.env.DEV;\n");
+    writePublicItem(root, 'import keys from "@diffgazer/keys";\n');
 
     const { status, stderr } = runValidator(root);
 
     expect(status).not.toBe(0);
     expect(stderr).toContain(
-      `registry/examples/widget/widget-boundary.tsx passes ${crossing} but omits "use client"`,
+      'registry/examples/widget/widget-keyboard.tsx imports "@diffgazer/keys"',
     );
-  });
-
-  it("accepts a boundary-crossing example that declares the directive", () => {
-    const root = createKeysRequiredPeerFixture();
-    writeExample(
-      root,
-      "widget-boundary.tsx",
-      [
-        '"use client";',
-        "",
-        "export default function Example() {",
-        '  return <button type="button" onClick={() => undefined} />;',
-        "}",
-        "",
-      ].join("\n"),
+    expect(stderr).toContain(
+      'registry/examples/widget/widget-boundary.tsx passes a JSX event handler but omits "use client"',
     );
-
-    const { status, stdout } = runValidator(root);
-
-    expect(status).toBe(0);
-    expect(stdout).toContain("[ui] registry metadata OK");
-  });
-
-  it("accepts an example whose only JSX handler lives inside a code sample string", () => {
-    const root = createKeysRequiredPeerFixture();
-    writeExample(
-      root,
-      "widget-sample.tsx",
-      [
-        "const sample = `export function Counter() {",
-        "  return <button onClick={() => setCount(count + 1)}>{count}</button>",
-        "}`;",
-        "",
-        "export default function Example() {",
-        "  return <pre>{sample}</pre>;",
-        "}",
-        "",
-      ].join("\n"),
-    );
-
-    const { status, stdout } = runValidator(root);
-
-    expect(status).toBe(0);
-    expect(stdout).toContain("[ui] registry metadata OK");
-  });
-
-  it("rejects a build-env read in an example as well as in component source", () => {
-    const root = createKeysRequiredPeerFixture();
-    writeExample(root, "widget-env.tsx", "export const mode = process.env.NODE_ENV;\n");
-
-    const { status, stderr } = runValidator(root);
-
-    expect(status).not.toBe(0);
-    expect(stderr).toContain("registry/examples/widget/widget-env.tsx reads process.env, NODE_ENV");
-  });
-
-  it("accepts examples that import the copied local hook path", () => {
-    const root = createKeysRequiredPeerFixture();
-    writeExample(
-      root,
-      "widget-keyboard.tsx",
-      'import { useNavigation } from "@/hooks/use-navigation";\nexport default useNavigation;\n',
-    );
-
-    const { status, stdout } = runValidator(root);
-
-    expect(status).toBe(0);
-    expect(stdout).toContain("[ui] registry metadata OK");
-  });
-
-  it("detects executable template root imports without flagging raw template text", () => {
-    const root = createKeysRequiredPeerFixture();
-    writePublicItem(
-      root,
-      [
-        "const directDynamic = import(`@diffgazer/keys`);",
-        "const directRequired = require(`@diffgazer/keys`);",
-        `const interpolated = \`\${import("@diffgazer/keys")}:\${require("@diffgazer/keys")}\`;`,
-        'const raw = `import("@diffgazer/keys"); require("@diffgazer/keys");`;',
-      ].join("\n"),
-    );
-
-    const { status, stderr } = runValidator(root);
-
-    expect(status).not.toBe(0);
-    expect(stderr).toContain("unsupported @diffgazer/keys root import (dynamic-import, require)");
+    expect(stderr).toContain("registry/lib/helper.ts reads import.meta.env");
+    expect(stderr).toContain("unsupported @diffgazer/keys root import");
   });
 });

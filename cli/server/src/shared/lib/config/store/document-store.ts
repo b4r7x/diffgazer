@@ -1,28 +1,18 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import {
   atomicWriteFile,
   quarantineCorruptFile,
-  readJsonFileSyncSafe,
   removeFileSync,
   removeOrphanTempSiblings,
-  writeJsonFile,
 } from "../../fs.js";
 import { log } from "../../log.js";
 import { getGlobalConfigPath, getGlobalSecretsPath } from "../../paths.js";
-import { type AdmissionEvidence, AdmissionEvidenceSchema } from "../admission-evidence.js";
+import type { AdmissionEvidence } from "../admission-evidence.js";
 import { budgetForSelectedModel } from "../budget-ceiling.js";
-import {
-  decodeConfigFile,
-  isV1ConfigMigrationFailure,
-  serializeConfigV2,
-} from "../persistence/config.js";
+import { serializeConfigV2 } from "../persistence/config.js";
 import {
   decodeSecretsV1,
-  decodeSecretsV2,
-  SECRETS_SCHEMA_VERSION_V2,
   type SecretsDocumentV2,
   serializeSecretsV2,
 } from "../persistence/secrets.js";
@@ -49,54 +39,24 @@ import type {
   SecretsStorageError,
   SecretsStorageErrorCode,
 } from "../types.js";
+import { configurationActionFailure, V1_MIGRATION_FAILED_MESSAGE } from "../types.js";
+import { upgradeV1Documents } from "../v1-upgrade.js";
 import {
-  CONFIG_SCHEMA_VERSION_V2,
-  configurationActionFailure,
-  V1_MIGRATION_FAILED_MESSAGE,
-} from "../types.js";
-import { preflightV1Documents, upgradeV1Documents } from "../v1-upgrade.js";
+  type CapturedDocuments,
+  createDocumentCapture,
+  EMPTY_CONFIG_DOCUMENT,
+  EMPTY_SECRETS_DOCUMENT,
+} from "./document-capture.js";
+import {
+  captureDocumentFingerprints,
+  type DocumentFingerprints,
+  sameDocumentFingerprints,
+} from "./document-fingerprint.js";
+import { createEvidenceStore } from "./evidence-store.js";
 
 const textEncoder = new TextEncoder();
-const fatalTextDecoder = new TextDecoder("utf-8", { fatal: true });
-
-const EMPTY_CONFIG_DOCUMENT: ConfigDocumentV2 = {
-  schemaVersion: CONFIG_SCHEMA_VERSION_V2,
-  settings: {},
-  selectedConfigurationId: null,
-  configurations: [],
-};
-
-const EMPTY_SECRETS_DOCUMENT: SecretsDocumentV2 = {
-  schemaVersion: SECRETS_SCHEMA_VERSION_V2,
-  bindings: [],
-};
 
 const encodeJsonBytes = (value: unknown): Uint8Array => textEncoder.encode(JSON.stringify(value));
-
-const loadFileBytes = (filePath: string): Uint8Array | null => {
-  try {
-    return new Uint8Array(readFileSync(filePath));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    throw error;
-  }
-};
-
-const isDefiniteV1MigrationFailure = (cause: unknown, configBytes: Uint8Array | null): boolean => {
-  if (!isV1ConfigMigrationFailure(cause) || configBytes === null) return false;
-  try {
-    JSON.parse(fatalTextDecoder.decode(configBytes));
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-export const evidenceReferenceFor = (configurationId: string): string =>
-  `evidence-${configurationId}`;
-
-const evidencePath = (evidenceReference: string): string =>
-  join(dirname(getGlobalConfigPath()), "evidence", `${evidenceReference}.json`);
 
 export interface DocumentStore {
   getConfigDocument(): ConfigDocumentV2;
@@ -112,6 +72,13 @@ export interface DocumentStore {
   persistFailure(cause: unknown): ConfigurationActionError;
   writeDocuments(): Promise<Result<void, ConfigurationActionError>>;
   runMutation<T>(
+    operation: () => Promise<Result<T, ConfigurationActionError>>,
+  ): Promise<Result<T, ConfigurationActionError>>;
+  /**
+   * May serve a consistent in-memory snapshot; otherwise behaves exactly like
+   * `runMutation`. See `documentsMatchDisk` for when memory is allowed to answer.
+   */
+  runRead<T>(
     operation: () => Promise<Result<T, ConfigurationActionError>>,
   ): Promise<Result<T, ConfigurationActionError>>;
   readCurrentState(): Promise<Result<CurrentDocumentState, ConfigurationActionError>>;
@@ -134,22 +101,6 @@ type DocumentStoreDependencies = Readonly<{
   budget: ConfigurationBudgetLimits;
 }>;
 
-type CapturedDocuments =
-  | Readonly<{
-      kind: "v1";
-      config: ConfigDocumentV1;
-      secrets: SecretsState;
-      configBytes: Uint8Array;
-      secretsBytes: Uint8Array | null;
-    }>
-  | Readonly<{
-      kind: "v2";
-      config: ConfigDocumentV2;
-      secrets: SecretsDocumentV2;
-      configBytes: Uint8Array | null;
-      secretsBytes: Uint8Array | null;
-    }>;
-
 export function createDocumentStore(deps: DocumentStoreDependencies): DocumentStore {
   const mutex = createMutex();
   let startupError: SecretsStorageError | null = null;
@@ -159,10 +110,11 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
 
   let configDocument: ConfigDocumentV2 = EMPTY_CONFIG_DOCUMENT;
   let secretsDocument: SecretsDocumentV2 = EMPTY_SECRETS_DOCUMENT;
-  const evidenceByConfiguration = new Map<string, AdmissionEvidence>();
+  const evidence = createEvidenceStore();
   let configBytesBeforeMutation: Uint8Array | null = null;
   let secretsBytesBeforeMutation: Uint8Array | null = null;
   let pendingV1Config: ConfigDocumentV1 | null = null;
+  let loadedFingerprints: DocumentFingerprints | null = null;
 
   const latchV1MigrationFailure = (): SecretsStorageError => {
     if (upgradeError?.code === "SECRETS_MIGRATION_FAILED") return upgradeError;
@@ -173,132 +125,17 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
     return upgradeError;
   };
 
+  const capture = createDocumentCapture({
+    budget: deps.budget,
+    latch: {
+      latched: () => (upgradeError?.code === "SECRETS_MIGRATION_FAILED" ? upgradeError : null),
+      latch: latchV1MigrationFailure,
+    },
+  });
+
   const clearV1MigrationFailure = (): void => {
     if (upgradeError?.code === "SECRETS_MIGRATION_FAILED") upgradeError = null;
     if (loadError?.code === "SECRETS_MIGRATION_FAILED") loadError = null;
-  };
-
-  const inspectDominantV1State = (): Result<CapturedDocuments | null, ConfigurationActionError> => {
-    const latchedFailure = upgradeError?.code === "SECRETS_MIGRATION_FAILED" ? upgradeError : null;
-    let configBytes: Uint8Array | null;
-    try {
-      configBytes = loadFileBytes(getGlobalConfigPath());
-    } catch {
-      return latchedFailure ? err(latchedFailure) : ok(null);
-    }
-
-    if (configBytes === null) {
-      if (latchedFailure) return err(latchedFailure);
-      try {
-        const secretsBytes = loadFileBytes(getGlobalSecretsPath());
-        return ok({
-          kind: "v2",
-          config: EMPTY_CONFIG_DOCUMENT,
-          secrets: secretsBytes === null ? EMPTY_SECRETS_DOCUMENT : decodeSecretsV2(secretsBytes),
-          configBytes,
-          secretsBytes,
-        });
-      } catch {
-        return ok(null);
-      }
-    }
-
-    let decoded: ConfigDocumentV1 | ConfigDocumentV2;
-    try {
-      decoded = decodeConfigFile(configBytes);
-    } catch (cause) {
-      if (isDefiniteV1MigrationFailure(cause, configBytes)) {
-        return err(latchV1MigrationFailure());
-      }
-      return latchedFailure ? err(latchedFailure) : ok(null);
-    }
-
-    if (decoded.schemaVersion === CONFIG_SCHEMA_VERSION_V2) {
-      try {
-        const secretsBytes = loadFileBytes(getGlobalSecretsPath());
-        const captured = {
-          kind: "v2",
-          config: decoded,
-          secrets: secretsBytes === null ? EMPTY_SECRETS_DOCUMENT : decodeSecretsV2(secretsBytes),
-          configBytes,
-          secretsBytes,
-        } satisfies CapturedDocuments;
-        return ok(captured);
-      } catch {
-        return latchedFailure ? err(latchedFailure) : ok(null);
-      }
-    }
-
-    try {
-      const secretsBytes = loadFileBytes(getGlobalSecretsPath());
-      const secrets = secretsBytes === null ? { providers: {} } : decodeSecretsV1(secretsBytes);
-      const preflight = preflightV1Documents(decoded, secrets, { budget: deps.budget });
-      if (!preflight.ok || latchedFailure) return err(latchV1MigrationFailure());
-      return ok({ kind: "v1", config: decoded, secrets, configBytes, secretsBytes });
-    } catch {
-      return err(latchV1MigrationFailure());
-    }
-  };
-
-  const decodeRecoverySnapshot = (
-    snapshot: DocumentRecoveryRecord["previousConfig"],
-  ): Uint8Array | null =>
-    snapshot.base64 === null ? null : new Uint8Array(Buffer.from(snapshot.base64, "base64"));
-
-  const inspectRecoveryRecordV1State = (
-    record: DocumentRecoveryRecord,
-  ): Result<void, SecretsStorageError> => {
-    const configBytes = decodeRecoverySnapshot(record.previousConfig);
-    const latchedFailure = upgradeError?.code === "SECRETS_MIGRATION_FAILED" ? upgradeError : null;
-    if (configBytes === null) return latchedFailure ? err(latchedFailure) : ok(undefined);
-
-    let decoded: ConfigDocumentV1 | ConfigDocumentV2;
-    try {
-      decoded = decodeConfigFile(configBytes);
-    } catch (cause) {
-      if (isDefiniteV1MigrationFailure(cause, configBytes)) {
-        return err(latchV1MigrationFailure());
-      }
-      return latchedFailure ? err(latchedFailure) : ok(undefined);
-    }
-    if (decoded.schemaVersion === CONFIG_SCHEMA_VERSION_V2) {
-      try {
-        const secretsBytes = decodeRecoverySnapshot(record.previousSecrets);
-        if (secretsBytes !== null) decodeSecretsV2(secretsBytes);
-        return ok(undefined);
-      } catch {
-        return latchedFailure ? err(latchedFailure) : ok(undefined);
-      }
-    }
-    if (latchedFailure) return err(latchedFailure);
-
-    try {
-      const secretsBytes = decodeRecoverySnapshot(record.previousSecrets);
-      const secrets = secretsBytes === null ? { providers: {} } : decodeSecretsV1(secretsBytes);
-      const preflight = preflightV1Documents(decoded, secrets, { budget: deps.budget });
-      return preflight.ok ? ok(undefined) : err(latchV1MigrationFailure());
-    } catch {
-      return err(latchV1MigrationFailure());
-    }
-  };
-
-  const restoreRecovery = async (
-    record: DocumentRecoveryRecord,
-  ): Promise<SecretsStorageError | null> => {
-    const blockedRecovery = inspectRecoveryRecordV1State(record);
-    return blockedRecovery.ok ? restoreDocumentRecovery(record) : blockedRecovery.error;
-  };
-
-  const inspectDominantStoreState = (): Result<
-    CapturedDocuments | null,
-    ConfigurationActionError
-  > => {
-    const current = inspectDominantV1State();
-    if (!current.ok) return current;
-    const recovery = readDocumentRecovery();
-    if (recovery.kind !== "valid") return current;
-    const recoveryState = inspectRecoveryRecordV1State(recovery.record);
-    return recoveryState.ok ? current : recoveryState;
   };
 
   // In memory only. The ceiling is recomputed from the bundled catalog wherever it
@@ -325,47 +162,6 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
     return { ...document, configurations };
   };
 
-  const reloadEvidence = (): void => {
-    evidenceByConfiguration.clear();
-    for (const entry of configDocument.configurations) {
-      if (entry.status !== "supported") continue;
-      const record = entry.record;
-      if (record.evidenceReference !== evidenceReferenceFor(record.configurationId)) continue;
-      const read = readJsonFileSyncSafe<unknown>(evidencePath(record.evidenceReference));
-      const parsed = read.status === "ok" ? AdmissionEvidenceSchema.safeParse(read.data) : null;
-      if (parsed?.success) {
-        evidenceByConfiguration.set(record.configurationId, parsed.data);
-        continue;
-      }
-      // A dropped proof silently downgrades the configuration to unproven, so
-      // say so: the next test re-proves it, but the drop must be observable.
-      // A referenced file that is missing or corrupt is the same drop as a
-      // parse failure — the reference proves evidence was persisted once.
-      log("warn", "config_evidence_load_failed", {
-        code: "CONFIGURATION_UNSUPPORTED",
-        operation: "load-evidence",
-        configurationId: record.configurationId,
-        reason: read.status === "ok" ? "invalid-evidence" : read.status,
-      });
-    }
-  };
-
-  const removeEvidenceFile = (configurationId: string): void => {
-    try {
-      removeFileSync(evidencePath(evidenceReferenceFor(configurationId)));
-    } catch {
-      log("warn", "config_evidence_delete_failed", {
-        code: "PERSIST_FAILED",
-        operation: "delete-evidence",
-      });
-    }
-  };
-
-  const clearConfigurationEvidence = (configurationId: string): void => {
-    evidenceByConfiguration.delete(configurationId);
-    removeEvidenceFile(configurationId);
-  };
-
   const applyCapturedDocuments = (captured: CapturedDocuments): void => {
     configBytesBeforeMutation = captured.configBytes;
     secretsBytesBeforeMutation = captured.secretsBytes;
@@ -380,13 +176,17 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
       clearV1MigrationFailure();
     }
     configDocument = applyBudgetReclamp(configDocument);
-    reloadEvidence();
+    evidence.reload(configDocument.configurations);
   };
 
+  // The fingerprints belong to the caller, which takes them before the bytes are
+  // read: a document replaced mid-read is then remembered as changed, so the next
+  // read revalidates it under the locks instead of trusting memory.
   const loadDocumentsFromDisk = (
+    fingerprints: DocumentFingerprints,
     captured?: CapturedDocuments,
   ): Result<void, ConfigurationActionError> => {
-    const current = captured === undefined ? inspectDominantV1State() : ok(captured);
+    const current = captured === undefined ? capture.inspectDominantV1State() : ok(captured);
     if (!current.ok) {
       log("warn", "config_v1_upgrade_blocked", {
         code: current.error.code,
@@ -407,6 +207,7 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
       );
     }
     applyCapturedDocuments(current.value);
+    loadedFingerprints = fingerprints;
     return ok(undefined);
   };
 
@@ -443,7 +244,7 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
       return ok(undefined);
     }
     if (recovery.kind === "valid") {
-      const blockedRecovery = inspectRecoveryRecordV1State(recovery.record);
+      const blockedRecovery = capture.inspectRecoveryRecordV1State(recovery.record);
       if (!blockedRecovery.ok) return blockedRecovery;
     }
     let recovered: SecretsStorageError | null;
@@ -471,7 +272,7 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
   };
 
   const reloadAfterRollback = (): Result<void, ConfigurationActionError> => {
-    const reloaded = loadDocumentsFromDisk();
+    const reloaded = loadDocumentsFromDisk(captureDocumentFingerprints());
     if (!reloaded.ok) {
       loadError = reloaded.error;
       return reloaded;
@@ -497,7 +298,7 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
         return err(latchRollbackFailure(rollbackMessage));
       }
     }
-    const restored = await restoreRecovery(journal);
+    const restored = await capture.restoreRecovery(journal);
     if (restored) return err(latchRollbackFailure(rollbackMessage));
 
     const reloaded = reloadAfterRollback();
@@ -553,6 +354,7 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
     }
     configBytesBeforeMutation = committedConfigBytes;
     secretsBytesBeforeMutation = committedSecretsBytes;
+    loadedFingerprints = captureDocumentFingerprints();
     return ok(undefined);
   };
 
@@ -594,15 +396,16 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
 
     pendingV1Config = null;
     upgradeError = null;
-    reloadEvidence();
+    evidence.reload(configDocument.configurations);
     log("info", "config_v1_upgraded", { configurations: configDocument.configurations.length });
     return ok(undefined);
   };
 
   const reloadDocuments = async (
+    fingerprints: DocumentFingerprints,
     captured?: CapturedDocuments,
   ): Promise<Result<void, ConfigurationActionError>> => {
-    const loaded = loadDocumentsFromDisk(captured);
+    const loaded = loadDocumentsFromDisk(fingerprints, captured);
     if (!loaded.ok) {
       loadError = loaded.error;
       return loaded;
@@ -614,9 +417,10 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
   const reloadInsideTransaction = async (): Promise<Result<void, ConfigurationActionError>> => {
     const reconciled = await reconcileLockedRecovery();
     if (!reconciled.ok) return reconciled;
-    const current = inspectDominantV1State();
+    const fingerprints = captureDocumentFingerprints();
+    const current = capture.inspectDominantV1State();
     if (!current.ok) return current;
-    return reloadDocuments(current.value ?? undefined);
+    return reloadDocuments(fingerprints, current.value ?? undefined);
   };
 
   const withDocumentLocks = <T>(
@@ -636,7 +440,7 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
   };
 
   const initialization = mutex.run(async () => {
-    const dominantV1 = inspectDominantStoreState();
+    const dominantV1 = capture.inspectDominantStoreState();
     if (!dominantV1.ok) return;
     try {
       const reloaded = await withDocumentLocks(() => {
@@ -677,7 +481,7 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
   ): Promise<Result<T, ConfigurationActionError>> => {
     try {
       return await mutex.run(async () => {
-        const dominantV1 = inspectDominantStoreState();
+        const dominantV1 = capture.inspectDominantStoreState();
         if (!dominantV1.ok) return dominantV1;
         if (rollbackError) return err(rollbackError);
 
@@ -698,12 +502,46 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
     }
   };
 
+  // Only "none of the three documents moved since they were loaded together" serves
+  // memory. Every writer replaces at least one of them under the transaction locks,
+  // so any mismatch sends the read down the locked path, where it waits for that
+  // writer and reloads both documents together — a reader can never pair a new config
+  // with an old secrets file, nor read past a journal only the locked path may
+  // reconcile. The latches mirror what `runMutation` refuses to serve, so the fast
+  // path stays a strict subset of it. The evidence files are the deliberate
+  // exception: they carry no fingerprint and ride on the config record instead,
+  // which every publish (`runRecordEvidence`) and every removal
+  // (`clearConfigurationEvidence`) rewrites in the same locked transaction — so
+  // evidence changed behind the store's back, by something other than a store
+  // write, is the one disk change a fast-path read cannot see. One boundary sits
+  // at the commit itself, which recaptures its fingerprints by stat-ing the files
+  // just after writing them: a writer that ignored the transaction locks and
+  // landed in that window would be adopted as this store's own identity and
+  // masked from then on, so every writer in this repo takes the locks.
+  const documentsMatchDisk = (): boolean => {
+    if (loadedFingerprints === null || pendingV1Config !== null) return false;
+    if (upgradeError ?? rollbackError ?? loadError) return false;
+    return sameDocumentFingerprints(loadedFingerprints, captureDocumentFingerprints());
+  };
+
+  const runRead = async <T>(
+    operation: () => Promise<Result<T, ConfigurationActionError>>,
+  ): Promise<Result<T, ConfigurationActionError>> => {
+    try {
+      const served = await mutex.run(async () => (documentsMatchDisk() ? await operation() : null));
+      if (served !== null) return served;
+    } catch (cause) {
+      return err(persistV2Failure(cause));
+    }
+    return runMutation(operation);
+  };
+
   const readCurrentState = (): Promise<Result<CurrentDocumentState, ConfigurationActionError>> =>
-    runMutation(async () =>
+    runRead(async () =>
       ok({
         config: configDocument,
         secrets: secretsDocument,
-        evidenceByConfiguration: new Map(evidenceByConfiguration),
+        evidenceByConfiguration: evidence.snapshot(),
       }),
     );
 
@@ -716,25 +554,30 @@ export function createDocumentStore(deps: DocumentStoreDependencies): DocumentSt
     setSecretsDocument: (document: SecretsDocumentV2) => {
       secretsDocument = document;
     },
-    getEvidence: (configurationId: string) => evidenceByConfiguration.get(configurationId) ?? null,
-    setEvidence: (configurationId: string, evidence: AdmissionEvidence) => {
-      evidenceByConfiguration.set(configurationId, evidence);
+    getEvidence: (configurationId: string) => evidence.get(configurationId),
+    setEvidence: (configurationId: string, admission: AdmissionEvidence) => {
+      evidence.set(configurationId, admission);
     },
-    clearConfigurationEvidence,
-    reloadEvidence,
+    clearConfigurationEvidence: (configurationId: string) => {
+      evidence.clear(configurationId);
+    },
+    reloadEvidence: () => {
+      evidence.reload(configDocument.configurations);
+    },
     encodeJsonBytes,
-    writeEvidence: (evidenceReference: string, evidence: AdmissionEvidence) =>
-      writeJsonFile(evidencePath(evidenceReference), evidence, 0o600),
+    writeEvidence: (evidenceReference: string, admission: AdmissionEvidence) =>
+      evidence.write(evidenceReference, admission),
     persistFailure: persistV2Failure,
     writeDocuments,
     runMutation,
+    runRead,
     readCurrentState,
     scheduleStartupWork,
     ready: async (): Promise<Result<void, ConfigurationActionError>> => {
       await initialization;
       await Promise.all(startupWork);
       return mutex.run(async () => {
-        const dominantV1 = inspectDominantStoreState();
+        const dominantV1 = capture.inspectDominantStoreState();
         if (!dominantV1.ok) return dominantV1;
         if (rollbackError) return err(rollbackError);
         try {

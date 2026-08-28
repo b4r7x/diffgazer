@@ -143,9 +143,8 @@ describe("useReviewStream", () => {
 
     await waitFor(() => expect(result.current.state.reviewId).toBe("second-review"));
 
-    // Resolve the first (aborted) -- the finally guard should NOT null the
-    // second's controller. Before the fix, this would null the ref and a
-    // subsequent abort would have nothing to abort.
+    // The finally guard of an aborted resume must not null the current
+    // controller.
     await act(async () => {
       firstResume.resolve(ok(fakeResumeResult("first-review")));
       await requireValue(firstPromise, "first resume promise");
@@ -441,43 +440,22 @@ describe("useReviewStream", () => {
     expect(cancelReviewSession).not.toHaveBeenCalled();
   });
 
-  it("returns SESSION_STALE to the caller and retains the terminal error in stream state", async () => {
-    const staleError: StreamReviewError = {
-      code: ReviewErrorCode.SESSION_STALE,
-      message: "stale",
-    };
-    const resumeReviewStream = vi
-      .fn<BoundApi["resumeReviewStream"]>()
-      .mockResolvedValue(err(staleError));
-    const api = createApi({ resumeReviewStream });
-
-    const { result } = renderHook(() => useReviewStream(), {
-      wrapper: createWrapper(api),
-    });
-
-    let returnedResult: Result<void, StreamReviewError> | undefined;
-    await act(async () => {
-      returnedResult = await result.current.resume("stale-review");
-    });
-
-    expect(result.current.state.error).toBe("stale");
-    expect(result.current.state.errorCode).toBe(ReviewErrorCode.SESSION_STALE);
-    expect(result.current.state.isStreaming).toBe(false);
-    const resumeResult = requireValue(returnedResult, "resume result");
-    expect(resumeResult.ok).toBe(false);
-    if (!resumeResult.ok) {
-      expect(resumeResult.error.code).toBe(ReviewErrorCode.SESSION_STALE);
-    }
-  });
-
-  it("preserves structured review error codes on stream errors", async () => {
-    const noDiffError: StreamReviewError = {
+  it.each([
+    { code: ReviewErrorCode.SESSION_STALE, message: "stale", reviewId: "stale-review" },
+    {
       code: ReviewErrorCode.NO_DIFF,
       message: "No staged changes found.",
-    };
+      reviewId: "no-diff-review",
+    },
+  ])("returns $code to the caller and retains the terminal error in stream state", async ({
+    code,
+    message,
+    reviewId,
+  }) => {
+    const streamError: StreamReviewError = { code, message };
     const resumeReviewStream = vi
       .fn<BoundApi["resumeReviewStream"]>()
-      .mockResolvedValue(err(noDiffError));
+      .mockResolvedValue(err(streamError));
     const api = createApi({ resumeReviewStream });
 
     const { result } = renderHook(() => useReviewStream(), {
@@ -486,16 +464,16 @@ describe("useReviewStream", () => {
 
     let returnedResult: Result<void, StreamReviewError> | undefined;
     await act(async () => {
-      returnedResult = await result.current.resume("no-diff-review");
+      returnedResult = await result.current.resume(reviewId);
     });
 
-    expect(result.current.state.error).toBe("No staged changes found.");
-    expect(result.current.state.errorCode).toBe(ReviewErrorCode.NO_DIFF);
+    expect(result.current.state.error).toBe(message);
+    expect(result.current.state.errorCode).toBe(code);
     expect(result.current.state.isStreaming).toBe(false);
     const resumeResult = requireValue(returnedResult, "resume result");
     expect(resumeResult.ok).toBe(false);
     if (!resumeResult.ok) {
-      expect(resumeResult.error.code).toBe(ReviewErrorCode.NO_DIFF);
+      expect(resumeResult.error.code).toBe(code);
     }
   });
 

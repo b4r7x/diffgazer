@@ -423,6 +423,7 @@ describe("hotkey literal validation (types)", () => {
     expectTypeOf<ValidateHotkey<string>>().toEqualTypeOf<string>();
     expectTypeOf<ValidateHotkey<"ctl+s">>().toBeNever();
     expectTypeOf<ValidateHotkey<"cmd+k">>().toBeNever();
-    expectTypeOf(HotkeyValidation).toBeFunction();
+    // Keeps the never-rendered component referenced so its @ts-expect-error lines compile.
+    void HotkeyValidation;
   });
 });

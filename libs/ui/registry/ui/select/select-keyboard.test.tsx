@@ -9,6 +9,7 @@ import {
   PICK_FRUIT,
   renderSelect,
   renderSelectInline,
+  withScrollIntoViewSpy,
 } from "./select-test-utils";
 
 describe("Select keyboard navigation", () => {
@@ -381,20 +382,6 @@ describe("Select keyboard navigation", () => {
     );
   });
 
-  it("opens and highlights the first typeahead match on a printable character from the closed trigger", async () => {
-    const user = userEvent.setup();
-    renderSelect();
-    getSelectTrigger().focus();
-    await user.keyboard("b");
-
-    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true");
-    const listbox = screen.getByRole("listbox");
-    expect(listbox).toHaveAttribute(
-      "aria-activedescendant",
-      screen.getByRole("option", { name: /banana/i }).id,
-    );
-  });
-
   it("extends a typeahead query started on the closed trigger with the next character", async () => {
     const user = userEvent.setup();
     renderSelect({ items: ["Apple", "Banana", "Blueberry"] });
@@ -451,7 +438,7 @@ describe("Select keyboard navigation", () => {
     expect(windowKeys).toEqual([{ key: "b", defaultPrevented: true }]);
   });
 
-  it("claims the printable key that opens a typeahead query from the closed trigger", async () => {
+  it("opens on a printable character from the closed trigger, highlights the first typeahead match, and claims the key", async () => {
     const windowKeys: Array<{ key: string; defaultPrevented: boolean }> = [];
     const recordKey = (event: KeyboardEvent) =>
       windowKeys.push({ key: event.key, defaultPrevented: event.defaultPrevented });
@@ -473,15 +460,9 @@ describe("Select keyboard navigation", () => {
 
   it("scrolls the selected option into view when the dropdown opens", async () => {
     const user = userEvent.setup();
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    const scrolledElements: Element[] = [];
-    const scrollFn = vi.fn(function (this: Element) {
-      scrolledElements.push(this);
-    });
-    Element.prototype.scrollIntoView = scrollFn;
     const items = Array.from({ length: 50 }, (_, index) => `Option ${index + 1}`);
 
-    try {
+    await withScrollIntoViewSpy(async (scrolledElements) => {
       const { unmount } = renderSelect({
         variant: "default",
         defaultValue: "option 45",
@@ -489,26 +470,21 @@ describe("Select keyboard navigation", () => {
       });
 
       await user.click(getSelectTrigger());
-      await waitFor(() => expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" }));
-      expect(scrolledElements).toContain(screen.getByRole("option", { name: "Option 45" }));
+      await waitFor(() =>
+        expect(scrolledElements).toContain(screen.getByRole("option", { name: "Option 45" })),
+      );
 
       unmount();
-      scrollFn.mockClear();
       scrolledElements.length = 0;
 
       renderSelect({ variant: "default", items });
       getSelectTrigger().focus();
       await user.keyboard("{End}");
 
-      await waitFor(() => expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" }));
-      expect(scrolledElements).toContain(screen.getByRole("option", { name: "Option 50" }));
-    } finally {
-      if (originalScrollIntoView) {
-        Element.prototype.scrollIntoView = originalScrollIntoView;
-      } else {
-        Reflect.deleteProperty(Element.prototype, "scrollIntoView");
-      }
-    }
+      await waitFor(() =>
+        expect(scrolledElements).toContain(screen.getByRole("option", { name: "Option 50" })),
+      );
+    });
   });
 
   it.each([
@@ -517,11 +493,7 @@ describe("Select keyboard navigation", () => {
     { label: "default-open card", variant: "card" as const, controlled: false },
     { label: "controlled-open card", variant: "card" as const, controlled: true },
   ])("does not scroll an initially $label into view", async ({ variant, controlled }) => {
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    const scrollFn = vi.fn();
-    Element.prototype.scrollIntoView = scrollFn;
-
-    try {
+    await withScrollIntoViewSpy(async (scrolledElements) => {
       renderSelect({
         variant,
         ...(controlled ? { open: true } : { defaultOpen: true }),
@@ -530,73 +502,45 @@ describe("Select keyboard navigation", () => {
       const listbox = await screen.findByRole("listbox");
       const apple = screen.getByRole("option", { name: "Apple" });
       await waitFor(() => expect(listbox).toHaveAttribute("aria-activedescendant", apple.id));
-      expect(scrollFn).not.toHaveBeenCalled();
-    } finally {
-      if (originalScrollIntoView) {
-        Element.prototype.scrollIntoView = originalScrollIntoView;
-      } else {
-        Reflect.deleteProperty(Element.prototype, "scrollIntoView");
-      }
-    }
+      expect(scrolledElements).toEqual([]);
+    });
   });
 
   it("scrolls the new highlighted option into view on listbox typeahead", async () => {
     const user = userEvent.setup();
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    const scrolledElements: Element[] = [];
-    const scrollFn = vi.fn(function (this: Element) {
-      scrolledElements.push(this);
-    });
-    Element.prototype.scrollIntoView = scrollFn;
 
-    try {
+    await withScrollIntoViewSpy(async (scrolledElements) => {
       renderSelect({ defaultOpen: true });
       const listbox = screen.getByRole("listbox");
       const apple = screen.getByRole("option", { name: /apple/i });
       await waitFor(() => expect(listbox).toHaveAttribute("aria-activedescendant", apple.id));
-      expect(scrollFn).not.toHaveBeenCalled();
+      expect(scrolledElements).toEqual([]);
 
       listbox.focus();
       await user.keyboard("b");
 
-      await waitFor(() => expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" }));
-      expect(scrolledElements).toContain(screen.getByRole("option", { name: /banana/i }));
-    } finally {
-      if (originalScrollIntoView) {
-        Element.prototype.scrollIntoView = originalScrollIntoView;
-      } else {
-        Reflect.deleteProperty(Element.prototype, "scrollIntoView");
-      }
-    }
+      await waitFor(() =>
+        expect(scrolledElements).toContain(screen.getByRole("option", { name: /banana/i })),
+      );
+    });
   });
 
   it("scrolls the new highlighted option into view on searchable arrow navigation", async () => {
     const user = userEvent.setup();
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    const scrolledElements: Element[] = [];
-    const scrollFn = vi.fn(function (this: Element) {
-      scrolledElements.push(this);
-    });
-    Element.prototype.scrollIntoView = scrollFn;
 
-    try {
+    await withScrollIntoViewSpy(async (scrolledElements) => {
       renderSelect({ withSearch: true, defaultOpen: true });
       const searchInput = getSearchInput();
       const apple = screen.getByRole("option", { name: /apple/i });
       await waitFor(() => expect(searchInput).toHaveAttribute("aria-activedescendant", apple.id));
-      expect(scrollFn).not.toHaveBeenCalled();
+      expect(scrolledElements).toEqual([]);
 
       await user.type(searchInput, "{ArrowDown}");
 
-      await waitFor(() => expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" }));
-      expect(scrolledElements).toContain(screen.getByRole("option", { name: /banana/i }));
-    } finally {
-      if (originalScrollIntoView) {
-        Element.prototype.scrollIntoView = originalScrollIntoView;
-      } else {
-        Reflect.deleteProperty(Element.prototype, "scrollIntoView");
-      }
-    }
+      await waitFor(() =>
+        expect(scrolledElements).toContain(screen.getByRole("option", { name: /banana/i })),
+      );
+    });
   });
 
   it("extends the listbox typeahead query with Space without selecting", async () => {

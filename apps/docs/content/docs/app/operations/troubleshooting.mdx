@@ -75,9 +75,9 @@ Open the model picker in **Configure Provider** and choose a listed exact ID.
 
 **Symptom.** A review ends with **Review Cancelled** and the message **The review was cancelled before it completed.**
 
-**Cause.** You cancelled the active session or deleted it while work was still running.
+**Cause.** You cancelled the active session or deleted it while work was still running, or the server ended the session itself — an evicted session, an idle one, or a shutdown.
 
-**Fix.** Start a new review when you are ready. Diffgazer does not resume cancelled runs as completed findings.
+**Fix.** Open history before you rerun. Whatever the run's lenses had already produced is saved with it: the run is written with those partial findings, marked cancelled, and opens from history like any other saved review. A run that had produced nothing when it stopped is not saved at all. Diffgazer never resumes a cancelled run, so start a new review to cover the rest of the diff.
 
 ## Timeout
 

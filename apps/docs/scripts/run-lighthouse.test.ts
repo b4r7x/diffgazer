@@ -3,6 +3,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
+import { getPreRenderPages } from "./generate-sitemap.ts";
 import { LIGHTHOUSE_PAGES, runLhci, verifyDocsPages } from "./run-lighthouse";
 
 const CSP = "default-src 'self'; script-src 'self' 'nonce-test'";
@@ -142,7 +143,12 @@ describe("Docs Lighthouse runner", () => {
     }
   });
 
-  it("targets the two canonical routes", () => {
-    expect(LIGHTHOUSE_PAGES.map(({ path }) => path)).toEqual(["/", "/ui/getting-started"]);
+  it("audits only routes the build actually pre-renders", () => {
+    // A page renamed or dropped from the content tree would otherwise 404 under
+    // LHCI, which fails the release gate long after the rename.
+    const preRendered = new Set(getPreRenderPages().map(({ path }) => path));
+    for (const { path } of LIGHTHOUSE_PAGES) {
+      expect(preRendered, path).toContain(path);
+    }
   });
 });

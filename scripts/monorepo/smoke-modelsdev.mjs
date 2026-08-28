@@ -51,8 +51,13 @@ function assertSnapshotInlinedInBundle(evidence, assertEvidence) {
   }
 
   const readBundle = (path) => readFileSync(path, "utf8");
-  const bundleFiles = collectReachableBundleFiles(DIFFGAZER_ENTRY, readBundle, (file, specifier) =>
-    resolve(dirname(file), specifier),
+  const bundleFiles = collectReachableBundleFiles(
+    DIFFGAZER_ENTRY,
+    readBundle,
+    (file, specifier) => {
+      const candidate = resolve(dirname(file), specifier);
+      return existsSync(candidate) ? candidate : null;
+    },
   );
   assertEvidence(bundleFiles.map(readBundle).join("\n"), evidence);
 

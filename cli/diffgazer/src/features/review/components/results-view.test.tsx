@@ -89,6 +89,24 @@ function renderResults() {
   );
 }
 
+const PARTIAL_LENS_STATS: LensStat[] = [
+  { lensId: "correctness", issueCount: 2, status: "success" },
+  { lensId: "security", issueCount: 0, status: "failed" },
+  { lensId: "performance", issueCount: 0, status: "failed" },
+];
+
+/** One notice prop against the same single-issue baseline, for the layout-floor checks. */
+function renderDisclosure(props: Partial<Parameters<typeof ReviewResultsView>[0]>): string {
+  const { lastFrame } = render(
+    <FooterProvider initialShortcuts={[]}>
+      <CliThemeProvider initialTheme="dark">
+        <ReviewResultsView reviewId="review-1" issues={[makeIssue({ id: "kept-1" })]} {...props} />
+      </CliThemeProvider>
+    </FooterProvider>,
+  );
+  return lastFrame() ?? "";
+}
+
 describe("ReviewResultsView (TUI)", () => {
   test("formats a full review id with the shared compact label", () => {
     const { lastFrame } = render(
@@ -113,96 +131,35 @@ describe("ReviewResultsView (TUI)", () => {
     expect(frame).not.toContain("[medium]");
   });
 
-  test("does not grow the 80x24 results layout for a duplicate disclosure", () => {
+  test.each([
+    {
+      name: "duplicate",
+      props: { droppedDuplicates: 1 },
+      expected: ["1 duplicate issue collapsed across lenses (2 → 1 issue)"],
+    },
+    {
+      name: "partial-run",
+      props: { lensStats: PARTIAL_LENS_STATS },
+      expected: ["Partial run — 2 of 3 lenses failed", "Guardian and Optimizer"],
+    },
+    {
+      name: "terminal-outcome",
+      props: { terminalOutcome: "budget-exhausted" as const },
+      expected: [
+        "Budget Exhausted — The review stopped because a configured budget limit was reached.",
+      ],
+    },
+  ])("names the $name disclosure without growing the 80x24 results layout", ({
+    props,
+    expected,
+  }) => {
     terminalDimensions.columns = 80;
-    const withoutNotice = render(
-      <FooterProvider initialShortcuts={[]}>
-        <CliThemeProvider initialTheme="dark">
-          <ReviewResultsView
-            reviewId="review-1"
-            issues={[makeIssue({ id: "duplicate-survivor" })]}
-          />
-        </CliThemeProvider>
-      </FooterProvider>,
-    ).lastFrame();
+    const withoutNotice = renderDisclosure({});
     cleanup();
-    const { lastFrame } = render(
-      <FooterProvider initialShortcuts={[]}>
-        <CliThemeProvider initialTheme="dark">
-          <ReviewResultsView
-            reviewId="review-1"
-            issues={[makeIssue({ id: "duplicate-survivor" })]}
-            droppedDuplicates={1}
-          />
-        </CliThemeProvider>
-      </FooterProvider>,
-    );
-    const frame = lastFrame() ?? "";
+    const frame = renderDisclosure(props);
 
-    expect(frame).toContain("1 duplicate issue collapsed across lenses (2 → 1 issue)");
-    expect(frame.split("\n")).toHaveLength((withoutNotice ?? "").split("\n").length);
-  });
-
-  test("does not grow the 80x24 results layout for a partial-run disclosure", () => {
-    terminalDimensions.columns = 80;
-    const partialLensStats: LensStat[] = [
-      { lensId: "correctness", issueCount: 2, status: "success" },
-      { lensId: "security", issueCount: 0, status: "failed" },
-      { lensId: "performance", issueCount: 0, status: "failed" },
-    ];
-    const withoutNotice = render(
-      <FooterProvider initialShortcuts={[]}>
-        <CliThemeProvider initialTheme="dark">
-          <ReviewResultsView reviewId="review-1" issues={[makeIssue({ id: "partial-survivor" })]} />
-        </CliThemeProvider>
-      </FooterProvider>,
-    ).lastFrame();
-    cleanup();
-    const { lastFrame } = render(
-      <FooterProvider initialShortcuts={[]}>
-        <CliThemeProvider initialTheme="dark">
-          <ReviewResultsView
-            reviewId="review-1"
-            issues={[makeIssue({ id: "partial-survivor" })]}
-            lensStats={partialLensStats}
-          />
-        </CliThemeProvider>
-      </FooterProvider>,
-    );
-    const frame = lastFrame() ?? "";
-
-    expect(frame).toContain("Partial run — 2 of 3 lenses failed");
-    expect(frame).toContain("Guardian and Optimizer");
-    expect(frame.split("\n")).toHaveLength((withoutNotice ?? "").split("\n").length);
-  });
-
-  test("names the outcome that ended the run without growing the results layout", () => {
-    terminalDimensions.columns = 80;
-    const withoutNotice = render(
-      <FooterProvider initialShortcuts={[]}>
-        <CliThemeProvider initialTheme="dark">
-          <ReviewResultsView reviewId="review-1" issues={[makeIssue({ id: "kept-1" })]} />
-        </CliThemeProvider>
-      </FooterProvider>,
-    ).lastFrame();
-    cleanup();
-    const { lastFrame } = render(
-      <FooterProvider initialShortcuts={[]}>
-        <CliThemeProvider initialTheme="dark">
-          <ReviewResultsView
-            reviewId="review-1"
-            issues={[makeIssue({ id: "kept-1" })]}
-            terminalOutcome="budget-exhausted"
-          />
-        </CliThemeProvider>
-      </FooterProvider>,
-    );
-    const frame = lastFrame() ?? "";
-
-    expect(frame).toContain(
-      "Budget Exhausted — The review stopped because a configured budget limit was reached.",
-    );
-    expect(frame.split("\n")).toHaveLength((withoutNotice ?? "").split("\n").length);
+    for (const line of expected) expect(frame).toContain(line);
+    expect(frame.split("\n")).toHaveLength(withoutNotice.split("\n").length);
   });
 
   test("stays quiet when every lens reported", () => {

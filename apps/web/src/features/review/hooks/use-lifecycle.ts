@@ -135,27 +135,47 @@ export function useReviewLifecycle({
     }
   }, [base.checks.isNoDiffError, activeReviewId, mode, reviewSessionCache]);
 
+  // The run's own receipt, not the current selection: the server writes the
+  // record before it emits `complete`, and a resumed run was never started
+  // against whatever is selected now. A record that carries no receipt reports
+  // no model rather than the wrong one.
+  async function readRunReceipt(reviewId: string | null) {
+    if (!reviewId) return null;
+    // A resumed run may already have cached the record from while it was still
+    // streaming, and that copy carries no receipt yet; staleTime 0 reads the
+    // finished record instead of that one.
+    const response = await queryClient
+      .fetchQuery({ ...reviewQueries.detail(api, reviewId), staleTime: 0 })
+      .catch(() => null);
+    const review = response?.review;
+    return review?.executionSnapshot?.receipt ?? review?.execution?.receipt ?? null;
+  }
+
   function emitComplete() {
     const s = base.stream.state;
     const completedAt = base.completion.completedAt;
     // The context the run was launched against carries the diff size; it is the
     // same snapshot the progress screen showed, not a second read.
     const changed = base.contextSnapshot ? buildContextSnapshotView(base.contextSnapshot) : null;
-    clearActiveSession(s.reviewId ?? activeReviewId);
-    onComplete?.({
-      issues: s.issues,
-      reviewId: s.reviewId ?? null,
-      durationMs:
-        s.startedAt && completedAt ? completedAt.getTime() - s.startedAt.getTime() : undefined,
-      mode,
-      createdAt: s.startedAt?.toISOString(),
-      fileCount: s.fileProgress.total,
-      additions: changed?.additions,
-      deletions: changed?.deletions,
-      productId: selectedConfiguration?.productId,
-      modelId: selectedConfiguration?.selectedModelId ?? undefined,
-      ...s.orchestratorStats,
-    });
+    const reviewId = s.reviewId ?? null;
+    clearActiveSession(reviewId ?? activeReviewId);
+    void (async () => {
+      const receipt = await readRunReceipt(reviewId);
+      onComplete?.({
+        issues: s.issues,
+        reviewId,
+        durationMs:
+          s.startedAt && completedAt ? completedAt.getTime() - s.startedAt.getTime() : undefined,
+        mode,
+        createdAt: s.startedAt?.toISOString(),
+        fileCount: s.fileProgress.total,
+        additions: changed?.additions,
+        deletions: changed?.deletions,
+        productId: receipt?.productId,
+        modelId: receipt?.modelId,
+        ...s.orchestratorStats,
+      });
+    })();
   }
 
   function emitStreamNotFound(reviewId: string) {

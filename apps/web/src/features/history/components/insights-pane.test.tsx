@@ -46,7 +46,6 @@ describe("HistoryInsightsPane", () => {
     expect(screen.getByText("Passed — no issues found")).toBeInTheDocument();
     expect(screen.getByText("No issues across 4 files · 2 lenses · 3s")).toBeInTheDocument();
     expect(screen.queryByText(/severity breakdown/i)).not.toBeInTheDocument();
-    // The issues section stays gated as it was, and the duration footer stays.
     expect(screen.queryByRole("listbox", { name: /run issues/i })).not.toBeInTheDocument();
     expect(screen.getByText("3s")).toBeInTheDocument();
   });

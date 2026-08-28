@@ -10,38 +10,28 @@ import {
   mapStepsToProgressDataWithAgents,
   savedRunExists,
 } from "@diffgazer/core/review";
-import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
-import { BACK_SHORTCUTS, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import {
   ReviewErrorCode,
   type ReviewMode,
   type UsageAvailability,
 } from "@diffgazer/core/schemas/review";
-import { Box, useInput } from "ink";
+import { Box } from "ink";
 import { type ReactElement, useEffect, useRef, useState } from "react";
 import { ProviderConsentOverlay } from "../../../components/shared/provider-consent-overlay";
-import { Button } from "../../../components/ui/button";
-import { Callout } from "../../../components/ui/callout";
 import { Spinner } from "../../../components/ui/spinner";
-import { useActionRow } from "../../../hooks/use-action-row";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useReviewLifecycle } from "../hooks/use-lifecycle";
-import {
-  getProviderRecoveryLine,
-  getProviderRecoveryShortcut,
-  PROVIDER_RECOVERY_KEY,
-} from "../lib/provider-recovery";
 import {
   ApiKeyMissingView,
   ConfigurationErrorView,
   ReviewTerminalReceiptView,
 } from "./api-key-missing-view";
 import { type ReviewFileFilterStart, ReviewFileFilterView } from "./file-filter-view";
-import { ACTION_SHORTCUTS } from "./gate-view";
 import { NoChangesView } from "./no-changes-view";
 import { ReviewProgressView } from "./progress-view/view";
 import { ReviewResultsView } from "./results-view";
 import { ReviewSummaryView } from "./summary-view";
+import { ReviewTerminalErrorView } from "./terminal-error-view";
 
 interface ReviewStreamContainerProps {
   // Matches the review route, which carries no file-selection mode.
@@ -54,10 +44,6 @@ interface ReviewStreamContainerProps {
   /** Opens the saved record of a run that failed after some lenses had reported. */
   onViewRunDetails?: (reviewId: string) => void;
 }
-
-/** The one key both the running advisory and the dead run publish for the picker. */
-const FILTER_FILES_KEY = "f";
-const FILTER_FILES_LABEL = "Review Specific Files";
 
 /**
  * The failures a narrower file set is a real second move for: the run reached
@@ -93,99 +79,6 @@ function ReviewLoadingView({ message }: { message: string }): ReactElement {
   return (
     <Box flexGrow={1} alignItems="center" justifyContent="center">
       <Spinner label={message} />
-    </Box>
-  );
-}
-
-function ReviewTerminalErrorView({
-  title,
-  error,
-  guidance,
-  onBack,
-  recovery,
-  onFilterFiles,
-}: {
-  title: string;
-  error: string;
-  guidance?: string;
-  onBack: () => void;
-  /** Set when the failure is fixed on the providers screen; adds the `p` recovery shortcut, named by the CTA. */
-  recovery?: { label: string; open: () => void };
-  /**
-   * Set for a run that actually reached the diff. A dead review offers Back and
-   * nothing else; this is the second move — start again over fewer files —
-   * which is the stated remedy when the diff did not fit the model's window,
-   * and never claims to repair the failure it sits under.
-   */
-  onFilterFiles?: () => void;
-}): ReactElement {
-  const filterShortcut: Shortcut = { key: FILTER_FILES_KEY, label: FILTER_FILES_LABEL };
-  usePageFooter({
-    shortcuts:
-      recovery || onFilterFiles
-        ? [
-            ...ACTION_SHORTCUTS,
-            ...(recovery ? [getProviderRecoveryShortcut(recovery.label)] : []),
-            ...(onFilterFiles ? [filterShortcut] : []),
-          ]
-        : [],
-    rightShortcuts: BACK_SHORTCUTS,
-  });
-  // The row is built left to right — recovery, then the picker, then Back.
-  const recoveryCount = recovery ? 1 : 0;
-  const filterCount = onFilterFiles ? 1 : 0;
-  const actionCount = recoveryCount + filterCount + 1;
-  // Each button owns its own Enter; the row owns Left/Right and the single mark.
-  const actions = useActionRow({ actionCount });
-  useInput(
-    (input, key) => {
-      if (key.escape) {
-        onBack();
-      } else if (input === PROVIDER_RECOVERY_KEY && recovery) {
-        recovery.open();
-      } else if (input === FILTER_FILES_KEY && onFilterFiles) {
-        onFilterFiles();
-      }
-    },
-    { isActive: true },
-  );
-
-  return (
-    <Box flexDirection="column" gap={1}>
-      <Callout variant="error">
-        <Callout.Title>{title}</Callout.Title>
-        <Callout.Content>{sanitizeTerminalText(error)}</Callout.Content>
-        {guidance ? <Callout.Content>{guidance}</Callout.Content> : null}
-        {recovery ? (
-          <Callout.Content>{getProviderRecoveryLine(recovery.label)}</Callout.Content>
-        ) : null}
-        {onFilterFiles ? (
-          <Callout.Content>{`Press ${FILTER_FILES_KEY} — ${FILTER_FILES_LABEL}.`}</Callout.Content>
-        ) : null}
-      </Callout>
-      <Box gap={2}>
-        {recovery ? (
-          <Button variant="secondary" isActive={actions.isActionActive(0)} onPress={recovery.open}>
-            {recovery.label}
-          </Button>
-        ) : null}
-        {onFilterFiles ? (
-          <Button
-            variant="secondary"
-            isActive={actions.isActionActive(recoveryCount)}
-            onPress={onFilterFiles}
-          >
-            {FILTER_FILES_LABEL}
-          </Button>
-        ) : null}
-        <Button
-          variant="secondary"
-          isActive={actions.isActionActive(actionCount - 1)}
-          onPress={onBack}
-        >
-          Back
-        </Button>
-      </Box>
     </Box>
   );
 }
@@ -230,6 +123,10 @@ function ReviewStreamContainer({
   const [fileFilter, setFileFilter] = useState<FileFilterState | null>(
     pickFiles ? { origin: "pre-run" } : null,
   );
+  // The lifecycle keeps no file narrowing of its own — it is a per-call start
+  // option — so the screen remembers what the current run was started with, or
+  // Run Again would re-read the whole diff the picker was opened to escape.
+  const [startedFiles, setStartedFiles] = useState<string[] | undefined>(undefined);
   // Switching starts a new review, so it waits for the provider consent like
   // the start on home does; declining leaves the no-diff screen as it was.
   const consent = useProviderConsentGate(state.providerConsent);
@@ -262,14 +159,19 @@ function ReviewStreamContainer({
 
   async function startFilteredReview({ mode: scope, files }: ReviewFileFilterStart) {
     setFileFilter(null);
+    setStartedFiles(files);
     const result = await start(scope, { fresh: true, ...(files ? { files } : {}) });
     if (result === "setup-required") navigate({ screen: "settings/providers" });
   }
 
   // Same scope, a new run: the clean state has no findings to read, so re-reading
-  // the diff is the move it offers instead.
+  // the diff is the move it offers instead. Same scope means the same files when
+  // the finished run was narrowed to some.
   async function runAgain() {
-    const result = await start(state.mode, { fresh: true });
+    const result = await start(state.mode, {
+      fresh: true,
+      ...(startedFiles ? { files: startedFiles } : {}),
+    });
     if (result === "setup-required") navigate({ screen: "settings/providers" });
   }
 
@@ -372,6 +274,7 @@ function ReviewStreamContainer({
       if (switchingModeRef.current) return;
       switchingModeRef.current = true;
       setIsSwitchingMode(true);
+      setStartedFiles(undefined);
       try {
         const result = await start(otherMode);
         if (result === "setup-required") navigate({ screen: "settings/providers" });

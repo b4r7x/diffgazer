@@ -30,7 +30,7 @@ export type AIError = AppError<AIErrorCode> & { diagnostic?: AIErrorDiagnostic }
  * pending, and how long it lasts — a wait the caller can name beats a silent
  * one it can only guess at. Stale after `holdsForMs`: the dispatch has moved on.
  */
-export type DispatchProgress = Readonly<{ message: string; holdsForMs: number }>;
+type DispatchProgress = Readonly<{ message: string; holdsForMs: number }>;
 
 export type GenerateOptions = Readonly<{
   signal?: AbortSignal;

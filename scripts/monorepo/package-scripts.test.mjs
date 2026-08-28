@@ -66,7 +66,7 @@ const DOCS_BUILD_COMMAND = "pnpm --filter @diffgazer/docs build";
 const LEGACY_ALLOWLIST_COMMAND =
   "node --test scripts/monorepo/provider-transport-legacy-allowlist.test.mjs";
 
-// T-121 non-optional release gates in command order — a commented-out or echo-only
+// Non-optional release gates in command order — a commented-out or echo-only
 // segment must not satisfy these exact matches.
 const RELEASE_CHECK_NON_OPTIONAL_SEGMENTS = [
   "pnpm run secret-scan",
@@ -111,6 +111,11 @@ function scriptSegments(script) {
   return inner.split("&&").map((segment) => segment.trim());
 }
 
+test("script segments split on `&&`, trim, and unwrap an `sh -c` chain", () => {
+  assert.deepEqual(scriptSegments("a && echo b"), ["a", "echo b"]);
+  assert.deepEqual(scriptSegments("run-with-artifacts.sh sh -c 'a && b'"), ["a", "b"]);
+});
+
 // CONTRIBUTING.md documents `pnpm run release-check` as the local mirror of the CI
 // no-publish readiness sequence (release-readiness.yml). Pin the gates the CI verify
 // job runs that were previously absent locally so a local pass cannot be a false
@@ -120,16 +125,6 @@ function scriptSegments(script) {
 // dirty-tree `git status --short` guards (a local worktree is expected to be dirty;
 // release-check keeps `git diff --check` for whitespace), the PR-only `changeset
 // status --since=origin/main`, and the Docs E2E Playwright/Lighthouse job.
-test("release-check includes non-optional release gates as exact command segments", () => {
-  const releaseCheck = scriptSegments(rootPackageJson.scripts["release-check"]);
-  for (const segment of RELEASE_CHECK_NON_OPTIONAL_SEGMENTS) {
-    assert.ok(
-      releaseCheck.includes(segment),
-      `release-check missing non-optional segment: ${segment}`,
-    );
-  }
-});
-
 test("release-check runs non-optional release gates in command order", () => {
   const releaseCheck = scriptSegments(rootPackageJson.scripts["release-check"]);
   let lastIndex = -1;
@@ -178,14 +173,6 @@ test("a gate command that only runs outside jobs.verify is not treated as an act
   workflow.jobs.e2e.steps.push(buildStep);
   const mutated = stringifyYaml(workflow);
   assert.ok(!activeVerifyStepRunCommands(mutated).includes("pnpm run build"));
-});
-
-test("an echo-only release-check segment does not satisfy the exact gate match", () => {
-  const mutatedReleaseCheck = rootPackageJson.scripts["release-check"].replace(
-    "pnpm run build",
-    "echo pnpm run build",
-  );
-  assert.ok(!scriptSegments(mutatedReleaseCheck).includes("pnpm run build"));
 });
 
 // `verify` is the local dev command and runs `bench`/`smoke` non-strict, so the
@@ -263,7 +250,6 @@ test("release-readiness e2e job runs provider Playwright and docs build gates", 
 // The dead review opt-in contract was removed; no script env name should
 // reintroduce it.
 test("the benchmark review opt-in env var is not part of the script env contract", () => {
-  assert.equal(ENV.benchReviewPipeline, undefined);
   for (const value of Object.values(ENV)) {
     assert.notEqual(value, "DIFFGAZER_BENCH_REVIEW");
   }
@@ -340,11 +326,9 @@ test("central artifact preparation runs an active schema-generation segment and 
   );
 });
 
-// Preparation used to run `pnpm --filter <pkg> build` directly, which
-// leaves no Turbo task record, so the root build's `turbo run build` re-entered
-// the same Registry/Keys/UI pipelines from scratch on every cold CI run. Running
-// preparation through Turbo produces the same task hashes the root graph asks
-// for, making the second pass a cache hit instead of a second full build.
+// A direct `pnpm --filter <pkg> build` leaves no Turbo task record, so the root
+// `turbo run build` rebuilds the same pipelines; going through Turbo makes the
+// second pass a cache hit.
 const PREPARED_LIBRARY_BUILD_SEGMENT =
   "turbo run build --filter=@diffgazer/registry --filter=@diffgazer/keys --filter=@diffgazer/ui";
 
@@ -395,11 +379,9 @@ test("the root build hands the prepared packages to a single Turbo build graph",
   assert.equal(segments[1], "DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run build");
 });
 
-// `prepublishOnly` ran the full multi-workspace build and `prepack` then
-// ran it again, so publishing built twice. `prepack` fires on every pack, not
-// only on publish — smoke's tarball install, `attw --pack`, and the release-check
-// dry-runs all reach it — so it owns the build alone and the package gates live
-// on the publish-only hook. Both diffgazer gates run from source (`tsc --noEmit`,
+// `prepack` fires on every pack, not only on publish — smoke's tarball install,
+// `attw --pack`, and the release-check dry-runs all reach it — so it owns the
+// build alone and the package gates live on the publish-only hook. Both diffgazer gates run from source (`tsc --noEmit`,
 // vitest against `src/`), so they do not need the packed `dist`.
 const diffgazerPackageJson = JSON.parse(
   readFileSync(
@@ -501,57 +483,3 @@ test("the CI e2e job builds UI before running its browser suite", () => {
 test("smoke runs an active diffgazer build segment before product CLI validation", () => {
   assert.equal(scriptSegments(rootPackageJson.scripts.smoke)[0], "pnpm --filter diffgazer build");
 });
-
-const NON_RELEASE_ECHO_DECOY_CASES = [
-  {
-    name: "test-ci",
-    script: rootPackageJson.scripts["test-ci"],
-    requiredSegment: "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run verify",
-  },
-  {
-    name: "check",
-    script: rootPackageJson.scripts.check,
-    requiredSegment: `biome check ${CHECK_BIOME_TARGETS.join(" ")}`,
-  },
-  {
-    name: "prepare:library-artifacts",
-    script: rootPackageJson.scripts["prepare:library-artifacts"],
-    requiredSegment: "pnpm --filter @diffgazer/add generate:schema",
-  },
-  {
-    name: "prepare:artifacts",
-    script: rootPackageJson.scripts["prepare:artifacts"],
-    requiredSegment: "pnpm run prepare:library-artifacts",
-  },
-  {
-    name: "version-packages",
-    script: rootPackageJson.scripts["version-packages"],
-    requiredSegment: "pnpm --filter diffgazer build:notices",
-  },
-  {
-    name: "smoke",
-    script: rootPackageJson.scripts.smoke,
-    requiredSegment: "pnpm --filter diffgazer build",
-  },
-];
-
-for (const { name, script, requiredSegment } of NON_RELEASE_ECHO_DECOY_CASES) {
-  test(`an echo-only ${name} segment does not satisfy the exact gate match`, () => {
-    const mutated = script.replace(requiredSegment, `echo ${requiredSegment}`);
-    assert.ok(!scriptSegments(mutated).includes(requiredSegment));
-  });
-}
-
-for (const segment of RELEASE_CHECK_NON_OPTIONAL_SEGMENTS) {
-  test(`an echo-only release-check segment does not satisfy the non-optional gate: ${segment}`, () => {
-    const releaseCheckScript = rootPackageJson.scripts["release-check"];
-    const needle =
-      segment === "pnpm run check" ? "pnpm run check && pnpm run test:scripts" : segment;
-    const echoSegment =
-      segment === "pnpm run check"
-        ? "echo pnpm run check && pnpm run test:scripts"
-        : `echo ${segment}`;
-    const mutatedReleaseCheck = releaseCheckScript.replace(needle, echoSegment);
-    assert.ok(!scriptSegments(mutatedReleaseCheck).includes(segment));
-  });
-}

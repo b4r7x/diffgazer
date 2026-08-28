@@ -14,16 +14,13 @@ import { outsideClickDoc } from "../../registry/hook-docs/outside-click.js";
 import { overflowDetectionDoc } from "../../registry/hook-docs/overflow-detection.js";
 import { overflowItemsDoc } from "../../registry/hook-docs/overflow-items.js";
 import { presenceDoc } from "../../registry/hook-docs/presence.js";
+import { getFunctionDoc, getInterfaceMemberDocs, readSource, root } from "./jsdoc-source.js";
 import {
   expectMetadataDocumentsJSDocMembers,
-  getFunctionDoc,
-  getInterfaceMemberDocs,
   type MemberMetadataExclusion,
   type MetadataMember,
   metadataFields,
-  readSource,
-  root,
-} from "./support.js";
+} from "./metadata-assertions.js";
 
 type HookMetadata = {
   parameters?: MetadataMember[];
