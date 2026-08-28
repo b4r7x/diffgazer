@@ -40,6 +40,21 @@ describe("NavigationProvider stack", () => {
     expect(result.current.route).toEqual({ screen: "history" });
   });
 
+  it("returns to the main menu from History", () => {
+    const { result } = renderHook(() => useNavigation(), {
+      wrapper: createWrapper({ screen: "home" }),
+    });
+
+    act(() => {
+      result.current.navigate({ screen: "history" });
+    });
+
+    act(() => {
+      result.current.goBack();
+    });
+    expect(result.current.route).toEqual({ screen: "home" });
+  });
+
   it("restores the prior route through bounded LIFO pops", () => {
     const { result } = renderHook(() => useNavigation(), {
       wrapper: createWrapper({ screen: "home" }),

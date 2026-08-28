@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   LensReviewResultSchema,
+  ProviderReviewIssueSchema,
   ReviewIssueSchema,
   type ReviewResult,
   ReviewResultSchema,
@@ -115,6 +116,19 @@ describe("ReviewIssueSchema", () => {
     "whyItMatters",
   ])("rejects whitespace-only %s", (field) => {
     expect(ReviewIssueSchema.safeParse(createIssueInput({ [field]: "   " })).success).toBe(false);
+  });
+});
+
+describe("ProviderReviewIssueSchema", () => {
+  it("validates one finding at a time on the lenient provider contract", () => {
+    const salvageable = ProviderReviewIssueSchema.safeParse(createIssueInput({ symptom: "   " }));
+
+    expect(salvageable.success).toBe(true);
+    expect(salvageable.data?.symptom).toBe("");
+  });
+
+  it("still rejects a candidate that is not a finding at all", () => {
+    expect(ProviderReviewIssueSchema.safeParse({ type: "code", excerpt: "x" }).success).toBe(false);
   });
 });
 

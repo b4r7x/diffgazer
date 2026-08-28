@@ -36,6 +36,7 @@ export {
   LensReviewResultSchema,
   MAX_REVIEW_ISSUES,
   MAX_REVIEW_ISSUES_PER_LENS,
+  ProviderReviewIssueSchema,
   REVIEW_CATEGORY,
   REVIEW_SEVERITY,
   ReviewCategorySchema,

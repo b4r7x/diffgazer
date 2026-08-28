@@ -1,7 +1,13 @@
-import { useHistoryScreenState } from "@diffgazer/core/review";
+import {
+  buildCleanRunFactLine,
+  buildCleanRunStatement,
+  isCleanRun,
+  useHistoryScreenState,
+} from "@diffgazer/core/review";
 import { useNavigate } from "@tanstack/react-router";
 import { type RefObject, useRef, useState } from "react";
 import { useHeaderBackButtonRef } from "@/components/layout/header-chrome";
+import type { HistoryCleanRun } from "@/features/history/components/insights-pane";
 import { getRunSummary } from "@/features/history/components/run-summary";
 import type { HistoryFocusZone, Run } from "@/features/history/types";
 import {
@@ -73,6 +79,33 @@ export function useHistoryPage() {
       summary: metadata ? getRunSummary(metadata) : run.summary,
     };
   });
+
+  // The same predicate the row's "Passed with no issues." and the review screen
+  // read, so the pane cannot disagree with either. The severity floor is not on
+  // the list metadata, so the qualified statement waits on the detail record —
+  // the only place a run's hidden findings are counted.
+  const selectedRun = history.selectedRun;
+  const isSelectedRunClean =
+    selectedRun !== null &&
+    isCleanRun({
+      issueCount: selectedRun.issueCount,
+      failedLensCount: selectedRun.failedLensCount,
+      terminalOutcome: selectedRun.terminalOutcome,
+    });
+  const cleanRun: HistoryCleanRun | null =
+    selectedRun && isSelectedRunClean
+      ? {
+          statement: buildCleanRunStatement({
+            droppedBelowThreshold: history.reviewDetail?.droppedBelowThreshold,
+            minSeverity: history.reviewDetail?.minSeverity,
+          }),
+          factLine: buildCleanRunFactLine({
+            fileCount: selectedRun.fileCount,
+            lensCount: selectedRun.lenses.length,
+            durationMs: selectedRun.durationMs,
+          }),
+        }
+      : null;
 
   const handleTimelineBoundary = (direction: "up" | "down") => {
     if (direction === "up") {
@@ -152,6 +185,7 @@ export function useHistoryPage() {
     mappedRuns,
     selectedRun: history.selectedRun,
     severityCounts: history.severityCounts,
+    cleanRun,
     sortedIssues: history.sortedIssues,
     duration: history.duration,
     hasReviews: history.hasReviews,

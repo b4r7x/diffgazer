@@ -169,7 +169,8 @@ describe("HistoryPage review detail status", () => {
     expect(
       within(screen.getByRole("complementary", { name: "Review insights" })).getByRole("status"),
     ).toBe(loadingDetails);
-    expect(screen.getByText("Severity Breakdown")).toBeInTheDocument();
+    // The fixture run passed clean, so its receipt is the metadata on show.
+    expect(screen.getByText("Passed — no issues found")).toBeInTheDocument();
 
     detail.resolve(
       makeReviewResponse("11111111-1111-4111-8111-111111111111", [
@@ -179,6 +180,20 @@ describe("HistoryPage review detail status", () => {
 
     expect(await screen.findByRole("option", { name: /loaded issue/i })).toBeInTheDocument();
     expect(screen.queryByText("Loading review details...")).not.toBeInTheDocument();
+  });
+
+  it("qualifies the pass once the detail says findings were hidden below the floor", async () => {
+    mockGetReview.mockImplementation(async (id) => {
+      const response = makeReviewResponse(id);
+      return { review: { ...response.review, droppedBelowThreshold: 4, minSeverity: "medium" } };
+    });
+
+    renderHistoryPage(<HistoryPage />);
+
+    expect(await screen.findByText("No issues at or above medium")).toBeInTheDocument();
+    expect(screen.queryByText("Passed — no issues found")).not.toBeInTheDocument();
+    // The same compact fact line the TUI pane speaks, not a ledger of its own.
+    expect(screen.getByText("No issues across 1 file · 0 lenses · 1s")).toBeInTheDocument();
   });
 
   it("renders a retryable selected-review error and recovers on retry", async () => {
@@ -192,7 +207,7 @@ describe("HistoryPage review detail status", () => {
     renderHistoryPage(<HistoryPage />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("detail disk unreadable");
-    expect(screen.getByText("Severity Breakdown")).toBeInTheDocument();
+    expect(screen.getByText("Passed — no issues found")).toBeInTheDocument();
 
     const runsList = screen.getByRole("listbox", { name: /review runs/i });
     runsList.focus();

@@ -3,6 +3,7 @@ import { DETACHED_HEAD_BRANCH } from "../../schemas/git.js";
 import type { ReviewMetadata, ReviewSeverity, SeverityCounts } from "../../schemas/review/index.js";
 import { pluralize } from "../../strings.js";
 import { buildTerminalCoverageLine } from "../presentation/agent-status.js";
+import { isCleanRun } from "../presentation/clean-run.js";
 import { describeTerminalOutcome } from "../presentation/error-guidance.js";
 
 export interface SeverityPart {
@@ -38,7 +39,9 @@ export function getRunSummaryParts(metadata: ReviewMetadata): RunSummaryParts {
   if (nitCount > 0) parts.push({ severity: "nit", count: nitCount });
 
   return {
-    passed: terminalOutcome === "completed" && issueCount === 0 && !partial,
+    // The row's verdict is the screen's verdict: one predicate decides both, so
+    // "Passed with no issues." can never open something that disagrees.
+    passed: isCleanRun({ issueCount, failedLensCount, terminalOutcome }),
     partial,
     failedLensCount,
     parts,

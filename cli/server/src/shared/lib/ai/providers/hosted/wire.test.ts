@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { parseProviderPayload } from "./wire.js";
+import { responseTimeoutDispatcher } from "./dispatcher.js";
+import { evidenceKeyFor, TEST_CREDENTIAL } from "./execute.test-support.js";
+import { buildRequestInit, parseProviderPayload } from "./wire.js";
+
+describe("buildRequestInit", () => {
+  it("dispatches through the agent sized for the evidence key's wall", () => {
+    const evidenceKey = evidenceKeyFor("openrouter");
+
+    const init = buildRequestInit({
+      productId: "openrouter",
+      credential: TEST_CREDENTIAL,
+      evidenceKey,
+      prompt: "review this diff",
+    });
+
+    expect((init as { dispatcher?: unknown }).dispatcher).toBe(
+      responseTimeoutDispatcher(evidenceKey.limits.wallTimeMs),
+    );
+  });
+});
 
 describe("parseProviderPayload finishReason", () => {
   it("extracts finish_reason from an openai-compatible payload", () => {

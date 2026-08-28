@@ -33,7 +33,7 @@ interface SessionsModule {
     callback: (event: FullReviewStreamEvent) => void,
   ) => (() => void) | null;
   getSession: (reviewId: string) => unknown;
-  shutdownSessions: () => void;
+  shutdownSessions: () => Promise<void>;
   startSessionMaintenance: () => void;
 }
 
@@ -176,7 +176,8 @@ describe("createEmbeddedServer SPA shell responses", () => {
       const { Hono } = await import("hono");
       return {
         createApp: () => new Hono(),
-        shutdownSessions: () => undefined,
+        shutdownSessions: async () => undefined,
+        closeDispatchers: async () => undefined,
         startSessionMaintenance: () => undefined,
       };
     });
@@ -252,7 +253,8 @@ describe("createEmbeddedServer restart after a failed listen", () => {
     vi.doMock("@hono/node-server/serve-static", () => ({ serveStatic: () => () => undefined }));
     vi.doMock("@diffgazer/server", () => ({
       createApp: () => ({ get: () => undefined, use: () => undefined, fetch: () => undefined }),
-      shutdownSessions: () => undefined,
+      shutdownSessions: async () => undefined,
+      closeDispatchers: async () => undefined,
       startSessionMaintenance,
     }));
 
@@ -327,7 +329,8 @@ describe("createEmbeddedServer restart after a failed listen", () => {
     vi.doMock("@hono/node-server/serve-static", () => ({ serveStatic: () => () => undefined }));
     vi.doMock("@diffgazer/server", () => ({
       createApp: () => ({ get: () => undefined, use: () => undefined, fetch: () => undefined }),
-      shutdownSessions: () => undefined,
+      shutdownSessions: async () => undefined,
+      closeDispatchers: async () => undefined,
       startSessionMaintenance: () => undefined,
     }));
 

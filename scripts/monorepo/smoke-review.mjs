@@ -21,9 +21,11 @@ import {
   E2E_LENS,
   E2E_OPT_IN_ENV,
   evaluateRun,
-  finalizeE2eDisposition,
+  finalizeE2eDispositions,
   HARD_TIMEOUT_MS,
-  resolveE2eDisposition,
+  modelOverrideNotice,
+  resolveE2eDispositions,
+  runFailureLine,
   skipLine,
 } from "./lib/smoke-review.mjs";
 import { networkAllowed } from "./smoke-shared/network.mjs";
@@ -49,8 +51,28 @@ function assertTempPath(label, path) {
   }
 }
 
-async function loadProviders() {
-  return import(pathToFileURL(resolve(root, "libs/core/dist/providers/index.js")).href);
+// Workspace packages are not linked under scripts/, so read the product
+// registry and the wire schemas the live stream is judged against from the
+// built core dist.
+async function loadCore() {
+  const [providers, events, review] = await Promise.all(
+    ["providers/index.js", "schemas/events/index.js", "schemas/review/index.js"].map(
+      (entry) => import(pathToFileURL(resolve(root, "libs/core/dist", entry)).href),
+    ),
+  );
+  return {
+    PRODUCT_REGISTRY: providers.PRODUCT_REGISTRY,
+    CREDENTIAL_ENV_VARS: providers.CREDENTIAL_ENV_VARS,
+    acceptNotice: providers.acceptNotice,
+    FullReviewStreamEventSchema: events.FullReviewStreamEventSchema,
+    ReviewResultSchema: review.ReviewResultSchema,
+  };
+}
+
+function schemaError(label, error) {
+  const issue = error.issues[0];
+  const path = issue.path.join(".");
+  return `${label}${path ? `.${path}` : ""}: ${issue.message}`;
 }
 
 function git(cwd, args) {
@@ -108,9 +130,15 @@ async function requestJson(baseUrl, headers, method, path, body) {
   return text ? JSON.parse(text) : null;
 }
 
-async function consumeStream(baseUrl, headers, reviewId) {
+async function consumeStream(baseUrl, headers, reviewId, core) {
   const controller = new AbortController();
-  const state = { sawNonTerminalEvent: false, terminal: null, timedOut: false, failedLenses: [] };
+  const state = {
+    sawNonTerminalEvent: false,
+    terminal: null,
+    timedOut: false,
+    failedLenses: [],
+    schemaErrors: [],
+  };
   const watchdog = setTimeout(() => {
     state.timedOut = true;
     controller.abort();
@@ -129,6 +157,10 @@ async function consumeStream(baseUrl, headers, reviewId) {
     for await (const chunk of response.body) {
       for (const frame of parser.feed(decoder.decode(chunk, { stream: true }))) {
         const event = JSON.parse(frame.data);
+        const parsed = core.FullReviewStreamEventSchema.safeParse(event);
+        if (!parsed.success) {
+          state.schemaErrors.push(schemaError(String(event?.type), parsed.error));
+        }
         if (event.type === "complete" || event.type === "error") {
           state.terminal = event;
         } else {
@@ -152,6 +184,14 @@ async function consumeStream(baseUrl, headers, reviewId) {
       () => {},
     );
   }
+  if (state.terminal?.type === "complete") {
+    // The report the run produced is pinned to the published report contract
+    // directly, so a loosened `complete` event member cannot hide drift.
+    const result = core.ReviewResultSchema.safeParse(state.terminal.result);
+    if (!result.success) {
+      state.schemaErrors.push(schemaError("complete.result", result.error));
+    }
+  }
   return state;
 }
 
@@ -172,8 +212,8 @@ async function pollPersistence(baseUrl, headers, reviewId) {
   return { persisted, listed };
 }
 
-async function runLiveE2e(disposition, providers) {
-  const { PRODUCT_REGISTRY, acceptNotice } = providers;
+async function runLiveE2e(disposition, core) {
+  const { PRODUCT_REGISTRY, acceptNotice } = core;
   const product = PRODUCT_REGISTRY[disposition.productId];
 
   const home = mkdtempSync(join(tmpdir(), "diffgazer-e2e-home-"));
@@ -241,7 +281,7 @@ async function runLiveE2e(disposition, providers) {
       `live review e2e: ${disposition.productId}/${disposition.modelId}, review ${reviewId}`,
     );
 
-    const stream = await consumeStream(baseUrl, headers, reviewId);
+    const stream = await consumeStream(baseUrl, headers, reviewId, core);
     const persistence =
       stream.terminal?.type === "complete"
         ? await pollPersistence(baseUrl, headers, reviewId)
@@ -264,36 +304,51 @@ async function runLiveE2e(disposition, providers) {
 async function run() {
   const optedIn = process.env[E2E_OPT_IN_ENV] === "1";
   const network = networkAllowed();
-  let providers = null;
+  let core = null;
   let coreDistError = null;
   if (optedIn && network) {
     // Importing the core dist is itself a prerequisite; the pnpm script's build
     // segment normally guarantees it.
-    providers = await loadProviders().catch((error) => {
+    core = await loadCore().catch((error) => {
       coreDistError = errorMessage(error);
       return null;
     });
   }
 
-  const disposition = resolveE2eDisposition({
+  const dispositions = resolveE2eDispositions({
     env: process.env,
     networkEnabled: network,
-    credentialEnvFor: (id) => providers?.CREDENTIAL_ENV_VARS[id],
+    credentialEnvFor: (id) => core?.CREDENTIAL_ENV_VARS[id],
     suggestedModelFor: (id) => {
-      const modelPolicy = providers?.PRODUCT_REGISTRY[id]?.modelPolicy;
+      const modelPolicy = core?.PRODUCT_REGISTRY[id]?.modelPolicy;
       return modelPolicy && "suggestedModelId" in modelPolicy ? modelPolicy.suggestedModelId : null;
     },
-    hasCoreDist: providers !== null,
+    hasCoreDist: core !== null,
     coreDistError,
     hasServerDist: existsSync(SERVER_DIST),
   });
 
-  if (disposition.kind !== "run") {
-    console.log(skipLine(disposition));
-    finalizeE2eDisposition(disposition, process.env[ENV.smokeStrictSkips] === "1");
-    return 0;
+  const notice = modelOverrideNotice(process.env);
+  if (notice) console.log(notice);
+
+  // Every requested product runs before a strict-skips failure is raised, so one
+  // missing key — or one product's harness throwing — does not hide the verdicts
+  // of the products that could run.
+  let failures = 0;
+  for (const disposition of dispositions) {
+    if (disposition.kind !== "run") {
+      console.log(skipLine(disposition));
+      continue;
+    }
+    try {
+      failures += await runLiveE2e(disposition, core);
+    } catch (error) {
+      console.log(runFailureLine(disposition.productId, errorMessage(error)));
+      failures += 1;
+    }
   }
-  return runLiveE2e(disposition, providers);
+  finalizeE2eDispositions(dispositions, process.env[ENV.smokeStrictSkips] === "1");
+  return failures === 0 ? 0 : 1;
 }
 
 // Explicit exit: the review stream store keeps maintenance timers that would

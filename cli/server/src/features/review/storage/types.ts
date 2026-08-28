@@ -7,6 +7,7 @@ import type {
   ReviewMode,
   ReviewResult,
   ReviewSeverity,
+  TerminalOutcome,
 } from "@diffgazer/core/schemas/review";
 import type { StoreErrorCode } from "../../../shared/lib/http/error-codes.js";
 import type { ParsedDiff } from "../engine/diff/types.js";
@@ -31,4 +32,10 @@ export interface SaveReviewOptions {
   droppedBelowThreshold?: number;
   minSeverity?: ReviewSeverity;
   execution?: ExecutionResult;
+  /**
+   * The outcome of a run that ended without an execution receipt — the partial
+   * write a terminated session leaves behind. A receipt, when there is one,
+   * still names the outcome itself.
+   */
+  terminalOutcome?: TerminalOutcome;
 }

@@ -411,6 +411,21 @@ describe("SavedReview durable execution wire format", () => {
     expect(parsed.data.execution?.result.issues).toEqual([]);
   });
 
+  // The server writes what an interrupted run streamed before it terminates the
+  // session, and that record carries no execution receipt — only the outcome.
+  it("keeps the findings a cancelled review streamed before it was interrupted", () => {
+    const parsed = SavedReviewSchema.safeParse({
+      metadata: { ...baseMetadata, issueCount: 1, highCount: 1, terminalOutcome: "cancelled" },
+      result: { issues: [sampleIssue] },
+      gitContext: baseGitContext,
+    });
+
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.result.issues).toEqual([sampleIssue]);
+    expect(parsed.data.execution).toBeUndefined();
+  });
+
   it("does not let a budget-exhausted execution result vouch for findings of its own", () => {
     // The findings a budget-exhausted review keeps are vouched for per lens by
     // lensStats: its execution result is pinned empty by ExecutionResultSchema,

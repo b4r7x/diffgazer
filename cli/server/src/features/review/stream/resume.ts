@@ -1,5 +1,4 @@
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { err, ok, type Result } from "@diffgazer/core/result";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import { ReviewErrorCode, type TerminalOutcome } from "@diffgazer/core/schemas/review";
@@ -16,13 +15,7 @@ import { buildReviewInputHash } from "../service.js";
 import { isTerminalEvent } from "./events.js";
 import { streamActiveSessionToSSE } from "./replay.js";
 import { writeSSEError } from "./sse.js";
-import { type ActiveSession, cancelSession, getSession } from "./store.js";
-
-interface FreshnessFailure {
-  code: typeof ReviewErrorCode.SESSION_STALE;
-  message: string;
-  status: 409;
-}
+import { type ActiveSession, getSession, noteSessionDrift } from "./store.js";
 
 function findTerminalEvent(
   events: readonly FullReviewStreamEvent[],
@@ -96,26 +89,20 @@ function scopeFilesFromKey(scopeKey: string): string[] | undefined {
   return undefined;
 }
 
-async function assertSessionFresh(
-  session: ActiveSession,
-  projectPath: string,
-): Promise<Result<void, FreshnessFailure>> {
+/**
+ * Whether the worktree still matches the state the session captured when it
+ * started. A live run is never cancelled over this: the answer only decides
+ * whether the resume carries a drift notice.
+ */
+async function isSessionFresh(session: ActiveSession, projectPath: string): Promise<boolean> {
   const gitService = createGitService({ cwd: projectPath });
 
   if (session.reviewInputHash) {
     const headCommitResult = await gitService.getHeadCommit();
-    if (!headCommitResult.ok) {
-      return ok(undefined);
-    }
+    if (!headCommitResult.ok) return true;
 
     const currentHeadCommit = headCommitResult.value;
-    if (currentHeadCommit !== session.headCommit) {
-      return err({
-        code: ReviewErrorCode.SESSION_STALE,
-        message: "Session is stale: repository state changed. Start a new review.",
-        status: 409,
-      });
-    }
+    if (currentHeadCommit !== session.headCommit) return false;
 
     const parsedResult = await resolveGitDiff({
       gitService,
@@ -124,24 +111,14 @@ async function assertSessionFresh(
       emit: async () => undefined,
       reviewId: session.reviewId,
     });
-    if (!parsedResult.ok) {
-      return ok(undefined);
-    }
+    if (!parsedResult.ok) return true;
 
     const currentHash = buildReviewInputHash({
       headCommit: currentHeadCommit,
       reviewConfigKey: session.reviewConfigKey,
       parsed: parsedResult.value,
     });
-    if (currentHash !== session.reviewInputHash) {
-      return err({
-        code: ReviewErrorCode.SESSION_STALE,
-        message: "Session is stale: repository state changed. Start a new review.",
-        status: 409,
-      });
-    }
-
-    return ok(undefined);
+    return currentHash === session.reviewInputHash;
   }
 
   const [headCommitResult, statusHashResult] = await Promise.all([
@@ -149,23 +126,12 @@ async function assertSessionFresh(
     gitService.getStatusHash(),
   ]);
 
-  if (!headCommitResult.ok || statusHashResult.kind === "unavailable") {
-    return ok(undefined);
-  }
+  if (!headCommitResult.ok || statusHashResult.kind === "unavailable") return true;
 
-  const currentHeadCommit = headCommitResult.value;
   const statusHashChanged =
     statusHashResult.kind === session.statusHashKind &&
     statusHashResult.hash !== session.statusHash;
-  if (currentHeadCommit !== session.headCommit || statusHashChanged) {
-    return err({
-      code: ReviewErrorCode.SESSION_STALE,
-      message: "Session is stale: repository state changed. Start a new review.",
-      status: 409,
-    });
-  }
-
-  return ok(undefined);
+  return headCommitResult.value === session.headCommit && !statusHashChanged;
 }
 
 export async function resumeStreamById(c: Context): Promise<Response> {
@@ -202,11 +168,14 @@ export async function resumeStreamById(c: Context): Promise<Response> {
   }
 
   // Completed sessions are retained precisely so the replay layer can serve
-  // their terminal event log within the retention window. Freshness-gating them
-  // turns "commit the just-reviewed work" into a 409, so skip the check (and the
-  // destructive cancel) and go straight to replay.
-  if (!session.isComplete) {
-    const freshness = await assertSessionFresh(session, projectPath);
+  // their terminal event log within the retention window, and freshness-gating
+  // them turns "commit the just-reviewed work" into a 409. A live session is
+  // never gated either: its diff was captured at the start, so worktree drift
+  // is worth a notice, not the loss of a run the user is still waiting for.
+  // The notice is emitted once per session, so a session that already carries it
+  // skips the freshness read entirely — it re-reads the diff off disk.
+  if (!session.isComplete && !session.driftNoticeEmitted) {
+    const isFresh = await isSessionFresh(session, projectPath);
     if (!isAuthorized()) {
       return errorResponse(c, "Repository access not granted", ErrorCode.TRUST_REQUIRED, 403);
     }
@@ -215,14 +184,8 @@ export async function resumeStreamById(c: Context): Promise<Response> {
       return errorResponse(c, "Session not found", ReviewErrorCode.SESSION_NOT_FOUND, 404);
     }
     session = latestSession;
-    if (!freshness.ok && !session.isComplete) {
-      cancelSession(id);
-      return errorResponse(
-        c,
-        freshness.error.message,
-        freshness.error.code,
-        freshness.error.status,
-      );
+    if (!isFresh) {
+      noteSessionDrift(id);
     }
   }
 

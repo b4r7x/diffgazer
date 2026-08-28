@@ -70,6 +70,7 @@ function HistoryPageContent() {
     mappedRuns,
     selectedRun,
     severityCounts,
+    cleanRun,
     sortedIssues,
     duration,
     hasReviews,
@@ -431,6 +432,7 @@ function HistoryPageContent() {
           <HistoryInsightsPane
             runId={selectedRun?.id ?? null}
             severityCounts={hasReviews ? severityCounts : null}
+            cleanRun={hasReviews ? cleanRun : null}
             issues={hasReviews ? sortedIssues : []}
             detailState={insightsDetailState}
             duration={duration}

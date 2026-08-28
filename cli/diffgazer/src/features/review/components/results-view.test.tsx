@@ -567,6 +567,10 @@ describe("ReviewResultsView (TUI)", () => {
     stdin.write(" ");
     await flush();
 
-    expect(lastFrame() ?? "").toContain("No issues match filter");
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("No issues match filter");
+    // The only emptiness left on this screen is a filter that matched nothing.
+    expect(frame).toContain("No issues match this filter");
+    expect(frame).not.toContain("No issues in this review");
   });
 });

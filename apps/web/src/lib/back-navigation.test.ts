@@ -15,14 +15,19 @@ describe("resolveBackAction", () => {
   });
 
   it("falls back to home when there is no browser history target", () => {
-    expect(resolveBackAction("/history", false)).toEqual({
+    expect(resolveBackAction("/review/abc", false)).toEqual({
       type: "navigate",
       to: "/",
     });
   });
 
-  it("keeps history-back behavior outside settings when history exists", () => {
-    expect(resolveBackAction("/history", true)).toEqual({ type: "history" });
+  it("keeps history-back behavior outside the mapped routes when history exists", () => {
+    expect(resolveBackAction("/review/abc", true)).toEqual({ type: "history" });
+  });
+
+  it("returns home from history whether or not browser history exists", () => {
+    expect(resolveBackAction("/history", true)).toEqual({ type: "navigate", to: "/" });
+    expect(resolveBackAction("/history", false)).toEqual({ type: "navigate", to: "/" });
   });
 
   it("hides back action on home route", () => {

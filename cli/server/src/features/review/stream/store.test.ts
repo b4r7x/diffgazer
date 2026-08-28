@@ -37,6 +37,7 @@ function createTrackedSession(
     configurationId?: string | null;
     configurationRevision?: number | null;
     admittedExecutionFingerprint?: string | null;
+    persistPartial?: () => Promise<void>;
   } = {},
 ) {
   createdSessionIds.add(reviewId);
@@ -60,6 +61,7 @@ function createTrackedSession(
     options.admittedExecutionFingerprint === null
       ? {}
       : { admittedExecutionFingerprint: options.admittedExecutionFingerprint }),
+    ...(options.persistPartial === undefined ? {} : { persistPartial: options.persistPartial }),
   });
 }
 
@@ -96,8 +98,8 @@ afterEach(() => {
 });
 
 // Tear down the module-level stale-cleanup interval so it never outlives the suite.
-afterAll(() => {
-  shutdownSessions();
+afterAll(async () => {
+  await shutdownSessions();
 });
 
 describe("review session lifecycle", () => {
@@ -294,6 +296,64 @@ describe("session cancellation", () => {
         mode: "unstaged",
       })?.reviewId,
     ).toBe(session.reviewId);
+  });
+});
+
+describe("partial persistence before termination", () => {
+  // The hook writes what the run streamed, and it must run while the pipeline
+  // can still be stopped cleanly — before the controller aborts.
+  function createSessionTrackingPersist(reviewId: string) {
+    const persisted: { calls: number; abortedAtPersist: boolean | null } = {
+      calls: 0,
+      abortedAtPersist: null,
+    };
+    const session = createTrackedSession(reviewId, {
+      persistPartial: async () => {
+        persisted.calls += 1;
+        persisted.abortedAtPersist = session.controller.signal.aborted;
+      },
+    });
+    return persisted;
+  }
+
+  it("writes the partial run before a stale cancel aborts it", () => {
+    const persisted = createSessionTrackingPersist("persist-cancel");
+
+    cancelSession("persist-cancel");
+
+    expect(persisted).toEqual({ calls: 1, abortedAtPersist: false });
+  });
+
+  it("writes the partial run before the idle timeout aborts it", () => {
+    let monotonicNow = 0;
+    const persisted: { calls: number; abortedAtPersist: boolean | null } = {
+      calls: 0,
+      abortedAtPersist: null,
+    };
+    const session = createTrackedSession("persist-timeout", {
+      monotonicNow: () => monotonicNow,
+      persistPartial: async () => {
+        persisted.calls += 1;
+        persisted.abortedAtPersist = session.controller.signal.aborted;
+      },
+    });
+    monotonicNow = 30 * 60 * 1000 + 1;
+
+    cleanupStaleSessions();
+
+    expect(persisted).toEqual({ calls: 1, abortedAtPersist: false });
+  });
+
+  it("writes the partial run before eviction aborts it", () => {
+    const persisted = createSessionTrackingPersist("persist-evict");
+
+    for (let index = 0; index < 50; index += 1) {
+      vi.advanceTimersByTime(1);
+      createTrackedSession(`persist-fill-${index}`);
+    }
+
+    expect(persisted).toEqual({ calls: 1, abortedAtPersist: false });
+    expect(getSession("persist-evict")).toBeUndefined();
   });
 });
 
@@ -664,27 +724,27 @@ describe("deletion timer cleanup", () => {
 });
 
 describe("shutdownSessions", () => {
-  it("clears the stale-cleanup interval and is idempotent", () => {
+  it("clears the stale-cleanup interval and is idempotent", async () => {
     // Use real timers so clearInterval is the genuine global, not a fake-timer stub.
     vi.useRealTimers();
     const clearSpy = vi.spyOn(globalThis, "clearInterval");
 
-    shutdownSessions();
+    await shutdownSessions();
     expect(clearSpy).toHaveBeenCalledTimes(1);
 
-    shutdownSessions();
+    await shutdownSessions();
     expect(clearSpy).toHaveBeenCalledTimes(1);
 
     clearSpy.mockRestore();
   });
 
-  it("aborts an active session, errors its subscriber, and clears it on shutdown", () => {
+  it("aborts an active session, errors its subscriber, and clears it on shutdown", async () => {
     const received: FullReviewStreamEvent[] = [];
     const session = createTrackedSession("shutdown-active", { mode: "unstaged" });
     markReady(session.reviewId);
     subscribe(session.reviewId, (event) => received.push(event));
 
-    shutdownSessions();
+    await shutdownSessions();
 
     expect(session.controller.signal.aborted).toBe(true);
     expect(received).toMatchObject([
@@ -699,6 +759,26 @@ describe("shutdownSessions", () => {
         mode: "unstaged",
       }),
     ).toBeUndefined();
+  });
+
+  it("resolves only once the partial write its termination started has landed", async () => {
+    // Real timers: the persist below settles on the genuine clock, which is what
+    // a shutdown racing process.exit actually has to wait out.
+    vi.useRealTimers();
+    let persisted = false;
+    const session = createTrackedSession("shutdown-persist", {
+      persistPartial: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        persisted = true;
+      },
+    });
+    markReady(session.reviewId);
+
+    const shutdown = shutdownSessions();
+    expect(persisted).toBe(false);
+    await shutdown;
+
+    expect(persisted).toBe(true);
   });
 });
 

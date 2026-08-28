@@ -220,28 +220,43 @@ function streamLensCompletion(params: {
   });
 }
 
+/**
+ * The wait is the only thing the user sees during a non-streaming dispatch, so
+ * the heartbeat says how long it may last, not just how long it has lasted, and
+ * a dispatch state that explains the silence — a rate-limit backoff — replaces
+ * the headline for exactly as long as it holds.
+ */
 async function generateWithWaitProgress(params: {
   client: AIClient;
   prompt: string;
   system: string;
   agentId: AgentId;
   batchSuffix: string;
+  dispatchWallTimeMs?: number;
   onEvent: (event: AgentStreamEvent | StepEvent) => void;
   signal?: AbortSignal;
 }): Promise<Result<LensReviewResult, AIError>> {
-  const { client, prompt, system, agentId, batchSuffix, onEvent, signal } = params;
+  const { client, prompt, system, agentId, batchSuffix, dispatchWallTimeMs, onEvent, signal } =
+    params;
   const timerStart = Date.now();
+  const wallSuffix =
+    dispatchWallTimeMs === undefined ? "" : ` of up to ${Math.round(dispatchWallTimeMs / 1000)}s`;
+  let dispatchNote: { message: string; until: number } | null = null;
   const progressTimer = setInterval(() => {
     if (signal?.aborted) {
       clearInterval(progressTimer);
       return;
     }
     const elapsedSec = Math.round((Date.now() - timerStart) / 1000);
+    const headline =
+      dispatchNote && Date.now() < dispatchNote.until
+        ? dispatchNote.message
+        : "Waiting for model response";
     onEvent({
       type: "agent_progress",
       agent: agentId,
       progress: 65,
-      message: `Waiting for model response — ${elapsedSec}s${batchSuffix}`,
+      message: `${headline} — ${elapsedSec}s${wallSuffix}${batchSuffix}`,
       timestamp: new Date().toISOString(),
     });
   }, 2000);
@@ -250,6 +265,9 @@ async function generateWithWaitProgress(params: {
     return await client.generate(prompt, LensReviewResultSchema, {
       signal,
       systemPrompt: system,
+      onProgress: ({ message, holdsForMs }) => {
+        dispatchNote = { message, until: Date.now() + holdsForMs };
+      },
     });
   } finally {
     clearInterval(progressTimer);
@@ -266,6 +284,8 @@ export interface LensAnalysisOptions {
   batches: readonly ParsedDiff[];
   /** Every path the review changed, so each batch can name what it cannot see. */
   allChangedFilePaths: readonly string[];
+  /** The admitted per-dispatch wall, named in the wait heartbeat. */
+  dispatchWallTimeMs?: number;
   onEvent: (event: AgentStreamEvent | StepEvent) => void;
   projectContext?: string;
   signal?: AbortSignal;
@@ -277,6 +297,7 @@ export async function runLensAnalysis({
   lens,
   batches,
   allChangedFilePaths,
+  dispatchWallTimeMs,
   onEvent,
   projectContext,
   signal,
@@ -357,6 +378,7 @@ export async function runLensAnalysis({
       system,
       agentId,
       batchSuffix,
+      dispatchWallTimeMs,
       onEvent,
       signal,
     });
@@ -401,6 +423,8 @@ export interface SynthesisAnalysisOptions {
   /** The whole review's diff: file identities and evidence resolve against every changed file. */
   diff: ParsedDiff;
   collectedIssues: readonly ReviewIssue[];
+  /** The admitted per-dispatch wall, named in the wait heartbeat. */
+  dispatchWallTimeMs?: number;
   onEvent: (event: AgentStreamEvent | StepEvent) => void;
   projectContext?: string;
   signal?: AbortSignal;
@@ -416,6 +440,7 @@ export async function runSynthesisAnalysis({
   client,
   diff,
   collectedIssues,
+  dispatchWallTimeMs,
   onEvent,
   projectContext,
   signal,
@@ -458,6 +483,7 @@ export async function runSynthesisAnalysis({
     system,
     agentId,
     batchSuffix: "",
+    dispatchWallTimeMs,
     onEvent,
     signal,
   });

@@ -8,7 +8,7 @@ const { mockNavigate, mockHistoryBack, mockRouterNavigate, routerState } = vi.ho
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  useLocation: () => ({ pathname: "/history-page-test" }),
+  useLocation: () => ({ pathname: "/history" }),
   useNavigate: () => mockNavigate,
   useRouter: () => ({ history: { back: mockHistoryBack }, navigate: mockRouterNavigate }),
   useCanGoBack: () => routerState.canGoBack,
@@ -39,8 +39,8 @@ import { HistoryPage } from "./page";
 
 describe("HistoryPage keyboard navigation", () => {
   beforeEach(() => {
-    clearScopedRouteState("/history-page-test", "date");
-    clearScopedRouteState("/history-page-test", "run");
+    clearScopedRouteState("/history", "date");
+    clearScopedRouteState("/history", "run");
     setupApiMocks(trustedProject());
     mockNavigate.mockReset();
     mockNavigate.mockResolvedValue(undefined);
@@ -544,7 +544,7 @@ describe("HistoryPage keyboard navigation", () => {
     renderHistoryPage(<HistoryPage />);
 
     await focusRunsList();
-    await screen.findByText("Severity Breakdown");
+    await screen.findByText("Passed — no issues found");
     expect(screen.queryByRole("listbox", { name: /run issues/i })).not.toBeInTheDocument();
 
     await user.keyboard("{Tab}");
@@ -793,7 +793,7 @@ describe("HistoryPage keyboard navigation", () => {
     await waitFor(() => expect(runsList).toHaveFocus());
   });
 
-  it("pops the navigation stack on Escape when the shell can go back", async () => {
+  it("navigates home on Escape even when the shell can go back", async () => {
     routerState.canGoBack = true;
     const user = userEvent.setup();
     renderHistoryPage(<HistoryPage />);
@@ -801,8 +801,8 @@ describe("HistoryPage keyboard navigation", () => {
     await focusRunsList();
     await user.keyboard("{Escape}");
 
-    await waitFor(() => expect(mockHistoryBack).toHaveBeenCalledTimes(1));
-    expect(mockRouterNavigate).not.toHaveBeenCalled();
+    await waitFor(() => expect(mockRouterNavigate).toHaveBeenCalledWith({ to: "/" }));
+    expect(mockHistoryBack).not.toHaveBeenCalled();
   });
 
   it("falls back to home on Escape when there is no history to pop", async () => {
@@ -999,8 +999,8 @@ describe("HistoryPage keyboard navigation", () => {
 
 describe("HistoryPage chrome hand-off", () => {
   beforeEach(() => {
-    clearScopedRouteState("/history-page-test", "date");
-    clearScopedRouteState("/history-page-test", "run");
+    clearScopedRouteState("/history", "date");
+    clearScopedRouteState("/history", "run");
     setupApiMocks(trustedProject());
     mockRouterNavigate.mockReset();
     mockHistoryBack.mockReset();

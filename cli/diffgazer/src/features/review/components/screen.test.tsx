@@ -91,17 +91,53 @@ describe("ReviewScreen", () => {
     expect(frame).not.toMatch(/review complete/i);
   });
 
-  test("opens a completed saved review that found nothing at its summary", () => {
+  test("opens a completed saved review that found nothing at its clean-run receipt", () => {
     apiMocks.useReview.mockReturnValue({
       status: "success",
-      data: { review: { metadata: { id: "review-123", durationMs: 10 }, result: { issues: [] } } },
+      data: {
+        review: {
+          metadata: {
+            id: "review-123",
+            durationMs: 10,
+            mode: "staged",
+            fileCount: 4,
+            createdAt: "2026-08-26T09:14:00.000Z",
+          },
+          gitContext: { additions: 31, deletions: 12 },
+          result: { issues: [] },
+        },
+      },
     });
 
     const { lastFrame } = renderReviewScreen();
 
     const frame = lastFrame() ?? "";
     expect(frame).toMatch(/review complete/i);
-    expect(frame).toContain("Found 0 issues across 0 files with issues.");
+    expect(frame).toContain("✔ Passed — no issues found");
+    expect(frame).toContain("Scope  : Staged · 4 files · +31 -12");
+    expect(frame).toContain("[ Back to History ]");
+    expect(frame).not.toContain("Found 0 issues");
+    expect(frame).not.toContain("Run Again");
+  });
+
+  test("never enters the findings screen for a saved run without findings", async () => {
+    apiMocks.useReview.mockReturnValue({
+      status: "success",
+      data: { review: { metadata: { id: "review-123", durationMs: 10 }, result: { issues: [] } } },
+    });
+
+    const { lastFrame, stdin } = renderReviewScreen();
+
+    expect(lastFrame() ?? "").toContain("✔ Passed — no issues found");
+    expect(lastFrame() ?? "").not.toContain("View Results");
+
+    // Enter belongs to the receipt's exit, so it can never reach the two-pane
+    // findings shell the run has nothing to fill.
+    stdin.write("\r");
+    await flush();
+
+    expect(lastFrame() ?? "").not.toContain("No issues match filter");
+    expect(lastFrame() ?? "").not.toMatch(/switch pane/i);
   });
 
   test("returns straight to History with Escape from an auto-landed findings screen", async () => {
@@ -131,18 +167,25 @@ describe("ReviewScreen", () => {
   test("returns a summary-entered findings screen to its summary with Escape", async () => {
     apiMocks.useReview.mockReturnValue({
       status: "success",
-      data: { review: { metadata: { id: "review-123", durationMs: 10 }, result: { issues: [] } } },
+      data: {
+        review: {
+          metadata: { id: "review-123", durationMs: 10 },
+          result: { issues: [makeIssue({ id: "issue-1", title: "Kept finding" })] },
+          execution: { receipt: { outcome: "budget-exhausted", usageAvailability: "reported" } },
+          lensStats: [{ lensId: "correctness", issueCount: 1, status: "success" }],
+        },
+      },
     });
 
     const { lastFrame, stdin } = renderReviewScreen();
 
-    expect(lastFrame() ?? "").toMatch(/review complete/i);
+    expect(lastFrame() ?? "").toMatch(/budget exhausted/i);
 
     stdin.write("\r");
-    await vi.waitFor(() => expect(lastFrame() ?? "").not.toMatch(/review complete/i));
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("Review #review-1"));
 
     stdin.write(ESCAPE);
-    await vi.waitFor(() => expect(lastFrame() ?? "").toMatch(/review complete/i));
+    await vi.waitFor(() => expect(lastFrame() ?? "").toMatch(/budget exhausted/i));
   });
 
   test("renders the terminal receipt for a saved review that never completed", () => {

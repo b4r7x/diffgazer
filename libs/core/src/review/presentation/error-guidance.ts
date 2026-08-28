@@ -4,6 +4,7 @@ import type { TransportFamily } from "../../schemas/config/transports.js";
 import { ErrorCode } from "../../schemas/errors.js";
 import type { TerminalOutcome, UsageAvailability } from "../../schemas/review/execution.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
+import { isSessionTerminationCode, sessionTerminationCopy } from "../lifecycle.js";
 
 export interface ConfigurationNotReadyCopy {
   title: string;
@@ -319,6 +320,17 @@ export function classifyReviewStreamError(
       title: "Internal Error",
       guidance:
         "This is a bug in Diffgazer, not a problem with your provider or configuration. Retry the review.",
+      ctaLabel: "Back to Home",
+    };
+  }
+  // The session ended under the user rather than the run failing, so the banner
+  // speaks the cause-accurate session copy.
+  if (errorCode != null && isSessionTerminationCode(errorCode)) {
+    const copy = sessionTerminationCopy(errorCode);
+    return {
+      kind: "other",
+      title: copy.title,
+      guidance: copy.message,
       ctaLabel: "Back to Home",
     };
   }

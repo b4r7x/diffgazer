@@ -1,8 +1,11 @@
 import { isApiError } from "../api/types.js";
+import type { RunnableProductId } from "../schemas/config/transports.js";
 import type { LensStat } from "../schemas/events/index.js";
 import type {
   ExecutionReceipt,
+  LensId,
   ReviewIssue,
+  ReviewMode,
   ReviewResponse,
   ReviewSeverity,
   TerminalOutcome,
@@ -16,10 +19,26 @@ import type {
  */
 export type ReviewScreenPhase = "streaming" | "summary" | "results";
 
+/**
+ * What a saved run can show without its findings. The receipt fields — scope,
+ * size, model, when — are the evidence a zero-issue run has instead of issues,
+ * so they travel with every saved review rather than only the ones that found
+ * something. Each is optional at the source: a legacy record may lack a mode,
+ * a git context, or an execution receipt.
+ */
 export interface SavedReviewData {
   issues: ReviewIssue[];
   reviewId: string;
   durationMs: number | undefined;
+  mode: ReviewMode | undefined;
+  createdAt: string | undefined;
+  lenses: LensId[] | undefined;
+  fileCount: number | undefined;
+  additions: number | undefined;
+  deletions: number | undefined;
+  /** Paired so the receipt can name the model against the product that ran it. */
+  productId: RunnableProductId | undefined;
+  modelId: string | undefined;
   lensStats?: LensStat[];
   droppedDuplicates?: number;
   droppedBelowThreshold?: number;
@@ -27,7 +46,15 @@ export interface SavedReviewData {
 }
 
 export interface SavedReviewRecord {
-  metadata: { id: string; durationMs?: number | null };
+  metadata: {
+    id: string;
+    durationMs?: number | null;
+    mode?: ReviewMode;
+    createdAt?: string;
+    lenses?: LensId[];
+    fileCount?: number;
+  };
+  gitContext?: { additions?: number; deletions?: number };
   result?: { issues: ReviewIssue[] } | null;
   executionSnapshot?: {
     receipt: ExecutionReceipt;
@@ -95,10 +122,19 @@ export type SavedReviewOutcome =
   | { kind: "not-found" };
 
 function toSavedReviewData(review: SavedReviewRecord): SavedReviewData {
+  const receipt = review.executionSnapshot?.receipt ?? review.execution?.receipt;
   return {
     issues: review.result?.issues ?? [],
     reviewId: review.metadata.id,
     durationMs: review.metadata.durationMs ?? undefined,
+    mode: review.metadata.mode,
+    createdAt: review.metadata.createdAt,
+    lenses: review.metadata.lenses,
+    fileCount: review.metadata.fileCount,
+    additions: review.gitContext?.additions,
+    deletions: review.gitContext?.deletions,
+    productId: receipt?.productId,
+    modelId: receipt?.modelId,
     lensStats: review.lensStats,
     droppedDuplicates: review.droppedDuplicates,
     droppedBelowThreshold: review.droppedBelowThreshold,

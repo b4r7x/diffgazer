@@ -159,9 +159,9 @@ describe("GlobalLayout", () => {
     expect(backSpy).not.toHaveBeenCalled();
   });
 
-  it("calls history back without navigating on a non-settings route with history", async () => {
+  it("calls history back without navigating on an unmapped route with history", async () => {
     const user = userEvent.setup();
-    routerState.pathname = "/history";
+    routerState.pathname = "/review/abc";
     routerState.canGoBack = true;
 
     renderShell();
@@ -169,6 +169,18 @@ describe("GlobalLayout", () => {
 
     expect(backSpy).toHaveBeenCalledOnce();
     expect(navigateSpy).not.toHaveBeenCalled();
+  });
+
+  it("navigates home from history instead of popping back into the run it came from", async () => {
+    const user = userEvent.setup();
+    routerState.pathname = "/history";
+    routerState.canGoBack = true;
+
+    renderShell();
+    await user.click(screen.getByRole("button", { name: /back/i }));
+
+    expect(navigateSpy).toHaveBeenCalledWith({ to: "/" });
+    expect(backSpy).not.toHaveBeenCalled();
   });
 
   it("lets page content focus the header Back button through the chrome hand-off ref", async () => {

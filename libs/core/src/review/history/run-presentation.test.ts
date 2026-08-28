@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DETACHED_HEAD_BRANCH } from "../../schemas/git.js";
 import { makeReviewMetadata } from "../../testing/factories.js";
+import { isCleanRun } from "../presentation/clean-run.js";
 import {
   buildHistoryRunSummary,
   getRunBranchLabel,
@@ -32,6 +33,21 @@ describe("getRunSummaryParts", () => {
 
     expect(summary.passed).toBe(false);
     expect(summary.partial).toBe(false);
+  });
+
+  // Anti-drift: the row's verdict must be the clean-run predicate the screen it
+  // opens renders from, not a second copy of the same three conditions.
+  it("agrees with isCleanRun on every combination that decides a pass", () => {
+    for (const issueCount of [0, 2]) {
+      for (const failedLensCount of [0, 1]) {
+        for (const terminalOutcome of ["completed", "timed-out"] as const) {
+          const metadata = makeReviewMetadata({ issueCount, failedLensCount, terminalOutcome });
+          expect(getRunSummaryParts(metadata).passed).toBe(
+            isCleanRun({ issueCount, failedLensCount, terminalOutcome }),
+          );
+        }
+      }
+    }
   });
 
   it("collects only non-zero severities in canonical order", () => {

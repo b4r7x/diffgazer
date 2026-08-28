@@ -311,7 +311,14 @@ describe("review error-guidance presentation", () => {
       guidance: "Fix the provider configuration or change the model, then start a new review.",
       ctaLabel: "Fix provider",
     });
-    expect(classifyReviewStreamError("API-key rejected", "SESSION_STALE").kind).toBe("other");
+    // A terminated session takes its own cause-accurate copy, not the generic
+    // review-error card.
+    expect(classifyReviewStreamError("API-key rejected", "SESSION_STALE")).toEqual({
+      kind: "other",
+      title: "Session Expired",
+      guidance: "The review session has become stale. Please start a new review.",
+      ctaLabel: "Back to Home",
+    });
     expect(classifyReviewStreamError("API-key rejected", null, "local-http").kind).toBe("other");
     expect(classifyReviewStreamError("API-key rejected", null, "local-cli").kind).toBe("other");
     expect(classifyReviewStreamError("API-key rejected", null, "hosted-api").kind).toBe("api-key");

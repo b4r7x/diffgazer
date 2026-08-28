@@ -16,40 +16,21 @@ export const DEFAULT_OPENROUTER_E2E_MODEL = "nvidia/nemotron-3-super-120b-a12b:f
 export const HARD_TIMEOUT_MS = 600_000;
 export const E2E_LENS = "correctness";
 
-/**
- * Why the e2e did or did not run. `not-requested` (opt-in or network absent) is
- * never a strict failure; `unavailable` (requested but a prerequisite is
- * missing) fails under DIFFGAZER_SMOKE_STRICT_SKIPS=1 — the smoke-modelsdev
- * disposition model.
- */
-export function resolveE2eDisposition({
-  env,
-  networkEnabled,
-  credentialEnvFor,
-  suggestedModelFor,
-  hasCoreDist,
-  coreDistError = null,
-  hasServerDist,
-}) {
-  if (env[E2E_OPT_IN_ENV] !== "1") {
-    return { kind: "not-requested", reason: "live-e2e-disabled" };
-  }
-  if (!networkEnabled) {
-    return { kind: "not-requested", reason: "network-disabled" };
-  }
-  if (!hasCoreDist) {
-    return { kind: "unavailable", reason: "core-dist-missing", coreDistError };
-  }
-  if (!hasServerDist) {
-    return { kind: "unavailable", reason: "server-dist-missing" };
-  }
-  const productId = env[E2E_PRODUCT_ENV] || DEFAULT_E2E_PRODUCT;
+function parseProductIds(raw) {
+  const ids = (raw ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  return ids.length > 0 ? [...new Set(ids)] : [DEFAULT_E2E_PRODUCT];
+}
+
+function resolveProduct({ productId, modelOverride, env, credentialEnvFor, suggestedModelFor }) {
   const credentialEnv = credentialEnvFor(productId);
   if (!credentialEnv) {
     return { kind: "unavailable", reason: "unknown-product", productId };
   }
   const modelId =
-    env[E2E_MODEL_ENV] ||
+    modelOverride ||
     suggestedModelFor(productId) ||
     (productId === DEFAULT_E2E_PRODUCT ? DEFAULT_OPENROUTER_E2E_MODEL : null);
   if (!modelId) {
@@ -59,6 +40,52 @@ export function resolveE2eDisposition({
     return { kind: "unavailable", reason: "credential-missing", productId, credentialEnv };
   }
   return { kind: "run", productId, modelId, credentialEnv };
+}
+
+/**
+ * Why the e2e did or did not run, one disposition per requested product —
+ * DIFFGAZER_LIVE_E2E_PRODUCT takes a comma list, so a single invocation can
+ * walk a provider matrix. A gate that blocks every product (opt-in, network,
+ * dists) collapses to one entry. `not-requested` (opt-in or network absent) is
+ * never a strict failure; `unavailable` (requested but a prerequisite is
+ * missing) fails under DIFFGAZER_SMOKE_STRICT_SKIPS=1 — the smoke-modelsdev
+ * disposition model. DIFFGAZER_LIVE_E2E_MODEL pins a model for a single
+ * requested product only: a model id belongs to one provider, so a matrix
+ * ignores it and each product falls back to its suggested model.
+ */
+export function resolveE2eDispositions({
+  env,
+  networkEnabled,
+  credentialEnvFor,
+  suggestedModelFor,
+  hasCoreDist,
+  coreDistError = null,
+  hasServerDist,
+}) {
+  if (env[E2E_OPT_IN_ENV] !== "1") {
+    return [{ kind: "not-requested", reason: "live-e2e-disabled" }];
+  }
+  if (!networkEnabled) {
+    return [{ kind: "not-requested", reason: "network-disabled" }];
+  }
+  if (!hasCoreDist) {
+    return [{ kind: "unavailable", reason: "core-dist-missing", coreDistError }];
+  }
+  if (!hasServerDist) {
+    return [{ kind: "unavailable", reason: "server-dist-missing" }];
+  }
+  const productIds = parseProductIds(env[E2E_PRODUCT_ENV]);
+  const modelOverride = productIds.length === 1 ? env[E2E_MODEL_ENV] : null;
+  return productIds.map((productId) =>
+    resolveProduct({ productId, modelOverride, env, credentialEnvFor, suggestedModelFor }),
+  );
+}
+
+/** The one-line notice for a model pin that a multi-product matrix ignores. */
+export function modelOverrideNotice(env) {
+  if (env[E2E_OPT_IN_ENV] !== "1" || !env[E2E_MODEL_ENV]) return null;
+  if (parseProductIds(env[E2E_PRODUCT_ENV]).length < 2) return null;
+  return `NOTE: ${E2E_MODEL_ENV} ignored for a multi-product matrix; each product uses its suggested model.`;
 }
 
 export function e2eCommand({ credentialEnv = "OPENROUTER_API_KEY", productId } = {}) {
@@ -85,11 +112,18 @@ export function skipLine(disposition) {
   return `SKIP: live review e2e (${disposition.reason}: ${detail}). Run: ${e2eCommand(disposition)}`;
 }
 
-export function finalizeE2eDisposition(disposition, strictSkips) {
-  if (!strictSkips || disposition.kind !== "unavailable") return;
+/** A product whose harness threw: reported, counted, and the matrix continues. */
+export function runFailureLine(productId, message) {
+  return `FAIL: live review e2e (${productId}) — ${message}`;
+}
+
+export function finalizeE2eDispositions(dispositions, strictSkips) {
+  if (!strictSkips) return;
+  const blocked = dispositions.find((disposition) => disposition.kind === "unavailable");
+  if (!blocked) return;
   throw new Error(
     `strict skips: live review e2e was requested but is unavailable ` +
-      `(${disposition.reason}). ${SKIP_DETAILS[disposition.reason](disposition)}`,
+      `(${blocked.reason}). ${SKIP_DETAILS[blocked.reason](blocked)}`,
   );
 }
 
@@ -149,12 +183,17 @@ function isRateLimitedError(error) {
   return RATE_LIMIT_RE.test(error.message ?? "");
 }
 
+const REPORTED_SCHEMA_ERRORS = 3;
+
 /**
- * The D7 honesty contract. PASS only on: real streaming observed, terminal
- * `complete` inside the cap, and the run fetchable + listed afterwards. A
- * terminal `error` (the pipeline's zero-successful-lenses outcome included),
- * a timeout, or missing persistence is a FAIL with the honest diagnostic.
- * Per-lens failures on a completed run WARN but pass.
+ * The D7 honesty contract. PASS only on: real streaming observed, every frame
+ * matching the published event schema, terminal `complete` inside the cap, and
+ * the run fetchable + listed afterwards. A terminal `error` (the pipeline's
+ * zero-successful-lenses outcome included), a timeout, a frame that does not
+ * match the wire contract, or missing persistence is a FAIL with the honest
+ * diagnostic. Per-lens failures and a finding-free run on a completed review
+ * WARN but pass — free routes miss the planted bug often enough that model
+ * quality must not decide an integration gate.
  */
 export function evaluateRun({
   sawNonTerminalEvent,
@@ -163,6 +202,7 @@ export function evaluateRun({
   persisted,
   listed,
   failedLenses = [],
+  schemaErrors = [],
 }) {
   if (timedOut) {
     return {
@@ -187,6 +227,14 @@ export function evaluateRun({
     }
     return { verdict: "fail", lines };
   }
+  if (schemaErrors.length > 0) {
+    return {
+      verdict: "fail",
+      lines: [
+        `FAIL: live review e2e saw ${schemaErrors.length} stream payload(s) that do not match the published schema: ${schemaErrors.slice(0, REPORTED_SCHEMA_ERRORS).join("; ")}`,
+      ],
+    };
+  }
   if (!sawNonTerminalEvent) {
     return {
       verdict: "fail",
@@ -207,6 +255,9 @@ export function evaluateRun({
   ];
   if (failedLenses.length > 0) {
     lines.push(`WARN: ${failedLenses.length} lens(es) failed honestly: ${failedLenses.join("; ")}`);
+  }
+  if (terminal.result.issues.length === 0) {
+    lines.push("WARN: the planted bug produced no findings; the model missed it.");
   }
   return { verdict: "pass", lines };
 }

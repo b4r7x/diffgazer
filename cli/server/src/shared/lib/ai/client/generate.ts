@@ -27,13 +27,14 @@ import {
 } from "../diagnostics.js";
 import { estimateReviewInputTokens } from "../providers/execution-receipt.js";
 import { assertBoundedExecutionResult } from "../types.js";
-import { createFromAdmittedPlan } from "./create.js";
+import { createFromAdmittedPlan, type ExecuteOptions } from "./create.js";
 
 export type ExecuteReviewGenerationInput = Readonly<{
   authorization: AuthorizedReviewExecution;
   prompt: string;
   systemPrompt?: string;
   signal?: AbortSignal;
+  onProgress?: ExecuteOptions["onProgress"];
 }>;
 
 export type ExecuteReviewGenerationResult = Readonly<{
@@ -277,7 +278,7 @@ const ADAPTER_THROW_DIAGNOSTIC_MESSAGE = "Adapter execution failed.";
 export async function executeReviewGeneration(
   input: ExecuteReviewGenerationInput,
 ): Promise<ExecuteReviewGenerationResult> {
-  const { authorization, prompt, systemPrompt, signal } = input;
+  const { authorization, prompt, systemPrompt, signal, onProgress } = input;
   const { plan, budgetLedger, budgetReservation } = authorization;
   const startedAt = new Date().toISOString();
 
@@ -324,7 +325,7 @@ export async function executeReviewGeneration(
   let execution: ExecutionResult;
   try {
     execution = zeroFindingsUnlessCompleted(
-      await clientResult.value.execute(prompt, { signal, systemPrompt }),
+      await clientResult.value.execute(prompt, { signal, systemPrompt, onProgress }),
     );
   } catch {
     // An adapter that throws — including one whose result breaks the bounded

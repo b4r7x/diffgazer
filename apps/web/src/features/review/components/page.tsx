@@ -1,10 +1,13 @@
-import { useReview } from "@diffgazer/core/api/hooks";
+import { useCreateReview, useReview } from "@diffgazer/core/api/hooks";
 import {
+  describeReviewStartError,
   hasCompletedLens,
   type ReviewScreenPhase,
   resolveSavedReviewOutcome,
+  sanitizePresentationText,
   toSavedReviewQueryState,
 } from "@diffgazer/core/review";
+import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { toast } from "@diffgazer/ui/components/toast";
 import {
   useCanGoBack,
@@ -15,11 +18,12 @@ import {
   useSearch,
 } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useProviderConsent } from "@/hooks/use-provider-consent";
 import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
 import { useReviewErrorHandler } from "../hooks/use-error-handler";
 import { type ReviewCompleteData, ReviewContainer, ReviewLoadingMessage } from "./container";
 import { ReviewResultsView } from "./results-view";
-import { ReviewSummaryView } from "./summary-view";
+import { ReviewSummaryView, type SummaryAction } from "./summary-view";
 
 type ReviewData = ReviewCompleteData;
 
@@ -83,6 +87,8 @@ export function ReviewPage() {
   const canGoBack = useCanGoBack();
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const createReview = useCreateReview();
+  const providerConsent = useProviderConsent();
   const { handleApiError } = useReviewErrorHandler();
 
   const liveReviewId = getLiveReviewId(liveState);
@@ -111,6 +117,42 @@ export function ReviewPage() {
   const handleBack = () => {
     performBackAction(router, resolveBackAction(pathname, canGoBack));
   };
+
+  // A run that found nothing is the one screen where re-running the same scope
+  // is the obvious next move: the diff is still on disk and the verdict is one
+  // keystroke from being re-checked. It replaces this route so Back does not
+  // return to the run the new one supersedes.
+  const runAgain = (mode: Exclude<ReviewMode, "files">) => {
+    providerConsent.require(() => {
+      void (async () => {
+        try {
+          const { reviewId: nextReviewId } = await createReview.mutateAsync({ mode });
+          navigate({
+            to: REVIEW_ROUTE,
+            params: { reviewId: nextReviewId },
+            search: { mode, live: true },
+            replace: true,
+          });
+        } catch (error) {
+          const { title, message } = describeReviewStartError(error);
+          toast.error(title, { message: sanitizePresentationText(message) });
+        }
+      })();
+    });
+  };
+
+  // A live run can re-run its own scope; a saved one describes a diff that has
+  // moved on, so it only offers the list it was opened from. A file-picked run
+  // is the exception: its selection is not on this screen, so re-running it
+  // would silently review something else.
+  const rerunMode = reviewMode === "files" ? null : reviewMode;
+  const liveCleanRunActions: SummaryAction[] = [
+    ...(rerunMode ? [{ label: "Run Again", onSelect: () => runAgain(rerunMode) }] : []),
+    { label: "Back to Home", onSelect: () => navigate({ to: "/" }) },
+  ];
+  const savedCleanRunActions: SummaryAction[] = [
+    { label: "Back to History", onSelect: () => navigate({ to: "/history" }) },
+  ];
 
   useEffect(() => {
     if (savedOutcomeKind === "report-error" && reportErrorReportedRef.current !== nextRouteKey) {
@@ -154,15 +196,18 @@ export function ReviewPage() {
       const failedOutcome =
         savedOutcome.kind === "terminal" ? savedOutcome.data.outcome : undefined;
       const hasFindings = savedOutcome.data.issues.length > 0;
+      // Findings gate every path into the results screen, a hand-edited
+      // `screen=results` included: a run with none has nothing there to read.
       const showResults =
-        savedScreen === "results" ||
-        (savedScreen === "auto" &&
-          (savedIssueId !== null || (failedOutcome === undefined && hasFindings)));
+        hasFindings &&
+        (savedScreen === "results" ||
+          (savedScreen === "auto" && (savedIssueId !== null || failedOutcome === undefined)));
 
       if (!showResults) {
         return (
           <ReviewSummaryView
             {...savedOutcome.data}
+            cleanRunActions={savedCleanRunActions}
             onEnterReview={() => setSavedScreen("results")}
             onBack={handleBack}
           />
@@ -214,6 +259,7 @@ export function ReviewPage() {
       return (
         <ReviewSummaryView
           {...currentLiveState.reviewData}
+          cleanRunActions={liveCleanRunActions}
           onEnterReview={() =>
             setLiveState({ phase: "results", reviewData: currentLiveState.reviewData })
           }

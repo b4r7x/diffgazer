@@ -77,6 +77,13 @@ function completeEvent(): FullReviewStreamEvent {
   };
 }
 
+// The drift notice is a `chunk`, the one non-terminal event with free text; the
+// only other chunk a session can carry is the event-cap warning.
+function driftNotices(reviewId: string): FullReviewStreamEvent[] {
+  const events = getSession(reviewId)?.events ?? [];
+  return events.filter((event) => event.type === "chunk" && event.content.includes("repository"));
+}
+
 function createApp(): Hono {
   return new Hono().get("/reviews/:id/stream", resumeStreamById);
 }
@@ -288,8 +295,8 @@ describe("resumeStreamById freshness gating", () => {
     expect(JSON.stringify(body)).not.toContain("event: complete");
   });
 
-  it("409s a non-complete session when the status hash genuinely changed", async () => {
-    createSession(REVIEW_ID, {
+  it("attaches to a live session whose status hash changed and notes the drift", async () => {
+    const session = createSession(REVIEW_ID, {
       projectPath: PROJECT_PATH,
       headCommit: "abc123",
       statusHash: "stored-hash",
@@ -300,11 +307,29 @@ describe("resumeStreamById freshness gating", () => {
     setStatusHash({ kind: "full", hash: "changed-hash" });
 
     const response = await resume();
-    const body = (await response.json()) as { error: { code: string } };
 
-    expect(response.status).toBe(409);
-    expect(body.error.code).toBe("SESSION_STALE");
-    expect(getSession(REVIEW_ID)?.isComplete).toBe(true);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(getSession(REVIEW_ID)?.isComplete).toBe(false);
+    expect(session.controller.signal.aborted).toBe(false);
+    expect(driftNotices(REVIEW_ID)).toHaveLength(1);
+  });
+
+  it("notes the drift once across repeated reconnects", async () => {
+    createSession(REVIEW_ID, {
+      projectPath: PROJECT_PATH,
+      headCommit: "abc123",
+      statusHash: "stored-hash",
+      statusHashKind: "full",
+      mode: "unstaged",
+    });
+    markReady(REVIEW_ID);
+    setStatusHash({ kind: "full", hash: "changed-hash" });
+
+    await resume();
+    await resume();
+
+    expect(driftNotices(REVIEW_ID)).toHaveLength(1);
   });
 
   it("keeps streaming when only out-of-scope worktree files changed", async () => {
@@ -341,7 +366,7 @@ describe("resumeStreamById freshness gating", () => {
     expect(session.controller.signal.aborted).toBe(false);
   });
 
-  it("409s when the scoped review input hash changed", async () => {
+  it("attaches to a live scoped session whose review input hash changed", async () => {
     const parsedResult = await resolveGitDiff({
       gitService,
       mode: "unstaged",
@@ -380,11 +405,11 @@ describe("resumeStreamById freshness gating", () => {
     );
 
     const response = await resume();
-    const body = (await response.json()) as { error: { code: string } };
 
-    expect(response.status).toBe(409);
-    expect(body.error.code).toBe("SESSION_STALE");
-    expect(getSession(REVIEW_ID)?.isComplete).toBe(true);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(getSession(REVIEW_ID)?.isComplete).toBe(false);
+    expect(driftNotices(REVIEW_ID)).toHaveLength(1);
   });
 });
 

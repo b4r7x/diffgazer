@@ -53,6 +53,60 @@ describe("resolveSavedReviewOutcome", () => {
     }
   });
 
+  it("carries the run receipt a zero-issue review has instead of findings", () => {
+    const state: SavedReviewQueryState = {
+      status: "success",
+      review: {
+        metadata: {
+          id: "abc",
+          durationMs: 8200,
+          mode: "staged",
+          createdAt: "2026-08-28T14:02:00.000Z",
+          lenses: ["correctness", "security"],
+          fileCount: 12,
+        },
+        gitContext: { additions: 248, deletions: 96 },
+        result: { issues: [] },
+        executionSnapshot: {
+          receipt: {
+            outcome: "completed",
+            modelId: "anthropic/claude-sonnet-4-6",
+          } as unknown as ExecutionReceipt,
+        },
+      },
+    };
+
+    const outcome = resolveSavedReviewOutcome(state, false);
+    expect(outcome.kind).toBe("results");
+    if (outcome.kind === "results") {
+      expect(outcome.data).toMatchObject({
+        mode: "staged",
+        createdAt: "2026-08-28T14:02:00.000Z",
+        lenses: ["correctness", "security"],
+        fileCount: 12,
+        additions: 248,
+        deletions: 96,
+        modelId: "anthropic/claude-sonnet-4-6",
+        durationMs: 8200,
+      });
+    }
+  });
+
+  it("leaves the receipt fields undefined for a record that carries none", () => {
+    const state: SavedReviewQueryState = {
+      status: "success",
+      review: { metadata: { id: "abc" }, result: { issues: [] } },
+    };
+
+    const outcome = resolveSavedReviewOutcome(state, false);
+    expect(outcome.kind).toBe("results");
+    if (outcome.kind === "results") {
+      expect(outcome.data.mode).toBeUndefined();
+      expect(outcome.data.additions).toBeUndefined();
+      expect(outcome.data.modelId).toBeUndefined();
+    }
+  });
+
   it("falls back to streaming when a saved review has no result and the stream has not 404'd", () => {
     const state: SavedReviewQueryState = {
       status: "success",

@@ -56,6 +56,7 @@ export {
 } from "./history/warnings.js";
 export { type IssueDetailsState, useIssueDetailsState } from "./issue-details-state.js";
 export {
+  isSessionTerminationCode,
   type SessionTerminationCode,
   type SessionTerminationCopy,
   sessionTerminationCopy,
@@ -78,6 +79,18 @@ export {
   PERSISTED_RUN_ERROR_CODES,
   savedRunExists,
 } from "./presentation/agent-status.js";
+export {
+  buildCleanRunFactLine,
+  buildCleanRunStatement,
+  buildModelValue,
+  buildScopeValue,
+  CLEAN_RUN_RECEIPT_LABELS,
+  type CleanRunFactLineInput,
+  type CleanRunInput,
+  type CleanRunStatementInput,
+  isCleanRun,
+  type ScopeValueInput,
+} from "./presentation/clean-run.js";
 export {
   getAlternateReviewMode,
   getDetailsEmptyCopy,

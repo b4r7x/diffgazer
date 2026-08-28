@@ -601,6 +601,8 @@ describe("FilePickerDialog", () => {
     expect(search).toHaveValue("");
     expect(onOpenChange).not.toHaveBeenCalled();
 
+    // fireEvent retained: second press of the same raw keydown sequence -- it must hit the
+    // input exactly like the clearing press above so only the empty-query state differs.
     fireEvent.keyDown(search, { key: "Escape" });
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });

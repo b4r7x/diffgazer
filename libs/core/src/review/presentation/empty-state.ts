@@ -7,10 +7,6 @@ export interface ReviewEmptyCopy {
 }
 
 const DETAILS_EMPTY_COPY = {
-  "no-issues": {
-    title: "No issues in this review",
-    description: "This analysis passed without issues.",
-  },
   "filter-empty": {
     title: "No issues match this filter",
     description: "Choose another severity to continue.",

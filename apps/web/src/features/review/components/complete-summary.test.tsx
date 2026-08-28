@@ -1,15 +1,24 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import type { RunReceiptRow } from "@/components/shared/run-receipt";
 import { ReviewCompleteSummary } from "./complete-summary";
+
+const RECEIPT_ROWS: RunReceiptRow[] = [
+  { label: "Scope", value: "Unstaged · 12 files · +248 -96" },
+  { label: "Elapsed", value: "8s" },
+];
+const RECEIPT_STUB: RunReceiptRow = { label: "Run", value: "#run-1 · Today 2:02 PM" };
 
 describe("ReviewCompleteSummary", () => {
   it("uses the singular issue label for a one-issue review", () => {
     render(
       <ReviewCompleteSummary
-        stats={{ runId: "run-1", totalIssues: 1, filesWithIssues: 1, blockerCount: 0 }}
+        stats={{ totalIssues: 1, filesWithIssues: 1, blockerCount: 0 }}
         severityCounts={{ blocker: 0, high: 1, medium: 0, low: 0, nit: 0 }}
         categoryStats={[]}
         topIssues={[]}
+        receiptRows={RECEIPT_ROWS}
+        receiptStub={RECEIPT_STUB}
       />,
     );
 
@@ -18,29 +27,58 @@ describe("ReviewCompleteSummary", () => {
     expect(screen.queryByText(/analyzed/i)).not.toBeInTheDocument();
   });
 
-  it("states an empty category summary exactly once", () => {
+  it("states the run's evidence as a receipt and keeps the id out of the headline", () => {
     render(
       <ReviewCompleteSummary
-        stats={{ runId: "run-1", totalIssues: 0, filesWithIssues: 0, blockerCount: 0 }}
-        severityCounts={{ blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }}
+        stats={{ totalIssues: 1, filesWithIssues: 1, blockerCount: 0 }}
+        severityCounts={{ blocker: 0, high: 1, medium: 0, low: 0, nit: 0 }}
         categoryStats={[]}
         topIssues={[]}
+        receiptRows={RECEIPT_ROWS}
+        receiptStub={RECEIPT_STUB}
       />,
     );
 
-    // The full-width span this state renders in is a laid-out box, so the
-    // desktop e2e contract owns it; here the sentence only has to be said once.
-    expect(screen.getAllByText("Nothing to categorise.")).toHaveLength(1);
-    expect(screen.getByRole("region", { name: "Issues by category" })).toBeVisible();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Review Complete");
+    expect(screen.getByRole("heading", { level: 1 })).not.toHaveTextContent("#run-1");
+    expect(screen.getByText("Unstaged · 12 files · +248 -96")).toBeVisible();
+    expect(screen.getByText("#run-1 · Today 2:02 PM")).toBeVisible();
+    // Elapsed is the ledger's row now, so the fact line does not say it twice.
+    expect(screen.getByText("1 issue in 1 file")).toBeVisible();
+  });
+
+  it("draws no breakdown or category table for a run that found nothing", () => {
+    render(
+      <ReviewCompleteSummary
+        stats={{ totalIssues: 0, filesWithIssues: 0, blockerCount: 0 }}
+        severityCounts={{ blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }}
+        categoryStats={[]}
+        topIssues={[]}
+        receiptRows={RECEIPT_ROWS}
+        receiptStub={RECEIPT_STUB}
+        lensStats={[
+          { lensId: "correctness", issueCount: 0, status: "success" },
+          { lensId: "security", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
+        ]}
+      />,
+    );
+
+    // A chart of zeros is a shape with no reading, and a table with no rows
+    // costs a frame to say nothing.
+    expect(screen.queryByRole("region", { name: "Severity breakdown" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Issues by category" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Nothing to categorise.")).not.toBeInTheDocument();
   });
 
   it("tabulates the categories a run did find", () => {
     render(
       <ReviewCompleteSummary
-        stats={{ runId: "run-1", totalIssues: 2, filesWithIssues: 1, blockerCount: 0 }}
+        stats={{ totalIssues: 2, filesWithIssues: 1, blockerCount: 0 }}
         severityCounts={{ blocker: 0, high: 0, medium: 2, low: 0, nit: 0 }}
         categoryStats={[{ id: "performance", name: "Performance", count: 2 }]}
         topIssues={[]}
+        receiptRows={RECEIPT_ROWS}
+        receiptStub={RECEIPT_STUB}
       />,
     );
 
@@ -50,10 +88,12 @@ describe("ReviewCompleteSummary", () => {
   it("frames a partial run in the warning tone, never success-green", () => {
     render(
       <ReviewCompleteSummary
-        stats={{ runId: "run-1", totalIssues: 0, filesWithIssues: 0, blockerCount: 0 }}
+        stats={{ totalIssues: 0, filesWithIssues: 0, blockerCount: 0 }}
         severityCounts={{ blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }}
         categoryStats={[]}
         topIssues={[]}
+        receiptRows={RECEIPT_ROWS}
+        receiptStub={RECEIPT_STUB}
         lensStats={[
           { lensId: "correctness", issueCount: 0, status: "success" },
           { lensId: "security", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
@@ -76,10 +116,12 @@ describe("ReviewCompleteSummary", () => {
   it("keeps the success frame for a fully reported run", () => {
     render(
       <ReviewCompleteSummary
-        stats={{ runId: "run-1", totalIssues: 1, filesWithIssues: 1, blockerCount: 0 }}
+        stats={{ totalIssues: 1, filesWithIssues: 1, blockerCount: 0 }}
         severityCounts={{ blocker: 0, high: 1, medium: 0, low: 0, nit: 0 }}
         categoryStats={[]}
         topIssues={[]}
+        receiptRows={RECEIPT_ROWS}
+        receiptStub={RECEIPT_STUB}
         lensStats={[{ lensId: "correctness", issueCount: 1, status: "success" }]}
       />,
     );
@@ -93,7 +135,7 @@ describe("ReviewCompleteSummary", () => {
   it("names the run status and top issues panels for assistive tech", () => {
     render(
       <ReviewCompleteSummary
-        stats={{ runId: "run-1", totalIssues: 1, filesWithIssues: 1, blockerCount: 0 }}
+        stats={{ totalIssues: 1, filesWithIssues: 1, blockerCount: 0 }}
         severityCounts={{ blocker: 0, high: 1, medium: 0, low: 0, nit: 0 }}
         categoryStats={[]}
         topIssues={[
@@ -105,6 +147,8 @@ describe("ReviewCompleteSummary", () => {
             severity: "high",
           },
         ]}
+        receiptRows={RECEIPT_ROWS}
+        receiptStub={RECEIPT_STUB}
       />,
     );
 

@@ -117,11 +117,13 @@ function resultsMatch(
 /**
  * Whether a review that ended on this terminal outcome may carry findings.
  * Lenses that settled inside an exhausted budget returned schema-valid findings
- * the review already streamed, so a budget-exhausted review keeps them; every
- * other failed outcome ended before its aggregate could be trusted.
+ * the review already streamed, and so did the lenses an interrupted run got
+ * through before it was cancelled — the server writes those partials rather
+ * than losing them. Every other failed outcome ended before its aggregate could
+ * be trusted.
  */
 export function terminalOutcomeKeepsFindings(outcome: TerminalOutcome): boolean {
-  return outcome === "completed" || outcome === "budget-exhausted";
+  return outcome === "completed" || outcome === "budget-exhausted" || outcome === "cancelled";
 }
 
 function validateSavedReviewExecution(
@@ -150,7 +152,7 @@ function validateSavedReviewExecution(
   if (!terminalOutcomeKeepsFindings(receipt.outcome) && review.result.issues.length > 0) {
     context.addIssue({
       code: "custom",
-      message: "Only completed and budget-exhausted reviews can carry findings",
+      message: "Only completed, budget-exhausted and cancelled reviews can carry findings",
       path: ["result", "issues"],
     });
   }

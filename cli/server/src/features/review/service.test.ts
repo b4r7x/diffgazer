@@ -75,6 +75,7 @@ const DEFAULT_REVIEW_RESULT: ReviewResult = {
 
 let createReviewSession: ServiceModule["createReviewSession"];
 let buildReviewInputHash: ServiceModule["buildReviewInputHash"];
+let recordPassedConformanceEvidence: ServiceModule["recordPassedConformanceEvidence"];
 let streamActiveSessionToSSE: SseReplayModule["streamActiveSessionToSSE"];
 let cancelSessionForUser: SessionsModule["cancelSessionForUser"];
 let createSession: SessionsModule["createSession"];
@@ -398,6 +399,7 @@ beforeAll(async () => {
   const git = await import("../../shared/lib/git/service.js");
   createReviewSession = service.createReviewSession;
   buildReviewInputHash = service.buildReviewInputHash;
+  recordPassedConformanceEvidence = service.recordPassedConformanceEvidence;
   streamActiveSessionToSSE = sseReplay.streamActiveSessionToSSE;
   cancelSessionForUser = sessions.cancelSessionForUser;
   createSession = sessions.createSession;
@@ -921,6 +923,64 @@ describe("POST-to-stream integration", () => {
     });
   });
 
+  it("saves the findings a superseding start cancels mid-run", async () => {
+    const stalledLens = createDeferred<void>();
+    let dispatches = 0;
+    const stalling: InitializedAIClient = {
+      ...makeAIClient(),
+      generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
+        dispatches += 1;
+        if (dispatches === 1) return ok(schema.parse(DEFAULT_REVIEW_RESULT));
+        await stalledLens.promise;
+        return ok(schema.parse({ issues: [] }));
+      },
+    };
+
+    try {
+      const superseded = await createReviewSession(stalling, {
+        mode: "unstaged",
+        projectPath: projectRoot,
+        lenses: ["correctness", "security"],
+      });
+
+      expect(superseded.ok).toBe(true);
+      if (!superseded.ok) return;
+      const supersededId = superseded.value.reviewId;
+      trackSessionWithRunner(supersededId);
+      const session = requireValue(getSession(supersededId), "superseded session");
+      await vi.waitFor(() => {
+        if (!session.events.some((event) => event.type === "issue_found")) {
+          throw new Error("no issue streamed yet");
+        }
+      });
+
+      const superseding = await createReviewSession(makeAIClient(), {
+        mode: "unstaged",
+        projectPath: projectRoot,
+        lenses: ["correctness"],
+      });
+
+      expect(superseding.ok).toBe(true);
+      if (!superseding.ok) return;
+      trackSessionWithRunner(superseding.value.reviewId);
+      expect(session.isComplete).toBe(true);
+
+      const { getReviewDetail } = await import("./storage/reviews.js");
+      const saved = await vi.waitFor(async () => {
+        const detail = await getReviewDetail(supersededId);
+        if (!detail.ok) throw new Error("partial review not written yet");
+        return detail.value.review;
+      });
+
+      expect(saved.metadata.terminalOutcome).toBe("cancelled");
+      expect(saved.result.issues).toEqual([
+        expect.objectContaining({ title: "Subtraction used in addition helper" }),
+      ]);
+    } finally {
+      stalledLens.resolve();
+    }
+  });
+
   it("persists a nonnegative duration when the wall clock moves backward", async () => {
     let wallClock = 1_000_000;
     const dateNow = vi.spyOn(Date, "now").mockImplementation(() => {
@@ -1350,6 +1410,98 @@ describe("admitted configuration execution", () => {
     // The store holds no such configuration, so the record call fails: the
     // review still completes, which is the warn-only contract.
     expect(getSession(result.value.reviewId)?.isComplete).toBe(true);
+    recordEvidence.mockRestore();
+  });
+
+  it("files passed evidence on the first structured success and does not rewrite it at completion", async () => {
+    const { getStore } = await import("../../shared/lib/config/store.js");
+    // The store holds no such configuration, so a real write would fail — and a
+    // failed write is exactly what re-arms the completion-time fallback. This
+    // case is about the write that lands.
+    const recordEvidence = vi
+      .spyOn(getStore(), "recordConfigurationEvidence")
+      .mockResolvedValue(ok(true));
+    const aiClient = makeConformanceAIClient({ evidenceState: "unproven" });
+    const authorization = requireValue(aiClient.authorization, "test client authorization");
+
+    await recordPassedConformanceEvidence(authorization);
+
+    const [configurationId, evidence] = requireValue(
+      recordEvidence.mock.calls[0],
+      "recorded conformance evidence",
+    );
+    expect(configurationId).toBe(serviceAdmittedPlan().configurationId);
+    expect(evidence).toMatchObject({ status: "passed", expiresAt: null });
+    expect(evidence.evidenceKeyHash).toBe(
+      hashAdmissionEvidenceKeySync(serviceAdmittedPlan().evidenceKey),
+    );
+
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    await vi.waitFor(() => {
+      if (!getSession(result.value.reviewId)?.isComplete) {
+        throw new Error("session not complete yet");
+      }
+    });
+
+    expect(recordEvidence).toHaveBeenCalledOnce();
+    recordEvidence.mockRestore();
+  });
+
+  it("files passed evidence at completion when the first structured success could not write it", async () => {
+    const { getStore } = await import("../../shared/lib/config/store.js");
+    const { configurationActionFailure } = await import("../../shared/lib/config/types.js");
+    const recordEvidence = vi
+      .spyOn(getStore(), "recordConfigurationEvidence")
+      .mockResolvedValueOnce(err(configurationActionFailure("PERSIST_FAILED", "disk unavailable")))
+      .mockResolvedValue(ok(true));
+    const aiClient = makeConformanceAIClient({ evidenceState: "unproven" });
+    const authorization = requireValue(aiClient.authorization, "test client authorization");
+
+    await recordPassedConformanceEvidence(authorization);
+    expect(recordEvidence).toHaveBeenCalledOnce();
+
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    await vi.waitFor(() => {
+      if (!getSession(result.value.reviewId)?.isComplete) {
+        throw new Error("session not complete yet");
+      }
+    });
+
+    // The early write never landed, so the completion-time recorder is still the
+    // fallback it is meant to be instead of a suppressed no-op.
+    expect(recordEvidence).toHaveBeenCalledTimes(2);
+    const [, evidence] = requireValue(
+      recordEvidence.mock.calls[1],
+      "recorded conformance evidence",
+    );
+    expect(evidence).toMatchObject({ status: "passed" });
+    recordEvidence.mockRestore();
+  });
+
+  it("files no passed evidence for a tuple admission already proved", async () => {
+    const { getStore } = await import("../../shared/lib/config/store.js");
+    const recordEvidence = vi.spyOn(getStore(), "recordConfigurationEvidence");
+    const aiClient = makeConformanceAIClient({ evidenceState: "proven" });
+
+    await recordPassedConformanceEvidence(
+      requireValue(aiClient.authorization, "test client authorization"),
+    );
+
+    expect(recordEvidence).not.toHaveBeenCalled();
     recordEvidence.mockRestore();
   });
 

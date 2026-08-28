@@ -1,6 +1,5 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider, useReview } from "@diffgazer/core/api/hooks";
-import { sessionTerminationCopy } from "@diffgazer/core/review";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import {
@@ -908,14 +907,12 @@ describe("useReviewLifecycle stale session termination", () => {
     mockUseReviewLifecycleBase.mockReturnValue(makeBaseReturn());
   });
 
-  it("clears the active session, shows timeout toast copy, and navigates home on SESSION_TIMEOUT", () => {
+  it("clears the active session without leaving the review screen or duplicating the banner copy", () => {
     let onStale: ((code: string) => void) | undefined;
     mockUseReviewLifecycleBase.mockImplementation((options) => {
       onStale = options.onStaleSession;
       return makeRunningBaseReturn();
     });
-
-    const copy = sessionTerminationCopy(ReviewErrorCode.SESSION_TIMEOUT);
 
     renderReviewLifecycle("unstaged");
 
@@ -928,8 +925,12 @@ describe("useReviewLifecycle stale session termination", () => {
       "unstaged",
       "11111111-1111-4111-8111-111111111111",
     );
-    expect(mockToastError).toHaveBeenCalledWith(copy.title, { message: copy.message });
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+    // The terminal-error banner on the screen owns the termination copy; a
+    // toast saying the same thing would render it twice.
+    expect(mockToastError).not.toHaveBeenCalled();
+    // The streamed findings are still on this screen, and the server saved the
+    // partial run: navigating home would throw both away.
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
 

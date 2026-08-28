@@ -39,6 +39,7 @@ export interface UseHistoryScreenResult {
   setSelectedRunId: (id: string | null) => void;
 
   selectedRun: ReviewMetadata | null;
+  reviewDetail: HistoryScreenState["reviewDetail"];
   severityCounts: SeverityCounts | null;
   sortedIssues: ReviewIssue[];
   duration: string;
@@ -127,6 +128,7 @@ export function useHistoryScreen({
     selectedRunId: history.selectedRunId,
     setSelectedRunId: history.setSelectedRunId,
     selectedRun: history.selectedRun,
+    reviewDetail: history.reviewDetail,
     severityCounts: history.severityCounts,
     sortedIssues: history.sortedIssues,
     duration: history.duration,

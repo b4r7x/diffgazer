@@ -90,6 +90,23 @@ function reviewQuery(state: ReviewQueryState = { status: "pending" }): ReviewQue
   return state;
 }
 
+const EMPTY_REVIEW_METADATA = {
+  id: "review-empty",
+  durationMs: 2500,
+  mode: "staged" as const,
+  fileCount: 4,
+  lenses: ["correctness", "tests"],
+  createdAt: "2026-08-26T09:14:00.000Z",
+};
+
+/** A completed run that found nothing: the clean state's fixture. */
+function emptyReviewQuery(): ReviewQueryState {
+  return reviewQuery({
+    status: "success",
+    data: { review: { metadata: EMPTY_REVIEW_METADATA, result: { issues: [] } } },
+  });
+}
+
 function apiError(status: number) {
   return Object.assign(new Error(`HTTP ${status}`), { status });
 }
@@ -242,9 +259,7 @@ describe("ReviewPage saved review loading", () => {
 
     renderPage();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      `Budget Exhausted ${formatRunId("review-budget")}`,
-    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("Budget Exhausted");
     expect(screen.getByText("1 of 3 lenses completed · 1 issue")).toBeVisible();
     expect(screen.queryByText(/Review Complete/)).not.toBeInTheDocument();
 
@@ -301,9 +316,7 @@ describe("ReviewPage saved review loading", () => {
     await user.keyboard("{Escape}");
 
     expect(await screen.findByRole("button", { name: /view results/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      `Budget Exhausted ${formatRunId("review-budget")}`,
-    );
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Budget Exhausted");
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(mockBack).not.toHaveBeenCalled();
   });
@@ -368,32 +381,82 @@ describe("ReviewPage saved review loading", () => {
       "true",
     );
     expect(screen.getByText("Saved result issue symptom")).toBeInTheDocument();
-    expect(
-      screen.queryByText(`Review Complete ${formatRunId("review-saved")}`),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Review Complete")).not.toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("opens a completed saved review that found nothing at its summary", async () => {
+  it("opens a completed saved review that found nothing at its clean-run state", async () => {
+    const user = userEvent.setup();
     routeState.params = { reviewId: "review-empty" };
     routeState.search = { mode: "staged" };
+    mockUseReview.mockReturnValue(emptyReviewQuery());
+
+    renderPage();
+
+    expect(await screen.findByText("Passed — no issues found")).toBeInTheDocument();
+    expect(screen.getByText("Staged · 4 files")).toBeInTheDocument();
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+
+    // No entry into emptiness: the run offers where to go next, not a results
+    // screen with nothing in it.
+    expect(screen.queryByRole("button", { name: /view results/i })).not.toBeInTheDocument();
+    const backToHistory = screen.getByRole("button", { name: "Back to History" });
+    expect(screen.getAllByRole("button")).toEqual([backToHistory]);
+
+    await user.click(backToHistory);
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/history" });
+  });
+
+  it("keeps a zero-issue run on its clean state for an issue deep link", async () => {
+    routeState.params = { reviewId: "review-empty" };
+    routeState.search = { mode: "staged", issueId: "issue-1" };
+    mockUseReview.mockReturnValue(emptyReviewQuery());
+
+    renderPage();
+
+    expect(await screen.findByText("Passed — no issues found")).toBeInTheDocument();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("option")).not.toBeInTheDocument();
+  });
+
+  it("keeps a zero-issue run on its clean state once the results screen was entered", async () => {
+    const user = userEvent.setup();
+    routeState.params = { reviewId: "review-empty" };
+    routeState.search = { mode: "staged" };
+    // The only way into `savedScreen: "results"` is a summary's View Results,
+    // and only a failed run renders that summary with findings behind it.
     mockUseReview.mockReturnValue(
       reviewQuery({
         status: "success",
         data: {
           review: {
-            metadata: { id: "review-empty", durationMs: 2500 },
-            result: { issues: [] },
+            metadata: EMPTY_REVIEW_METADATA,
+            result: { issues: [makeIssue({ id: "issue-1", title: "Wrong value" })] },
+            lensStats: [
+              { lensId: "correctness", issueCount: 1, status: "success" },
+              { lensId: "security", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
+            ],
+            executionSnapshot: {
+              schemaVersion: 1,
+              executionFingerprint: "a".repeat(64),
+              receipt: { outcome: "budget-exhausted", usageAvailability: "reported" },
+            },
           },
         },
       }),
     );
 
-    renderPage();
+    const { rerender } = renderPage();
+    await user.click(await screen.findByRole("button", { name: /view results/i }));
+    expect(screen.getByRole("option", { name: /wrong value/i })).toBeInTheDocument();
 
-    expect(
-      await screen.findByText(`Review Complete ${formatRunId("review-empty")}`),
-    ).toBeInTheDocument();
+    // The same run re-read as a completed one that found nothing: a screen
+    // state of "results" is not a way into an empty list.
+    mockUseReview.mockReturnValue(emptyReviewQuery());
+    rerender(<ReviewPage />);
+
+    expect(await screen.findByText("Passed — no issues found")).toBeInTheDocument();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("option")).not.toBeInTheDocument();
   });
 
@@ -424,22 +487,30 @@ describe("ReviewPage saved review loading", () => {
     await user.keyboard("{Escape}");
 
     expect(mockBack).toHaveBeenCalledTimes(1);
-    expect(
-      screen.queryByText(`Review Complete ${formatRunId("review-saved")}`),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Review Complete")).not.toBeInTheDocument();
   });
 
   it("returns a summary-entered results list to its summary with Escape", async () => {
     const user = userEvent.setup();
-    routeState.params = { reviewId: "review-empty" };
+    const issue = makeIssue({ id: "issue-1", title: "Kept finding" });
+    routeState.params = { reviewId: "review-budget" };
     routeState.search = { mode: "staged" };
     mockUseReview.mockReturnValue(
       reviewQuery({
         status: "success",
         data: {
           review: {
-            metadata: { id: "review-empty", durationMs: 2500 },
-            result: { issues: [] },
+            metadata: { id: "review-budget", durationMs: 2500 },
+            result: { issues: [issue] },
+            lensStats: [
+              { lensId: "correctness", issueCount: 1, status: "success" },
+              { lensId: "tests", issueCount: 0, status: "failed", errorCode: "BUDGET_EXHAUSTED" },
+            ],
+            executionSnapshot: {
+              schemaVersion: 1,
+              executionFingerprint: "a".repeat(64),
+              receipt: { outcome: "budget-exhausted", usageAvailability: "reported" },
+            },
           },
         },
       }),
@@ -447,22 +518,16 @@ describe("ReviewPage saved review loading", () => {
 
     renderPage();
 
-    expect(
-      await screen.findByText(`Review Complete ${formatRunId("review-empty")}`),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Budget Exhausted");
 
     await user.click(screen.getByRole("button", { name: /view results/i }));
 
-    expect(await screen.findByText(`Review ${formatRunId("review-empty")}`)).toBeInTheDocument();
+    expect(await screen.findByText(`Review ${formatRunId("review-budget")}`)).toBeInTheDocument();
 
-    // A clean run opens in the details zone; the first Escape steps to the
-    // list, the second returns to the summary.
-    await user.keyboard("{Escape}");
+    // Results opened from a summary keep it one keystroke away.
     await user.keyboard("{Escape}");
 
-    expect(
-      await screen.findByText(`Review Complete ${formatRunId("review-empty")}`),
-    ).toBeInTheDocument();
+    expect((await screen.findAllByRole("alert"))[0]).toHaveTextContent("Budget Exhausted");
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(mockBack).not.toHaveBeenCalled();
   });
@@ -533,9 +598,7 @@ describe("ReviewPage saved review loading", () => {
       "true",
     );
     expect(screen.getByText("Linked saved symptom")).toBeInTheDocument();
-    expect(
-      screen.queryByText(`Review Complete ${formatRunId("review-saved")}`),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Review Complete")).not.toBeInTheDocument();
     expect(screen.getByRole("note")).toHaveTextContent(
       "1 duplicate issue collapsed across lenses (3 → 2 issues)",
     );
@@ -819,9 +882,7 @@ describe("ReviewPage reviewId changes", () => {
     await act(() => {
       capturedOnComplete?.();
     });
-    expect(
-      await screen.findByText(`Review Complete ${formatRunId(FIRST_REVIEW_ID)}`),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Review Complete")).toBeInTheDocument();
     expect(mockClearActiveSession).toHaveBeenCalledWith("unstaged", FIRST_REVIEW_ID);
 
     routeState.params = { reviewId: SECOND_REVIEW_ID };
@@ -834,9 +895,7 @@ describe("ReviewPage reviewId changes", () => {
     view.rerender(<ReviewPage />);
 
     expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
-    expect(
-      screen.queryByText(`Review Complete ${formatRunId(FIRST_REVIEW_ID)}`),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Review Complete")).not.toBeInTheDocument();
     expect(screen.queryByText("First review issue")).not.toBeInTheDocument();
   });
 });
@@ -944,18 +1003,14 @@ describe("ReviewPage live review phase transitions", () => {
       capturedOnComplete?.();
     });
 
-    expect(
-      await screen.findByText(`Review Complete ${formatRunId(LIVE_REVIEW_ID)}`),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Review Complete")).toBeInTheDocument();
     expect(mockClearActiveSession).toHaveBeenCalledWith("unstaged", LIVE_REVIEW_ID);
     expect(screen.getByRole("button", { name: /view results/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /view results/i }));
 
     expect(await screen.findByText(`Review ${formatRunId(LIVE_REVIEW_ID)}`)).toBeInTheDocument();
-    expect(
-      screen.queryByText(`Review Complete ${formatRunId(LIVE_REVIEW_ID)}`),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Review Complete")).not.toBeInTheDocument();
   });
 
   async function openSummary() {
@@ -965,9 +1020,7 @@ describe("ReviewPage live review phase transitions", () => {
     await act(() => {
       capturedOnComplete?.();
     });
-    expect(
-      await screen.findByText(`Review Complete ${formatRunId(LIVE_REVIEW_ID)}`),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Review Complete")).toBeInTheDocument();
     return user;
   }
 
@@ -1001,9 +1054,7 @@ describe("ReviewPage live review phase transitions", () => {
 
     await user.keyboard("{Escape}");
 
-    expect(
-      await screen.findByText(`Review Complete ${formatRunId(LIVE_REVIEW_ID)}`),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Review Complete")).toBeInTheDocument();
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(mockBack).not.toHaveBeenCalled();
   });

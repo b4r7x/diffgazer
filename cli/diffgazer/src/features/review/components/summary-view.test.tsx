@@ -170,7 +170,7 @@ describe("ReviewSummaryView (TUI)", () => {
     await vi.waitFor(() => expect(lastFrame() ?? "").toContain("↑/↓ Scroll, Enter View Results"));
   });
 
-  test("formats a full review id with the shared compact label", () => {
+  test("formats a full review id with the shared compact label on the receipt", () => {
     const { lastFrame } = render(
       <FooterProvider initialShortcuts={[]}>
         <CliThemeProvider initialTheme="dark">
@@ -184,8 +184,156 @@ describe("ReviewSummaryView (TUI)", () => {
       </FooterProvider>,
     );
 
-    expect(lastFrame() ?? "").toContain("REVIEW COMPLETE #12345678");
+    expect(lastFrame() ?? "").toContain("Run    : #12345678");
     expect(lastFrame() ?? "").not.toContain("12345678-1234");
+  });
+});
+
+describe("ReviewSummaryView clean run (TUI)", () => {
+  const CLEAN_LENS_STATS: LensStat[] = [
+    { lensId: "correctness", issueCount: 0, status: "success" },
+    { lensId: "security", issueCount: 0, status: "success" },
+  ];
+
+  function renderClean(props?: Partial<ReviewSummaryViewProps>) {
+    return render(
+      <FooterProvider initialShortcuts={[]}>
+        <CliThemeProvider initialTheme="dark">
+          <ReviewSummaryView
+            issues={[]}
+            reviewId="review-1"
+            durationMs={8200}
+            lensStats={CLEAN_LENS_STATS}
+            runFacts={{
+              mode: "unstaged",
+              fileCount: 12,
+              additions: 248,
+              deletions: 96,
+              productId: "deepseek",
+              modelId: "deepseek-chat",
+              createdAt: "2026-08-28T14:02:00.000Z",
+            }}
+            onContinue={vi.fn()}
+            onRunAgain={vi.fn()}
+            onBack={vi.fn()}
+            {...props}
+          />
+          <FooterProbe />
+        </CliThemeProvider>
+      </FooterProvider>,
+    );
+  }
+
+  test("pays for the pass with the run's receipt instead of zeroed sections", () => {
+    const frame = renderClean().lastFrame() ?? "";
+
+    expect(frame).toContain("✔ Passed — no issues found");
+    expect(frame).toContain("Scope  : Unstaged · 12 files · +248 -96");
+    expect(frame).toContain("Lenses : correctness · security");
+    expect(frame).toContain("Model  : DeepSeek / deepseek-chat");
+    expect(frame).toContain("Elapsed: 8s");
+    expect(frame).toContain("── ──");
+    expect(frame).toContain("Run    : #review-1 · ");
+    expect(frame).not.toMatch(/severity breakdown/i);
+    expect(frame).not.toMatch(/issues by category/i);
+    expect(frame).not.toMatch(/issues by lens/i);
+    expect(frame).not.toContain("Found 0 issues");
+    expect(frame).not.toContain("0 issues");
+  });
+
+  test("offers no results entry, by button, shortcut, or Enter", async () => {
+    const onContinue = vi.fn();
+    const { stdin, lastFrame } = renderClean({ onContinue });
+
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("Run Again"));
+    expect(lastFrame() ?? "").not.toContain("View Results");
+
+    stdin.write("\r");
+    await flush();
+
+    expect(onContinue).not.toHaveBeenCalled();
+    expect(lastFrame() ?? "").not.toContain("View Results");
+  });
+
+  test("mounts focus on Run Again and runs it once on Enter", async () => {
+    const onRunAgain = vi.fn();
+    const { stdin, lastFrame } = renderClean({ onRunAgain });
+
+    await vi.waitFor(() =>
+      expect(lastFrame() ?? "").toContain("Left/Right Actions, Enter Run Again"),
+    );
+
+    stdin.write("\r");
+    await waitUntil(() => onRunAgain.mock.calls.length === 1);
+
+    expect(onRunAgain).toHaveBeenCalledTimes(1);
+  });
+
+  test("moves to Back to Home with the arrow keys and names it in the legend", async () => {
+    const onRunAgain = vi.fn();
+    const onBack = vi.fn();
+    const { stdin, lastFrame } = renderClean({ onRunAgain, onBack });
+
+    stdin.write(`${ESCAPE}[C`);
+    await vi.waitFor(() =>
+      expect(lastFrame() ?? "").toContain("Left/Right Actions, Enter Back to Home"),
+    );
+
+    stdin.write("\r");
+    await waitUntil(() => onBack.mock.calls.length === 1);
+
+    expect(onRunAgain).not.toHaveBeenCalled();
+  });
+
+  test("collapses a saved run to its single labelled exit", async () => {
+    const { lastFrame } = renderClean({ onRunAgain: undefined, backLabel: "Back to History" });
+
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("Enter Back to History"));
+    const frame = lastFrame() ?? "";
+
+    expect(frame).toContain("[ Back to History ]");
+    expect(frame).not.toContain("Run Again");
+    expect(frame).not.toContain("Left/Right Actions");
+  });
+
+  test("still leaves through the single Esc Back", async () => {
+    const onBack = vi.fn();
+    const { stdin } = renderClean({ onBack });
+
+    stdin.write(ESCAPE);
+    await waitUntil(() => onBack.mock.calls.length === 1);
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  test("qualifies the pass when findings were hidden below the threshold", () => {
+    const frame =
+      renderClean({ droppedBelowThreshold: 4, minSeverity: "medium" }).lastFrame() ?? "";
+
+    expect(frame).toContain("✔ No issues at or above medium");
+    expect(frame).not.toContain("Passed — no issues found");
+    expect(frame).toContain("4 below-threshold issues hidden (threshold: medium)");
+  });
+
+  test("keeps a zero-issue run with a failed lens on the partial summary, without results entry", async () => {
+    const onContinue = vi.fn();
+    const { stdin, lastFrame } = renderClean({
+      lensStats: [
+        { lensId: "correctness", issueCount: 0, status: "success" },
+        { lensId: "security", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
+      ],
+      onContinue,
+    });
+    const frame = lastFrame() ?? "";
+
+    expect(frame).toMatch(/review partially complete/i);
+    expect(frame).not.toContain("Passed — no issues found");
+    expect(frame).not.toContain("View Results");
+
+    stdin.write("\r");
+    await flush();
+
+    expect(onContinue).not.toHaveBeenCalled();
   });
 });
 
@@ -242,10 +390,10 @@ describe("ReviewSummaryView failure mode (TUI)", () => {
 
   test("says why an outcome that keeps no findings still lists per-lens counts", () => {
     const { lastFrame } = renderSummary({
-      terminalOutcome: "cancelled",
+      terminalOutcome: "timed-out",
       lensStats: [
         { lensId: "correctness", issueCount: 3, status: "success" },
-        { lensId: "security", issueCount: 0, status: "failed", errorCode: "CANCELLED" },
+        { lensId: "security", issueCount: 0, status: "failed", errorCode: "SESSION_TIMEOUT" },
       ],
       issues: [],
     });

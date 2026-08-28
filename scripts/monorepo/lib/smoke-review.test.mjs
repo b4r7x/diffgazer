@@ -8,22 +8,34 @@ import {
   E2E_OPT_IN_ENV,
   E2E_PRODUCT_ENV,
   evaluateRun,
-  finalizeE2eDisposition,
-  resolveE2eDisposition,
+  finalizeE2eDispositions,
+  modelOverrideNotice,
+  resolveE2eDispositions,
+  runFailureLine,
   skipLine,
 } from "./smoke-review.mjs";
 
-const CREDENTIAL_ENVS = { openrouter: "OPENROUTER_API_KEY", gemini: "GOOGLE_API_KEY" };
-const SUGGESTED_MODELS = { openrouter: null, gemini: "gemini-2.5-flash" };
+const CREDENTIAL_ENVS = {
+  openrouter: "OPENROUTER_API_KEY",
+  gemini: "GOOGLE_API_KEY",
+  zai: "ZAI_API_KEY",
+  deepseek: "DEEPSEEK_API_KEY",
+};
+const SUGGESTED_MODELS = {
+  openrouter: null,
+  gemini: "gemini-2.5-flash",
+  zai: "glm-5-turbo",
+  deepseek: "deepseek-v4-flash",
+};
 
-function resolve({
+function resolveAll({
   env = {},
   networkEnabled = true,
   hasCoreDist = true,
   coreDistError = null,
   hasServerDist = true,
 } = {}) {
-  return resolveE2eDisposition({
+  return resolveE2eDispositions({
     env,
     networkEnabled,
     credentialEnvFor: (id) => CREDENTIAL_ENVS[id],
@@ -32,6 +44,12 @@ function resolve({
     coreDistError,
     hasServerDist,
   });
+}
+
+function resolve(options) {
+  const dispositions = resolveAll(options);
+  assert.equal(dispositions.length, 1);
+  return dispositions[0];
 }
 
 test("no envs -> not requested (live-e2e-disabled)", () => {
@@ -74,7 +92,7 @@ test("unknown product id -> unavailable (unknown-product)", () => {
 });
 
 test("product without a suggested model and no model env -> unavailable (model-unresolved)", () => {
-  const disposition = resolveE2eDisposition({
+  const [disposition] = resolveE2eDispositions({
     env: { [E2E_OPT_IN_ENV]: "1", [E2E_PRODUCT_ENV]: "gemini", GOOGLE_API_KEY: "k" },
     networkEnabled: true,
     credentialEnvFor: (id) => CREDENTIAL_ENVS[id],
@@ -105,7 +123,10 @@ test("unimportable core dist -> unavailable (core-dist-missing) keeping the impo
   const line = skipLine(disposition);
   assert.match(line, /libs\/core dist not importable \(Cannot find module/);
   assert.match(line, /--filter=@diffgazer\/core/);
-  assert.throws(() => finalizeE2eDisposition(disposition, true), /libs\/core dist not importable/);
+  assert.throws(
+    () => finalizeE2eDispositions([disposition], true),
+    /libs\/core dist not importable/,
+  );
 });
 
 test("missing server dist -> unavailable (server-dist-missing)", () => {
@@ -150,9 +171,112 @@ test("suggested model is the default for non-openrouter products", () => {
   assert.equal(disposition.modelId, "gemini-2.5-flash");
 });
 
+test("a comma list resolves one disposition per product, in order", () => {
+  const dispositions = resolveAll({
+    env: {
+      [E2E_OPT_IN_ENV]: "1",
+      [E2E_PRODUCT_ENV]: " openrouter , zai ,deepseek",
+      OPENROUTER_API_KEY: "k",
+      ZAI_API_KEY: "k",
+      DEEPSEEK_API_KEY: "k",
+    },
+  });
+  assert.deepEqual(
+    dispositions.map((disposition) => [
+      disposition.kind,
+      disposition.productId,
+      disposition.modelId,
+    ]),
+    [
+      ["run", "openrouter", DEFAULT_OPENROUTER_E2E_MODEL],
+      ["run", "zai", "glm-5-turbo"],
+      ["run", "deepseek", "deepseek-v4-flash"],
+    ],
+  );
+});
+
+test("the model override is ignored for a multi-product matrix", () => {
+  const env = {
+    [E2E_OPT_IN_ENV]: "1",
+    [E2E_PRODUCT_ENV]: "gemini,zai",
+    [E2E_MODEL_ENV]: "gemini-3-pro",
+    GOOGLE_API_KEY: "k",
+    ZAI_API_KEY: "k",
+  };
+  assert.deepEqual(
+    resolveAll({ env }).map((disposition) => disposition.modelId),
+    ["gemini-2.5-flash", "glm-5-turbo"],
+  );
+  assert.match(modelOverrideNotice(env), /^NOTE: DIFFGAZER_LIVE_E2E_MODEL ignored/);
+});
+
+test("a single requested product honors the model override with no notice", () => {
+  const env = {
+    [E2E_OPT_IN_ENV]: "1",
+    [E2E_PRODUCT_ENV]: "gemini",
+    [E2E_MODEL_ENV]: "gemini-3-pro",
+    GOOGLE_API_KEY: "k",
+  };
+  assert.equal(resolve({ env }).modelId, "gemini-3-pro");
+  assert.equal(modelOverrideNotice(env), null);
+});
+
+test("no notice without the override or without opt-in", () => {
+  assert.equal(
+    modelOverrideNotice({ [E2E_OPT_IN_ENV]: "1", [E2E_PRODUCT_ENV]: "gemini,zai" }),
+    null,
+  );
+  assert.equal(
+    modelOverrideNotice({ [E2E_PRODUCT_ENV]: "gemini,zai", [E2E_MODEL_ENV]: "gemini-3-pro" }),
+    null,
+  );
+});
+
+test("a product whose harness throws gets an honest FAIL line", () => {
+  assert.equal(
+    runFailureLine("zai", "connect ECONNREFUSED"),
+    "FAIL: live review e2e (zai) — connect ECONNREFUSED",
+  );
+});
+
+test("a repeated product runs once", () => {
+  const dispositions = resolveAll({
+    env: { [E2E_OPT_IN_ENV]: "1", [E2E_PRODUCT_ENV]: "zai,zai", ZAI_API_KEY: "k" },
+  });
+  assert.equal(dispositions.length, 1);
+});
+
+test("each matrix product carries its own credential disposition", () => {
+  const dispositions = resolveAll({
+    env: { [E2E_OPT_IN_ENV]: "1", [E2E_PRODUCT_ENV]: "zai,deepseek", ZAI_API_KEY: "k" },
+  });
+  assert.equal(dispositions[0].kind, "run");
+  assert.deepEqual(dispositions[1], {
+    kind: "unavailable",
+    reason: "credential-missing",
+    productId: "deepseek",
+    credentialEnv: "DEEPSEEK_API_KEY",
+  });
+});
+
+test("a blocking gate collapses the matrix to one disposition", () => {
+  assert.deepEqual(
+    resolveAll({
+      env: { [E2E_OPT_IN_ENV]: "1", [E2E_PRODUCT_ENV]: "openrouter,zai" },
+      hasServerDist: false,
+    }),
+    [{ kind: "unavailable", reason: "server-dist-missing" }],
+  );
+});
+
 test("not-requested dispositions pass under strict skips", () => {
-  finalizeE2eDisposition({ kind: "not-requested", reason: "live-e2e-disabled" }, true);
-  finalizeE2eDisposition({ kind: "not-requested", reason: "network-disabled" }, true);
+  finalizeE2eDispositions(
+    [
+      { kind: "not-requested", reason: "live-e2e-disabled" },
+      { kind: "not-requested", reason: "network-disabled" },
+    ],
+    true,
+  );
 });
 
 test("unavailable dispositions fail under strict skips and pass otherwise", () => {
@@ -162,8 +286,20 @@ test("unavailable dispositions fail under strict skips and pass otherwise", () =
     productId: "openrouter",
     credentialEnv: "OPENROUTER_API_KEY",
   };
-  finalizeE2eDisposition(disposition, false);
-  assert.throws(() => finalizeE2eDisposition(disposition, true), /credential-missing/);
+  finalizeE2eDispositions([disposition], false);
+  assert.throws(() => finalizeE2eDispositions([disposition], true), /credential-missing/);
+});
+
+test("one unavailable product in a matrix fails strict skips", () => {
+  const dispositions = resolveAll({
+    env: {
+      [E2E_OPT_IN_ENV]: "1",
+      [E2E_PRODUCT_ENV]: "openrouter,zai",
+      OPENROUTER_API_KEY: "k",
+    },
+  });
+  finalizeE2eDispositions(dispositions, false);
+  assert.throws(() => finalizeE2eDispositions(dispositions, true), /ZAI_API_KEY/);
 });
 
 test("skip line carries the full copy-pastable command", () => {
@@ -224,8 +360,25 @@ test("SSE parser ignores comment and id lines", () => {
 });
 
 const completeTerminal = { type: "complete", result: { issues: [] }, reviewId: "r-1" };
+const completeWithFinding = {
+  type: "complete",
+  result: { issues: [{ id: "i-1" }] },
+  reviewId: "r-1",
+};
 
 test("complete + streamed + persisted + listed -> pass", () => {
+  const { verdict, lines } = evaluateRun({
+    sawNonTerminalEvent: true,
+    terminal: completeWithFinding,
+    timedOut: false,
+    persisted: true,
+    listed: true,
+  });
+  assert.equal(verdict, "pass");
+  assert.deepEqual(lines, ["OK: live review e2e — completed, 1 issue(s), lens correctness"]);
+});
+
+test("a completed run with no findings warns but passes", () => {
   const { verdict, lines } = evaluateRun({
     sawNonTerminalEvent: true,
     terminal: completeTerminal,
@@ -234,7 +387,46 @@ test("complete + streamed + persisted + listed -> pass", () => {
     listed: true,
   });
   assert.equal(verdict, "pass");
-  assert.match(lines[0], /^OK: live review e2e/);
+  assert.match(lines[1], /^WARN: the planted bug produced no findings/);
+});
+
+test("a schema-invalid stream payload fails a run that otherwise passed", () => {
+  const { verdict, lines } = evaluateRun({
+    sawNonTerminalEvent: true,
+    terminal: completeWithFinding,
+    timedOut: false,
+    persisted: true,
+    listed: true,
+    schemaErrors: ["agent_progress.agent: Invalid input", "complete.result.issues.0.severity: bad"],
+  });
+  assert.equal(verdict, "fail");
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], /2 stream payload\(s\) that do not match the published schema/);
+  assert.match(lines[0], /agent_progress\.agent: Invalid input; complete\.result\.issues/);
+});
+
+test("only the first few schema errors are printed", () => {
+  const { lines } = evaluateRun({
+    sawNonTerminalEvent: true,
+    terminal: completeWithFinding,
+    timedOut: false,
+    persisted: true,
+    listed: true,
+    schemaErrors: ["a", "b", "c", "d"],
+  });
+  assert.match(lines[0], /saw 4 stream payload\(s\).*: a; b; c$/);
+});
+
+test("a terminal error outranks schema errors", () => {
+  const { lines } = evaluateRun({
+    sawNonTerminalEvent: true,
+    terminal: { type: "error", error: { code: "AI_ERROR", message: "upstream died" } },
+    timedOut: false,
+    persisted: false,
+    listed: false,
+    schemaErrors: ["chunk.content: Invalid input"],
+  });
+  assert.match(lines[0], /AI_ERROR: upstream died/);
 });
 
 test("complete with failed lenses -> pass with WARN lines", () => {

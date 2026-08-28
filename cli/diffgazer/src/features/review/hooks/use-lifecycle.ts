@@ -15,12 +15,13 @@ import type {
   ReviewEvent,
   ReviewScreenPhase,
 } from "@diffgazer/core/review";
-import {
-  describeReviewStartError,
-  type ReviewStartErrorDescription,
-  sessionTerminationCopy,
-} from "@diffgazer/core/review";
-import type { ProviderConsent, Readiness, TransportFamily } from "@diffgazer/core/schemas/config";
+import { describeReviewStartError, type ReviewStartErrorDescription } from "@diffgazer/core/review";
+import type {
+  ProviderConsent,
+  Readiness,
+  RunnableProductId,
+  TransportFamily,
+} from "@diffgazer/core/schemas/config";
 import {
   canAttemptReview,
   READINESS_PRESENTATION,
@@ -115,7 +116,9 @@ export interface ReviewLifecycleState {
   /** The session request was refused; `error` carries the same text for the summary. */
   startError: ReviewStartErrorDescription | null;
   isStreaming: boolean;
-  provider: string | null;
+  provider: RunnableProductId | null;
+  /** The model the run will answer on, so the receipt reads the same fact a saved run kept. */
+  modelId: string | null;
   productLabel: string | null;
   /** "Provider / model" identity of the selected configuration, for gate metadata. */
   configurationDisplay: string | null;
@@ -172,6 +175,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     : null;
   const transportFamily = selectedStatus?.configuration.transportFamily ?? null;
   const provider = selectedStatus?.configuration.productId ?? null;
+  const modelId = selectedStatus?.configuration.selectedModelId ?? null;
 
   let initState: ReviewInitState;
   if (initData) {
@@ -216,9 +220,11 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
         });
       }
     },
-    onStaleSession: (code) => {
+    // No start error: the run did start, and everything it streamed is still on
+    // screen. The stream's own terminal error carries the session copy, so the
+    // progress view keeps that state behind the error banner.
+    onStaleSession: () => {
       clearActiveSessionForReview(requestedReviewId);
-      setStartError({ ...sessionTerminationCopy(code), recovery: null });
     },
   });
 
@@ -355,6 +361,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     startError,
     isStreaming: lifecycle.stream.state.isStreaming,
     provider,
+    modelId,
     productLabel,
     configurationDisplay,
     transportFamily,

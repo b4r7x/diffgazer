@@ -1719,12 +1719,12 @@ describe("GET /api/review/reviews/:id/stream", () => {
     expect(body.error.code).toBe("SESSION_NOT_FOUND");
   });
 
-  it("returns 409 for a stale session and cancels it", async () => {
+  it("keeps a drifted live session running and attaches to it", async () => {
     await trustProject(projectA);
     const gitService = installGitServiceMock();
     gitService.getStatusHash.mockResolvedValue({ kind: "full", hash: "changed" });
-    const { createSession, markReady } = await import("./stream/store.js");
-    createSession(REVIEW_A, {
+    const { createSession, getSession, markReady } = await import("./stream/store.js");
+    const session = createSession(REVIEW_A, {
       projectPath: projectA,
       headCommit: "abc123",
       statusHash: "status",
@@ -1738,11 +1738,14 @@ describe("GET /api/review/reviews/:id/stream", () => {
       `/api/review/reviews/${REVIEW_A}/stream`,
       requestOptions(projectA),
     );
-    const body = (await response.json()) as { error: { code: string } };
 
-    expect(response.status).toBe(409);
-    expect(body.error.code).toBe("SESSION_STALE");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(getSession(REVIEW_A)?.isComplete).toBe(false);
+    expect(session.controller.signal.aborted).toBe(false);
 
+    // Drift still gates dedupe: the changed worktree is no longer this
+    // session's identity, so a new review must not be folded onto it.
     const activeResponse = await app.request(
       "/api/review/sessions/active",
       requestOptions(projectA),

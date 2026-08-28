@@ -471,6 +471,9 @@ export function HistoryScreen(): ReactElement {
               runId={
                 screen.selectedRun ? (screen.runIdLookup.get(screen.selectedRun.id) ?? null) : null
               }
+              metadata={screen.hasReviews ? screen.selectedRun : null}
+              droppedBelowThreshold={screen.reviewDetail?.droppedBelowThreshold}
+              minSeverity={screen.reviewDetail?.minSeverity}
               severityCounts={screen.hasReviews ? screen.severityCounts : null}
               issues={screen.hasReviews ? screen.sortedIssues : []}
               detailState={insightsDetailState}

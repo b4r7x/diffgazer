@@ -532,6 +532,27 @@ describe("review wall clock sizing and concurrency clamp", () => {
     );
   });
 
+  it("hands the orchestration the admitted per-dispatch wall the wait heartbeat names", async () => {
+    const { authorization } = authorizeAtBaseEnvelope();
+    orchestrationSuccess();
+
+    await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: fiveLensConfig(1),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(orchestrateReview.mock.calls[0]?.[4]).toMatchObject({
+      dispatchWallTimeMs: authorization.plan.limits.wallTimeMs,
+    });
+  });
+
   it("clamps parallel execution to the provider profile and reports the requested concurrency", async () => {
     const { authorization, ledger } = authorizeAtBaseEnvelope("glm-4.5-flash", "zai");
     orchestrationSuccess();
@@ -1779,7 +1800,6 @@ describe("finalizeReview", () => {
   });
 
   it.each([
-    "cancelled",
     "timed-out",
     "transport-failed",
     "schema-failed",
@@ -1798,6 +1818,21 @@ describe("finalizeReview", () => {
     });
 
     expect(saveReview).toHaveBeenCalledWith(expect.objectContaining({ result: { issues: [] } }));
+  });
+
+  it("keeps the findings a cancelled review already streamed", async () => {
+    saveReview.mockResolvedValue(ok({ id: "review-1" }));
+    const issues = [makePipelineIssue("partial", "a.ts", "high")];
+    const execution = buildExecutionResult(pipelineAdmittedPlan(), "cancelled", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:02.000Z",
+      attemptCount: 1,
+      usageAvailability: "unavailable",
+    });
+
+    await runFinalize([], undefined, undefined, { issues, execution });
+
+    expect(saveReview).toHaveBeenCalledWith(expect.objectContaining({ result: { issues } }));
   });
 
   it("returns the safe terminal diagnostic after persisting a failed execution", async () => {

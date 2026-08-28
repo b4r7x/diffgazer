@@ -2,6 +2,7 @@ import type { HostedApiProductId } from "@diffgazer/core/schemas/config";
 import type { EvidenceKey, NormalizedUsage } from "@diffgazer/core/schemas/review";
 import { NormalizedUsageSchema } from "@diffgazer/core/schemas/review";
 import { boundedFetchInit } from "../endpoints.js";
+import { responseTimeoutDispatcher } from "./dispatcher.js";
 import { HOSTED_PROFILES, USAGE_FIELDS } from "./profiles.js";
 import type { HostedProductProfile } from "./types.js";
 
@@ -414,12 +415,17 @@ export function buildRequestInit(
     }
   }
 
-  return boundedFetchInit({
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    signal: input.signal,
-  });
+  return {
+    ...boundedFetchInit({
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: input.signal,
+    }),
+    // The client's own response timeout must outlive the dispatch wall, or a
+    // silent provider dies at the runtime default instead of the declared bound.
+    dispatcher: responseTimeoutDispatcher(input.evidenceKey.limits.wallTimeMs),
+  };
 }
 
 type ChoiceError = Readonly<{ code: string | null; message: string | null }>;

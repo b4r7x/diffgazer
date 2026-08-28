@@ -7,8 +7,10 @@ import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/even
 import {
   type CreateReviewOutcome,
   ReviewErrorCode,
+  type ReviewIssue,
   type ReviewMode,
 } from "@diffgazer/core/schemas/review";
+import type { AuthorizedReviewExecution } from "../../shared/lib/ai/admission/service.js";
 import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
 import { MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE } from "../../shared/lib/ai/diagnostics.js";
 import type { AIClient } from "../../shared/lib/ai/types.js";
@@ -27,6 +29,7 @@ import {
   resolveReviewConfig,
   resolveReviewDefaults,
 } from "./pipeline.js";
+import { saveReview } from "./storage/reviews.js";
 import { isAbortError, normalizeReviewStreamError, reviewStreamError } from "./stream/events.js";
 import { stepError } from "./stream/steps.js";
 import {
@@ -38,10 +41,18 @@ import {
   createSession,
   getActiveSessionForProject,
   getSession,
+  markCommitted,
+  markCommitting,
   markComplete,
   markReady,
 } from "./stream/store.js";
-import type { EmitFn, ReviewExecutionContext, ReviewOutcome, StreamReviewParams } from "./types.js";
+import type {
+  EmitFn,
+  ResolvedReviewDefaults,
+  ReviewExecutionContext,
+  ReviewOutcome,
+  StreamReviewParams,
+} from "./types.js";
 import { createReviewExecutionContext } from "./types.js";
 
 /** Logs per-step latency from the review stream so each phase is observable. */
@@ -149,6 +160,55 @@ function recordReviewEvent(
 ): void {
   logStepTiming(event, reviewId, stepStartedAt);
   addEvent(reviewId, event);
+}
+
+/**
+ * Writes what an interrupted review already produced. `finalizeReview` is the
+ * only other writer, and both claim the session's commit state first, so a
+ * termination racing the pipeline's own save cannot write the run twice.
+ */
+async function persistPartialReview(params: {
+  reviewId: string;
+  projectPath: string;
+  mode: ReviewMode;
+  issues: readonly ReviewIssue[];
+  parsed: ParsedDiff | null;
+  branch: string | null;
+  headCommit: string;
+  lenses: ResolvedReviewDefaults["activeLenses"];
+  profileId: ResolvedReviewDefaults["effectiveProfileId"];
+  elapsedStart: number;
+}): Promise<void> {
+  // A run that streamed nothing has nothing to lose, and an empty record would
+  // only fill history with runs the user cannot read.
+  if (!params.parsed || params.issues.length === 0) return;
+  if (!markCommitting(params.reviewId)) return;
+
+  const saved = await saveReview({
+    reviewId: params.reviewId,
+    projectPath: params.projectPath,
+    mode: params.mode,
+    result: { issues: [...params.issues] },
+    diff: params.parsed,
+    branch: params.branch,
+    commit: params.headCommit,
+    lenses: params.lenses,
+    durationMs: Math.round(performance.now() - params.elapsedStart),
+    // Every termination lands here as "cancelled" — eviction, idle timeout and
+    // shutdown included. Deliberate: the enum's "timed-out" names a dispatch
+    // that outran its wall, not a session the server gave up on, so flattening
+    // is truer than borrowing that meaning.
+    terminalOutcome: "cancelled",
+    ...(params.profileId ? { profile: params.profileId } : {}),
+  });
+  if (!saved.ok) {
+    log("warn", "review_partial_save_failed", {
+      reviewId: params.reviewId,
+      code: saved.error.code,
+    });
+    return;
+  }
+  markCommitted(params.reviewId);
 }
 
 interface CreateReviewSessionOptions extends StreamReviewParams {
@@ -295,6 +355,11 @@ export async function createReviewSession(
       reviewInputHash,
     );
 
+    // The issues the run has streamed, tracked here rather than replayed from
+    // the session buffer: the buffer is capped, so a long review would lose the
+    // earliest findings exactly when the partial write matters most.
+    const streamedIssues: ReviewIssue[] = [];
+
     const session = createSession(reviewId, {
       projectPath,
       headCommit,
@@ -309,14 +374,31 @@ export async function createReviewSession(
       configurationRevision: admittedPlan?.configurationRevision,
       admittedExecutionFingerprint: admittedPlan?.executionFingerprint,
       leaseId: aiClient.authorization?.lease.leaseId,
+      persistPartial: () =>
+        persistPartialReview({
+          reviewId,
+          projectPath,
+          mode,
+          issues: streamedIssues,
+          parsed,
+          branch,
+          headCommit,
+          lenses: reviewDefaults.activeLenses,
+          profileId: reviewDefaults.effectiveProfileId,
+          elapsedStart,
+        }),
     });
     const stepStartedAt = new Map<StepId, number>();
-    const emit: EmitFn = async (event) => {
-      if (session.controller.signal.aborted) return;
+    const record = (event: FullReviewStreamEvent) => {
+      if (event.type === "issue_found") streamedIssues.push(event.issue);
       recordReviewEvent(reviewId, event, stepStartedAt);
     };
+    const emit: EmitFn = async (event) => {
+      if (session.controller.signal.aborted) return;
+      record(event);
+    };
     for (const event of bufferedEvents) {
-      recordReviewEvent(reviewId, event, stepStartedAt);
+      record(event);
     }
     markReady(reviewId);
 
@@ -378,6 +460,11 @@ function conformanceEvidenceStatus(
 ): "failed" | "passed" | null {
   const receipt = outcome.execution?.receipt;
   if (receipt === undefined) return null;
+  // A dispatch the adapter completed by salvaging individual issues counts as
+  // passed here, which slightly overstates a tuple that never emitted a whole
+  // valid answer. Deliberate: findings were delivered, and the alternative —
+  // memoizing incapacity for a model that keeps producing usable issues — costs
+  // the user reviews that work.
   if (receipt.outcome === "completed" && evidenceState === "unproven") return "passed";
   // `schema-failed` on a review receipt already means every lens schema-failed
   // (the orchestration's unanimous verdict); on top of that the memo demands
@@ -396,23 +483,14 @@ function conformanceEvidenceStatus(
   return null;
 }
 
-/**
- * The review is the conformance check. Proven incapacity — every lens
- * schema-failed on malformed content the corrective retry could not fix —
- * caches the fast-fail for this exact tuple; a completed review records the
- * proof an unproven admission went without. Recording is best effort: a tuple
- * edited mid-review loses the cache entry, never the review the user is
- * watching.
- */
-async function recordConformanceEvidence(
-  executionContext: ReviewExecutionContext,
-  outcome: ReviewOutcome,
-  reviewId: string,
-): Promise<void> {
-  const { authorization } = executionContext;
-  const status = conformanceEvidenceStatus(outcome, authorization.evidenceState);
-  if (!status) return;
+const passedEvidenceRecorded = new WeakSet<AuthorizedReviewExecution>();
 
+/** Whether the verdict actually landed on disk; a failed write is warn-only. */
+async function writeConformanceEvidence(
+  authorization: AuthorizedReviewExecution,
+  status: "failed" | "passed",
+  reviewId: string | undefined,
+): Promise<boolean> {
   const { plan } = authorization;
   const recorded = await getStore().recordConfigurationEvidence(
     ConfigurationIdSchema.parse(plan.configurationId),
@@ -431,6 +509,49 @@ async function recordConformanceEvidence(
       code: recorded.error.code,
     });
   }
+  return recorded.ok;
+}
+
+/**
+ * The first schema-valid structured response proves exactly what the explicit
+ * Verify probe proves, so an unproven admission files its passed evidence then
+ * rather than after the whole orchestration settles. One landed write per
+ * authorization: the completion-time recorder routes through here and finds the
+ * proof already filed — unless the early write failed, which re-arms it as the
+ * fallback it is meant to be.
+ */
+export async function recordPassedConformanceEvidence(
+  authorization: AuthorizedReviewExecution,
+  reviewId?: string,
+): Promise<void> {
+  if (authorization.evidenceState !== "unproven") return;
+  if (passedEvidenceRecorded.has(authorization)) return;
+  if (await writeConformanceEvidence(authorization, "passed", reviewId)) {
+    passedEvidenceRecorded.add(authorization);
+  }
+}
+
+/**
+ * The review is the conformance check. Proven incapacity — every lens
+ * schema-failed on malformed content the corrective retry could not fix —
+ * caches the fast-fail for this exact tuple; a completed review records the
+ * proof an unproven admission went without, unless the first structured
+ * response already filed it. Recording is best effort: a tuple edited
+ * mid-review loses the cache entry, never the review the user is watching.
+ */
+async function recordConformanceEvidence(
+  executionContext: ReviewExecutionContext,
+  outcome: ReviewOutcome,
+  reviewId: string,
+): Promise<void> {
+  const { authorization } = executionContext;
+  const status = conformanceEvidenceStatus(outcome, authorization.evidenceState);
+  if (!status) return;
+  if (status === "passed") {
+    await recordPassedConformanceEvidence(authorization, reviewId);
+    return;
+  }
+  await writeConformanceEvidence(authorization, status, reviewId);
 }
 
 interface RunReviewSessionOptions {

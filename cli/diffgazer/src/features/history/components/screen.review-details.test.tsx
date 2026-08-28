@@ -93,17 +93,16 @@ function RouteProbe() {
   return <Text>{`Route: review/${route.reviewId ?? "new"}/${route.issueId ?? "summary"}`}</Text>;
 }
 
-function renderHistoryScreen(getReview: BoundApi["getReview"]) {
-  const getReviews = vi.fn<BoundApi["getReviews"]>().mockResolvedValue({
-    reviews: [
-      makeReviewMetadata({
-        id: REVIEW_ID,
-        issueCount: 1,
-        highCount: 1,
-        durationMs: 252_000,
-      }),
-    ],
-  });
+function renderHistoryScreen(
+  getReview: BoundApi["getReview"],
+  listedRun = makeReviewMetadata({
+    id: REVIEW_ID,
+    issueCount: 1,
+    highCount: 1,
+    durationMs: 252_000,
+  }),
+) {
+  const getReviews = vi.fn<BoundApi["getReviews"]>().mockResolvedValue({ reviews: [listedRun] });
   const { Wrapper: QueryWrapper } = createTestQueryWrapper({
     api: { getReviews, getReview },
   });
@@ -163,6 +162,22 @@ describe("HistoryScreen review details", () => {
     await waitUntil(() => (lastFrame() ?? "").includes(`Route: review/${REVIEW_ID}/loaded-issue`));
   });
 
+  test("qualifies a zero-issue run's pass by the floor the saved record kept", async () => {
+    const cleanRun = makeReviewMetadata({ id: REVIEW_ID, issueCount: 0, durationMs: 8200 });
+    const getReview = vi.fn<BoundApi["getReview"]>().mockResolvedValue({
+      review: {
+        ...makeReviewResponse([]).review,
+        metadata: cleanRun,
+        droppedBelowThreshold: 4,
+        minSeverity: "medium",
+      },
+    });
+    const { lastFrame } = renderHistoryScreen(getReview, cleanRun);
+
+    await waitUntil(() => (lastFrame() ?? "").includes("No issues at or above medium"));
+    expect(stripAnsi(lastFrame() ?? "")).not.toContain("Passed — no issues found");
+  });
+
   test("opens an active zero-issue Insights review exactly as its footer advertises", async () => {
     const getReview = vi.fn<BoundApi["getReview"]>().mockResolvedValue(makeReviewResponse([]));
     const { stdin, lastFrame } = renderHistoryScreen(getReview);
@@ -172,6 +187,32 @@ describe("HistoryScreen review details", () => {
     await waitUntil(() => (lastFrame() ?? "").includes("Enter Open Review"));
 
     stdin.write("\r");
+    await waitUntil(() => (lastFrame() ?? "").includes(`Route: review/${REVIEW_ID}/summary`));
+  });
+
+  test("shows a passed run its receipt line instead of five zero bars, and opens its summary", async () => {
+    const getReview = vi.fn<BoundApi["getReview"]>().mockResolvedValue(makeReviewResponse([]));
+    const { stdin, lastFrame } = renderHistoryScreen(
+      getReview,
+      makeReviewMetadata({
+        id: REVIEW_ID,
+        issueCount: 0,
+        fileCount: 12,
+        lenses: ["correctness", "security", "tests"],
+        durationMs: 8200,
+      }),
+    );
+
+    await waitUntil(() => (lastFrame() ?? "").includes("Passed — no issues found"));
+    // The pane wraps the fact line, so it is matched on unwrapped text.
+    const unwrapped = (lastFrame() ?? "").replace(/\s*│\s*/g, " ").replace(/\s+/g, " ");
+    expect(unwrapped).toContain("No issues across 12 files · 3 lenses · 8s");
+    expect(unwrapped).not.toContain("SEVERITY BREAKDOWN");
+
+    stdin.write("\t");
+    await waitUntil(() => (lastFrame() ?? "").includes("Enter Open Review"));
+    stdin.write("\r");
+
     await waitUntil(() => (lastFrame() ?? "").includes(`Route: review/${REVIEW_ID}/summary`));
   });
 

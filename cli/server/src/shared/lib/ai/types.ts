@@ -25,12 +25,25 @@ export type AIErrorDiagnostic = Pick<
 
 export type AIError = AppError<AIErrorCode> & { diagnostic?: AIErrorDiagnostic };
 
+/**
+ * A non-terminal dispatch state worth showing while the answer is still
+ * pending, and how long it lasts — a wait the caller can name beats a silent
+ * one it can only guess at. Stale after `holdsForMs`: the dispatch has moved on.
+ */
+export type DispatchProgress = Readonly<{ message: string; holdsForMs: number }>;
+
+export type GenerateOptions = Readonly<{
+  signal?: AbortSignal;
+  systemPrompt?: string;
+  onProgress?: (progress: DispatchProgress) => void;
+}>;
+
 export interface AIClient {
   readonly provider: RunnableProductId;
   generate<T extends z.ZodType>(
     prompt: string,
     schema: T,
-    options?: Readonly<{ signal?: AbortSignal; systemPrompt?: string }>,
+    options?: GenerateOptions,
   ): Promise<Result<z.infer<T>, AIError>>;
 }
 
@@ -71,6 +84,8 @@ export interface AdapterExecuteRequest {
    * of a generic transport failure.
    */
   readonly reportDiagnostic?: (diagnostic: BoundedDiagnostic) => void;
+  /** Sink for non-terminal waits — a rate-limit backoff, not a finished answer. */
+  readonly reportProgress?: (progress: DispatchProgress) => void;
 }
 
 export interface Adapter {

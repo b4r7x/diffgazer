@@ -434,6 +434,7 @@ export async function executeReview(params: {
         ...(effectiveConcurrency < config.concurrency
           ? { requestedConcurrency: config.concurrency }
           : {}),
+        ...(plan ? { dispatchWallTimeMs: plan.limits.wallTimeMs } : {}),
         ...(reviewClock ? { reviewClock } : {}),
         ...(capacity ? { batches: capacity.batches } : {}),
         projectContext: config.projectContext,

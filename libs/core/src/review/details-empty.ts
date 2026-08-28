@@ -1,10 +1,10 @@
-export type DetailsEmptyKind = "no-issues" | "filter-empty" | "no-selection";
+export type DetailsEmptyKind = "filter-empty" | "no-selection";
 
-export function selectDetailsEmptyKind(
-  totalCount: number,
-  filteredCount: number,
-): DetailsEmptyKind {
-  if (totalCount === 0) return "no-issues";
-  if (filteredCount === 0) return "filter-empty";
-  return "no-selection";
+/**
+ * Why the details pane has nothing to show. The results screen is unreachable
+ * for a zero-issue run — that run lands on the clean-run state instead — so the
+ * only emptiness left here is a filter that matched nothing, or nothing picked.
+ */
+export function selectDetailsEmptyKind(filteredCount: number): DetailsEmptyKind {
+  return filteredCount === 0 ? "filter-empty" : "no-selection";
 }

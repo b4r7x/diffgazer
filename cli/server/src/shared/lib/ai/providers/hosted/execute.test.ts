@@ -1,11 +1,16 @@
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { log } from "../../../log.js";
 import { MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE } from "../../diagnostics.js";
 import { executeHostedReview } from "./execute.js";
 
 vi.mock("../../../log.js", () => ({ log: vi.fn() }));
+
+afterEach(() => {
+  vi.mocked(log).mockClear();
+});
 
 import { DEFAULT_HOSTED_REVIEW_SCHEMA } from "./transport.js";
 
@@ -351,6 +356,81 @@ describe("output recovery ladder", () => {
   });
 });
 
+describe("per-issue salvage", () => {
+  const validIssue = makeIssue({ id: "salvaged-1" });
+  const mixedContent = JSON.stringify({ issues: [validIssue, { id: "broken" }] });
+
+  it("completes with the issues that validate when the corrected answer is still invalid", async () => {
+    const fetch = vi.fn(async () => contentResponse(mixedContent)) as unknown as FetchFn;
+    const reportDiagnostic = vi.fn();
+
+    const result = await executeHostedReview({ ...trapRequest("zai", fetch), reportDiagnostic });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.result.issues).toEqual([validIssue]);
+    // Salvage is the last tier: the corrective retry ran first.
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(reportDiagnostic).not.toHaveBeenCalled();
+    expect(vi.mocked(log)).toHaveBeenCalledWith(
+      "warn",
+      "hosted_salvaged_output",
+      expect.objectContaining({
+        keptCount: 1,
+        droppedCount: 1,
+        // The salvage line carries a correlation id like its sibling failure logs.
+        correlationId: expect.any(String),
+      }),
+    );
+  });
+
+  it("keeps the complete findings of a truncated answer without spending a retry", async () => {
+    const truncated = `{"issues":[${JSON.stringify(validIssue)},{"id":"cut`;
+    const fetch = vi.fn(async () =>
+      contentResponse(truncated, { finish_reason: "length" }),
+    ) as unknown as FetchFn;
+    const reportDiagnostic = vi.fn();
+
+    const result = await executeHostedReview({ ...trapRequest("zai", fetch), reportDiagnostic });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.result.issues).toEqual([validIssue]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(reportDiagnostic).not.toHaveBeenCalled();
+  });
+
+  it("salvages for a strict-json-schema product too", async () => {
+    const fetch = mockFetchResponse({
+      candidates: [{ content: { parts: [{ text: mixedContent }] }, finishReason: "STOP" }],
+      usageMetadata: { promptTokenCount: 12, candidatesTokenCount: 8, totalTokenCount: 20 },
+    });
+
+    const result = await executeHostedReview(trapRequest("gemini", fetch));
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.result.issues).toEqual([validIssue]);
+    // The gemini profile allows no corrective retry, so salvage is all there is.
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the corrected answer alone when the retry fixes the output", async () => {
+    const corrected = JSON.stringify({ issues: [validIssue, makeIssue({ id: "salvaged-2" })] });
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(contentResponse(mixedContent))
+      .mockResolvedValueOnce(contentResponse(corrected)) as unknown as FetchFn;
+
+    const result = await executeHostedReview(trapRequest("zai", fetch));
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.result.issues).toHaveLength(2);
+    expect(vi.mocked(log)).not.toHaveBeenCalledWith(
+      "warn",
+      "hosted_salvaged_output",
+      expect.anything(),
+    );
+  });
+});
+
 describe("upstream mid-generation failure (finish error / choice error)", () => {
   // Field shape (OpenRouter errors docs): the upstream provider died
   // mid-generation, so the error object rides on the final choice beside any
@@ -472,6 +552,58 @@ describe("wall-time deadline diagnostic", () => {
     );
   });
 
+  const transportTimeout = () =>
+    new TypeError("fetch failed", {
+      cause: Object.assign(new Error("Headers Timeout Error"), {
+        code: "UND_ERR_HEADERS_TIMEOUT",
+      }),
+    });
+
+  it("re-dispatches once after a client response timeout while the wall still fits an answer", async () => {
+    const fetch = vi
+      .fn()
+      .mockRejectedValueOnce(transportTimeout())
+      .mockResolvedValueOnce(contentResponse(VALID_REVIEW_CONTENT)) as unknown as FetchFn;
+    const reportDiagnostic = vi.fn();
+
+    const result = await executeHostedReview({ ...trapRequest("zai", fetch), reportDiagnostic });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.receipt.attemptCount).toBe(2);
+    expect(reportDiagnostic).not.toHaveBeenCalled();
+  });
+
+  it("re-dispatches at most once, then reports the timeout", async () => {
+    const fetch = vi.fn(async () => {
+      throw transportTimeout();
+    }) as unknown as FetchFn;
+    const reportDiagnostic = vi.fn();
+
+    const result = await executeHostedReview({ ...trapRequest("zai", fetch), reportDiagnostic });
+
+    expect(result.receipt.outcome).toBe("timed-out");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "timed-out", retryable: true }),
+    );
+  });
+
+  it("does not re-dispatch when the remaining wall cannot fit a whole answer", async () => {
+    const fetch = vi.fn(async () => {
+      throw transportTimeout();
+    }) as unknown as FetchFn;
+    const request = trapRequest("zai", fetch);
+
+    const result = await executeHostedReview({
+      ...request,
+      evidenceKey: { ...request.evidenceKey, limits: { ...limits, wallTimeMs: 30_000 } },
+    });
+
+    expect(result.receipt.outcome).toBe("timed-out");
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("reports the runtime's own response timeout as timed out, not a bare transport failure", async () => {
     // Node's fetch caps a silent response at its default headers/body timeout
     // regardless of the dispatch wall, and reports it as a generic
@@ -536,6 +668,28 @@ describe("rate-limit retry", () => {
 
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(result.receipt.outcome).toBe("schema-failed");
+  });
+
+  it("tells the stream it is backing off instead of waiting silently", async () => {
+    vi.useFakeTimers();
+    const fetch = sequenceFetch([
+      () => rateLimitResponse(),
+      () =>
+        new Response(JSON.stringify(ZAI_TRAP_BODY), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    ]);
+    const reportProgress = vi.fn();
+
+    const pending = executeHostedReview({ ...trapRequest("zai", fetch), reportProgress });
+    await vi.advanceTimersByTimeAsync(2_000);
+    await pending;
+
+    expect(reportProgress).toHaveBeenCalledWith({
+      message: "Rate-limited, retrying in 2s",
+      holdsForMs: 2_000,
+    });
   });
 
   it("honors a Retry-After header shorter than the default backoff", async () => {

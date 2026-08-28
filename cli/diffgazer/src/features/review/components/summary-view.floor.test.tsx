@@ -44,8 +44,10 @@ describe("ReviewSummaryView root frame", () => {
     // One action surface: the footer names the action, the body never repeats it.
     expect(frame.split("View Results")).toHaveLength(2);
     expect(frame).not.toContain("(Enter)");
-    expect(frame).toContain("REVIEW COMPLETE #REVIEW-1");
-    expect(frame).toContain("Found 1 issue across 1 file with issues.");
+    expect(frame).toContain("REVIEW COMPLETE");
+    // The run id lives in the receipt's torn-off stub, not twice in the header.
+    expect(frame).toContain("── ──");
+    expect(frame).toContain("Run    : #review-1");
     expect(frame).toContain("Leaky state update");
     expect(frame.split("\n")).toHaveLength(24);
     expectNoRepeatedDividerRows(frame);
@@ -197,6 +199,55 @@ describe("ReviewSummaryView root frame", () => {
 
     await vi.waitFor(() => expect(lastFrame()).toContain("View Results"));
     expect(lastFrame()?.split("\n")).toHaveLength(24);
+  });
+
+  test("fits the clean-run receipt and its actions in the 80x24 floor", async () => {
+    const { lastFrame } = renderRootFrame(
+      80,
+      24,
+      <ReviewSummaryView
+        issues={[]}
+        reviewId="clean-floor"
+        durationMs={8200}
+        lensStats={[
+          { lensId: "correctness", issueCount: 0, status: "success" },
+          { lensId: "security", issueCount: 0, status: "success" },
+          { lensId: "performance", issueCount: 0, status: "success" },
+        ]}
+        runFacts={{
+          mode: "unstaged",
+          fileCount: 12,
+          additions: 248,
+          deletions: 96,
+          productId: "deepseek",
+          modelId: "deepseek-chat",
+          createdAt: "2026-08-28T14:02:00.000Z",
+        }}
+        droppedBelowThreshold={4}
+        minSeverity="medium"
+        onRunAgain={vi.fn()}
+        onBack={vi.fn()}
+      />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("Run Again"));
+    const frame = stripAnsi(lastFrame() ?? "");
+
+    for (const row of [
+      "✔ No issues at or above medium",
+      "Scope  :",
+      "Lenses :",
+      "Model  :",
+      "Elapsed:",
+      "── ──",
+      "Run    : #clean-fl",
+      "4 below-threshold issues hidden (threshold: medium)",
+      "Back to Home",
+    ]) {
+      expect(frame).toContain(row);
+    }
+    expect(frame.split("\n")).toHaveLength(24);
+    expectNoRepeatedDividerRows(frame);
   });
 
   test("scrolls overflowed summary sections while keeping actions visible", async () => {

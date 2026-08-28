@@ -142,7 +142,7 @@ export function hasSuggestedPatch(issue: Pick<ReviewIssue, "suggested_patch">): 
 // a time. Keep the same shape and trim semantics as ReviewIssueSchema, but do
 // not let one blank required field reject the entire paid lens response before
 // the server can drop and account for that individual finding.
-const ProviderReviewIssueSchema = ReviewIssueSchema.extend({
+export const ProviderReviewIssueSchema = ReviewIssueSchema.extend({
   id: TrimmedProviderTextSchema,
   title: TrimmedProviderTextSchema,
   file: TrimmedProviderTextSchema,

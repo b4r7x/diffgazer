@@ -12,6 +12,8 @@ import {
 } from "@diffgazer/core/review";
 import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import type { LensStat } from "@diffgazer/core/schemas/events";
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import {
   configurationStatus,
   GEMINI_CONFIGURATION,
@@ -93,6 +95,7 @@ function makeStreamFailure(options: {
   errorCode: ReviewStateErrorCode | null;
   lensStats?: LensStat[];
   isStreaming?: boolean;
+  issues?: ReviewIssue[];
 }) {
   return makeReviewLifecycleBase({
     gate: "terminal-error",
@@ -104,6 +107,7 @@ function makeStreamFailure(options: {
         notices: [],
         error: options.error,
         errorCode: options.errorCode,
+        issues: options.issues ?? [],
         isStreaming: options.isStreaming ?? false,
         orchestratorStats: { lensStats: options.lensStats ?? [] },
       },
@@ -263,6 +267,56 @@ describe("ReviewContainer configuration gates", () => {
     rerender(<ReviewContainer mode="staged" />);
 
     expect(mockNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the streamed findings and offers the saved run when the session is terminated", async () => {
+    const user = userEvent.setup();
+    routeParams.reviewId = "review-1";
+    mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeStreamFailure({
+        error: "Review session cancelled because repository state changed.",
+        errorCode: "SESSION_STALE",
+        issues: [makeIssue({ title: "Subtraction used in addition helper" })],
+      }),
+    );
+
+    renderReviewContainer();
+
+    // The run is over, but what it streamed is the point: the live layout stays
+    // and the banner explains what ended it.
+    expect(await screen.findByRole("region", { name: "Progress" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Session Expired" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "View Saved Run" }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/review/{-$reviewId}",
+        params: { reviewId: "review-1" },
+        search: { mode: "staged" },
+        replace: true,
+      });
+    });
+  });
+
+  it("withholds the saved run when a terminated session streamed no issues", async () => {
+    routeParams.reviewId = "review-1";
+    mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
+    // The server writes no partial run for a session that produced nothing, so
+    // the banner explains the ending and offers no record to open.
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeStreamFailure({
+        error: "Review session cancelled because repository state changed.",
+        errorCode: "SESSION_STALE",
+        issues: [],
+      }),
+    );
+
+    renderReviewContainer();
+
+    expect(await screen.findByRole("heading", { name: "Session Expired" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View Saved Run" })).not.toBeInTheDocument();
   });
 
   it("stays on the live screen with Retry when the stream drops mid-run", async () => {

@@ -7,12 +7,13 @@ import {
 } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import {
+  buildContextSnapshotView,
   describeReviewStartError,
   getAlternateReviewMode,
   type ReviewStartErrorDescription,
   sanitizePresentationText,
-  sessionTerminationCopy,
 } from "@diffgazer/core/review";
+import type { RunnableProductId } from "@diffgazer/core/schemas/config";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue, ReviewMode, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { toast } from "@diffgazer/ui/components/toast";
@@ -23,10 +24,23 @@ import { useConfigData } from "@/hooks/use-config";
 import { useProviderConsent } from "@/hooks/use-provider-consent";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 
+/**
+ * What the summary needs after the stream ends. The receipt half — scope, size,
+ * model, when — is the evidence a run with no findings has instead of issues,
+ * so it travels with every completed run and not only the ones that found
+ * something. A saved run carries the same fields off disk.
+ */
 export interface ReviewCompleteData {
   issues: ReviewIssue[];
   reviewId: string | null;
   durationMs?: number;
+  mode?: ReviewMode;
+  createdAt?: string;
+  fileCount?: number;
+  additions?: number;
+  deletions?: number;
+  productId?: RunnableProductId;
+  modelId?: string;
   lensStats?: LensStat[];
   droppedDuplicates?: number;
   droppedBelowThreshold?: number;
@@ -107,7 +121,11 @@ export function useReviewLifecycle({
     onStreamComplete: () => clearActiveSession(base.stream.state.reviewId ?? params.reviewId),
     onComplete: emitComplete,
     onNotFoundInSession: (reviewId: string) => emitStreamNotFound(reviewId),
-    onStaleSession: (code) => emitStaleSession(code),
+    // The session is gone, but everything it streamed is still on this screen
+    // and the server wrote the partial run before it ended — so the screen stays
+    // put on its terminal-error banner, which owns the copy, rather than
+    // dropping the user back home.
+    onStaleSession: () => clearActiveSession(activeReviewId),
   });
   const activeReviewId = base.stream.state.reviewId ?? params.reviewId ?? null;
 
@@ -120,12 +138,22 @@ export function useReviewLifecycle({
   function emitComplete() {
     const s = base.stream.state;
     const completedAt = base.completion.completedAt;
+    // The context the run was launched against carries the diff size; it is the
+    // same snapshot the progress screen showed, not a second read.
+    const changed = base.contextSnapshot ? buildContextSnapshotView(base.contextSnapshot) : null;
     clearActiveSession(s.reviewId ?? activeReviewId);
     onComplete?.({
       issues: s.issues,
       reviewId: s.reviewId ?? null,
       durationMs:
         s.startedAt && completedAt ? completedAt.getTime() - s.startedAt.getTime() : undefined,
+      mode,
+      createdAt: s.startedAt?.toISOString(),
+      fileCount: s.fileProgress.total,
+      additions: changed?.additions,
+      deletions: changed?.deletions,
+      productId: selectedConfiguration?.productId,
+      modelId: selectedConfiguration?.selectedModelId ?? undefined,
       ...s.orchestratorStats,
     });
   }
@@ -137,13 +165,6 @@ export function useReviewLifecycle({
     } else {
       navigate({ to: "/" });
     }
-  }
-
-  function emitStaleSession(code: Parameters<typeof sessionTerminationCopy>[0]) {
-    const copy = sessionTerminationCopy(code);
-    clearActiveSession(activeReviewId);
-    toast.error(copy.title, { message: copy.message });
-    navigate({ to: "/" });
   }
 
   const cancelOnServer = (preserveState = false) =>

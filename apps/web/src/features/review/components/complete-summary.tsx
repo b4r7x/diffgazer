@@ -1,4 +1,3 @@
-import { formatDuration, formatRunId } from "@diffgazer/core/format";
 import {
   buildCompletionHeadline,
   buildMissingLensIssuesNotice,
@@ -15,12 +14,12 @@ import { pluralize } from "@diffgazer/core/strings";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { Typography } from "@diffgazer/ui/components/typography";
 import { cn } from "@diffgazer/ui/lib/utils";
+import { RunReceipt, type RunReceiptRow } from "@/components/shared/run-receipt";
 import { SeverityBreakdown } from "@/components/shared/severity/breakdown";
 import { CategoryStatsTable } from "./category-stats-table";
 import { IssuePreviewItem } from "./issue-preview-item";
 
 interface AnalysisStats {
-  runId: string | null;
   totalIssues: number;
   filesWithIssues: number;
   blockerCount: number;
@@ -35,7 +34,9 @@ export interface ReviewCompleteSummaryProps {
   severityCounts: SeverityCounts;
   categoryStats: CategoryStats[];
   topIssues: IssuePreview[];
-  durationMs?: number;
+  /** The run's evidence ledger, rendered under the headline. */
+  receiptRows: RunReceiptRow[];
+  receiptStub: RunReceiptRow;
   /** Set when the run ended on a failed outcome; the panel then reports the failure. */
   outcome?: FailedTerminalOutcome;
   lensStats?: LensStat[];
@@ -64,14 +65,14 @@ const RUN_STATUS_STYLES: Record<RunStatusTone, { panel: string; headline: string
 };
 
 /**
- * The one fact line the run earns: counts and elapsed time, separated by the
- * middle dot the rest of the app already uses. A clean run says so in words
- * instead of filling the template with zeros.
+ * The one fact line the run earns: what it found, and where. Elapsed time is
+ * the receipt's business now, so the line does not say it twice. A run that
+ * found nothing here is a partial or failed one, which says so in words rather
+ * than filling the template with zeros.
  */
-function buildFactLine(stats: AnalysisStats, durationMs: number | undefined): string {
-  const elapsed = durationMs === undefined ? "" : ` · ${formatDuration(durationMs)}`;
-  if (stats.totalIssues === 0) return `No issues found${elapsed}`;
-  return `${pluralize(stats.totalIssues, "issue")} in ${pluralize(stats.filesWithIssues, "file")}${elapsed}`;
+function buildFactLine(stats: AnalysisStats): string {
+  if (stats.totalIssues === 0) return "No issues found";
+  return `${pluralize(stats.totalIssues, "issue")} in ${pluralize(stats.filesWithIssues, "file")}`;
 }
 
 export function ReviewCompleteSummary({
@@ -79,14 +80,12 @@ export function ReviewCompleteSummary({
   severityCounts,
   categoryStats,
   topIssues,
-  durationMs,
+  receiptRows,
+  receiptStub,
   outcome,
   lensStats,
   className,
 }: ReviewCompleteSummaryProps) {
-  const runLabel = stats.runId ? formatRunId(stats.runId) : "#unknown";
-  const isClean = stats.totalIssues === 0;
-  const hasCategories = categoryStats.length > 0;
   // A failed run names its outcome, how far it got and which lenses produced
   // nothing. Nothing here may read as a pass: no success tone, no "Review
   // Complete", and the zero-issue phrasing that congratulates a clean run.
@@ -96,83 +95,80 @@ export function ReviewCompleteSummary({
   const missingFindings = failure ? buildMissingLensIssuesNotice(lensStats) : "";
   const runTone = getRunStatusTone(failure !== null, hasFailedLenses(lensStats));
   const runStyles = RUN_STATUS_STYLES[runTone];
+  const hasBreakdowns = stats.totalIssues > 0;
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
-      <Panel tone={runTone} density="compact" aria-label="Run status" className={runStyles.panel}>
-        <Panel.Label variant="border" aria-hidden="true">
-          Run Status
-        </Panel.Label>
-        <Panel.Content spacing="none">
-          {/* The alert wrapper, not the heading itself: role="alert" on a heading
-              element replaces its heading role, and a failed run wants both the
-              announcement and a real heading in the outline. */}
-          <div role={failure ? "alert" : undefined}>
-            {/* The run headline stays at terminal scale below sm: at display size it
-                wraps to two lines at 375 and dwarfs the panels underneath it. */}
-            <Typography as="h1" size="lg" className={cn("mb-2 sm:text-2xl", runStyles.headline)}>
-              {failure ? failure.title : buildCompletionHeadline(lensStats)} {runLabel}
-            </Typography>
-            <p
-              className={cn(
-                "text-sm",
-                isClean && runTone === "success" ? "text-success-text" : "text-muted-foreground",
-              )}
-            >
-              {failure
-                ? buildTerminalCoverageLine({
-                    coverage: getLensCoverage(lensStats),
-                    issueCount: stats.totalIssues,
-                    durationMs,
-                  })
-                : buildFactLine(stats, durationMs)}
-            </p>
-            {missingFindings ? (
-              <p className="mt-1 text-sm text-warning-text">{missingFindings}</p>
-            ) : null}
+      {/* From lg the verdict and its breakdowns sit side by side so the summary
+          stops being a column the reader has to scroll through; below that they
+          stack in reading order, verdict first. */}
+      <div className={cn("grid gap-4", hasBreakdowns && "lg:grid-cols-2 lg:items-start")}>
+        <Panel tone={runTone} density="compact" aria-label="Run status" className={runStyles.panel}>
+          <Panel.Label variant="border" aria-hidden="true">
+            Run Status
+          </Panel.Label>
+          <Panel.Content spacing="none">
+            {/* The alert wrapper, not the heading itself: role="alert" on a heading
+                element replaces its heading role, and a failed run wants both the
+                announcement and a real heading in the outline. */}
+            <div role={failure ? "alert" : undefined}>
+              {/* The run headline stays at terminal scale below sm: at display size it
+                  wraps to two lines at 375 and dwarfs the panels underneath it. */}
+              <Typography as="h1" size="lg" className={cn("mb-2 sm:text-2xl", runStyles.headline)}>
+                {failure ? failure.title : buildCompletionHeadline(lensStats)}
+              </Typography>
+              <p className="text-sm text-muted-foreground">
+                {failure
+                  ? buildTerminalCoverageLine({
+                      coverage: getLensCoverage(lensStats),
+                      issueCount: stats.totalIssues,
+                    })
+                  : buildFactLine(stats)}
+              </p>
+              {missingFindings ? (
+                <p className="mt-1 text-sm text-warning-text">{missingFindings}</p>
+              ) : null}
+            </div>
+            {stats.blockerCount > 0 && (
+              <p className="mt-1 text-sm font-bold text-error-text">
+                {pluralize(stats.blockerCount, "blocker")} found.
+              </p>
+            )}
+            {/* The same ledger the clean state is made of: scope, lenses, model
+                and elapsed, with the run id torn off below the stitch. It is what
+                used to be a bare fact line and a loose duration row. */}
+            <RunReceipt rows={receiptRows} stub={receiptStub} className="mt-4" />
+          </Panel.Content>
+        </Panel>
+
+        {hasBreakdowns && (
+          // Two across while the verdict is above them, one column once they
+          // move into the grid's right half.
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-1">
+            {/* Labelled panels, like every other block of information in the app.
+                The frames stay at rest: the single reticle belongs to the page
+                panel enclosing the summary, claimed while focus sits inside it.
+                A run with nothing to break down renders neither: a chart of zeros
+                is a shape with no reading. */}
+            <Panel density="compact" aria-label="Severity breakdown">
+              <Panel.Label variant="border" aria-hidden="true">
+                Severity Breakdown
+              </Panel.Label>
+              <Panel.Content spacing="sm">
+                <SeverityBreakdown counts={severityCounts} />
+              </Panel.Content>
+            </Panel>
+
+            <Panel density="compact" aria-label="Issues by category">
+              <Panel.Label variant="border" aria-hidden="true">
+                Issues by Category
+              </Panel.Label>
+              <Panel.Content spacing="sm">
+                <CategoryStatsTable categories={categoryStats} />
+              </Panel.Content>
+            </Panel>
           </div>
-          {stats.blockerCount > 0 && (
-            <p className="mt-1 text-sm font-bold text-error-text">
-              {pluralize(stats.blockerCount, "blocker")} found.
-            </p>
-          )}
-        </Panel.Content>
-      </Panel>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Labelled panels, like every other block of information in the app.
-            The frames stay at rest: the single reticle belongs to the page
-            panel enclosing the summary, claimed while focus sits inside it. */}
-        <Panel density="compact" aria-label="Severity breakdown">
-          <Panel.Label variant="border" aria-hidden="true">
-            Severity Breakdown
-          </Panel.Label>
-          <Panel.Content spacing="sm">
-            {/* A clean run keeps its five zero bars - they carry "we did look at
-                all five" - but at reduced weight so the zeros stop competing
-                with the headline. */}
-            <SeverityBreakdown
-              counts={severityCounts}
-              className={isClean ? "opacity-55" : undefined}
-            />
-          </Panel.Content>
-        </Panel>
-
-        {/* A clean run has nothing to tabulate, so the panel leaves the two-column
-            pairing and says so across the whole row: stretched to a half-width
-            column it read as a box with a lost sentence in it. */}
-        <Panel
-          density="compact"
-          aria-label="Issues by category"
-          className={hasCategories ? undefined : "col-span-full"}
-        >
-          <Panel.Label variant="border" aria-hidden="true">
-            Issues by Category
-          </Panel.Label>
-          <Panel.Content spacing="sm">
-            <CategoryStatsTable categories={categoryStats} />
-          </Panel.Content>
-        </Panel>
+        )}
       </div>
 
       {topIssues.length > 0 && (

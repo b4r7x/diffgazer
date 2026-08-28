@@ -224,6 +224,67 @@ describe("toInitializedAIClient", () => {
     expect(client.terminalExecutions).toEqual([execution]);
     expect(client.terminalDiagnostics).toEqual([generateResult.error.diagnostic]);
   });
+
+  it("reports the first structured success once, and only after the lens schema accepts it", async () => {
+    const dependencies = createDependencies(readySnapshot());
+    const { toInitializedAIClient } = await loadInitialize();
+    const authorizationResult = await authorizeReviewExecution("gemini-primary", dependencies);
+
+    expect(authorizationResult.ok).toBe(true);
+    if (!authorizationResult.ok) return;
+
+    const authorization = authorizationResult.value;
+    const onFirstStructuredSuccess = vi.fn();
+    const client = toInitializedAIClient(authorization, { onFirstStructuredSuccess });
+    const lensSchema = z.object({ issues: z.array(z.unknown()) });
+    const completed = clientTestExecutionResult(authorization.plan, "completed");
+    executeReviewGenerationMock.mockResolvedValue({ execution: completed, diagnostic: undefined });
+
+    // A completed dispatch the lens schema rejects is the PARSE_ERROR the bridge
+    // reports; it proves no structured-output conformance.
+    const rejected = await client.generate("review prompt", z.string());
+
+    expect(rejected).toMatchObject({ ok: false, error: { code: "PARSE_ERROR" } });
+    expect(onFirstStructuredSuccess).not.toHaveBeenCalled();
+
+    const first = await client.generate("review prompt", lensSchema);
+    const second = await client.generate("review prompt", lensSchema);
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    expect(onFirstStructuredSuccess).toHaveBeenCalledOnce();
+  });
+
+  it("does not report a structured success for a dispatch that never completed", async () => {
+    const dependencies = createDependencies(readySnapshot());
+    const { toInitializedAIClient } = await loadInitialize();
+    const authorizationResult = await authorizeReviewExecution("gemini-primary", dependencies);
+
+    expect(authorizationResult.ok).toBe(true);
+    if (!authorizationResult.ok) return;
+
+    const authorization = authorizationResult.value;
+    const onFirstStructuredSuccess = vi.fn();
+    const client = toInitializedAIClient(authorization, { onFirstStructuredSuccess });
+    executeReviewGenerationMock.mockResolvedValueOnce({
+      execution: clientTestExecutionResult(authorization.plan, "schema-failed"),
+      diagnostic: {
+        code: "malformed-review-output",
+        safeMessage: "The model's answer failed review schema validation.",
+        retryable: false,
+        remediation: "none",
+        correlationId: "diag-schema-failed",
+      },
+    });
+
+    const result = await client.generate(
+      "review prompt",
+      z.object({ issues: z.array(z.unknown()) }),
+    );
+
+    expect(result.ok).toBe(false);
+    expect(onFirstStructuredSuccess).not.toHaveBeenCalled();
+  });
 });
 
 describe("createAdmissionServiceDependencies", () => {

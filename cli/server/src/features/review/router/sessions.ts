@@ -33,7 +33,7 @@ import {
   CreateReviewBodySchema,
   ReviewIdParamSchema,
 } from "../schemas.js";
-import { createReviewSession } from "../service.js";
+import { createReviewSession, recordPassedConformanceEvidence } from "../service.js";
 import { resumeStreamById } from "../stream/resume.js";
 import {
   type ActiveSession,
@@ -146,7 +146,14 @@ sessionsRouter.post(
     const authorization = authorizationResult.value;
     let ownsRelease = true;
     try {
-      const client = toInitializedAIClient(authorization);
+      // The hook only fires once the review is dispatching, which is after the
+      // session exists, so the id it logs with is bound here and filled in below.
+      let reviewId: string | undefined;
+      const client = toInitializedAIClient(authorization, {
+        onFirstStructuredSuccess: () => {
+          void recordPassedConformanceEvidence(authorization, reviewId);
+        },
+      });
       const projectPath = getProjectRoot(c);
       const generation = getProjectSessionGeneration(projectPath);
       const result = await createReviewSession(client, {
@@ -168,6 +175,7 @@ sessionsRouter.post(
         return errorResponse(c, result.error.message, result.error.code, status);
       }
 
+      reviewId = result.value.reviewId;
       ownsRelease = result.value.session.leaseId !== authorization.lease.leaseId;
 
       const response: CreateReviewResponse = {

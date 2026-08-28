@@ -20,7 +20,13 @@ import type {
 } from "../admission/service.js";
 import { createBudgetLedger } from "../budget/ledger.js";
 import type { BoundedDiagnostic } from "../diagnostics.js";
-import type { AIClient, AIError, AIErrorCode, AIErrorDiagnostic } from "../types.js";
+import type {
+  AIClient,
+  AIError,
+  AIErrorCode,
+  AIErrorDiagnostic,
+  GenerateOptions,
+} from "../types.js";
 import { executeReviewGeneration } from "./generate.js";
 
 export interface InitializedAIClient extends AIClient {
@@ -146,20 +152,31 @@ function terminalOutcomeToAIError(
     : createError<AIErrorCode>("STREAM_ERROR", `Execution ended with outcome ${outcome}`);
 }
 
+export interface InitializedAIClientHooks {
+  /**
+   * Called on the first dispatch that both completes and satisfies its lens
+   * schema — the earliest proof of structured-output conformance, which is what
+   * the explicit Verify probe checks. Called at most once per client.
+   */
+  onFirstStructuredSuccess?: () => void;
+}
+
 function createGenerateBridge(
   authorization: AuthorizedReviewExecution,
   recordExecution: (execution: ExecutionResult, diagnostic?: AIErrorDiagnostic) => void,
+  onStructuredSuccess: () => void,
 ): AIClient["generate"] {
   return async <T extends z.ZodType>(
     prompt: string,
     schema: T,
-    options?: Readonly<{ signal?: AbortSignal; systemPrompt?: string }>,
+    options?: GenerateOptions,
   ): Promise<Result<z.infer<T>, AIError>> => {
     const { execution, diagnostic } = await executeReviewGeneration({
       authorization,
       prompt,
       ...(options?.systemPrompt ? { systemPrompt: options.systemPrompt } : {}),
       signal: options?.signal,
+      onProgress: options?.onProgress,
     });
     const terminalDiagnostic =
       execution.receipt.outcome === "completed" ? undefined : toAIErrorDiagnostic(diagnostic);
@@ -176,26 +193,37 @@ function createGenerateBridge(
       );
     }
 
+    onStructuredSuccess();
     return ok(parsed.data);
   };
 }
 
 export function toInitializedAIClient(
   authorization: AuthorizedReviewExecution,
+  hooks: InitializedAIClientHooks = {},
 ): InitializedAIClient {
   const { plan } = authorization;
   const terminalExecutions: ExecutionResult[] = [];
   const terminalDiagnostics: AIErrorDiagnostic[] = [];
+  let structuredSuccessReported = false;
   return {
     provider: plan.productId,
     authorization,
     terminalExecutions,
     terminalDiagnostics,
-    generate: createGenerateBridge(authorization, (execution, diagnostic) => {
-      terminalExecutions.push(execution);
-      if (diagnostic) {
-        terminalDiagnostics.push(diagnostic);
-      }
-    }),
+    generate: createGenerateBridge(
+      authorization,
+      (execution, diagnostic) => {
+        terminalExecutions.push(execution);
+        if (diagnostic) {
+          terminalDiagnostics.push(diagnostic);
+        }
+      },
+      () => {
+        if (structuredSuccessReported) return;
+        structuredSuccessReported = true;
+        hooks.onFirstStructuredSuccess?.();
+      },
+    ),
   };
 }

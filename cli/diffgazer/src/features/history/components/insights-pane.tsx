@@ -1,7 +1,17 @@
-import type { HistoryDetailState } from "@diffgazer/core/review";
+import {
+  buildCleanRunFactLine,
+  buildCleanRunStatement,
+  type HistoryDetailState,
+  isCleanRun,
+} from "@diffgazer/core/review";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
-import type { ReviewIssue, SeverityCounts } from "@diffgazer/core/schemas/review";
+import type {
+  ReviewIssue,
+  ReviewMetadata,
+  ReviewSeverity,
+  SeverityCounts,
+} from "@diffgazer/core/schemas/review";
 import { capitalize } from "@diffgazer/core/strings";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
@@ -18,6 +28,14 @@ import { severityColor } from "../../../theme/severity";
 
 export interface HistoryInsightsPaneProps {
   runId: string | null;
+  /** The selected run's record, which says whether it passed clean. */
+  metadata?: ReviewMetadata | null;
+  /**
+   * The severity floor the run was filtered against, from the saved record the
+   * list metadata does not carry. A pass that hid findings is qualified by it.
+   */
+  droppedBelowThreshold?: number;
+  minSeverity?: ReviewSeverity;
   severityCounts: SeverityCounts | null;
   issues: ReviewIssue[];
   detailState?: HistoryDetailState;
@@ -29,6 +47,9 @@ export interface HistoryInsightsPaneProps {
 
 export function HistoryInsightsPane({
   runId,
+  metadata = null,
+  droppedBelowThreshold,
+  minSeverity,
   severityCounts,
   issues,
   detailState = { status: "ready" },
@@ -53,6 +74,17 @@ export function HistoryInsightsPane({
     viewportRows: Math.max(scrollHeight - 2, 1),
   });
   const visibleIssues = issues.slice(issueWindow.start, issueWindow.end);
+  // A run that passed has nothing to break down: five zero bars claim a chart
+  // where the pass statement and the run's facts are the whole story.
+  const cleanRun =
+    metadata &&
+    isCleanRun({
+      issueCount: metadata.issueCount,
+      failedLensCount: metadata.failedLensCount,
+      terminalOutcome: metadata.terminalOutcome,
+    })
+      ? metadata
+      : null;
 
   useInput(
     (input, key) => {
@@ -125,7 +157,21 @@ export function HistoryInsightsPane({
         </Box>
       ) : (
         <ScrollArea height={scrollHeight} isActive={isActive}>
-          {severityCounts ? (
+          {cleanRun ? (
+            <Box marginTop={1} flexDirection="column">
+              <Text color={tokens.success} bold>
+                {`✔ ${buildCleanRunStatement({ droppedBelowThreshold, minSeverity })}`}
+              </Text>
+              <Text color={tokens.muted}>
+                {buildCleanRunFactLine({
+                  fileCount: cleanRun.fileCount,
+                  lensCount: cleanRun.lenses.length,
+                  durationMs: cleanRun.durationMs,
+                })}
+              </Text>
+            </Box>
+          ) : null}
+          {severityCounts && !cleanRun ? (
             <Box marginTop={1} flexDirection="column">
               <SectionHeader variant="muted">Severity Breakdown</SectionHeader>
               <Box gap={1}>
@@ -152,7 +198,7 @@ export function HistoryInsightsPane({
               </Text>
             </Box>
           ) : null}
-          {duration ? (
+          {duration && !cleanRun ? (
             <Box marginTop={1} flexDirection="column">
               <Text color={tokens.muted}>DURATION</Text>
               <Text color={tokens.fg}>{duration}</Text>

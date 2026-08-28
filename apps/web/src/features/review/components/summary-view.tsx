@@ -1,41 +1,68 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import {
   buildCategoryStats,
+  buildCleanRunStatement,
   buildDroppedFindingsNotice,
   buildDuplicateCollapseNotice,
   buildHiddenIssuesNotice,
   buildLensSummaryRows,
   buildReviewSummary,
   type FailedTerminalOutcome,
+  isCleanRun,
 } from "@diffgazer/core/review";
+import type { RunnableProductId } from "@diffgazer/core/schemas/config";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
-import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
+import type {
+  LensId,
+  ReviewIssue,
+  ReviewMode,
+  ReviewSeverity,
+} from "@diffgazer/core/schemas/review";
 import { DECLINE, useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { type FocusEvent, type KeyboardEvent, useRef, useState } from "react";
 import {
   CHROME_ZONE,
   chromeReturnShortcut,
   useChromeBackHandoff,
 } from "@/components/layout/header-chrome";
+import { buildRunReceiptRows, buildRunStubRow } from "@/components/shared/run-receipt";
+import { CleanRunView } from "@/features/review/components/clean-run-view";
 import { ReviewCompleteSummary } from "@/features/review/components/complete-summary";
 import { RunDetailsPanel } from "@/features/review/components/run-details-panel";
 import { isInteractiveTarget } from "@/features/review/lib/interactive-target";
 import { useFocusWithin } from "@/hooks/use-focus-within";
 
+/** One labelled exit in the summary's action row. */
+export interface SummaryAction {
+  label: string;
+  onSelect: () => void;
+}
+
 interface ReviewSummaryViewProps {
   issues: ReviewIssue[];
   reviewId: string | null;
   durationMs?: number;
+  mode?: ReviewMode;
+  createdAt?: string;
+  lenses?: LensId[];
+  fileCount?: number;
+  additions?: number;
+  deletions?: number;
+  productId?: RunnableProductId;
+  modelId?: string;
   lensStats?: LensStat[];
   droppedDuplicates?: number;
   droppedBelowThreshold?: number;
   minSeverity?: ReviewSeverity;
   /** Set when the run ended on a failed outcome; the summary then reports the failure. */
   outcome?: FailedTerminalOutcome;
+  /** The clean state's own exits, first one primary; the route decides them. */
+  cleanRunActions?: SummaryAction[];
   onEnterReview: () => void;
   onBack: () => void;
 }
@@ -54,40 +81,66 @@ function getSummaryShortcuts({
   parked,
   returnZone,
   inActions,
+  actionCount,
+  focusedLabel,
   canOpenResults,
 }: {
   /** Focus sits outside the page panel, by the ↑ hand-off or by Tab. */
   parked: boolean;
   returnZone: SummaryZone | null;
   inActions: boolean;
+  actionCount: number;
+  focusedLabel: string | undefined;
   canOpenResults: boolean;
 }): Shortcut[] {
   // Focus left the panel, so the row's keys stood down with it: only the arrow
   // back is left, and only while a hand-off left something to go back to.
   if (parked) return chromeReturnShortcut(returnZone, { summary: "Summary" });
 
-  // A run with no results to open has no action row at all, so the region is
-  // the only zone left and Tab leads out of the page, not into a row.
-  if (!canOpenResults) return [{ key: "↑/↓", label: "Scroll" }];
+  // A run with nothing to act on has no action row at all, so the region is the
+  // only zone left and Tab leads out of the page, not into a row.
+  if (actionCount === 0 || focusedLabel === undefined) return [{ key: "↑/↓", label: "Scroll" }];
 
-  if (inActions) return [{ key: "Enter", label: "View Results" }];
+  // A row with somewhere to move names the move key; a lone action names only
+  // the key that acts on it.
+  const rowKeys: Shortcut[] =
+    actionCount > 1
+      ? [
+          { key: "←/→", label: "Move Action" },
+          { key: "Enter/Space", label: focusedLabel },
+        ]
+      : [{ key: "Enter", label: focusedLabel }];
 
-  return [
+  if (inActions) return rowKeys;
+
+  const regionKeys: Shortcut[] = [
     { key: "↑/↓", label: "Scroll" },
     { key: "Tab", label: "Actions" },
-    { key: "Enter", label: "View Results" },
   ];
+  // Only the results entry answers Enter from inside the region; the clean
+  // state's actions answer to the row that holds them, so naming them here
+  // would promise a key that is inert where focus is.
+  return canOpenResults ? [...regionKeys, ...rowKeys] : regionKeys;
 }
 
 export function ReviewSummaryView({
   issues,
   reviewId,
   durationMs,
+  mode,
+  createdAt,
+  lenses,
+  fileCount,
+  additions,
+  deletions,
+  productId,
+  modelId,
   lensStats,
   droppedDuplicates,
   droppedBelowThreshold,
   minSeverity,
   outcome,
+  cleanRunActions,
   onEnterReview,
   onBack,
 }: ReviewSummaryViewProps) {
@@ -109,16 +162,36 @@ export function ReviewSummaryView({
   }));
 
   const stats = {
-    runId: reviewId,
     totalIssues: summary.total,
     filesWithIssues: summary.filesWithIssues,
     blockerCount: summary.blockerCount,
   };
 
-  // A failed run has no results screen to open unless findings survived it, so
-  // the action and the key that would open one are withheld rather than left to
-  // land on an empty list.
-  const canOpenResults = outcome === undefined || issues.length > 0;
+  // The run's evidence, shared by both states: the clean one has nothing else
+  // to show, and a run with findings gets the same ledger instead of a bare
+  // fact line and a loose duration.
+  const receiptRows = buildRunReceiptRows({
+    mode,
+    fileCount,
+    additions,
+    deletions,
+    lenses,
+    lensStats,
+    productId,
+    modelId,
+    durationMs,
+  });
+  const receiptStub = buildRunStubRow(reviewId, createdAt);
+  const isClean = isCleanRun({ issueCount: issues.length, lensStats, terminalOutcome: outcome });
+
+  // Entry into emptiness is withheld whenever the run produced no findings, not
+  // only when it failed: a clean run tells its whole story here, and a partial
+  // one that found nothing has no list to open either.
+  const canOpenResults = issues.length > 0;
+  const resultsActions: SummaryAction[] = canOpenResults
+    ? [{ label: "View Results", onSelect: onEnterReview }]
+    : [];
+  const actions = isClean ? (cleanRunActions ?? []) : resultsActions;
 
   useScope(SUMMARY_SCOPE);
   useKey(
@@ -142,20 +215,19 @@ export function ReviewSummaryView({
   const panelRef = useRef<HTMLDivElement>(null);
   const panelFocus = useFocusWithin<HTMLDivElement>();
   const [inChrome, setInChrome] = useState(false);
-  const actions = canOpenResults ? [onEnterReview] : [];
   const footer = useActionRowNavigation({
     enabled: true,
     actionCount: actions.length,
-    // Mount lands on [View Results]: the primary action is this screen's focus
-    // target, not the summary region. With no results to open there is no row,
-    // and mount focus falls through to the region below.
+    // Mount lands on the primary action: it is this screen's focus target, not
+    // the summary region. With nothing to act on there is no row, and mount
+    // focus falls through to the region below.
     defaultZone: "actions",
     // Scoped to the panel so the row's keys stand down the moment focus leaves
     // it: parked on the header Back button, ←/→/↑ must not yank focus back into
     // the page, and ↓ belongs to the chrome hand-off below.
     containerRef: panelRef,
     disabledFocusFallbackRef: scrollRef,
-    onAction: (index) => actions[index]?.(),
+    onAction: (index) => actions[index]?.onSelect(),
   });
   const chrome = useChromeBackHandoff({
     zone: inChrome ? CHROME_ZONE : SUMMARY_ZONE,
@@ -193,6 +265,8 @@ export function ReviewSummaryView({
       parked: !panelFocus.focusWithin,
       returnZone: chrome.returnZone,
       inActions: footer.inActions,
+      actionCount: actions.length,
+      focusedLabel: actions[footer.focusedIndex]?.label,
       canOpenResults,
     }),
     rightShortcuts: [BACK_SHORTCUT],
@@ -246,7 +320,15 @@ export function ReviewSummaryView({
           setInChrome(false);
         }}
         focused={panelFocus.focusWithin}
-        className="mx-auto flex w-full min-h-0 max-w-4xl flex-col shadow-2xl"
+        // The clean state's ledger stays neutral, so the pass is carried by the
+        // frame and the statement alone - the accent is spent once.
+        tone={isClean ? "success" : undefined}
+        // The clean receipt is a short ledger: at the data summary's width it
+        // would sit in a field of dead space, so the frame hugs the receipt.
+        className={cn(
+          "mx-auto flex w-full min-h-0 flex-col shadow-2xl",
+          isClean ? "max-w-2xl" : "max-w-4xl",
+        )}
       >
         <Panel.Label variant="border" aria-hidden="true">
           Review Summary
@@ -271,32 +353,48 @@ export function ReviewSummaryView({
           {/* pt-4 keeps the corner labels the inner panels hang above their
               top border clear of the scrollport's clipped edge. */}
           <div className="flex flex-col gap-4 pt-4">
-            <ReviewCompleteSummary
-              stats={stats}
-              severityCounts={summary.severityCounts}
-              categoryStats={buildCategoryStats(issues)}
-              topIssues={topIssues}
-              durationMs={durationMs}
-              outcome={outcome}
-              lensStats={lensStats}
-            />
-            <RunDetailsPanel notices={notices} lensRows={lensRows} />
+            {isClean ? (
+              <CleanRunView
+                statement={buildCleanRunStatement({ droppedBelowThreshold, minSeverity })}
+                rows={receiptRows}
+                stub={receiptStub}
+                notices={notices}
+              />
+            ) : (
+              <>
+                <ReviewCompleteSummary
+                  stats={stats}
+                  severityCounts={summary.severityCounts}
+                  categoryStats={buildCategoryStats(issues)}
+                  topIssues={topIssues}
+                  receiptRows={receiptRows}
+                  receiptStub={receiptStub}
+                  outcome={outcome}
+                  lensStats={lensStats}
+                />
+                <RunDetailsPanel notices={notices} lensRows={lensRows} />
+              </>
+            )}
           </div>
         </ScrollArea>
         {/* The header ← Back is the screen's only Back, so the row carries the
-            one action the summary adds: opening the results it produced. */}
-        {canOpenResults && (
+            actions the summary adds: the results it produced, or - with nothing
+            to open - where a clean run goes next. */}
+        {actions.length > 0 && (
           <Panel.Footer className="flex-wrap justify-center gap-3">
-            <Button
-              {...footer.getActionProps(0)}
-              variant="primary"
-              size="lg"
-              bracket
-              highlighted={footer.inActions && footer.focusedIndex === 0}
-              onClick={onEnterReview}
-            >
-              View Results
-            </Button>
+            {actions.map((action, index) => (
+              <Button
+                key={action.label}
+                {...footer.getActionProps(index)}
+                variant={index === 0 ? "primary" : "secondary"}
+                size="lg"
+                bracket
+                highlighted={footer.inActions && footer.focusedIndex === index}
+                onClick={action.onSelect}
+              >
+                {action.label}
+              </Button>
+            ))}
           </Panel.Footer>
         )}
       </Panel>

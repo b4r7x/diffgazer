@@ -123,22 +123,6 @@ describe("IssueListPane severity accessibility", () => {
     expect(screen.getByText("Issues · 2")).toBeInTheDocument();
   });
 
-  it("shows the no-issues empty state as a live status region", () => {
-    render(
-      <IssueListPane
-        issues={[]}
-        allIssues={[]}
-        runDisplayId="#review-1"
-        selectedIssueId={null}
-        onSelectIssue={vi.fn()}
-        filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
-        isFocused
-      />,
-    );
-
-    expect(screen.getByRole("status")).toHaveTextContent("No issues found");
-  });
-
   it("announces the filter-to-empty state as a live status region", () => {
     const onSelectIssue = vi.fn();
     const onFilterChange = vi.fn();

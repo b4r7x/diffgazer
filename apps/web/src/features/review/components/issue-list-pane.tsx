@@ -58,13 +58,12 @@ export function IssueListPane({
   // focus on the pane root covers either zone without a second flag.
   const { focusWithin, props: focusProps } = useFocusWithin<HTMLElement>();
   const counts = calculateSeverityCounts(allIssues);
-  const isFilterActive = filter.activeFilter.size > 0;
-  let emptyMessage = "No issues match filter";
-  if (allIssues.length === 0) {
-    emptyMessage = "No issues found";
-  } else if (isFilterActive) {
-    emptyMessage = "No issues match the current filters — press [Reset] to clear";
-  }
+  // A run that found nothing never reaches this screen, so the only emptiness
+  // the list can show is a filter that matched none of the issues it holds.
+  const emptyMessage =
+    filter.activeFilter.size > 0
+      ? "No issues match the current filters — press [Reset] to clear"
+      : "No issues match filter";
 
   return (
     <Panel

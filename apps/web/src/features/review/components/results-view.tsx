@@ -56,7 +56,7 @@ export function ReviewResultsView({
     mobilePane,
     backToList,
   } = useReviewResultsKeyboard({ issues, initialIssueId, onBackToSummary });
-  const detailsEmptyKind = selectDetailsEmptyKind(issues.length, filteredIssues.length);
+  const detailsEmptyKind = selectDetailsEmptyKind(filteredIssues.length);
   const duplicateNotice = buildDuplicateCollapseNotice(droppedDuplicates, issues.length);
   // A run that lost lenses must say so wherever it is opened, not only in the
   // live progress view - otherwise a partial result reads as a complete one.

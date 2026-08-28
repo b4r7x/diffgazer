@@ -39,6 +39,13 @@ export interface ActiveSession {
   isReady: boolean;
   persistenceState: ReviewPersistenceState;
   capWarningEmitted: boolean;
+  driftNoticeEmitted: boolean;
+  /**
+   * Writes whatever the run has streamed so far to history. Every termination
+   * funnels through {@link terminateSession}, which fires this before the abort
+   * so an interrupted review keeps its partial findings.
+   */
+  persistPartial: (() => Promise<void>) | null;
   subscribers: Set<(event: FullReviewStreamEvent) => void>;
   completionListeners: Set<() => void>;
   controller: AbortController;
@@ -212,10 +219,24 @@ function notifyCompletion(session: ActiveSession): void {
   session.completionListeners.clear();
 }
 
+// Partial writes started by a termination and still on their way to disk.
+// Nothing waits on them inline — the abort below must not wait on the disk — but
+// shutdown does, or `process.exit` beats the save the user is owed.
+const pendingPartialPersists = new Set<Promise<void>>();
+const SHUTDOWN_PERSIST_TIMEOUT_MS = 3_000;
+
 function terminateSession(
   session: ActiveSession,
   options: { code: ReviewErrorCode; message: string; reason: string },
 ): void {
+  const persisting = session.persistPartial?.();
+  if (persisting) {
+    const settled = persisting.catch((error) =>
+      log("warn", "session_partial_persist_failed", { reviewId: session.reviewId, error }),
+    );
+    pendingPartialPersists.add(settled);
+    void settled.finally(() => pendingPartialPersists.delete(settled));
+  }
   session.controller.abort(options.reason);
   const event: FullReviewStreamEvent = {
     type: "error",
@@ -304,10 +325,26 @@ export function startSessionMaintenance(): void {
 
 startSessionMaintenance();
 
+// The partial writes the shutdown terminations just started are the last chance
+// to keep what those reviews produced, so shutdown waits for them — bounded, so
+// a wedged disk cannot hold the process open instead.
+async function drainPendingPartialPersists(): Promise<void> {
+  if (pendingPartialPersists.size === 0) return;
+  const saves = Promise.allSettled([...pendingPartialPersists]);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, SHUTDOWN_PERSIST_TIMEOUT_MS);
+    timer.unref();
+  });
+  await Promise.race([saves, deadline]);
+  clearTimeout(timer);
+}
+
 // Tear down all in-memory session state for shutdown/SIGTERM and test teardown: clear
 // the cleanup interval, abort in-flight work, emit a terminal error to subscribers, and
-// clear subscribers/listeners so no SSE client keeps the process alive.
-export function shutdownSessions(): void {
+// clear subscribers/listeners so no SSE client keeps the process alive. Resolves once the
+// partial writes those terminations started have landed (or the bound expires).
+export async function shutdownSessions(): Promise<void> {
   if (cleanupInterval) {
     clearInterval(cleanupInterval);
     cleanupInterval = null;
@@ -326,6 +363,8 @@ export function shutdownSessions(): void {
     activeSessions.delete(id);
     unregisterSession(id);
   }
+
+  await drainPendingPartialPersists();
 }
 
 export function createSession(
@@ -345,6 +384,7 @@ export function createSession(
     admittedExecutionFingerprint?: string;
     leaseId?: string;
     monotonicNow?: () => number;
+    persistPartial?: () => Promise<void>;
   },
 ): ActiveSession {
   startSessionMaintenance();
@@ -381,6 +421,8 @@ export function createSession(
     isReady: false,
     persistenceState: "pending",
     capWarningEmitted: false,
+    driftNoticeEmitted: false,
+    persistPartial: options.persistPartial ?? null,
     subscribers: new Set(),
     completionListeners: new Set(),
     controller: new AbortController(),
@@ -446,6 +488,19 @@ export function addEvent(reviewId: string, event: FullReviewStreamEvent): void {
   // The cap bounds the replay buffer only — live subscribers always receive the event,
   // otherwise a long-running review goes wire-silent past the cap and stalls clients.
   notifySubscribers(session, event);
+}
+
+// The diff a run reads is captured when it starts, so later worktree edits do
+// not invalidate it. A resume that finds the repository moved says so once, as a
+// notice, instead of killing work the user is still waiting for.
+const DRIFT_NOTICE_CONTENT =
+  "[diffgazer] The repository changed after this review started; these results describe the diff captured at the start.";
+
+export function noteSessionDrift(reviewId: string): void {
+  const session = activeSessions.get(reviewId);
+  if (!session || session.isComplete || session.driftNoticeEmitted) return;
+  session.driftNoticeEmitted = true;
+  addEvent(reviewId, { type: "chunk", content: DRIFT_NOTICE_CONTENT });
 }
 
 export function markComplete(reviewId: string): void {

@@ -28,6 +28,29 @@ describe("HistoryInsightsPane", () => {
     expect(screen.getByText("4m 12s")).toBeInTheDocument();
   });
 
+  it("states the pass and the run's fact line instead of five zero bars for a clean run", () => {
+    const zeros: SeverityCounts = { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 };
+    render(
+      <HistoryInsightsPane
+        runId="run-42"
+        severityCounts={zeros}
+        cleanRun={{
+          statement: "Passed — no issues found",
+          factLine: "No issues across 4 files · 2 lenses · 3s",
+        }}
+        issues={[]}
+        duration="3s"
+      />,
+    );
+
+    expect(screen.getByText("Passed — no issues found")).toBeInTheDocument();
+    expect(screen.getByText("No issues across 4 files · 2 lenses · 3s")).toBeInTheDocument();
+    expect(screen.queryByText(/severity breakdown/i)).not.toBeInTheDocument();
+    // The issues section stays gated as it was, and the duration footer stays.
+    expect(screen.queryByRole("listbox", { name: /run issues/i })).not.toBeInTheDocument();
+    expect(screen.getByText("3s")).toBeInTheDocument();
+  });
+
   it("keeps the metadata summary visible while review details load", () => {
     const counts: SeverityCounts = { blocker: 0, high: 1, medium: 0, low: 0, nit: 0 };
     render(

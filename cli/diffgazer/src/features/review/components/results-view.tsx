@@ -83,7 +83,7 @@ export function ReviewResultsView({
       : [...RESULTS_SHORTCUTS_LEFT, { key: `1-${visibleTabs.length}`, label: "Tabs" }];
   usePageFooter({ shortcuts, rightShortcuts: onBack ? RESULTS_SHORTCUTS_RIGHT : [] });
 
-  const detailsEmptyKind = selectDetailsEmptyKind(issues.length, filteredIssues.length);
+  const detailsEmptyKind = selectDetailsEmptyKind(filteredIssues.length);
   const duplicateNotice = buildDuplicateCollapseNotice(droppedDuplicates, issues.length);
   const completenessNotice = buildLensFailureNotice(lensStats);
   // A findings deep link opens this screen without passing the summary, so the

@@ -189,12 +189,11 @@ describe("ReviewResultsView keyboard regression", () => {
     expectSingleReticle(container);
   });
 
-  it("lands mount focus on the details region when the review has no issues", async () => {
+  it("lands mount focus on the details region when the list has no rows", async () => {
     const user = userEvent.setup();
     renderView([]);
 
-    expect(screen.getByText("No issues found")).toBeInTheDocument();
-    // A clean run has no list rows to focus, so mount focus must land on the
+    // A list with no rows to focus means mount focus must land on the
     // always-visible details region instead of stranding keyboard users on
     // document.body, from where no zone is reachable.
     const details = screen.getByRole("region", { name: "Issue details" });
@@ -908,16 +907,17 @@ describe("ReviewResultsView keyboard regression", () => {
     );
   });
 
-  it("renders a passed-review empty state when there are no issues", () => {
+  it("no longer carries the passed-review empty copy, which the clean-run screen owns", () => {
     renderView([]);
 
-    expect(screen.getByText("No issues found")).toBeInTheDocument();
-    expect(screen.getByText("No issues in this review")).toBeInTheDocument();
-    expect(screen.getByText("This analysis passed without issues.")).toBeInTheDocument();
-    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    // A run that found nothing never reaches this screen, so the copy that
+    // congratulated it here is gone rather than left unreachable.
+    expect(screen.queryByText("No issues found")).not.toBeInTheDocument();
+    expect(screen.queryByText("No issues in this review")).not.toBeInTheDocument();
+    expect(screen.queryByText("This analysis passed without issues.")).not.toBeInTheDocument();
   });
 
-  it("distinguishes filtered-out issues from passed reviews", async () => {
+  it("names the filter as the reason the details pane is empty", async () => {
     const user = userEvent.setup();
     renderView([createReviewIssue("issue-1", "High issue", { severity: "high" })]);
 

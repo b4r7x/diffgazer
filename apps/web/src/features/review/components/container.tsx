@@ -6,6 +6,7 @@ import {
   ENTER_API_KEY_LABEL,
   type FailedTerminalOutcome,
   isCredentialReconnectReadiness,
+  isSessionTerminationCode,
   mapStepsToProgressData,
   savedRunExists,
 } from "@diffgazer/core/review";
@@ -113,9 +114,11 @@ function ReviewStreamContainer({
   // Everything else that settles is a dead end and takes the whole frame: the
   // log behind it stopped and the live layout has nothing left to show. A
   // dropped transport is the exception — its Retry reconnects a run that is
-  // still going, so that one stays on the progress screen.
+  // still going — and so is a terminated session, whose streamed findings are
+  // exactly what the user must not lose to a full-frame card.
+  const keepsLiveScreen = isSessionTerminationCode(state.errorCode ?? "");
   const settledFailure =
-    settledError && !settledRunWithRecord
+    settledError && !settledRunWithRecord && !keepsLiveScreen
       ? {
           error: settledError,
           guidance: classifyReviewStreamError(
@@ -280,6 +283,7 @@ function ReviewStreamContainer({
       contextRefreshError={contextRefreshError}
       onRetryContextRefresh={retryContextRefresh}
       onRetry={handleRetry}
+      onViewRun={handleViewRun}
       onViewResults={isCompleting ? handleViewResults : undefined}
       onCancel={handleCancel}
       onBack={handleBack}

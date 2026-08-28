@@ -13,9 +13,17 @@ import type { KeyboardEvent, Ref } from "react";
 import { SeverityBreakdown } from "@/components/shared/severity/breakdown";
 import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
 
+/** What a run that found nothing has to show here instead of five zero bars. */
+export interface HistoryCleanRun {
+  statement: string;
+  /** The shared evidence line both surfaces' clean panes speak. */
+  factLine: string;
+}
+
 export interface HistoryInsightsPaneProps {
   runId: string | null;
   severityCounts: SeverityCounts | null;
+  cleanRun?: HistoryCleanRun | null;
   issues: ReviewIssue[];
   detailState?: HistoryDetailState;
   duration?: string;
@@ -40,6 +48,7 @@ function formatIssueLocation(issue: ReviewIssue): string {
 export function HistoryInsightsPane({
   runId,
   severityCounts,
+  cleanRun = null,
   issues,
   detailState = { status: "ready" },
   duration,
@@ -64,8 +73,21 @@ export function HistoryInsightsPane({
     // the duration footer both take their natural height; from md up the pane is
     // a fixed-height track and only the list scrolls.
     <div className={cn("flex flex-col md:h-full md:min-h-0 md:overflow-hidden", className)}>
-      <ScrollArea className="space-y-6 overflow-visible px-4 pt-3 pb-4 md:min-h-0 md:flex-1 md:overflow-x-hidden md:overflow-y-auto">
-        {severityCounts && (
+      {/* The verdict and the breakdown are the pane's standing header: they name
+          what the list below is a list of, so they must not scroll away with it. */}
+      <div className="space-y-6 px-4 pt-3 pb-3">
+        {/* A run that found nothing has no breakdown to draw, so the pane says
+            the verdict and shows what the run read instead of five zero bars. */}
+        {cleanRun ? (
+          <div>
+            <p className="text-sm font-bold text-success-text">
+              <span aria-hidden="true">✔</span> {cleanRun.statement}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{cleanRun.factLine}</p>
+          </div>
+        ) : null}
+
+        {severityCounts && !cleanRun ? (
           <div>
             <SectionHeader as="h3" bordered>
               Severity Breakdown
@@ -74,7 +96,7 @@ export function HistoryInsightsPane({
               <SeverityBreakdown counts={severityCounts} />
             </div>
           </div>
-        )}
+        ) : null}
 
         {detailState.status === "loading" ? (
           <output className="text-sm text-muted-foreground">Loading review details...</output>
@@ -88,12 +110,14 @@ export function HistoryInsightsPane({
             </Button>
           </div>
         ) : null}
+      </div>
 
-        {detailState.status === "ready" && issues.length > 0 && (
-          <div>
-            <SectionHeader as="h3" bordered>
-              {issues.length} Issues
-            </SectionHeader>
+      {detailState.status === "ready" && issues.length > 0 && (
+        <div className="flex flex-col px-4 md:min-h-0 md:flex-1">
+          <SectionHeader as="h3" bordered>
+            {issues.length} Issues
+          </SectionHeader>
+          <ScrollArea className="overflow-visible md:min-h-0 md:flex-1 md:overflow-x-hidden md:overflow-y-auto">
             <NavigationList
               ref={listRef}
               aria-label="Run issues"
@@ -114,7 +138,6 @@ export function HistoryInsightsPane({
               // "/", l, and R are window-level shortcuts for this zone; list
               // typeahead would claim those keystrokes before they arrive.
               typeahead={false}
-              className="mt-3"
             >
               {issues.map((issue) => (
                 <NavigationList.Item
@@ -150,13 +173,13 @@ export function HistoryInsightsPane({
                 </NavigationList.Item>
               ))}
             </NavigationList>
-          </div>
-        )}
-      </ScrollArea>
+          </ScrollArea>
+        </div>
+      )}
 
       {duration && (
         // px-4 lines the Duration block up with the scroll column above it.
-        <Panel.Footer className="block px-4 py-3">
+        <Panel.Footer className="block px-4 py-3 md:mt-auto">
           <SectionHeader as="h3" variant="muted" className="mb-1">
             Duration
           </SectionHeader>

@@ -1,13 +1,13 @@
 export type BackTarget = "/" | "/settings";
 
 /**
- * A path outside settings returns `null` so the caller picks its own destination.
+ * A path without a fixed destination returns `null` so the caller picks its own.
  */
 export function getBackTarget(currentPath: string): BackTarget | null {
   const path = currentPath.startsWith("/") ? currentPath : `/${currentPath}`;
   const normalized = path.endsWith("/") && path !== "/" ? path.slice(0, -1) : path;
 
-  if (normalized === "/settings") {
+  if (normalized === "/history" || normalized === "/settings") {
     return "/";
   }
 

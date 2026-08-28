@@ -11,6 +11,11 @@ describe("getBackTarget", () => {
     expect(getBackTarget("/settings")).toBe("/");
   });
 
+  it("returns the home path from history so back never re-enters the run it came from", () => {
+    expect(getBackTarget("/history")).toBe("/");
+    expect(getBackTarget("/history/")).toBe("/");
+  });
+
   it("accepts a path without a leading slash", () => {
     expect(getBackTarget("settings/theme")).toBe("/settings");
     expect(getBackTarget("settings")).toBe("/");
@@ -23,7 +28,6 @@ describe("getBackTarget", () => {
 
   it("returns null for paths that have no implicit back target", () => {
     expect(getBackTarget("/")).toBeNull();
-    expect(getBackTarget("/history")).toBeNull();
     expect(getBackTarget("/review/abc")).toBeNull();
   });
 });

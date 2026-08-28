@@ -59,6 +59,17 @@ function SavedReviewView({
         droppedBelowThreshold={saved.droppedBelowThreshold}
         minSeverity={saved.minSeverity}
         terminalOutcome={terminalOutcome}
+        runFacts={{
+          mode: saved.mode,
+          fileCount: saved.fileCount,
+          additions: saved.additions,
+          deletions: saved.deletions,
+          lenses: saved.lenses,
+          productId: saved.productId,
+          modelId: saved.modelId,
+          createdAt: saved.createdAt,
+        }}
+        backLabel="Back to History"
         onContinue={() => setPhase("results")}
         onBack={onClose}
       />

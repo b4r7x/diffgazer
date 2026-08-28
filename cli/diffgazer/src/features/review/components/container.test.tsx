@@ -327,7 +327,29 @@ describe("ReviewContainer", () => {
 
     const summary = lastFrame() ?? "";
     expect(summary).toMatch(/Review Complete/i);
-    expect(summary).toContain("Duration: 5s");
+    expect(summary).toContain("Elapsed: 5s");
+  });
+
+  test("re-runs the same scope from a clean run's Run Again", async () => {
+    apiMocks.useReviewLifecycleBase.mockImplementation(({ onComplete }) => {
+      useEffect(() => {
+        onComplete();
+      }, [onComplete]);
+
+      return makeReviewLifecycleBase({ issues: [] });
+    });
+
+    const { stdin, lastFrame } = renderContainer();
+
+    await flush();
+    expect(lastFrame() ?? "").toContain("✔ Passed — no issues found");
+    expect(lastFrame() ?? "").toContain("[ Run Again ]");
+    expect(apiMocks.createReview).not.toHaveBeenCalled();
+
+    stdin.write("\r");
+    await waitUntil(() => apiMocks.createReview.mock.calls.length === 1);
+
+    expect(apiMocks.createReview).toHaveBeenCalledWith({ mode: "staged" });
   });
 
   test("summary Escape resets and navigates back to home", async () => {
@@ -427,6 +449,26 @@ describe("ReviewContainer", () => {
     await waitUntil(() => (lastFrame() ?? "").includes("Home route"));
     expect(cancel).not.toHaveBeenCalled();
     expect(apiMocks.clearActiveSession).toHaveBeenCalledWith("staged", "review-123");
+  });
+
+  test("keeps the streamed run on screen behind the banner when the session is terminated", () => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        error: "Review session cancelled because repository state changed.",
+        errorCode: ReviewErrorCode.SESSION_STALE,
+        gate: "terminal-error",
+        isTerminalStreamError: true,
+        reviewId: "review-123",
+      }),
+    );
+
+    const frame = frameText(renderContainer().lastFrame());
+
+    // The run is over, but what it streamed is the point: the progress panes
+    // stay, with the cause named in the banner under them.
+    expect(frame).toContain("Session Expired");
+    expect(frame).toContain("LIVE ACTIVITY LOG");
+    expect(frame).toContain("Issues Found: 1");
   });
 
   test("opens the saved run without a keypress when a lens completed before the review failed", async () => {

@@ -25,6 +25,7 @@
     "@hono/zod-validator": "^0.7.6",
     "@napi-rs/keyring": "^1.2.0",
     "hono": "^4.12.34",
+    "undici": "^7.29.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

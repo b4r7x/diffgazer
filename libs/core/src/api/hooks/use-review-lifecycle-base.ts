@@ -12,7 +12,7 @@ import type { StreamReviewError } from "../../review/stream.js";
 import { canAttemptReview, type Readiness } from "../../schemas/config/readiness.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 import type { ReviewContextResponse } from "../types.js";
-import { useSettings } from "./config.js";
+import { invalidateConfigurationCaches, useSettings } from "./config.js";
 import { useApi } from "./context.js";
 import { refreshReviewContextCache, reviewQueries } from "./queries/review.js";
 import { useReviewContext } from "./review.js";
@@ -164,6 +164,22 @@ export function useReviewLifecycleBase(
     onComplete: options.onComplete,
     onStreamComplete: options.onStreamComplete,
   });
+
+  const hasCompletedAgent = stream.state.agents.some((agent) => agent.status === "complete");
+  const hasSettledStream =
+    hasStreamed &&
+    !stream.state.isStreaming &&
+    (stream.state.hasCompleted || stream.state.error !== null);
+
+  // The review is itself the selected model's conformance check: the server
+  // files that evidence on the first schema-valid response and again once the
+  // run settles. Refetching the configuration caches at both moments is what
+  // makes the providers surfaces show the new readiness then, instead of when
+  // their staleTime happens to lapse.
+  useEffect(() => {
+    if (!hasCompletedAgent && !hasSettledStream) return;
+    void invalidateConfigurationCaches(queryClient, api);
+  }, [hasCompletedAgent, hasSettledStream, api, queryClient]);
 
   // The create call resolves the diff before it answers, so a run it reported as
   // no-diff or failed is already settled: the screen owes the user that answer on

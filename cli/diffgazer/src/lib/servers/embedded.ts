@@ -208,9 +208,12 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
       startPromise = null;
       // Abort in-flight reviews and clear SSE subscribers first so open streams
       // resolve and the HTTP server can drain; otherwise close() never fires its
-      // callback while a review stream keeps a connection alive.
-      const { shutdownSessions } = await import("@diffgazer/server");
-      shutdownSessions();
+      // callback while a review stream keeps a connection alive. Awaited so the
+      // partial writes those aborts started land before the process may exit,
+      // then the pooled HTTP agents release their keep-alive sockets.
+      const { closeDispatchers, shutdownSessions } = await import("@diffgazer/server");
+      await shutdownSessions();
+      await closeDispatchers();
 
       if (!server) {
         return;

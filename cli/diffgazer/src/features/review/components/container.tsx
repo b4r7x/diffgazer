@@ -1,10 +1,12 @@
 import { useProviderConsentGate } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import {
+  buildContextSnapshotView,
   classifyReviewStreamError,
   type FailedTerminalOutcome,
   getAlternateReviewMode,
   isProviderRecoveryError,
+  isSessionTerminationCode,
   mapStepsToProgressDataWithAgents,
   savedRunExists,
 } from "@diffgazer/core/review";
@@ -264,6 +266,13 @@ function ReviewStreamContainer({
     if (result === "setup-required") navigate({ screen: "settings/providers" });
   }
 
+  // Same scope, a new run: the clean state has no findings to read, so re-reading
+  // the diff is the move it offers instead.
+  async function runAgain() {
+    const result = await start(state.mode, { fresh: true });
+    if (result === "setup-required") navigate({ screen: "settings/providers" });
+  }
+
   // A picked scope is the start this screen was opened for, so the automatic
   // one stands down rather than racing it with the whole diff.
   const hasStarted = useRef(pickFiles);
@@ -396,7 +405,9 @@ function ReviewStreamContainer({
     );
   }
 
-  if (isSettledError) {
+  // A terminated session is the exception: its streamed findings are what the
+  // user must not lose, so the progress screen keeps them behind the banner.
+  if (isSettledError && !isSessionTerminationCode(state.errorCode ?? "")) {
     const error = state.error ?? "Review failed.";
     const guidance = classifyReviewStreamError(
       error,
@@ -485,7 +496,10 @@ function ReviewStreamContainer({
         />
       );
 
-    case "summary":
+    case "summary": {
+      const context = state.contextSnapshot
+        ? buildContextSnapshotView(state.contextSnapshot)
+        : null;
       return (
         <ReviewSummaryView
           issues={state.issues}
@@ -499,10 +513,22 @@ function ReviewStreamContainer({
           droppedDuplicates={state.completion.droppedDuplicates}
           droppedBelowThreshold={state.completion.droppedBelowThreshold}
           minSeverity={state.completion.minSeverity}
+          runFacts={{
+            mode: state.mode,
+            // Zero files analysed is an unknown scope, not a measured one.
+            fileCount: state.fileProgress.total || undefined,
+            additions: context?.additions,
+            deletions: context?.deletions,
+            productId: state.provider ?? undefined,
+            modelId: state.modelId ?? undefined,
+            createdAt: state.startedAt?.toISOString(),
+          }}
           onContinue={goToResults}
+          onRunAgain={() => consent.require(() => void runAgain())}
           onBack={handleGateBack}
         />
       );
+    }
 
     case "results":
       return (

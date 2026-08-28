@@ -14,16 +14,19 @@ import {
   assertBoundedExecutionResult,
 } from "../types.js";
 
+export type ExecuteOptions = Readonly<{
+  signal?: AbortSignal;
+  systemPrompt?: string;
+  onProgress?: AdapterExecuteRequest["reportProgress"];
+}>;
+
 export type AdmittedPlanClient = Readonly<{
   productId: RunnableProductId;
   modelId: string;
   transportFamily: AdmittedExecutionPlan["transportFamily"];
   configurationId: string;
   executionFingerprint: string;
-  execute(
-    prompt: string,
-    options?: Readonly<{ signal?: AbortSignal; systemPrompt?: string }>,
-  ): Promise<ExecutionResult>;
+  execute(prompt: string, options?: ExecuteOptions): Promise<ExecutionResult>;
 }>;
 
 function isForbiddenPlanProductId(productId: string): boolean {
@@ -60,7 +63,7 @@ export type AdmittedExecutionChannel = Readonly<{
 function buildExecuteRequest(
   plan: AdmittedExecutionPlan,
   prompt: string,
-  options?: Readonly<{ signal?: AbortSignal; systemPrompt?: string }>,
+  options?: ExecuteOptions,
   channel?: AdmittedExecutionChannel,
 ): AdapterExecuteRequest {
   return {
@@ -72,6 +75,7 @@ function buildExecuteRequest(
     signal: options?.signal,
     resolveCredential: channel?.resolveCredential,
     reportDiagnostic: channel?.reportDiagnostic,
+    reportProgress: options?.onProgress,
   };
 }
 

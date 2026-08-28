@@ -8,12 +8,17 @@ import type { StreamReviewError } from "../../review/index.js";
 import { type SettingsConfig, SettingsConfigSchema } from "../../schemas/config/index.js";
 import { type CreateReviewOutcome, ReviewErrorCode } from "../../schemas/review/index.js";
 import { createDeferred } from "../../testing/deferred.js";
-import { makeActiveReviewSession } from "../../testing/factories.js";
-import { makeReadiness } from "../../testing/provider-fixtures.js";
+import { makeActiveReviewSession, makeIssue } from "../../testing/factories.js";
+import {
+  makeConfigurationListResponse,
+  makeReadiness,
+  makeReadyInitResponse,
+} from "../../testing/provider-fixtures.js";
 import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
 import type { ResumeReviewResult } from "../review.js";
 import type { ReviewContextResponse } from "../types.js";
+import { configQueries } from "./queries/config.js";
 import { reviewQueries } from "./queries/review.js";
 import { useCreateReview } from "./review.js";
 import { useReviewLifecycleBase } from "./use-review-lifecycle-base.js";
@@ -246,6 +251,51 @@ describe("useReviewLifecycleBase terminal resume states", () => {
     expect(result.current.gate).toBe("terminal-error");
     expect(onStreamComplete).not.toHaveBeenCalled();
     expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it("keeps the findings a terminated session already streamed", async () => {
+    const streamedIssue = makeIssue({
+      id: "streamed-1",
+      title: "Streamed before the session died",
+    });
+    const harness = createTestQueryWrapper({
+      api: {
+        getSettings: vi.fn(async () => makeSettings()),
+        getReviewContext: vi.fn(),
+        resumeReviewStream: vi.fn(async (options) => {
+          options.onAgentEvent?.({
+            type: "issue_found",
+            agent: "correctness",
+            issue: streamedIssue,
+            timestamp: "2026-07-15T12:00:00.000Z",
+          });
+          return err({
+            code: ReviewErrorCode.SESSION_STALE,
+            message: "Review session cancelled because repository state changed.",
+          });
+        }),
+      },
+    });
+
+    const { result } = renderHook(
+      () =>
+        useReviewLifecycleBase({
+          configLoading: false,
+          readiness: makeReadiness("ready"),
+          reviewId: "stale-review",
+          onComplete: vi.fn(),
+        }),
+      { wrapper: harness.Wrapper },
+    );
+
+    await waitFor(() =>
+      expect(result.current.stream.state.errorCode).toBe(ReviewErrorCode.SESSION_STALE),
+    );
+
+    // The screen behind the terminal-error gate still has the run's findings to
+    // show, which is the whole reason it stays put.
+    expect(result.current.stream.state.issues).toEqual([streamedIssue]);
+    expect(result.current.gate).toBe("terminal-error");
   });
 
   it("keeps a local self-cancel without an error non-terminal", async () => {
@@ -632,5 +682,104 @@ describe("useReviewLifecycleBase create outcome", () => {
     expect(result.current.lifecycle.gate).not.toBe("no-diff");
     expect(result.current.lifecycle.checks.isNoDiffError).toBe(false);
     expect(result.current.lifecycle.start.canStart).toBe(true);
+  });
+});
+
+describe("useReviewLifecycleBase configuration readiness refresh", () => {
+  const DETECTIVE = {
+    id: "detective",
+    lens: "correctness",
+    name: "Detective",
+    badgeLabel: "DET",
+    badgeVariant: "info",
+    description: "Finds bugs",
+  } as const;
+
+  function createConfigurationHarness(resumeReviewStream: BoundApi["resumeReviewStream"]) {
+    return createTestQueryWrapper({
+      api: {
+        getSettings: vi.fn(async () => makeSettings()),
+        loadConfigurationInit: vi.fn(async () => makeReadyInitResponse()),
+        listConfigurations: vi.fn(async () => makeConfigurationListResponse()),
+        resumeReviewStream,
+      },
+    });
+  }
+
+  async function seedConfigurationCaches(harness: ReturnType<typeof createTestQueryWrapper>) {
+    await harness.queryClient.fetchQuery(configQueries.init(harness.api));
+    await harness.queryClient.fetchQuery(configQueries.configurations(harness.api));
+  }
+
+  function configurationCacheInvalidations(harness: ReturnType<typeof createTestQueryWrapper>) {
+    return [
+      harness.queryClient.getQueryState(configQueries.init(harness.api).queryKey)?.isInvalidated,
+      harness.queryClient.getQueryState(configQueries.configurations(harness.api).queryKey)
+        ?.isInvalidated,
+    ];
+  }
+
+  it("refreshes the configuration caches on the first completed agent, mid-review", async () => {
+    const stream = createDeferred<Result<ResumeReviewResult, StreamReviewError>>();
+    const harness = createConfigurationHarness(
+      vi.fn<BoundApi["resumeReviewStream"]>().mockImplementation((streamOptions) => {
+        streamOptions.onAgentEvent?.({
+          type: "agent_start",
+          agent: DETECTIVE,
+          timestamp: "2026-08-27T10:00:00.000Z",
+        });
+        streamOptions.onAgentEvent?.({
+          type: "agent_complete",
+          agent: "detective",
+          issueCount: 0,
+          timestamp: "2026-08-27T10:00:01.000Z",
+        });
+        return stream.promise;
+      }),
+    );
+    await seedConfigurationCaches(harness);
+
+    const { result } = renderHook(
+      () =>
+        useReviewLifecycleBase({
+          configLoading: false,
+          readiness: makeReadiness("conformance-pending"),
+          reviewId: "mid-review",
+          onComplete: vi.fn(),
+        }),
+      { wrapper: harness.Wrapper },
+    );
+
+    await waitFor(() => expect(configurationCacheInvalidations(harness)).toEqual([true, true]));
+    expect(result.current.stream.state.isStreaming).toBe(true);
+
+    await act(async () => {
+      stream.resolve(ok({ reviewId: "mid-review", result: { issues: [] } }));
+      await stream.promise;
+    });
+  });
+
+  it("refreshes the configuration caches when a review fails without completing an agent", async () => {
+    const harness = createConfigurationHarness(
+      vi
+        .fn<BoundApi["resumeReviewStream"]>()
+        .mockResolvedValue(err({ code: "STREAM_ERROR", message: "network failed" })),
+    );
+    await seedConfigurationCaches(harness);
+
+    const { result } = renderHook(
+      () =>
+        useReviewLifecycleBase({
+          configLoading: false,
+          readiness: makeReadiness("conformance-pending"),
+          reviewId: "failed-review",
+          onComplete: vi.fn(),
+        }),
+      { wrapper: harness.Wrapper },
+    );
+
+    await waitFor(() => expect(result.current.stream.state.error).toBe("network failed"));
+    expect(result.current.stream.state.agents).toEqual([]);
+    await waitFor(() => expect(configurationCacheInvalidations(harness)).toEqual([true, true]));
   });
 });

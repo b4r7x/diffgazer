@@ -6,6 +6,7 @@ import type {
   ReviewIssue,
   ReviewListWarning,
   ReviewMetadata,
+  SavedReview,
   SeverityCounts,
 } from "../schemas/review/index.js";
 import { sortIssuesBySeverity } from "./history/issue-order.js";
@@ -62,6 +63,12 @@ export interface HistoryScreenState {
   setSelectedRunId: Dispatch<SetStateAction<string | null>>;
 
   selectedRun: ReviewMetadata | null;
+  /**
+   * The selected run's saved record, once the detail query resolves. The list
+   * metadata does not persist the severity floor a run was filtered against, so
+   * this is where a pane reads what the run hid.
+   */
+  reviewDetail: SavedReview | null;
   severityCounts: SeverityCounts | null;
   sortedIssues: ReviewIssue[];
   duration: string;
@@ -169,6 +176,7 @@ export function useHistoryScreenState(
     selectedRunId,
     setSelectedRunId: setRawSelectedRunId,
     selectedRun,
+    reviewDetail,
     severityCounts,
     sortedIssues,
     duration,

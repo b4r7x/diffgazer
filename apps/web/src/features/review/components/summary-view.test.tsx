@@ -1,7 +1,8 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { FailedTerminalOutcome } from "@diffgazer/core/review";
+import type { RunnableProductId } from "@diffgazer/core/schemas/config";
 import type { LensStat } from "@diffgazer/core/schemas/events";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import type { ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -10,7 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import { FooterView } from "@/testing/footer-view";
 import { HeaderChromeHarness } from "@/testing/header-chrome";
 import { expectSingleReticle } from "@/testing/reticle";
-import { ReviewSummaryView } from "./summary-view";
+import { ReviewSummaryView, type SummaryAction } from "./summary-view";
 
 interface SummaryProps {
   droppedBelowThreshold?: number;
@@ -20,7 +21,15 @@ interface SummaryProps {
   issues?: ReviewIssue[];
   reviewId?: string | null;
   durationMs?: number;
+  mode?: ReviewMode;
+  createdAt?: string;
+  fileCount?: number;
+  additions?: number;
+  deletions?: number;
+  productId?: RunnableProductId;
+  modelId?: string;
   outcome?: FailedTerminalOutcome;
+  cleanRunActions?: SummaryAction[];
   onEnterReview?: () => void;
   onBack?: () => void;
 }
@@ -31,11 +40,19 @@ function summaryElement(props?: SummaryProps) {
       issues={props?.issues ?? [makeIssue({ id: "1", severity: "high", title: "Issue 1" })]}
       reviewId={props?.reviewId === undefined ? "review-1" : props.reviewId}
       durationMs={props?.durationMs}
+      mode={props?.mode}
+      createdAt={props?.createdAt}
+      fileCount={props?.fileCount}
+      additions={props?.additions}
+      deletions={props?.deletions}
+      productId={props?.productId}
+      modelId={props?.modelId}
       droppedBelowThreshold={props?.droppedBelowThreshold}
       droppedDuplicates={props?.droppedDuplicates}
       minSeverity={props?.minSeverity}
       lensStats={props?.lensStats}
       outcome={props?.outcome}
+      cleanRunActions={props?.cleanRunActions}
       onEnterReview={props?.onEnterReview ?? vi.fn()}
       onBack={props?.onBack ?? vi.fn()}
     />
@@ -60,10 +77,14 @@ function pinOverflow(region: HTMLElement) {
 }
 
 describe("ReviewSummaryView", () => {
-  it("shortens the run id in the heading", () => {
+  it("headlines the outcome and carries the shortened run id on the receipt stub", () => {
     renderSummary({ reviewId: "7685a1b2-0000-4000-8000-000000000000" });
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Review Complete #7685");
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent("Review Complete");
+    // The id is data, not a headline: it lives on the stub torn off the ledger.
+    expect(heading).not.toHaveTextContent("#7685");
+    expect(screen.getByText("#7685a1b2")).toBeVisible();
     expect(screen.getByRole("region", { name: "Top Issues Preview" })).toBeVisible();
   });
 
@@ -83,24 +104,16 @@ describe("ReviewSummaryView", () => {
       ],
     });
 
-    expect(screen.getByText("2 issues in 2 files · 2m 14s")).toBeVisible();
+    expect(screen.getByText("2 issues in 2 files")).toBeVisible();
     expect(screen.queryByText(/^Duration:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Found .* across/)).not.toBeInTheDocument();
   });
 
-  it("says a clean run found nothing and drops the empty category table", () => {
-    renderSummary({ issues: [], durationMs: 3800 });
-
-    expect(screen.getByText("No issues found · 3s")).toBeVisible();
-    const categories = screen.getByRole("region", { name: "Issues by category" });
-    expect(within(categories).getByText("Nothing to categorise.")).toBeVisible();
-    expect(within(categories).queryByRole("table")).not.toBeInTheDocument();
-  });
-
-  it("falls back to #unknown in the heading when the review id is missing", () => {
+  it("falls back to #unknown on the receipt stub when the review id is missing", () => {
     renderSummary({ reviewId: null });
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Review Complete #unknown");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Review Complete");
+    expect(screen.getByText("#unknown")).toBeVisible();
   });
 
   it("headlines a partial run honestly when a lens failed but the run completed", () => {
@@ -113,7 +126,7 @@ describe("ReviewSummaryView", () => {
     });
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Review Partially Complete #7685",
+      "Review Partially Complete",
     );
     // The frame agrees with the headline: warning tone, not success-green.
     expect(screen.getByRole("region", { name: "Run status" })).toHaveAttribute(
@@ -122,10 +135,23 @@ describe("ReviewSummaryView", () => {
     );
   });
 
-  it("renders the persisted review duration in the fact line", () => {
-    renderSummary({ durationMs: 2500 });
+  it("states the run's scope and elapsed time as receipt rows, not a fact line", () => {
+    renderSummary({
+      durationMs: 2500,
+      mode: "unstaged",
+      fileCount: 12,
+      additions: 248,
+      deletions: 96,
+      productId: "deepseek",
+      modelId: "deepseek-chat",
+    });
 
-    expect(screen.getByText("1 issue in 1 file · 2s")).toBeVisible();
+    expect(screen.getByText("1 issue in 1 file")).toBeVisible();
+    expect(screen.getByText("Unstaged · 12 files · +248 -96")).toBeVisible();
+    // The same grain the TUI receipt and a saved run read: the product that ran
+    // it, named against the model id the receipt keeps.
+    expect(screen.getByText("DeepSeek / deepseek-chat")).toBeVisible();
+    expect(screen.getByText("2s")).toBeVisible();
   });
 
   it("renders category names in the stats table without literal icon words", () => {
@@ -443,10 +469,10 @@ describe("ReviewSummaryView failure mode", () => {
 
   it("says the findings were not kept when the outcome discards them", () => {
     renderSummary({
-      outcome: "cancelled",
+      outcome: "timed-out",
       lensStats: [
         { lensId: "correctness", issueCount: 3, status: "success" },
-        { lensId: "security", issueCount: 0, status: "failed", errorCode: "CANCELLED" },
+        { lensId: "security", issueCount: 0, status: "failed", errorCode: "SESSION_TIMEOUT" },
       ],
       issues: [],
     });
@@ -463,8 +489,13 @@ describe("ReviewSummaryView failure mode", () => {
     ).toBeVisible();
   });
 
-  it("stays quiet about dropped findings for an outcome that keeps them", () => {
-    renderSummary({ outcome: "budget-exhausted", lensStats: FAILED_RUN, issues: KEPT_ISSUES });
+  // A cancelled run keeps what it streamed too: the server writes those partial
+  // findings before it terminates the session.
+  it.each([
+    "budget-exhausted",
+    "cancelled",
+  ] as const)("stays quiet about dropped findings for a %s run, which keeps them", (outcome) => {
+    renderSummary({ outcome, lensStats: FAILED_RUN, issues: KEPT_ISSUES });
 
     expect(screen.queryByText(/Findings are not kept/)).not.toBeInTheDocument();
   });
@@ -526,8 +557,160 @@ describe("ReviewSummaryView failure mode", () => {
       durationMs: 3800,
     });
 
-    expect(screen.getByText("1 of 1 lens completed · 0 issues · 3s")).toBeVisible();
+    expect(screen.getByText("1 of 1 lens completed · 0 issues")).toBeVisible();
+    // Elapsed is a ledger row now, not a tail on the coverage sentence.
+    expect(screen.getByText("3s")).toBeVisible();
     expect(screen.queryByText(/No issues found/)).not.toBeInTheDocument();
+  });
+});
+
+describe("ReviewSummaryView clean run", () => {
+  const CLEAN_RUN: SummaryProps = {
+    issues: [],
+    reviewId: "7685a1b2-0000-4000-8000-000000000000",
+    durationMs: 8200,
+    mode: "unstaged",
+    createdAt: "2026-08-28T14:02:00.000Z",
+    fileCount: 12,
+    additions: 248,
+    deletions: 96,
+    productId: "deepseek",
+    modelId: "deepseek-chat",
+    lensStats: [
+      { lensId: "correctness", issueCount: 0, status: "success" },
+      { lensId: "security", issueCount: 0, status: "success" },
+    ],
+  };
+
+  function cleanActions(onRunAgain = vi.fn(), onHome = vi.fn()): SummaryAction[] {
+    return [
+      { label: "Run Again", onSelect: onRunAgain },
+      { label: "Back to Home", onSelect: onHome },
+    ];
+  }
+
+  it("shows the pass statement over the run's receipt and nothing made of zeros", () => {
+    renderSummary({ ...CLEAN_RUN, cleanRunActions: cleanActions() });
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Passed — no issues found");
+    expect(screen.getByText("Unstaged · 12 files · +248 -96")).toBeVisible();
+    expect(screen.getByText("correctness · security")).toBeVisible();
+    expect(screen.getByText("DeepSeek / deepseek-chat")).toBeVisible();
+    expect(screen.getByText("8s")).toBeVisible();
+    expect(screen.getByText(/^#7685a1b2/)).toBeVisible();
+
+    expect(screen.queryByRole("region", { name: "Severity breakdown" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Issues by category" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Nothing to categorise.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: /issues by lens/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("0")).not.toBeInTheDocument();
+  });
+
+  it("offers no way into an empty results screen", async () => {
+    const user = userEvent.setup();
+    const onEnterReview = vi.fn();
+    renderSummary({ ...CLEAN_RUN, onEnterReview, cleanRunActions: cleanActions() });
+
+    expect(screen.queryByRole("button", { name: /view results/i })).not.toBeInTheDocument();
+    const legend = within(screen.getByRole("contentinfo"));
+    expect(legend.queryByText("View Results")).not.toBeInTheDocument();
+
+    await user.keyboard("{Enter}");
+    expect(onEnterReview).not.toHaveBeenCalled();
+  });
+
+  it("lands mount focus on the primary action and names the row's keys in the footer", async () => {
+    const user = userEvent.setup();
+    const onRunAgain = vi.fn();
+    renderSummary({ ...CLEAN_RUN, cleanRunActions: cleanActions(onRunAgain) });
+
+    const runAgain = screen.getByRole("button", { name: /run again/i });
+    await waitFor(() => expect(runAgain).toHaveFocus());
+    expect(runAgain).toHaveAttribute("data-highlighted");
+
+    const legend = within(screen.getByRole("contentinfo"));
+    expect(legend.getByText("Move Action")).toBeInTheDocument();
+    expect(legend.getByText("Run Again")).toBeInTheDocument();
+
+    await user.keyboard("{Enter}");
+    expect(onRunAgain).toHaveBeenCalledTimes(1);
+
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /back to home/i })).toHaveFocus(),
+    );
+    expect(legend.getByText("Back to Home")).toBeInTheDocument();
+  });
+
+  it("collapses a saved clean run to its one exit", async () => {
+    const user = userEvent.setup();
+    const onBackToHistory = vi.fn();
+    renderSummary({
+      ...CLEAN_RUN,
+      cleanRunActions: [{ label: "Back to History", onSelect: onBackToHistory }],
+    });
+
+    const backToHistory = screen.getByRole("button", { name: "Back to History" });
+    expect(screen.getAllByRole("button")).toEqual([backToHistory]);
+    expect(screen.queryByRole("button", { name: /run again/i })).not.toBeInTheDocument();
+
+    await user.click(backToHistory);
+    expect(onBackToHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it("still leaves through the screen's single Escape", async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    renderSummary({ ...CLEAN_RUN, onBack, cleanRunActions: cleanActions() });
+
+    await user.keyboard("{Escape}");
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("qualifies the pass when findings were hidden below the severity floor", () => {
+    renderSummary({
+      ...CLEAN_RUN,
+      droppedBelowThreshold: 4,
+      minSeverity: "medium",
+      cleanRunActions: cleanActions(),
+    });
+
+    // A run that hid findings has not got a clean sheet, so the statement names
+    // the floor instead of congratulating.
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "No issues at or above medium",
+    );
+    expect(screen.getByRole("heading", { level: 1 })).not.toHaveTextContent("Passed");
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "4 below-threshold issues hidden (threshold: medium)",
+    );
+  });
+
+  it("keeps a zero-issue run with a failed lens on the partial summary, still with no results entry", async () => {
+    const user = userEvent.setup();
+    const onEnterReview = vi.fn();
+    renderSummary({
+      ...CLEAN_RUN,
+      lensStats: [
+        { lensId: "correctness", issueCount: 0, status: "success" },
+        { lensId: "security", issueCount: 0, status: "failed", errorCode: "STREAM_ERROR" },
+      ],
+      onEnterReview,
+      cleanRunActions: cleanActions(),
+    });
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Review Partially Complete",
+    );
+    expect(screen.getByRole("region", { name: "Run status" })).toHaveAttribute(
+      "data-tone",
+      "warning",
+    );
+    expect(screen.queryByText("Passed — no issues found")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /view results/i })).not.toBeInTheDocument();
+
+    await user.keyboard("{Enter}");
+    expect(onEnterReview).not.toHaveBeenCalled();
   });
 });
 

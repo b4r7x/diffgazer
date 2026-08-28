@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { recoverJsonObject } from "./recover-json.js";
+import { recoverJsonObject, recoverJsonObjects } from "./recover-json.js";
 
 const REVIEW = { issues: [{ id: "issue-1", title: "Fenced finding" }] };
 
@@ -58,5 +58,41 @@ describe("recoverJsonObject", () => {
 
   it("returns null for a top-level array", () => {
     expect(recoverJsonObject("[1,2,3]")).toBeNull();
+  });
+});
+
+describe("recoverJsonObjects", () => {
+  it("collects the complete objects of a top-level object the model never closed", () => {
+    const content = '{"issues":[{"id":"a"},{"id":"b"},{"id":"c","title":"cut off mid str';
+
+    expect(recoverJsonObjects(content)).toEqual([{ id: "a" }, { id: "b" }]);
+  });
+
+  it("never emits an object nested inside one it already kept", () => {
+    const content = '{"issues":[{"id":"a","evidence":[{"type":"code","excerpt":"x"}]},{"id":"b"';
+
+    expect(recoverJsonObjects(content)).toEqual([
+      { id: "a", evidence: [{ type: "code", excerpt: "x" }] },
+    ]);
+  });
+
+  it("returns the whole answer as one object when it closed", () => {
+    expect(recoverJsonObjects(JSON.stringify(REVIEW))).toEqual([REVIEW]);
+  });
+
+  it("reads through a fence and keeps braces inside strings intact", () => {
+    const content = '```json\n{"issues":[{"id":"a","rationale":"a } brace"},{"id":"b"';
+
+    expect(recoverJsonObjects(content)).toEqual([{ id: "a", rationale: "a } brace" }]);
+  });
+
+  it("falls back to the children when the enclosing object does not parse", () => {
+    const content = '{"issues":[{"id":"a"},{"id":"b"},]}';
+
+    expect(recoverJsonObjects(content)).toEqual([{ id: "a" }, { id: "b" }]);
+  });
+
+  it("returns nothing for prose without a complete object", () => {
+    expect(recoverJsonObjects('not json {"id":"cut')).toEqual([]);
   });
 });

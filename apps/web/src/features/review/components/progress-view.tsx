@@ -4,6 +4,7 @@ import { formatDuration } from "@diffgazer/core/format";
 import {
   classifyReviewStreamError,
   getPartialFailureWarning,
+  isSessionTerminationCode,
   type LogStreamState,
   type ReviewEvent,
   type ReviewStreamErrorGuidance,
@@ -68,6 +69,8 @@ export interface ReviewProgressViewProps {
   contextRefreshError?: string | null;
   onRetryContextRefresh?: () => void;
   onRetry?: (reviewId: string) => void;
+  /** Opens the record the server saved when a terminated session ended the run. */
+  onViewRun?: (reviewId: string) => void;
   onViewResults?: () => void;
   onCancel?: () => void;
   onBack?: () => void;
@@ -140,18 +143,21 @@ interface ErrorAction {
 }
 
 /**
- * The ways forward a dropped stream offers. Every other settled failure leaves
- * the live screen for the full-frame gate card, so this panel only ever speaks
- * for a transport that can be picked up again: Home, then the reconnect.
+ * The ways forward this panel offers. Every settled failure with a full-frame
+ * gate card behind it leaves the live screen, so what is left here is a
+ * transport that can be picked up again and a terminated session, whose partial
+ * run the server saved before it ended.
  */
 function buildErrorActions({
   guidance,
   onBack,
   onRetry,
+  onViewRun,
 }: {
   guidance: ReviewStreamErrorGuidance;
   onBack?: () => void;
   onRetry?: () => void;
+  onViewRun?: () => void;
 }): ErrorAction[] {
   const actions: ErrorAction[] = [];
   if (onBack) {
@@ -159,6 +165,9 @@ function buildErrorActions({
   }
   if (guidance.kind === "transport" && onRetry) {
     actions.push({ label: guidance.ctaLabel, onAction: onRetry, variant: "outline" });
+  }
+  if (onViewRun) {
+    actions.push({ label: "View Saved Run", onAction: onViewRun, variant: "outline" });
   }
   return actions;
 }
@@ -346,6 +355,7 @@ export function ReviewProgressView({
   contextRefreshError,
   onRetryContextRefresh,
   onRetry,
+  onViewRun,
   onViewResults,
   onCancel,
   onBack,
@@ -429,6 +439,16 @@ export function ReviewProgressView({
         onRetry:
           errorGuidance.kind === "transport" && reviewId && onRetry
             ? () => onRetry(reviewId)
+            : undefined,
+        // The server skips the partial write when the run streamed no issues, so
+        // without one there is no record to open — and the action would trade
+        // this screen for a dead end.
+        onViewRun:
+          isSessionTerminationCode(errorCode ?? "") &&
+          metrics.issuesFound > 0 &&
+          reviewId &&
+          onViewRun
+            ? () => onViewRun(reviewId)
             : undefined,
       })
     : [];

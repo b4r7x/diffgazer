@@ -1,6 +1,6 @@
 import type { HistoryDetailState } from "@diffgazer/core/review";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { makeIssue } from "@diffgazer/core/testing/factories";
+import { makeIssue, makeReviewMetadata } from "@diffgazer/core/testing/factories";
 import { Box } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import stripAnsi from "strip-ansi";
@@ -306,6 +306,74 @@ describe("HistoryInsightsPane (TUI)", () => {
     expect(frame).toContain("12 ISSUES");
     expect(frame).toContain("▼");
     expect(frame.split("\n")).toHaveLength(24);
+  });
+
+  test("replaces the zero bars with the pass statement and the run's facts", () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <HistoryInsightsPane
+          runId="#a1b2"
+          metadata={makeReviewMetadata({
+            issueCount: 0,
+            fileCount: 12,
+            lenses: ["correctness", "security", "tests"],
+            durationMs: 8200,
+          })}
+          severityCounts={{ blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }}
+          issues={[]}
+          duration="8s"
+        />
+      </CliThemeProvider>,
+    );
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("✔ Passed — no issues found");
+    expect(frame).toContain("No issues across 12 files · 3 lenses · 8s");
+    expect(frame).not.toContain("SEVERITY BREAKDOWN");
+    expect(frame).not.toContain("DURATION");
+  });
+
+  test("qualifies the pass by the floor that hid findings", () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <HistoryInsightsPane
+          runId="#a1b2"
+          metadata={makeReviewMetadata({
+            issueCount: 0,
+            fileCount: 12,
+            lenses: ["correctness", "security", "tests"],
+            durationMs: 8200,
+          })}
+          droppedBelowThreshold={4}
+          minSeverity="medium"
+          severityCounts={{ blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }}
+          issues={[]}
+          duration="8s"
+        />
+      </CliThemeProvider>,
+    );
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("✔ No issues at or above medium");
+    expect(frame).not.toContain("Passed — no issues found");
+  });
+
+  test("keeps the breakdown for a zero-issue run whose lens failed", () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <HistoryInsightsPane
+          runId="#a1b2"
+          metadata={makeReviewMetadata({ issueCount: 0, failedLensCount: 1 })}
+          severityCounts={{ blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }}
+          issues={[]}
+          duration="8s"
+        />
+      </CliThemeProvider>,
+    );
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("SEVERITY BREAKDOWN");
+    expect(frame).not.toContain("Passed — no issues found");
   });
 
   test("keeps the severity badge and line-ref whole beside a truncating title at the 80x24 pane width", async () => {

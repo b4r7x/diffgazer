@@ -10,6 +10,7 @@ import type {
 import { log } from "../../../log.js";
 import { composeExecutionDeadline } from "../../deadline.js";
 import {
+  createCorrelationId,
   MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE,
   serializeFailureDiagnostic,
   truncateUtf8,
@@ -35,6 +36,7 @@ import {
   rateLimitRetryDelayMs,
 } from "./rate-limit.js";
 import { recoverJsonObject } from "./recover-json.js";
+import { salvageLensIssues } from "./salvage-issues.js";
 import type { HostedExecuteRequest, HostedProductProfile } from "./types.js";
 import {
   accumulateUsage,
@@ -122,6 +124,18 @@ function validateNoticeVersion(productId: HostedApiProductId, noticeVersion: num
 
 const SLOW_ANSWER_REMEDIATION =
   "Free pools queue and reasoning models answer slowly — retry, or pick a faster model.";
+
+/**
+ * A blind re-dispatch after a stalled response is worth its money only while
+ * the wall still leaves room for a complete answer.
+ *
+ * The sized dispatcher holds the client's response timeout above the dispatch
+ * wall, so wherever `RequestInit.dispatcher` is honored the wall aborts first
+ * and this retry never runs. It is the fallback for the fetch paths that ignore
+ * the dispatcher — a non-undici runtime, or an injected fetch — where the
+ * client's own response timeout is the bound that fires.
+ */
+const TIMEOUT_RETRY_MIN_REMAINING_MS = 60_000;
 
 type ResponseAccounting = Readonly<{
   limits: ExecutionLimits;
@@ -262,6 +276,15 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
       usageAvailability: lastUsageAvailability,
     });
 
+  const completed = (result: ReviewResult): ExecutionResult =>
+    createCompletedExecutionResult(request, result, {
+      attemptCount,
+      startedAt,
+      finishedAt: now().toISOString(),
+      ...(reportedUsage === null ? {} : { usage: reportedUsage }),
+      usageAvailability: lastUsageAvailability,
+    });
+
   /**
    * The wall deadline names its own numbers on expiry, so the lens error is
    * more than the bare timeout sentence. A plain cancel stays silent.
@@ -301,6 +324,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
   };
 
   let correction: OutputCorrection | null = null;
+  let timeoutRetryUsed = false;
 
   const canRetry = (extraInputTokens = 0): "retry" | "budget-exhausted" | "stop" => {
     if (!profile.malformedOutputRetry || attemptCount >= maxAttempts) return "stop";
@@ -349,7 +373,8 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
 
       let response: Response;
       let rateLimitCapture: string | null = null;
-      for (let rateLimitAttempt = 0; ; rateLimitAttempt += 1) {
+      let rateLimitAttempt = 0;
+      for (;;) {
         try {
           response = await fetcher(url, init);
         } catch (error) {
@@ -357,10 +382,26 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
             return timedOutOrCancelled();
           }
           const transportTimeout = transportTimeoutCause(error);
-          if (transportTimeout !== null) {
+          if (transportTimeout === null) {
+            return failed("transport-failed");
+          }
+          if (
+            timeoutRetryUsed ||
+            attemptCount >= admittedLimits.maxRetries + 1 ||
+            deadline.remainingMs() < TIMEOUT_RETRY_MIN_REMAINING_MS
+          ) {
             return transportTimedOut(transportTimeout);
           }
-          return failed("transport-failed");
+          // The stall is the client's, not the model's verdict: re-dispatch the
+          // same request once while the wall still fits a whole answer.
+          timeoutRetryUsed = true;
+          attemptCount += 1;
+          log("warn", "hosted_transport_timeout_retry", {
+            productId: hostedProductId,
+            causeCode: transportTimeout,
+            remainingMs: deadline.remainingMs(),
+          });
+          continue;
         }
         if (response.status !== 429 || rateLimitAttempt >= RATE_LIMIT_RETRY_DELAYS_MS.length) {
           break;
@@ -381,6 +422,12 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
           delayMs,
           retriesLeft: RATE_LIMIT_RETRY_DELAYS_MS.length - 1 - rateLimitAttempt,
         });
+        // The wait is not the model thinking, and a silent backoff reads as a
+        // dead request, so the stream says which it is for as long as it lasts.
+        request.reportProgress?.({
+          message: `Rate-limited, retrying in ${Math.round(delayMs / 1000)}s`,
+          holdsForMs: delayMs,
+        });
         if (!(await abortableDelay(delayMs, deadline.signal))) {
           // The run is over, but the 429 evidence still matters: report it
           // before mapping the abort, or the rate limit leaves no trace.
@@ -393,6 +440,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
           );
           return failed(deadline.expired() ? "timed-out" : "cancelled");
         }
+        rateLimitAttempt += 1;
       }
 
       if (!response.ok) {
@@ -539,6 +587,9 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         return failed(retry === "budget-exhausted" ? "budget-exhausted" : "schema-failed");
       }
 
+      // One id for this answer's outcome: whether it ends as a malformed-output
+      // diagnostic or as a salvage warn, the log line names the same dispatch.
+      const outputCorrelationId = createCorrelationId();
       // The head of the malformed answer, so a field failure leaves a fixture
       // behind instead of vanishing with the response body. Logged as well as
       // reported: downstream diagnostics drop truncatedDetails, so the log line
@@ -562,6 +613,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
             correction === null
               ? "malformed-review-output"
               : MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE,
+          correlationId: outputCorrelationId,
           retryable: false,
           message: `The model's answer failed ${stage} (finish reason "${reportedFinishReason}").`,
           ...(invalidPaths?.length
@@ -574,6 +626,28 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         request.reportDiagnostic?.(diagnostic);
       };
 
+      /**
+       * The last tier, reached only once the corrective retry is spent: the
+       * findings that validate on their own are kept instead of dying with the
+       * malformed answer around them. An answer with nothing salvageable takes
+       * the terminal path unchanged, so the conformance memo it arms and the
+       * review-level MODEL_INCOMPATIBLE fold both stay as they were.
+       */
+      const salvageOrFail = (payload: unknown, reportFailure: () => void): ExecutionResult => {
+        const salvaged = salvageLensIssues(payload, parsed.content ?? "");
+        if (salvaged.issues.length === 0) {
+          reportFailure();
+          return failed("schema-failed");
+        }
+        log("warn", "hosted_salvaged_output", {
+          productId: hostedProductId,
+          correlationId: outputCorrelationId,
+          keptCount: salvaged.issues.length,
+          droppedCount: salvaged.droppedCount,
+        });
+        return completed({ issues: salvaged.issues });
+      };
+
       let reviewPayload: unknown;
       try {
         reviewPayload = JSON.parse(parsed.content);
@@ -583,19 +657,22 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
 
       if (reviewPayload === null || reviewPayload === undefined) {
         if (lengthFinish) {
-          // No retry: the same prompt overruns the same completion cap.
-          const diagnostic = serializeFailureDiagnostic({
-            code: "output-truncated",
-            retryable: false,
-            message: `The model ran out of completion budget mid-answer (finish reason "${reportedFinishReason}") and returned truncated review output.`,
-            remediation:
-              "Reduce the review scope, or pick a model or plan with a larger completion limit.",
-            capture: { channel: "response", text: parsed.content },
-            sensitive: { literalSecrets: [context.credential] },
+          // No retry: the same prompt overruns the same completion cap. The
+          // issues the answer completed before the cut are still findings.
+          return salvageOrFail(reviewPayload, () => {
+            const diagnostic = serializeFailureDiagnostic({
+              code: "output-truncated",
+              correlationId: outputCorrelationId,
+              retryable: false,
+              message: `The model ran out of completion budget mid-answer (finish reason "${reportedFinishReason}") and returned truncated review output.`,
+              remediation:
+                "Reduce the review scope, or pick a model or plan with a larger completion limit.",
+              capture: { channel: "response", text: parsed.content ?? "" },
+              sensitive: { literalSecrets: [context.credential] },
+            });
+            logMalformedOutput(diagnostic);
+            request.reportDiagnostic?.(diagnostic);
           });
-          logMalformedOutput(diagnostic);
-          request.reportDiagnostic?.(diagnostic);
-          return failed("schema-failed");
         }
         // The corrective retry replays the failed answer and names what was
         // wrong with it. The correction turns count into the retry's input
@@ -607,8 +684,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
           continue;
         }
         if (retry === "budget-exhausted") return failed("budget-exhausted");
-        reportMalformedOutput("JSON parsing");
-        return failed("schema-failed");
+        return salvageOrFail(reviewPayload, () => reportMalformedOutput("JSON parsing"));
       }
 
       const validated = context.reviewSchema.safeParse(reviewPayload);
@@ -624,17 +700,12 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
           continue;
         }
         if (retry === "budget-exhausted") return failed("budget-exhausted");
-        reportMalformedOutput("review schema validation", invalidPaths);
-        return failed("schema-failed");
+        return salvageOrFail(reviewPayload, () =>
+          reportMalformedOutput("review schema validation", invalidPaths),
+        );
       }
 
-      return createCompletedExecutionResult(request, validated.data as ReviewResult, {
-        attemptCount,
-        startedAt,
-        finishedAt: now().toISOString(),
-        ...(reportedUsage === null ? {} : { usage: reportedUsage }),
-        usageAvailability: lastUsageAvailability,
-      });
+      return completed(validated.data as ReviewResult);
     }
 
     return failed("schema-failed");

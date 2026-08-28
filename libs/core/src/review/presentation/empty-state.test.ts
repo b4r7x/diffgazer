@@ -3,10 +3,6 @@ import { getAlternateReviewMode, getDetailsEmptyCopy, getNoChangesCopy } from ".
 
 describe("review empty-state presentation", () => {
   it("keeps the shared issue-details empty copy", () => {
-    expect(getDetailsEmptyCopy("no-issues")).toEqual({
-      title: "No issues in this review",
-      description: "This analysis passed without issues.",
-    });
     expect(getDetailsEmptyCopy("filter-empty")).toEqual({
       title: "No issues match this filter",
       description: "Choose another severity to continue.",

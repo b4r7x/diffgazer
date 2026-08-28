@@ -14,7 +14,7 @@ describe("session maintenance interval", () => {
     const store = await import("./store.js");
 
     expect(vi.getTimerCount()).toBe(1);
-    store.shutdownSessions();
+    await store.shutdownSessions();
     expect(vi.getTimerCount()).toBe(0);
 
     store.startSessionMaintenance();
@@ -45,6 +45,6 @@ describe("session maintenance interval", () => {
     ]);
     expect(store.getSession(reviewId)).toBeUndefined();
     expect(vi.getTimerCount()).toBe(1);
-    store.shutdownSessions();
+    await store.shutdownSessions();
   });
 });

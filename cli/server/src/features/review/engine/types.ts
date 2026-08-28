@@ -68,6 +68,12 @@ export interface OrchestrationOptions {
    */
   reviewClock?: { signal: AbortSignal; expired(): boolean };
   /**
+   * The admitted per-dispatch wall. A non-streaming dispatch has no first-token
+   * signal, so the wait heartbeat names this bound instead of leaving the user
+   * to guess whether an elapsed count is normal.
+   */
+  dispatchWallTimeMs?: number;
+  /**
    * The whole-file batches from the size gate's plan, which every lens reads in
    * turn. Absent is the same review as a one-entry plan: the diff read whole, in
    * one call per lens.

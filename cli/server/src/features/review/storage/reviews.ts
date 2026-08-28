@@ -229,6 +229,7 @@ export async function saveReview(
 
   const severityCounts = calculateSeverityCounts(options.result.issues);
   const failedLensCount = countFailedLenses(options.lensStats);
+  const terminalOutcome = options.execution?.receipt.outcome ?? options.terminalOutcome;
 
   const metadata: ReviewMetadata = {
     id: options.reviewId ?? randomUUID(),
@@ -247,7 +248,7 @@ export async function saveReview(
     nitCount: severityCounts.nit,
     fileCount: options.diff.totalStats.filesChanged,
     ...(options.durationMs === undefined ? {} : { durationMs: options.durationMs }),
-    ...(options.execution ? { terminalOutcome: options.execution.receipt.outcome } : {}),
+    ...(terminalOutcome ? { terminalOutcome } : {}),
   };
 
   const savedReview: SavedReview = {

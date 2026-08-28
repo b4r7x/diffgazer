@@ -746,6 +746,69 @@ describe("runLensAnalysis", () => {
     const eventCountAfter = events.filter((e) => e.type === "agent_progress").length;
     expect(eventCountAfter).toBe(eventCountBefore);
   });
+
+  describe("wait heartbeat", () => {
+    const heartbeats = (events: Array<AgentStreamEvent | StepEvent>): string[] =>
+      events.flatMap((event) =>
+        event.type === "agent_progress" && event.progress === 65 && event.message
+          ? [event.message]
+          : [],
+      );
+
+    function runWaitingLens(
+      onEvent: (event: AgentStreamEvent | StepEvent) => void,
+      generate: AIClient["generate"],
+    ) {
+      return runLensAnalysis({
+        client: { provider: "openrouter", generate },
+        lens: CORRECTNESS_LENS,
+        batches: [makeAnalysisDiff(1)],
+        allChangedFilePaths: allPaths([makeAnalysisDiff(1)]),
+        dispatchWallTimeMs: 600_000,
+        onEvent,
+      });
+    }
+
+    it("names the wall the dispatch may run to, beside the elapsed time", async () => {
+      const response = createDeferred<Result<unknown, AIError>>();
+      const events: Array<AgentStreamEvent | StepEvent> = [];
+      const promise = runWaitingLens(
+        (event) => events.push(event),
+        async (_prompt, schema) => {
+          const result = await response.promise;
+          return result.ok ? ok(schema.parse(result.value)) : result;
+        },
+      );
+
+      await vi.advanceTimersByTimeAsync(4000);
+      expect(heartbeats(events)).toContain("Waiting for model response — 4s of up to 600s");
+
+      response.resolve(ok({ issues: [] }));
+      await promise;
+    });
+
+    it("shows a rate-limit backoff for as long as it holds, then returns to waiting", async () => {
+      const response = createDeferred<Result<unknown, AIError>>();
+      const events: Array<AgentStreamEvent | StepEvent> = [];
+      const promise = runWaitingLens(
+        (event) => events.push(event),
+        async (_prompt, schema, options) => {
+          options?.onProgress?.({ message: "Rate-limited, retrying in 8s", holdsForMs: 8000 });
+          const result = await response.promise;
+          return result.ok ? ok(schema.parse(result.value)) : result;
+        },
+      );
+
+      await vi.advanceTimersByTimeAsync(4000);
+      expect(heartbeats(events)).toContain("Rate-limited, retrying in 8s — 4s of up to 600s");
+
+      await vi.advanceTimersByTimeAsync(6000);
+      expect(heartbeats(events)).toContain("Waiting for model response — 10s of up to 600s");
+
+      response.resolve(ok({ issues: [] }));
+      await promise;
+    });
+  });
 });
 
 describe("runSynthesisAnalysis", () => {
