@@ -45,7 +45,7 @@ export function CardLayout({
     // header and scrolls its own content, so the page never scrolls the
     // wordmark away and the footer actions stay reachable at any height.
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-4 md:p-6 lg:p-8">
-      {/* Spare height splits 1:2 around the card — the hero-tier optical band
+      {/* Spare height splits evenly (content lifted 38px above dead centre by the bottom spacer's 76px ledge) around the card — the hero-tier optical band
           every hub/child/home screen shares — and the spacers collapse once the
           card outgrows the viewport. */}
       <div aria-hidden className="grow" />
@@ -84,7 +84,7 @@ export function CardLayout({
 
         {footer && <Panel.Footer className="justify-end gap-3">{footer}</Panel.Footer>}
       </Panel>
-      <div aria-hidden className="grow-[2]" />
+      <div aria-hidden className="mt-[76px] grow" />
     </div>
   );
 }

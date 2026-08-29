@@ -55,7 +55,7 @@ export function TimelineList({
           key={item.id}
           id={item.id}
           density="compact"
-          className="border-b border-border last:border-b-0"
+          className="border-b border-b-border last:border-b-0"
         >
           <NavigationList.Title>{item.label}</NavigationList.Title>
           {/* The list is full-bleed, so the count keeps its own clearance from

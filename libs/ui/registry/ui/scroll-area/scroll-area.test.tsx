@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps, KeyboardEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -248,5 +248,96 @@ describe("ScrollArea", () => {
     scrollArea.focus();
     await user.keyboard("{ArrowDown}");
     expect(scrollArea.scrollTop).toBe(0);
+  });
+
+  describe("overlay", () => {
+    function getThumb() {
+      const thumb = document.querySelector<HTMLElement>('[data-slot="scroll-area-overlay-thumb"]');
+      if (!thumb) throw new Error("overlay thumb is not rendered");
+      return thumb;
+    }
+
+    it("keeps the floating thumb hidden while content fits", () => {
+      renderScrollArea({ overlay: true });
+      expect(getThumb().style.display).toBe("none");
+    });
+
+    it("keeps the overlay rail out of the accessibility tree", () => {
+      renderScrollArea({ overlay: true });
+      expect(document.querySelector('[data-slot="scroll-area-overlay"]')).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
+    });
+
+    it("shows the thumb once content overflows and moves it with scroll position", () => {
+      const el = renderScrollArea({ overlay: true });
+      defineScrollMetrics(el, { clientHeight: 200, scrollHeight: 800 });
+      // fireEvent retained: jsdom does not calculate layout or emit scroll after scrollTop changes.
+      fireEvent.scroll(el);
+      const thumb = getThumb();
+      expect(thumb.style.display).toBe("block");
+      const restingTransform = thumb.style.transform;
+
+      el.scrollTop = 300;
+      // fireEvent retained: jsdom does not calculate layout or emit scroll after scrollTop changes.
+      fireEvent.scroll(el);
+      expect(thumb.style.transform).not.toBe(restingTransform);
+    });
+
+    it("renders no overlay rail by default", () => {
+      renderScrollArea();
+      expect(document.querySelector('[data-slot="scroll-area-overlay"]')).not.toBeInTheDocument();
+    });
+
+    it("keeps the native scrollbar for non-vertical orientations instead of rendering the overlay", () => {
+      renderScrollArea({ overlay: true, orientation: "horizontal" });
+      expect(document.querySelector('[data-slot="scroll-area-overlay"]')).not.toBeInTheDocument();
+    });
+
+    it("resyncs the thumb when the container resizes", () => {
+      const callbacks: Array<() => void> = [];
+      vi.stubGlobal(
+        "ResizeObserver",
+        class {
+          constructor(callback: () => void) {
+            callbacks.push(callback);
+          }
+          observe() {}
+          disconnect() {}
+        },
+      );
+      try {
+        const el = renderScrollArea({ overlay: true });
+        expect(getThumb().style.display).toBe("none");
+        defineScrollMetrics(el, { clientHeight: 200, scrollHeight: 800 });
+        for (const callback of callbacks) callback();
+        expect(getThumb().style.display).toBe("block");
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it("scrolls the container when the thumb is dragged", () => {
+      const el = renderScrollArea({ overlay: true });
+      defineScrollMetrics(el, { clientHeight: 200, scrollHeight: 800 });
+      // fireEvent retained: jsdom does not calculate layout or emit scroll after scrollTop changes.
+      fireEvent.scroll(el);
+      const thumb = getThumb();
+      // jsdom's setPointerCapture rejects synthetic pointer ids.
+      thumb.setPointerCapture = () => {};
+
+      // thumb height = max(200/800*200, 24) = 50; track = 150; a 45px drag maps
+      // to 45 * (800-200) / 150 = 180px of scrollTop.
+      // fireEvent retained: userEvent has no pointer-capture drag primitive; raw pointer events drive the drag math directly.
+      fireEvent.pointerDown(thumb, { pointerId: 1, clientY: 10 });
+      fireEvent.pointerMove(thumb, { pointerId: 1, clientY: 55 });
+      expect(el.scrollTop).toBeCloseTo(180);
+
+      // fireEvent retained: userEvent has no pointer-capture drag primitive; raw pointer events drive the drag math directly.
+      fireEvent.pointerUp(thumb, { pointerId: 1 });
+      fireEvent.pointerMove(thumb, { pointerId: 1, clientY: 200 });
+      expect(el.scrollTop).toBeCloseTo(180);
+    });
   });
 });

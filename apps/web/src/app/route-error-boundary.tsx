@@ -186,7 +186,7 @@ function RootRouteRecoveryPage({
             />
           </div>
         </div>
-        <div aria-hidden className="grow-[2]" />
+        <div aria-hidden className="mt-[76px] grow" />
       </main>
       <footer className="flex items-center justify-between border-t border-border px-4 py-2 text-xs text-muted-foreground">
         <span>

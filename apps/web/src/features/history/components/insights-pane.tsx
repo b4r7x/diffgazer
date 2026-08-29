@@ -139,7 +139,7 @@ export function HistoryInsightsPane({
                   id={issue.id}
                   onClick={() => onSelectIssue?.(issue.id)}
                   density="compact"
-                  className="border-b border-border last:border-b-0 py-1"
+                  className="border-b border-b-border last:border-b-0 py-1"
                 >
                   {/* One grid for the whole row: the item's indicator glyph and
                       the severity tag each take a content-sized track, and every

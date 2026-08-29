@@ -604,7 +604,8 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/focus-outline.json"
+        "https://r.b4r7.dev/r/ui/focus-outline.json",
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true

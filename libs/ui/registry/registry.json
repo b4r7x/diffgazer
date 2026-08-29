@@ -582,7 +582,7 @@
       "title": "Scroll Area",
       "description": "Custom scrollable area with styled scrollbars",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "utils", "focus-outline"],
+      "registryDependencies": ["theme", "utils", "focus-outline", "composed-refs"],
       "meta": {
         "client": true
       },

@@ -42,7 +42,7 @@ function StatusChip({ className }: { className: string }) {
  * It renders outside the shell (no FooterProvider, no Panel), so it builds its
  * own frame in the root crash screen's language — header band, figlet art,
  * labelled detail rule, prompt-row action, own kbd footer — with the content
- * in the app-wide 1:2 band, like every other gate.
+ * in the app-wide centered −38px band, like every other gate.
  */
 export function ServerDisconnectedGate({
   message,
@@ -141,7 +141,7 @@ export function ServerDisconnectedGate({
             />
           </div>
         </div>
-        <div aria-hidden className="grow-[2]" />
+        <div aria-hidden className="mt-[76px] grow" />
       </main>
       <footer className="flex items-center justify-between border-t border-border px-4 py-2 text-xs text-muted-foreground">
         <span>

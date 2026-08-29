@@ -126,6 +126,39 @@ describe("theme-base.css scrollbar capability contract", () => {
       value: "transparent transparent",
     });
   });
+
+  it("drives the overlay thumb from the same tokens as the thin scrollbar, and hides its rail on touch", () => {
+    const OVERLAY_THUMB = '[data-slot="scroll-area-overlay-thumb"]';
+
+    const resting = hoverRules
+      .filter((rule) => rule.selector === OVERLAY_THUMB)
+      .flatMap(declarationsOf)
+      .filter((declaration) => declaration.prop === "background");
+    expect(resting).toHaveLength(1);
+    expect(resting[0]?.value).toContain("--scrollbar-thumb");
+    expect(resting[0]?.value).not.toBe("transparent");
+
+    const active = hoverRules
+      .filter(
+        (rule) =>
+          rule.selector.includes(`:hover ${OVERLAY_THUMB}`) ||
+          rule.selector.includes(`:focus-within ${OVERLAY_THUMB}`),
+      )
+      .flatMap(declarationsOf)
+      .filter((declaration) => declaration.prop === "background");
+    expect(active.length).toBeGreaterThan(0);
+    for (const declaration of active) {
+      expect(declaration.value).toContain("--scrollbar-thumb-active");
+    }
+
+    // Touch keeps the native indicator (.scrollbar-hide is hover-gated), so the
+    // floating rail must disappear there instead of doubling it.
+    const touchRules = eachRule(atRuleBody(readFileSync(CSS_PATH, "utf8"), "@media (hover: none)"));
+    const railHide = touchRules
+      .filter((rule) => rule.selector === '[data-slot="scroll-area-overlay"]')
+      .flatMap(declarationsOf);
+    expect(railHide).toContainEqual({ prop: "display", value: "none" });
+  });
 });
 
 describe("theme-base.css shiki dual-theme contract", () => {

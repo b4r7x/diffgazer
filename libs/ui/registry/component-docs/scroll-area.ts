@@ -11,12 +11,12 @@ export const scrollAreaDoc: ComponentDoc = {
     {
       title: "Wrapper Only",
       content:
-        "ScrollArea is a pure wrapper that adds thin scrollbar styling. It renders no visual output of its own.",
+        "Without overlay, ScrollArea is a pure wrapper that adds thin scrollbar styling and renders no visual output of its own. With overlay it renders one zero-height rail as the container's first DOM child (ahead of children) carrying the floating thumb — account for it in position-keyed styling of direct children (first:, nth-child, space-y-*).",
     },
     {
       title: "Resting Thumb",
       content:
-        "The thumb is visible at rest (foreground at 35%) and strengthens on hover or focus-within, so overflow is signalled before the pointer arrives. Chromium and WebKit get that resting thumb from the ::-webkit-scrollbar tree, and the standard scrollbar-width/scrollbar-color pair is confined to engines without that pseudo-element: declaring both on one element makes Chromium fall back to a platform overlay scrollbar that stays invisible until you scroll. Override --scrollbar-thumb and --scrollbar-thumb-active on the ScrollArea or any ancestor to retune both steps. Give the scroll container at least 1px of inset from a surrounding border so the track and the border do not read as one doubled edge.",
+        "The thumb is visible at rest (foreground at 35%) and strengthens on hover or focus-within, so overflow is signalled before the pointer arrives. Chromium and WebKit get that resting thumb from the ::-webkit-scrollbar tree, and the standard scrollbar-width/scrollbar-color pair is confined to engines without that pseudo-element: declaring both on one element makes Chromium fall back to a platform overlay scrollbar that stays invisible until you scroll. Override --scrollbar-thumb and --scrollbar-thumb-active on the ScrollArea or any ancestor to retune both steps — the overlay mode's floating thumb consumes the same two tokens, so one retune moves both presentations. Give the scroll container at least 1px of inset from a surrounding border so the track and the border do not read as one doubled edge.",
     },
   ],
   usage: { example: "scroll-area-default" },
@@ -25,6 +25,7 @@ export const scrollAreaDoc: ComponentDoc = {
     { name: "scroll-area-horizontal", title: "Horizontal" },
     { name: "scroll-area-both", title: "Both Directions" },
     { name: "scroll-area-keyboard", title: "Keyboard Region" },
+    { name: "scroll-area-overlay", title: "Overlay" },
   ],
   keyboard: {
     description:
@@ -60,6 +61,13 @@ export const scrollAreaDoc: ComponentDoc = {
         required: false,
         defaultValue: '"vertical"',
         description: "Axes that overflow. Other axes are clipped.",
+      },
+      overlay: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description:
+          "Hides the native scrollbar and floats a draggable thumb above the content, so rows can run border-to-border instead of stopping at a reserved track. Applies only with the vertical orientation — other orientations keep their native bar — and only on hover-capable devices; touch keeps the native indicator. Renders a zero-height rail as the container's first DOM child, ahead of children. The thumb hides when content fits, and it follows the same --scrollbar-thumb / --scrollbar-thumb-active tokens as the thin scrollbar.",
       },
       keyboardScrollable: {
         type: "boolean",

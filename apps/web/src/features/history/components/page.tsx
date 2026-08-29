@@ -277,7 +277,7 @@ function HistoryPageContent() {
               the first mobile/tablet viewport. Full-bleed rows: pl-[2px] only
               absorbs the marker rail's -ml-[2px] so row separators and the
               selected rail terminate into the pane border instead of floating. */}
-          <ScrollArea className="max-h-40 pl-[2px] pt-3 pb-2 lg:max-h-none lg:min-h-0 lg:flex-1">
+          <ScrollArea overlay className="max-h-40 pl-[2px] pb-2 lg:max-h-none lg:min-h-0 lg:flex-1">
             <TimelineList
               items={timelineItems}
               selectedId={selectedDateId}
@@ -310,7 +310,7 @@ function HistoryPageContent() {
           </Panel.Label>
           {/* Full-bleed like SECTIONS: the highlighted row fill and every
               border-b rule span border-to-border, TUI-style. */}
-          <ScrollArea className="pl-[2px] pb-2 md:min-h-0 md:flex-1">
+          <ScrollArea overlay className="pl-[2px] pb-2 md:min-h-0 md:flex-1">
             {mappedRuns.length > 0 ? (
               <NavigationList
                 ref={runsListRef}
@@ -333,7 +333,7 @@ function HistoryPageContent() {
                   <NavigationList.Item
                     key={run.id}
                     id={run.id}
-                    className="border-b border-border last:border-b-0"
+                    className="border-b border-b-border last:border-b-0"
                   >
                     <NavigationList.Title>{run.displayId}</NavigationList.Title>
                     <NavigationList.Status className="text-muted-foreground group-data-[highlighted]:text-primary-foreground/70">

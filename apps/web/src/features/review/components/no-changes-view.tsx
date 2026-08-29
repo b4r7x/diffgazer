@@ -60,7 +60,7 @@ export function NoChangesView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
-      {/* Boxed dead-end panels sit in the app-wide 1:2 band, like
+      {/* Boxed dead-end panels sit in the app-wide centered −38px band, like
           failure-view.tsx, sparse page cards, and loading (card.tsx,
           centered-status.tsx). The spacers collapse once the panel
           outgrows the viewport, so a short window scrolls from the top. */}
@@ -110,7 +110,7 @@ export function NoChangesView({
           </div>
         </Panel.Content>
       </Panel>
-      <div aria-hidden className="grow-[2]" />
+      <div aria-hidden className="mt-[76px] grow" />
     </div>
   );
 }

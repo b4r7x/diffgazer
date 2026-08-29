@@ -277,7 +277,7 @@ Additional minimum-version floors added during dependency audit passes hold tran
 
 ### Advisories accepted without a fix
 
-`pnpm audit` ignores are listed under `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml`, each with its reachability argument beside it. There is exactly one entry today:
+`pnpm audit` ignores are listed under `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml`, each with its reachability argument beside it. There are two entries today, both against `image-size`:
 
 - `image-size` — GHSA-w3rx-r6r6-pgpr (ICNS parser infinite loop) and GHSA-5p2g-fcmc-qvqq (JXL and HEIF parser infinite loops), both high, both denial of service. **No override can clear these**: the advisories name `>= 2.0.3` as patched and npm's latest published version is `2.0.2`, so every existing release is affected. Reached only through `apps/docs > fumadocs-core` (also via `fumadocs-mdx > fumadocs-core`), which sizes images referenced by this repo's own MDX at build time. No workspace package declares `image-size`, no source file imports it, and it is absent from the dependency closure of all four published packages (`@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`, `diffgazer`) — `apps/docs` is `private: true` and is never published. Triggering either loop requires an attacker-supplied ICNS/JXL/HEIF file; `apps/docs` accepts no user uploads and reads only images committed to this repository. Drop both ignores the moment `image-size` publishes `2.0.3` and `fumadocs-core` resolves it, and re-check on every release until then.
 

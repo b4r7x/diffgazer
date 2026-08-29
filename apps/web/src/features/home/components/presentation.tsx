@@ -316,7 +316,7 @@ export function HomePagePresentation({
         />
       )}
       <div className="flex flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
-        {/* Spare height splits 1:2 around the panes: they sit in the optical band
+        {/* Spare height splits evenly (content lifted 38px above dead centre by the bottom spacer's 76px ledge) around the panes: they sit in the optical band
             below the hero wordmark — neither glued to it nor sunk to dead center —
             and the spacers collapse once the column overflows, so a short window
             scrolls from the top. */}
@@ -351,7 +351,7 @@ export function HomePagePresentation({
             />
           </div>
         </div>
-        <div aria-hidden className="grow-[2]" />
+        <div aria-hidden className="mt-[76px] grow" />
       </div>
     </>
   );

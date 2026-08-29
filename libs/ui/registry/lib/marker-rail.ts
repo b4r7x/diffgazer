@@ -19,7 +19,10 @@
  */
 
 /** Resting state: reserve the rail so marking a row never shifts its label. */
-export const MARKER_RAIL_BASE = "-ml-[2px] border-l-2 border-transparent";
+// Side-scoped on purpose: the all-sides `border-transparent` would let
+// tailwind-merge strip any per-side border color merged before this constant
+// (an item's own `border-b-border/50` separator included).
+export const MARKER_RAIL_BASE = "-ml-[2px] border-l-2 border-l-transparent";
 
 /** Persistent current location, on an un-inverted row. */
 export const MARKER_RAIL_SELECTED = "border-l-primary";

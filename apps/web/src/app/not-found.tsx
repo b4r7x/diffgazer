@@ -68,7 +68,7 @@ export function NotFoundPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-4 md:py-6 lg:py-8">
-      {/* The interruption band keeps the app-wide 1:2 optical band (card.tsx,
+      {/* The interruption band keeps the app-wide centered −38px optical band (card.tsx,
           centered-status.tsx), so loading → 404 lands without a jump. The
           spacers collapse once the band outgrows the viewport, so a short
           window scrolls from the top. */}
@@ -144,7 +144,7 @@ export function NotFoundPage() {
         </div>
         <span aria-hidden="true" className="block h-px w-full bg-border" />
       </section>
-      <div aria-hidden className="grow-[2]" />
+      <div aria-hidden className="mt-[76px] grow" />
     </div>
   );
 }

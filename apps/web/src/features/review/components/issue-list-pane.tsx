@@ -119,7 +119,7 @@ export function IssueListPane({
                 key={issue.id}
                 id={issue.id}
                 density="compact"
-                className="border-b border-border/50 last:border-b-0"
+                className="border-b border-b-border/50 last:border-b-0"
               >
                 {/* pe-3 is the gutter between the title cell and the severity
                     tag beside it: the row grid has no column gap, so a title

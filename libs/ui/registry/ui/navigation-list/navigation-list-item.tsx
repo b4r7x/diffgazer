@@ -33,7 +33,7 @@ const itemVariants = cva("flex cursor-pointer group", {
   variants: {
     active: {
       true: "bg-primary text-primary-foreground",
-      false: "hover:bg-secondary border-b border-border/50",
+      false: "hover:bg-secondary border-b border-b-border/50",
     },
     disabled: {
       true: "opacity-50 cursor-not-allowed",

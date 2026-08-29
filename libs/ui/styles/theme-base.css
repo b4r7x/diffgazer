@@ -78,6 +78,30 @@
     background: var(--foreground);
   }
 
+  /*
+   * ScrollArea's overlay mode renders a floating thumb in place of the native
+   * bar (the container carries .scrollbar-hide). Same two-step tone as
+   * .scrollbar-thin, driven by the same tokens, so a theme retune moves both
+   * presentations together. The component writes only measured geometry
+   * (display/height/transform) inline; color lives exclusively here.
+   */
+  [data-slot="scroll-area-overlay-thumb"] {
+    background: var(--scrollbar-thumb, color-mix(in oklab, var(--foreground) 35%, transparent));
+    transition: background 0.15s ease;
+  }
+
+  [data-slot="scroll-area"]:hover [data-slot="scroll-area-overlay-thumb"],
+  [data-slot="scroll-area"]:focus-within [data-slot="scroll-area-overlay-thumb"] {
+    background: var(
+      --scrollbar-thumb-active,
+      color-mix(in oklab, var(--foreground) 60%, transparent)
+    );
+  }
+
+  [data-slot="scroll-area-overlay-thumb"]:hover {
+    background: var(--foreground);
+  }
+
   @supports not selector(::-webkit-scrollbar) {
     .scrollbar-thin {
       scrollbar-width: thin;
@@ -97,6 +121,17 @@
         )
         transparent;
     }
+  }
+}
+
+/*
+ * Touch surfaces keep their native scroll indicator (.scrollbar-hide is
+ * hover-gated above), so the floating overlay thumb would double it — hide
+ * the whole rail there.
+ */
+@media (hover: none) {
+  [data-slot="scroll-area-overlay"] {
+    display: none;
   }
 }
 

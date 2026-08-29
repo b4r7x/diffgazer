@@ -156,7 +156,7 @@ export function SettingsHubPage() {
   return (
     // Same wrapper rhythm as CardLayout, one step wider: the hub's rows carry
     // label + value pairs, so the card keeps the pre-mobile 3xl width while the
-    // single-column children stay at CardLayout's 2xl. Spare height splits 1:2
+    // single-column children stay at CardLayout's 2xl. Spare height splits evenly (content lifted 38px above dead centre by the bottom spacer's 76px ledge)
     // around the card (the shared hero-tier optical band), so hub, children and
     // home hold the same top line and the spacers collapse when content
     // outgrows the viewport.
@@ -220,7 +220,7 @@ export function SettingsHubPage() {
           </Panel.Footer>
         </Panel>
       </div>
-      <div aria-hidden className="grow-[2]" />
+      <div aria-hidden className="mt-[76px] grow" />
     </div>
   );
 }

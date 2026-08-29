@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   configPath,
   fsHooks,
@@ -221,5 +221,45 @@ describe("config store read path", () => {
         entry.status === "unknown" ? entry.configurationId : entry.record.configurationId,
       ),
     ).toEqual(["cfg-v1-gemini"]);
+  });
+
+  it("keeps refusing reads after a failed upgrade persist, even once disk holds a valid V2 pair", async () => {
+    writeJson(configPath(), v2Config({ theme: "dark" }));
+    const store = await loadStore();
+    expect(await store.ready()).toEqual({ ok: true, value: undefined });
+
+    // An older binary puts a V1 pair back on disk, and the upgrade the next read runs
+    // cannot commit it.
+    writeJson(configPath(), v1Config());
+    writeJson(secretsPath(), { providers: { gemini: "sk-v1-file-literal" } });
+    const { atomicWriteFile } = await vi.importActual<typeof import("../fs.js")>("../fs.js");
+    fsHooks.atomicWriteFileHook = async (filePath, content, mode) => {
+      if (filePath !== configPath()) return atomicWriteFile(filePath, content, mode);
+      fsHooks.atomicWriteFileHook = null;
+      throw new Error("Injected upgrade persist failure");
+    };
+    await expect(store.readSettings()).resolves.toMatchObject({
+      ok: false,
+      error: { code: "PERSIST_FAILED" },
+    });
+
+    // The repair clears every other reason to refuse: the reload below drops the pending
+    // V1 document and the load failure, and leaves both files at the fingerprints it
+    // loaded them under. Only the latched upgrade failure can still keep a read off them.
+    writeJson(configPath(), v2Config({ theme: "light" }));
+    writeJson(secretsPath(), { schemaVersion: 2, bindings: [] });
+    await expect(store.readSettings()).resolves.toMatchObject({
+      ok: false,
+      error: { code: "PERSIST_FAILED" },
+    });
+
+    // Not a duplicate: the read above went through the locked reload (fingerprints
+    // still differed), which refreshed them to match disk. THIS read is the first
+    // one documentsMatchDisk could serve from memory — the latched upgrade error
+    // is the only term refusing it, so this assertion is the guard's discriminator.
+    await expect(store.readSettings()).resolves.toMatchObject({
+      ok: false,
+      error: { code: "PERSIST_FAILED" },
+    });
   });
 });

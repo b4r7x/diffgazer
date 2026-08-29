@@ -250,7 +250,7 @@ export function HelpPage() {
           </div>
         </ScrollArea>
       </Panel>
-      <div aria-hidden className="grow-[2]" />
+      <div aria-hidden className="mt-[76px] grow" />
     </div>
   );
 }

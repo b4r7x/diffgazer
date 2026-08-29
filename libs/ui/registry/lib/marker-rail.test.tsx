@@ -13,12 +13,20 @@ import { MARKER_RAIL_BASE, MARKER_RAIL_ON_INVERTED, MARKER_RAIL_SELECTED } from 
  * is the current location.
  */
 const RAIL_BASE_CLASSES = MARKER_RAIL_BASE.split(" ");
+// Marked rows legitimately swap the resting color for a state token (both live
+// in tailwind-merge's left-border-color group), so geometry and color are
+// asserted separately: geometry on every state, the transparent resting color
+// on unmarked rows only.
+const RAIL_GEOMETRY_CLASSES = RAIL_BASE_CLASSES.filter((cls) => cls !== "border-l-transparent");
 
 describe("marker rail", () => {
   it("reserves the rail in the resting state so marking a row cannot shift it", () => {
-    expect(MARKER_RAIL_BASE).toContain("border-transparent");
+    expect(RAIL_BASE_CLASSES).toContain("border-l-transparent");
     expect(MARKER_RAIL_BASE).toContain("border-l-2");
     expect(MARKER_RAIL_BASE).toContain("-ml-[2px]");
+    // The all-sides color would let tailwind-merge strip any per-side border
+    // color merged before the rail (an item's own border-b separator included).
+    expect(RAIL_BASE_CLASSES).not.toContain("border-transparent");
   });
 
   it("draws the persistent mark in one token", () => {
@@ -37,7 +45,7 @@ describe("marker rail", () => {
       </Toc>,
     );
 
-    expect(screen.getByRole("link", { name: "One" })).toHaveClass(...RAIL_BASE_CLASSES);
+    expect(screen.getByRole("link", { name: "One" })).toHaveClass(...RAIL_GEOMETRY_CLASSES);
     expect(screen.getByRole("link", { name: "Two" })).toHaveClass(...RAIL_BASE_CLASSES);
   });
 
@@ -53,9 +61,8 @@ describe("marker rail", () => {
       </NavigationList>,
     );
 
-    for (const name of ["Run A", "Run B"]) {
-      expect(screen.getByRole("option", { name })).toHaveClass(...RAIL_BASE_CLASSES);
-    }
+    expect(screen.getByRole("option", { name: "Run A" })).toHaveClass(...RAIL_GEOMETRY_CLASSES);
+    expect(screen.getByRole("option", { name: "Run B" })).toHaveClass(...RAIL_BASE_CLASSES);
   });
 
   it("marks the current NavigationList row with a rail in exactly one token", () => {
@@ -87,9 +94,8 @@ describe("marker rail", () => {
 
     const highlighted = screen.getByRole("checkbox", { name: "Apple" });
     const resting = screen.getByRole("checkbox", { name: "Banana" });
-    for (const row of [highlighted, resting]) {
-      expect(row).toHaveClass(...RAIL_BASE_CLASSES);
-    }
+    expect(highlighted).toHaveClass(...RAIL_GEOMETRY_CLASSES);
+    expect(resting).toHaveClass(...RAIL_BASE_CLASSES);
     // The collection highlight wears the shared rail, not a private left bar.
     expect(highlighted).toHaveClass(MARKER_RAIL_SELECTED);
     expect(resting).not.toHaveClass(MARKER_RAIL_SELECTED);
@@ -107,8 +113,7 @@ describe("marker rail", () => {
       </Sidebar>,
     );
 
-    for (const name of ["Alpha", "Beta"]) {
-      expect(screen.getByRole("button", { name })).toHaveClass(...RAIL_BASE_CLASSES);
-    }
+    expect(screen.getByRole("button", { name: "Alpha" })).toHaveClass(...RAIL_GEOMETRY_CLASSES);
+    expect(screen.getByRole("button", { name: "Beta" })).toHaveClass(...RAIL_BASE_CLASSES);
   });
 });

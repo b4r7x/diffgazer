@@ -305,7 +305,7 @@ export function ReviewSummaryView({
   };
 
   return (
-    // Page-card shell shared with hub/help/diagnostics: spare height splits 1:2
+    // Page-card shell shared with hub/help/diagnostics: spare height splits evenly, content lifted 38px above dead centre
     // around the panel and the spacers collapse once the summary outgrows the
     // viewport, at which point the ScrollArea inside the panel absorbs the
     // overflow instead of the page.
@@ -402,7 +402,7 @@ export function ReviewSummaryView({
           </Panel.Footer>
         )}
       </Panel>
-      <div aria-hidden className="grow-[2]" />
+      <div aria-hidden className="mt-[76px] grow" />
     </div>
   );
 }

@@ -159,6 +159,7 @@ export function SettingsAnalysisPage() {
           {hasLensSelection ? null : "Select at least one lens."}
         </output>
         <fieldset
+          className="min-w-0"
           aria-label="Per-call token cap"
           onBlur={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget)) setOwnZone("list");
