@@ -179,13 +179,13 @@ describe("validatePublicRegistryFresh", () => {
       label: "target",
       sourceFile: { target: "~/styles/dialog.css" },
       publicFile: { target: "~/styles/stale-dialog.css" },
-      expected: "target is stale",
+      expected: "file target mismatch",
     },
     {
       label: "type",
       sourceFile: { type: "registry:style" },
       publicFile: { type: "registry:ui" },
-      expected: "type is stale",
+      expected: "file type mismatch",
     },
   ])("rejects stale public file $label metadata", ({ sourceFile, publicFile, expected }) => {
     setupRegistry(

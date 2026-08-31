@@ -29,12 +29,11 @@ import {
 } from "./pipeline.js";
 import { saveReview } from "./storage/reviews.js";
 import { isAbortError, normalizeReviewStreamError, reviewStreamError } from "./stream/events.js";
+import { buildReviewConfigKey, buildScopeKey } from "./stream/scope-keys.js";
 import { stepError } from "./stream/steps.js";
 import {
   type ActiveSession,
   addEvent,
-  buildReviewConfigKey,
-  buildScopeKey,
   cancelStaleSessionsForProjectMode,
   createSession,
   getActiveSessionForProject,
@@ -321,7 +320,14 @@ export async function createReviewSession(
   const reviewInputHash = parsed
     ? buildReviewInputHash({ headCommit, reviewConfigKey, parsed })
     : undefined;
-  const statusResult = parsed ? await gitService.getStatus().catch(() => null) : null;
+  const statusResult = parsed
+    ? await gitService.getStatus().catch((error: unknown) => {
+        // The branch this drops becomes the saved review's gitContext.branch, so
+        // a failed read must not be indistinguishable from a detached HEAD.
+        log("warn", "review_git_status_unavailable", { reviewId, error });
+        return null;
+      })
+    : null;
   const branch = statusResult?.ok ? statusResult.value.branch : null;
 
   const activate = (): Result<CreateReviewSessionResult, never> => {

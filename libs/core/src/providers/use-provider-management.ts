@@ -6,6 +6,7 @@ import type {
   ConfigurationId,
   ConfigurationRevision,
   ExactModelId,
+  HostedApiEndpoint,
   ReadinessAcknowledgement,
 } from "../schemas/config/index.js";
 import { findProviderById, getProviderRowId, type ProviderListRow } from "./list.js";
@@ -108,9 +109,11 @@ export interface ProviderManagementMutations {
   readonly testConfiguration: (
     configurationId: ConfigurationId,
   ) => Promise<TestedConfigurationResponse>;
+  /** `endpoint` moves the billing pool with the model; omitted keeps the bound pool. */
   readonly selectConfiguration: (
     configurationId: ConfigurationId,
     modelId: ExactModelId,
+    endpoint?: HostedApiEndpoint,
   ) => Promise<unknown>;
 }
 
@@ -294,10 +297,14 @@ export function useProviderManagement({
     });
   };
 
-  const handleSelectModel = async (owner: ModelDialogOwner, modelId: ExactModelId) => {
+  const handleSelectModel = async (
+    owner: ModelDialogOwner,
+    modelId: ExactModelId,
+    endpoint?: HostedApiEndpoint,
+  ) => {
     const row = findProviderById(providers, owner.rowId);
     const outcome = await run({ action: "select-model", row, modelId }, async () => {
-      await mutations.selectConfiguration(owner.configurationId, modelId);
+      await mutations.selectConfiguration(owner.configurationId, modelId, endpoint);
     });
     if (outcome.status === "succeeded") replaceOwner(owner, null);
     return outcome;

@@ -1,6 +1,10 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
+import {
+  configurationStatus,
+  OPENCODE_GO_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { Toaster, toast } from "@diffgazer/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -235,6 +239,23 @@ describe("GlobalLayout", () => {
       "Provider: Google Gemini / Gemini 2.5 Flash, Ready; server live",
     );
     expect(status).toHaveTextContent("Google Gemini / Gemini 2.5 Flash");
+  });
+
+  it("headers a pool-bound configuration as the pool it bills, not the product", async () => {
+    mockApi = {
+      ...mockApi,
+      ...makeShellApiOverrides(
+        makeShellInitResponse({
+          configurations: [configurationStatus(OPENCODE_GO_CONFIGURATION, "ready")],
+          selectedConfigurationId: OPENCODE_GO_CONFIGURATION.configurationId,
+        }),
+      ),
+    };
+
+    renderShell();
+
+    const status = await screen.findByLabelText(/^Provider: OpenCode Go \//);
+    expect(status).not.toHaveTextContent("OpenCode Zen");
   });
 
   it("keeps the shell mounted and raises the outage toast when the server stops answering", async () => {

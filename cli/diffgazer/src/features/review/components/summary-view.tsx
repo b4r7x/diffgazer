@@ -6,6 +6,7 @@ import {
   buildDroppedFindingsNotice,
   buildDuplicateCollapseNotice,
   buildHiddenIssuesNotice,
+  buildIncompleteAnswerNotice,
   buildLensSummaryRows,
   buildMissingLensIssuesNotice,
   buildReviewSummary,
@@ -14,6 +15,8 @@ import {
   type FailedTerminalOutcome,
   getLensCoverage,
   isCleanRun,
+  type LensSummaryRow,
+  lensAnsweredIncompletely,
 } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
@@ -27,6 +30,7 @@ import { ScrollArea } from "../../../components/ui/scroll-area";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { useActionRow } from "../../../hooks/use-action-row";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
+import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
 import { CategoryStatsTable } from "./category-stats-table";
 import { CleanRunView } from "./clean-run-view";
@@ -66,6 +70,22 @@ const BACK_LABEL = "Back";
 // Header rule only: the shortcut bar is the single action surface, so the view
 // spends no rows restating [Enter] View Results as a button.
 const SUMMARY_FIXED_ROWS = 2;
+
+// One branch decides both tone and copy, so a warning-coloured row can never
+// lose its "dropped" suffix (or the reverse).
+function describeLensRow(
+  row: LensSummaryRow,
+  tokens: CliColorTokens,
+): { color: string; text: string } {
+  if (row.status === "failed") {
+    return { color: tokens.error, text: `failed${row.errorCode ? ` (${row.errorCode})` : ""}` };
+  }
+  const issues = pluralize(row.issueCount, "issue");
+  if (lensAnsweredIncompletely(row)) {
+    return { color: tokens.warning, text: `${issues} · ${row.droppedCandidateCount} dropped` };
+  }
+  return { color: tokens.muted, text: issues };
+}
 
 export function ReviewSummaryView({
   issues,
@@ -133,6 +153,7 @@ export function ReviewSummaryView({
   const lensRows = buildLensSummaryRows(lensStats);
   const missingLensIssues = failure ? buildMissingLensIssuesNotice(lensStats) : "";
   const droppedFindingsNotice = buildDroppedFindingsNotice(terminalOutcome);
+  const incompleteAnswerNotice = buildIncompleteAnswerNotice(lensStats);
 
   const width = Math.min(contentColumns, 100);
   const sectionWidth = isNarrow ? width : Math.max(Math.floor((width - 2) / 2), 1);
@@ -255,16 +276,18 @@ export function ReviewSummaryView({
                     {droppedFindingsNotice ? (
                       <Text color={tokens.muted}>{droppedFindingsNotice}</Text>
                     ) : null}
-                    {lensRows.map((row) => (
-                      <Box key={row.lensId} gap={1}>
-                        <Text color={tokens.fg}>{row.label}</Text>
-                        <Text color={row.status === "failed" ? tokens.error : tokens.muted}>
-                          {row.status === "failed"
-                            ? `failed${row.errorCode ? ` (${row.errorCode})` : ""}`
-                            : pluralize(row.issueCount, "issue")}
-                        </Text>
-                      </Box>
-                    ))}
+                    {incompleteAnswerNotice ? (
+                      <Text color={tokens.warning}>{incompleteAnswerNotice}</Text>
+                    ) : null}
+                    {lensRows.map((row) => {
+                      const cell = describeLensRow(row, tokens);
+                      return (
+                        <Box key={row.lensId} gap={1}>
+                          <Text color={tokens.fg}>{row.label}</Text>
+                          <Text color={cell.color}>{cell.text}</Text>
+                        </Box>
+                      );
+                    })}
                   </Box>
                 </Box>
               ) : null}

@@ -18,6 +18,8 @@ import { DEFAULT_CONFIGURATION_BUDGET } from "../../../shared/lib/config/store.j
 import type { StatusHashResult } from "../../../shared/lib/git/service.js";
 import { canonicalizeProjectRoot } from "../../../shared/lib/paths.js";
 import { assertTempHome } from "../../../shared/lib/testing/temp-home.js";
+import type { CreateReviewSessionResult } from "../service.js";
+import type { ActiveSession } from "../stream/store.js";
 
 export const REVIEW_A = "550e8400-e29b-41d4-a716-446655440000";
 export const REVIEW_B = "660e8400-e29b-41d4-a716-446655440001";
@@ -99,7 +101,17 @@ type MockAuthorization = Awaited<ReturnType<typeof buildMockAuthorization>>;
 type AuthorizeReviewExecutionStub = () => Promise<
   Result<MockAuthorization, { safeMessage: string }>
 >;
-type CreateReviewSessionStub = (...args: never[]) => Promise<unknown>;
+// Typed against the real result so a change to the create contract breaks the
+// harness at compile time instead of leaving routes asserting a shape production
+// cannot produce. Only the session fields the route reads are stubbed.
+type CreateReviewSessionStub = (...args: never[]) => Promise<
+  Result<
+    Pick<CreateReviewSessionResult, "reviewId" | "outcome"> & {
+      session: Pick<ActiveSession, "reviewId" | "mode" | "startedAt" | "headCommit" | "statusHash">;
+    },
+    { code: string; message: string }
+  >
+>;
 
 export function installGitServiceMock() {
   const gitService = {
@@ -141,7 +153,9 @@ export function installSuccessfulReviewCreationMock(): {
     headCommit: "abc123",
     statusHash: "status",
   };
-  const createReviewSession = vi.fn(async () => ok({ reviewId: REVIEW_A, session }));
+  const createReviewSession = vi.fn(async () =>
+    ok({ reviewId: REVIEW_A, session, outcome: "running" as const }),
+  );
   const authorizeReviewExecution = vi.fn(async () => ok(await buildMockAuthorization()));
 
   vi.doMock("../../../shared/lib/ai/admission/service.js", async (importOriginal) => {

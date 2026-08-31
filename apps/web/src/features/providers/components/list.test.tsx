@@ -2,6 +2,7 @@ import {
   buildProviderRows,
   configurationStatus,
   makeClientNotice,
+  OPENCODE_GO_CONFIGURATION,
   ZAI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { render, screen } from "@testing-library/react";
@@ -46,7 +47,23 @@ const DEFAULT_LIST_PROPS = {
   onSearchChange: vi.fn(),
 };
 
+function goBoundRow() {
+  const row = buildProviderRows([configurationStatus(OPENCODE_GO_CONFIGURATION, "ready")]).find(
+    ({ configuration }) => configuration?.configurationId === "opencode-go",
+  );
+  if (!row) throw new Error("Missing opencode-go fixture");
+  return row;
+}
+
 describe("ProviderList", () => {
+  // The wallet, not the product, is what the user bound, so the row names it.
+  it("names a configured dual-pool row by the pool its runs will bill", () => {
+    render(<ProviderList providers={[goBoundRow()]} {...DEFAULT_LIST_PROPS} />);
+
+    expect(screen.getByRole("option", { name: "OpenCode Go" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "OpenCode Zen" })).not.toBeInTheDocument();
+  });
+
   // The badge answers for the selected model, and the catalog display name
   // leads the exact id rather than replacing it.
   it("exposes the selected model's own tier, display name, and id as the option description", () => {

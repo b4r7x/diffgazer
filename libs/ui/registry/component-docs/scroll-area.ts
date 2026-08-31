@@ -6,7 +6,7 @@ export const scrollAreaDoc: ComponentDoc = {
     {
       title: "Orientation",
       content:
-        "3 modes via orientation prop — vertical (default), horizontal, or both. Uses scrollbar-thin Tailwind utility.",
+        "3 modes via orientation prop — vertical (default), horizontal, or both. The thin bar comes from the library's own unlayered .scrollbar-thin utility, which deliberately outranks Tailwind v4's same-named built-in. The overlay prop applies to the vertical mode only.",
     },
     {
       title: "Wrapper Only",

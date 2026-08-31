@@ -122,6 +122,10 @@ export function ScrollArea({
 
   useEffect(() => {
     if (!overlayActive) return;
+    // The thumb node is remounted with this effect and mounts hidden, so a cache
+    // entry describing the previous node would suppress the first write and leave
+    // the new thumb invisible until the next resize or scroll.
+    lastThumbWrite.current = "";
     updateOverlayThumb();
     const el = scrollRef.current;
     // Feature-checked because the thumb is decoration: environments without

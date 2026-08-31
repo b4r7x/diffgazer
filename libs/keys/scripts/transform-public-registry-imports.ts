@@ -46,11 +46,7 @@ const HOOKS_TARGET_PREFIX = "@hooks/";
 // ignoring `resolvedPaths.hooks`. Pinning `@hooks/<subpath>` makes shadcn resolve
 // each file within the configured hooks alias root (mirrors the UI `@ui/` handoff).
 // Source registry keeps `src/hooks/...` targets for copy/package install paths.
-function deriveKeysRegistryTarget(file: {
-  path?: string;
-  type?: string;
-  target?: string;
-}): string | undefined {
+function deriveKeysRegistryTarget(file: { path?: string; target?: string }): string | undefined {
   if (file.target?.startsWith(SRC_HOOKS_PREFIX)) {
     return `${HOOKS_TARGET_PREFIX}${file.target.slice(SRC_HOOKS_PREFIX.length)}`;
   }
@@ -79,7 +75,6 @@ function applyKeysRegistryTargetsToRawItem(rawItem: Record<string, unknown>): bo
     if (!isRecord(rawFile) || typeof rawFile.path !== "string") continue;
     const target = deriveKeysRegistryTarget({
       path: rawFile.path,
-      type: typeof rawFile.type === "string" ? rawFile.type : undefined,
       target: typeof rawFile.target === "string" ? rawFile.target : undefined,
     });
     if (target === rawFile.target) continue;

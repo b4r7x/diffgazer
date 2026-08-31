@@ -4,7 +4,7 @@ import type { RunnableProductId } from "../../schemas/config/transports.js";
 import type { LensStat } from "../../schemas/events/index.js";
 import type { ReviewMode, ReviewSeverity, TerminalOutcome } from "../../schemas/review/index.js";
 import { capitalize, pluralize } from "../../strings.js";
-import { hasFailedLenses } from "./agent-status.js";
+import { hasDroppedCandidates, hasFailedLenses } from "./agent-status.js";
 
 /**
  * The failed-lens signal arrives in two shapes: live runs and saved reviews
@@ -15,6 +15,7 @@ export interface CleanRunInput {
   issueCount: number;
   lensStats?: readonly LensStat[] | undefined;
   failedLensCount?: number | undefined;
+  salvagedLensCount?: number | undefined;
   terminalOutcome?: TerminalOutcome | undefined;
 }
 
@@ -23,17 +24,24 @@ export interface CleanRunInput {
  * reported, and it found nothing. The history row's "Passed with no issues."
  * and the clean-run screen both read this, so the sentence and the screen it
  * opens can never disagree. A zero-issue run with a failed lens is partial,
- * not clean.
+ * not clean. A zero-issue run with an incompletely-answered lens is partial
+ * too.
  */
 export function isCleanRun({
   issueCount,
   lensStats,
   failedLensCount = 0,
+  salvagedLensCount = 0,
   terminalOutcome = "completed",
 }: CleanRunInput): boolean {
   if (issueCount !== 0) return false;
   if (terminalOutcome !== "completed") return false;
-  return failedLensCount === 0 && !hasFailedLenses(lensStats);
+  return (
+    failedLensCount === 0 &&
+    salvagedLensCount === 0 &&
+    !hasFailedLenses(lensStats) &&
+    !hasDroppedCandidates(lensStats)
+  );
 }
 
 /** Row labels for the clean-run receipt ledger, shared by both surfaces. */
@@ -83,6 +91,11 @@ export function buildScopeValue({
  * The Model row's value. The durable fact is the model id the receipt kept, so
  * every path — live or saved, web or TUI — reads the same run the same way.
  * A record with no product to name it against falls back to the bare id.
+ *
+ * The call is deliberately endpoint-free: history keeps naming the product, so
+ * a past Go run still reads "OpenCode Zen" rather than being retro-relabelled.
+ * Passing an endpoint here would relabel every stored row, which the design
+ * declined; the live surfaces are the ones that name the billing pool.
  */
 export function buildModelValue(
   productId: RunnableProductId | undefined,

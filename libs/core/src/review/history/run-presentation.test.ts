@@ -26,6 +26,13 @@ describe("getRunSummaryParts", () => {
     expect(summary.failedLensCount).toBe(1);
   });
 
+  it("flags a review as partial when a lens answered incompletely, even with issues found", () => {
+    const summary = getRunSummaryParts(makeReviewMetadata({ issueCount: 3, salvagedLensCount: 2 }));
+
+    expect(summary.passed).toBe(false);
+    expect(summary.partial).toBe(true);
+  });
+
   it("does not mark a non-completed terminal outcome as passed", () => {
     const summary = getRunSummaryParts(
       makeReviewMetadata({ issueCount: 0, terminalOutcome: "timed-out" }),
@@ -85,6 +92,37 @@ describe("getRunSummaryText", () => {
     expect(getRunSummaryText(makeReviewMetadata({ issueCount: 3, failedLensCount: 1 }))).toBe(
       "Partial analysis: 1 lens failed; 3 issues found.",
     );
+  });
+
+  it("qualifies a completed run whose lenses answered incompletely", () => {
+    const metadata = makeReviewMetadata({ issueCount: 3, salvagedLensCount: 2 });
+
+    expect(getRunSummaryText(metadata)).toBe(
+      "Partial answers: 2 lenses answered incompletely; 3 issues found.",
+    );
+    expect(getRunSummaryParts(metadata).passed).toBe(false);
+  });
+
+  it("does not declare a zero-issue run passed when a lens answered incompletely", () => {
+    expect(getRunSummaryText(makeReviewMetadata({ issueCount: 0, salvagedLensCount: 1 }))).toBe(
+      "Partial answers: 1 lens answered incompletely; no issues found.",
+    );
+  });
+
+  it("lets the failed-lens sentence win over the incomplete-answer sentence", () => {
+    expect(
+      getRunSummaryText(
+        makeReviewMetadata({ issueCount: 0, failedLensCount: 1, salvagedLensCount: 1 }),
+      ),
+    ).toBe("Partial analysis: 1 lens failed; no issues found.");
+  });
+
+  it("treats old metadata without the salvage field exactly as today", () => {
+    const metadata = makeReviewMetadata({ issueCount: 0 });
+    expect(metadata.salvagedLensCount).toBeUndefined();
+
+    expect(getRunSummaryText(metadata)).toBe("Passed with no issues.");
+    expect(getRunSummaryParts(metadata).passed).toBe(true);
   });
 
   it("reports a non-completed terminal outcome instead of a pass", () => {

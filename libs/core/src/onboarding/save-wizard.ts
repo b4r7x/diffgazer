@@ -4,6 +4,7 @@ import {
   type ClientConfigurationAction,
   type ClientConfigurationActionResponse,
   ClientConfigurationActionResponseSchema,
+  type ClientConfigurationInput,
   ClientConfigurationInputSchema,
   type ClientConfigurationSummary,
   type ConfigurationId,
@@ -63,15 +64,32 @@ export function buildConfigPayload(data: OnboardingDraft): CreateConfigurationAc
   };
 }
 
+/**
+ * The tuple the configuration ends on. `create` binds the endpoint the key was
+ * entered against; when the chosen model bills the sibling pool, `select` moves
+ * the record there, so every write and check after the create expects that pool.
+ */
+function buildSelectedInput(data: OnboardingDraft): ClientConfigurationInput {
+  return ClientConfigurationInputSchema.parse(
+    data.selectedModelEndpoint === null
+      ? data.configurationInput
+      : { ...data.configurationInput, endpoint: data.selectedModelEndpoint },
+  );
+}
+
 export function buildSelectPayload(
   data: OnboardingDraft,
   configurationId: ConfigurationId,
 ): SelectConfigurationAction {
   const exactModelId = assertExactModel(data);
+  const { endpoint } = buildSelectedInput(data);
   return {
     action: "select",
     configurationId,
     modelId: exactModelId,
+    // Omitted while the model bills the bound pool, which reproduces the
+    // pre-pool payload exactly.
+    ...(data.selectedModelEndpoint === null ? {} : { endpoint }),
   };
 }
 
@@ -84,7 +102,7 @@ export function buildUpdatePayload(
     action: "update",
     configurationId,
     expectedRevision,
-    input: ClientConfigurationInputSchema.parse(data.configurationInput),
+    input: buildSelectedInput(data),
     acknowledgement: assertAcceptedNotice(data),
   };
 }
@@ -160,22 +178,27 @@ function expectedNotices(data: OnboardingDraft): ClientConfigurationSummary["not
   ];
 }
 
-function matchesDraftTuple(
-  data: OnboardingDraft,
-  summary: ClientConfigurationSummary,
-  selectedModelId: string | null,
-): boolean {
-  const input = ClientConfigurationInputSchema.parse(data.configurationInput);
+function matchesDraftTuple({
+  data,
+  summary,
+  selectedModelId,
+  expectedInput,
+}: {
+  data: OnboardingDraft;
+  summary: ClientConfigurationSummary;
+  selectedModelId: string | null;
+  expectedInput: ClientConfigurationInput;
+}): boolean {
   if (
-    summary.productId !== input.productId ||
-    summary.transportFamily !== input.transportFamily ||
+    summary.productId !== expectedInput.productId ||
+    summary.transportFamily !== expectedInput.transportFamily ||
     summary.selectedModelId !== selectedModelId ||
     !noticesMatch(expectedNotices(data), summary.notices)
   ) {
     return false;
   }
 
-  return summary.endpoint === input.endpoint;
+  return summary.endpoint === expectedInput.endpoint;
 }
 
 export async function saveWizard(
@@ -191,14 +214,25 @@ export async function saveWizard(
     return { status: "partial", completedSteps, error };
   }
 
+  let selectedInput: ClientConfigurationInput;
   let createdConfiguration: ClientConfigurationSummary;
   try {
+    const boundInput = ClientConfigurationInputSchema.parse(data.configurationInput);
+    selectedInput = buildSelectedInput(data);
     const createAction = buildConfigPayload(data);
     const response = parseSucceededResponse(
       await runConfigurationAction(createAction),
       createAction.action,
     );
-    if (!response.configuration || !matchesDraftTuple(data, response.configuration, null)) {
+    if (
+      !response.configuration ||
+      !matchesDraftTuple({
+        data,
+        summary: response.configuration,
+        selectedModelId: null,
+        expectedInput: boundInput,
+      })
+    ) {
       throw new Error("Configuration create did not return the exact provisional tuple");
     }
     createdConfiguration = response.configuration;
@@ -225,7 +259,12 @@ export async function saveWizard(
     );
     if (
       !response.configuration ||
-      !matchesDraftTuple(data, response.configuration, selectedModelId)
+      !matchesDraftTuple({
+        data,
+        summary: response.configuration,
+        selectedModelId,
+        expectedInput: selectedInput,
+      })
     ) {
       throw new Error("Configuration select did not return the exact selected tuple");
     }
@@ -250,7 +289,12 @@ export async function saveWizard(
     );
     if (
       !response.configuration ||
-      !matchesDraftTuple(data, response.configuration, selectedModelId) ||
+      !matchesDraftTuple({
+        data,
+        summary: response.configuration,
+        selectedModelId,
+        expectedInput: selectedInput,
+      }) ||
       response.configuration.revision < selectedConfiguration.revision
     ) {
       throw new Error("Configuration update did not return the exact acknowledged tuple");

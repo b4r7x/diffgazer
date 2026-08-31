@@ -229,7 +229,7 @@ export function FilePickerDialog({
           <DialogAction
             {...keyboard.footerActions.getActionProps(1)}
             size="sm"
-            disabled={selection.selected.length === 0 || selection.isOverLimit}
+            disabled={!canStart}
             loading={isStarting}
             // The start is not a dismissal: the dialog holds its selection until
             // the run navigates away, so a refused start lands back on the list

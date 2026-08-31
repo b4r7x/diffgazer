@@ -41,6 +41,17 @@ test("formatProviderProbeLine keeps the frozen key order and reason vocabulary",
       new RegExp(`"reason":"${reason}"`),
     );
   }
+  assert.throws(
+    () =>
+      formatProviderProbeLine({
+        providerId: "zai",
+        modelId: null,
+        status: "skipped",
+        reason: "invented-reason",
+        checkedAt: "2026-07-31T12:00:00.000Z",
+      }),
+    /invented-reason/,
+  );
 });
 
 test("resolveLiveProbeDisposition types every prerequisite as not-requested or unavailable", () => {

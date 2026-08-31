@@ -14,6 +14,7 @@ import { log } from "../../../shared/lib/log.js";
 import { appendSalvageWarnings, scanReviewsForCertification } from "./list-page.js";
 import {
   countFailedLenses,
+  countSalvagedLenses,
   migrateReview,
   persistMigrationLocked,
   presentDurableReviewRead,
@@ -41,6 +42,7 @@ export async function saveReview(
 
   const severityCounts = calculateSeverityCounts(options.result.issues);
   const failedLensCount = countFailedLenses(options.lensStats);
+  const salvagedLensCount = countSalvagedLenses(options.lensStats);
   const terminalOutcome = options.execution?.receipt.outcome ?? options.terminalOutcome;
 
   const metadata: ReviewMetadata = {
@@ -53,6 +55,7 @@ export async function saveReview(
     lenses: options.lenses,
     issueCount: options.result.issues.length,
     failedLensCount,
+    salvagedLensCount,
     blockerCount: severityCounts.blocker,
     highCount: severityCounts.high,
     mediumCount: severityCounts.medium,

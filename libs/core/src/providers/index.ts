@@ -61,6 +61,16 @@ export {
   type ShellProviderState,
 } from "./display-status.js";
 export {
+  type EndpointPoolContext,
+  getEndpointPoolContext,
+  getEndpointProfile,
+  getModelBillingPool,
+  getPoolBillingChangeNote,
+  nextArmedPoolId,
+  poolBadgeLabel,
+  resolveSelectEndpoint,
+} from "./endpoint-pools.js";
+export {
   findProviderById,
   findProviderDialogRow,
   getProviderRowId,

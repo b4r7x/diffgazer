@@ -17,10 +17,10 @@ import {
   useState,
 } from "react";
 import { useModelDialogZones } from "./use-dialog-zones";
-import { useModelFilters } from "./use-filter-row-keyboard";
 import { useModelSearchFocus } from "./use-search-focus";
+import { useSegmentedRowKeyboard } from "./use-segmented-row-keyboard";
 
-type FocusZone = "close" | "search" | "filters" | "retry" | "list" | "footer";
+type FocusZone = "close" | "search" | "pool" | "filters" | "retry" | "list" | "footer";
 type DiscoveryStatus = "idle" | "loading" | "passed" | "skipped" | "error";
 
 interface ModelDialogKeyboardOptions {
@@ -32,6 +32,15 @@ interface ModelDialogKeyboardOptions {
   discoveryStatus: DiscoveryStatus;
   /** Whether the discovery-warning Retry button is rendered; it then joins vertical navigation between the filter row and the list. */
   retryVisible?: boolean;
+  /** The billing-pool row, absent on a product whose endpoints are not pools. */
+  pool?: {
+    /** How many pools the product offers. */
+    count: number;
+    /** Moves the armed pool to the next one. */
+    cycle: () => void;
+    /** Returns the armed pool to the bound one when the dialog opens. */
+    reset: () => void;
+  };
   cycleTierFilter: () => void;
   resetFilters: () => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
@@ -44,13 +53,20 @@ interface ModelDialogKeyboardReturn {
   focusZone: FocusZone;
   focusedModelId: string | null;
   checkedModelId: string | undefined;
+  /** The row the imminent confirm posts: the focused row while the list zone is live, else the checked-first resolution Confirm uses. */
+  imminentConfirmModelId: string | undefined;
   filterIndex: number;
+  poolIndex: number;
   footerButtonIndex: number;
   getFooterButtonProps: (index: number) => {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
   };
   getFilterButtonProps: (index: number) => {
+    ref: RefCallback<HTMLButtonElement>;
+    onFocus: () => void;
+  };
+  getPoolButtonProps: (index: number) => {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
   };
@@ -63,6 +79,7 @@ interface ModelDialogKeyboardReturn {
     onFocus: () => void;
   };
   handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
+  handlePoolKeyDown: (event: ReactKeyboardEvent) => void;
   handleConfirm: (modelId?: string) => void;
   handleSearchFocus: () => void;
   handleSearchArrowDown: () => void;
@@ -93,6 +110,7 @@ export function useModelDialogKeyboard({
   filteredModels,
   discoveryStatus,
   retryVisible = false,
+  pool,
   cycleTierFilter,
   resetFilters,
   searchInputRef,
@@ -102,9 +120,11 @@ export function useModelDialogKeyboard({
 }: ModelDialogKeyboardOptions): ModelDialogKeyboardReturn {
   const [checkedModelId, setCheckedModelId] = useState<string | undefined>(currentModel);
   const [filterIndex, setFilterIndex] = useState(0);
+  const [poolIndex, setPoolIndex] = useState(0);
   const hasHandledInitialFocusRef = useRef(false);
   const hadFilteredModelsRef = useRef(false);
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
+  const poolButtonRefs = useRef(new Map<number, HTMLButtonElement>());
   const retryButtonRef = useRef<HTMLButtonElement | null>(null);
   const listInteractive = !isSaving && discoveryStatus === "passed" && filteredModels.length > 0;
   const canConfirm = listInteractive;
@@ -112,6 +132,10 @@ export function useModelDialogKeyboard({
   // disabled while discovery is still running; navigation must skip whichever
   // zone cannot take focus, or the browser drops focus to document.body.
   const filtersInteractive = !isSaving && discoveryStatus === "passed";
+  // The pool row exists only on a product whose endpoints are billing pools,
+  // and it follows the filter row's enabled window.
+  const poolCount = pool?.count ?? 0;
+  const poolInteractive = poolCount > 0 && filtersInteractive;
   const searchInteractive =
     !isSaving && discoveryStatus !== "idle" && discoveryStatus !== "loading";
 
@@ -133,9 +157,9 @@ export function useModelDialogKeyboard({
   const handleConfirm = (explicitModelId?: string) => {
     if (isSaving) return;
     const nextModelId =
-      [explicitModelId, checkedModelId, focusedModelId].find(
-        (id) => id != null && filteredModels.some((model) => model.id === id),
-      ) ?? filteredModels[0]?.id;
+      (explicitModelId != null && filteredModels.some((model) => model.id === explicitModelId)
+        ? explicitModelId
+        : undefined) ?? confirmModelId;
     if (!nextModelId) return;
     onSelect(nextModelId);
   };
@@ -208,6 +232,26 @@ export function useModelDialogKeyboard({
     else filterButtonRefs.current.delete(index);
   };
 
+  // The pool row mirrors the filter row: same ref registry, same focus mirror,
+  // same index wrapping. It sits one zone higher, between search and filters.
+  const focusPoolButton = (index: number) => {
+    const nextIndex = ((index % poolCount) + poolCount) % poolCount;
+    setFocusZone("pool");
+    setPoolIndex(nextIndex);
+    poolButtonRefs.current.get(nextIndex)?.focus();
+  };
+
+  const focusPoolAtIndex = (index: number) => {
+    if (!hasHandledInitialFocusRef.current) return;
+    setFocusZone("pool");
+    setPoolIndex(index);
+  };
+
+  const registerPoolButton = (index: number, node: HTMLButtonElement | null) => {
+    if (node) poolButtonRefs.current.set(index, node);
+    else poolButtonRefs.current.delete(index);
+  };
+
   // The discovery-warning Retry button sits between the filter row and the
   // list, so it is a vertical stop there whenever the callout renders.
   const focusRetryButton = () => {
@@ -228,6 +272,8 @@ export function useModelDialogKeyboard({
   // The first enabled zone above the Retry stop, so leaving it upward always
   // lands on an element that can hold focus.
   const focusZoneAboveRetry = () => {
+    // The pool row is not a stop here: it is enabled only while the filter row
+    // is, so the filter row always claims focus first.
     if (filtersInteractive) {
       focusFilterButton(filterIndex);
       return;
@@ -237,6 +283,16 @@ export function useModelDialogKeyboard({
       return;
     }
     focusCloseButton();
+  };
+
+  // The tier row's neighbour above is the pool row on a dual-pool product and
+  // the search box everywhere else.
+  const focusZoneAboveFilters = () => {
+    if (poolInteractive) {
+      focusPoolButton(poolIndex);
+      return;
+    }
+    focusSearchInput();
   };
 
   // The first enabled zone above the model list, so leaving the list or the
@@ -285,6 +341,22 @@ export function useModelDialogKeyboard({
     onNavigationBoundaryReached: handleListBoundaryReached,
   });
 
+  // The row Confirm posts, named once so the dialog's billing note can be
+  // derived from the same value the write uses.
+  const confirmModelId =
+    [checkedModelId, focusedModelId].find(
+      (id) => id != null && filteredModels.some((model) => model.id === id),
+    ) ?? filteredModels[0]?.id;
+
+  // Inside the list the live affordance is Enter on the focused row, which the
+  // list posts explicitly; elsewhere Confirm posts the checked-first resolution.
+  const imminentConfirmModelId =
+    isZone("list") &&
+    focusedModelId != null &&
+    filteredModels.some((model) => model.id === focusedModelId)
+      ? focusedModelId
+      : confirmModelId;
+
   const getModelElement = (modelId: string) => {
     return findNavigationItemByValue(listContainerRef.current, {
       type: "radio",
@@ -313,23 +385,47 @@ export function useModelDialogKeyboard({
     focusBoundaryModel(target);
   };
 
-  const filters = useModelFilters({
+  const filters = useSegmentedRowKeyboard({
     // Keys stay quiet during the save window: discoveryStatus is forced to
     // "passed" while saving, so f would otherwise still cycle the tier filter.
-    open: open && !isSaving,
-    inFilters: isZone("filters"),
-    inSearch: isZone("search"),
-    hasFilteredModels: listInteractive,
-    discoveryStatus,
-    cycleTierFilter,
-    registerFilterButton,
-    focusFilterAtIndex,
-    focusSearchInput,
-    enterListFromBoundary,
-    enterFooter,
+    inRow: open && !isSaving && isZone("filters"),
+    acceleratorEnabled: open && !isSaving && !isZone("search") && discoveryStatus === "passed",
+    accelerator: "f",
+    cycle: cycleTierFilter,
+    focusZoneAbove: focusZoneAboveFilters,
+    focusZoneBelow: () => {
+      if (!listInteractive) {
+        enterFooter(0);
+        return;
+      }
+      enterListFromBoundary("first");
+    },
+    registerButton: registerFilterButton,
+    focusAtIndex: focusFilterAtIndex,
+  });
+
+  // The pool row is enabled only while the filter row is, so the filter row is
+  // always the stop below it.
+  const poolRow = useSegmentedRowKeyboard({
+    inRow: open && poolInteractive && isZone("pool"),
+    // Mirrors f: the search box keeps the letter for typing, so the accelerator
+    // stands down while focus is inside it.
+    acceleratorEnabled: open && poolInteractive && !isZone("search"),
+    accelerator: "p",
+    cycle: () => pool?.cycle(),
+    // The row is live only while the filter row is, which implies the search box
+    // is live too, so the search box is always the stop above it.
+    focusZoneAbove: () => focusSearchInput(),
+    focusZoneBelow: () => focusFilterButton(filterIndex),
+    registerButton: registerPoolButton,
+    focusAtIndex: focusPoolAtIndex,
   });
 
   const focusZoneBelowSearch = () => {
+    if (poolInteractive) {
+      focusPoolButton(poolIndex);
+      return;
+    }
     if (filtersInteractive) {
       focusFilterButton(filterIndex);
       return;
@@ -375,8 +471,10 @@ export function useModelDialogKeyboard({
     hasHandledInitialFocusRef.current = false;
     hadFilteredModelsRef.current = false;
     resetFilters();
+    pool?.reset();
     setFocusZone("list");
     setFilterIndex(0);
+    setPoolIndex(0);
     setCheckedModelId(currentModel);
     const targetId = currentModel ?? models[0]?.id;
     // Only a focus that actually landed in the list closes the initial-focus
@@ -501,13 +599,17 @@ export function useModelDialogKeyboard({
     focusZone,
     focusedModelId,
     checkedModelId,
+    imminentConfirmModelId,
     filterIndex,
+    poolIndex,
     footerButtonIndex: footerActionRow.focusedIndex,
     getCloseButtonProps,
     getFooterButtonProps,
-    getFilterButtonProps: filters.getFilterButtonProps,
+    getFilterButtonProps: filters.getButtonProps,
+    getPoolButtonProps: poolRow.getButtonProps,
     getRetryButtonProps,
-    handleFilterKeyDown: filters.handleFilterKeyDown,
+    handleFilterKeyDown: filters.handleKeyDown,
+    handlePoolKeyDown: poolRow.handleKeyDown,
     handleConfirm,
     handleSearchFocus,
     handleSearchArrowDown: search.handleSearchArrowDown,

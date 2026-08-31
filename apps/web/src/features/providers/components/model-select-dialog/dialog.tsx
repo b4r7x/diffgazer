@@ -1,7 +1,18 @@
 import { getDateLabel } from "@diffgazer/core/format";
-import { getRetainedModelNotice } from "@diffgazer/core/providers";
+import {
+  getEndpointPoolContext,
+  getModelBillingPool,
+  getPoolBillingChangeNote,
+  getRetainedModelNotice,
+  nextArmedPoolId,
+  resolveSelectEndpoint,
+} from "@diffgazer/core/providers";
 import { useModelFilter, useModelSource } from "@diffgazer/core/providers/hooks";
-import type { ClientConfigurationSummary, ExactModelId } from "@diffgazer/core/schemas/config";
+import type {
+  ClientConfigurationSummary,
+  ExactModelId,
+  HostedApiEndpoint,
+} from "@diffgazer/core/schemas/config";
 import { pluralize } from "@diffgazer/core/strings";
 import { useKey } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
@@ -18,9 +29,10 @@ import {
   DialogTitle,
   type KeyboardHint,
 } from "@diffgazer/ui/components/dialog";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { ModelFilterTabs } from "./filter-tabs";
 import { ModelList } from "./list";
+import { ModelPoolTabs } from "./pool-tabs";
 import { ModelSearchInput } from "./search-input";
 import { useModelDialogKeyboard } from "./use-dialog-keyboard";
 
@@ -29,7 +41,8 @@ interface ModelSelectDialogProps {
   onOpenChange: (open: boolean) => void;
   configuration: ClientConfigurationSummary;
   currentModel: string | undefined;
-  onSelect: (modelId: ExactModelId) => void;
+  /** `endpoint` carries the row's billing pool; omitted when it is the bound one. */
+  onSelect: (modelId: ExactModelId, endpoint?: HostedApiEndpoint) => void;
   isSaving?: boolean;
 }
 
@@ -44,6 +57,9 @@ const FOOTER_HINTS: KeyboardHint[] = [
   { key: "f", label: "Filter" },
   { key: "Space", label: "Select" },
 ];
+// Taught only where it does something: the pool row renders on dual-pool
+// products alone.
+const POOL_FOOTER_HINT: KeyboardHint = { key: "p", label: "Pool" };
 
 export function ModelSelectDialog({
   open,
@@ -60,6 +76,15 @@ export function ModelSelectDialog({
     if (!nextOpen && isSaving) return;
     onOpenChange(nextOpen);
   };
+
+  // The endpoint profiles of a product whose endpoints are billing pools; null
+  // everywhere else, which is what hides the pool row.
+  const poolContext = getEndpointPoolContext(configuration.productId, configuration.endpoint);
+  const poolProfiles = poolContext ? [poolContext.bound, poolContext.sibling] : [];
+  // Selector, not filter: the armed pool decides which pool a row that both
+  // pools serve will bill, and never which rows the list shows.
+  const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
+  const armedPoolId = selectedPoolId ?? poolContext?.bound.id;
 
   const {
     searchQuery,
@@ -81,13 +106,42 @@ export function ModelSelectDialog({
 
   const showRetry = Boolean(discoveryMessage) && !isSaving;
 
+  const cyclePool = () => {
+    if (!poolContext) return;
+    setSelectedPoolId(nextArmedPoolId(poolContext, armedPoolId));
+  };
+
+  // The row's own badge is the authority: a model only one pool serves bills
+  // that pool whatever the selector says, so the pool is resolved from the row,
+  // not from the toggle.
+  const resolveBillingPool = (modelId: string | undefined) => {
+    const model = source.models.find((candidate) => candidate.id === modelId);
+    return model ? getModelBillingPool(poolContext, model, armedPoolId) : null;
+  };
+
+  const handleSelectModel = (modelId: string) => {
+    const model = source.models.find((candidate) => candidate.id === modelId);
+    const endpoint = model
+      ? resolveSelectEndpoint({
+          context: poolContext,
+          model,
+          armedProfileId: armedPoolId,
+          boundEndpoint: configuration.endpoint,
+        })
+      : undefined;
+    onSelect(modelId, endpoint);
+  };
+
   const {
     focusZone,
     focusedModelId,
     checkedModelId,
+    imminentConfirmModelId,
     filterIndex,
+    poolIndex,
     handleConfirm,
     handleFilterKeyDown,
+    handlePoolKeyDown,
     handleSearchFocus,
     handleSearchArrowDown,
     handleListHighlightChange,
@@ -97,6 +151,7 @@ export function ModelSelectDialog({
     getCloseButtonProps,
     getFooterButtonProps,
     getFilterButtonProps,
+    getPoolButtonProps,
     getRetryButtonProps,
   } = useModelDialogKeyboard({
     open,
@@ -106,11 +161,16 @@ export function ModelSelectDialog({
     filteredModels,
     discoveryStatus,
     retryVisible: showRetry,
+    pool: {
+      count: poolProfiles.length,
+      cycle: cyclePool,
+      reset: () => setSelectedPoolId(null),
+    },
     cycleTierFilter,
     resetFilters,
     searchInputRef,
     listContainerRef,
-    onSelect,
+    onSelect: handleSelectModel,
     onOpenChange: handleOpenChange,
   });
 
@@ -126,6 +186,15 @@ export function ModelSelectDialog({
       ? "bundled catalog"
       : checkedAtLabel && `checked ${checkedAtLabel}`;
   const retainedModelNotice = isSaving ? null : getRetainedModelNotice(currentModel, source.models);
+  // Derived from the row the imminent confirm will actually post — inside the
+  // list the focused row Enter posts, elsewhere the checked-first resolution,
+  // which a search can filter out from under the user — so a save can never
+  // move the wallet without the note that says so.
+  const poolBillingChangeNote = getPoolBillingChangeNote(
+    poolContext,
+    resolveBillingPool(imminentConfirmModelId)?.id,
+  );
+  const footerHints = poolContext ? FOOTER_HINTS.toSpliced(2, 0, POOL_FOOTER_HINT) : FOOTER_HINTS;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -160,6 +229,19 @@ export function ModelSelectDialog({
             onArrowDown={handleSearchArrowDown}
             disabled={isSaving || loading}
           />
+
+          {poolContext && armedPoolId ? (
+            <ModelPoolTabs
+              profiles={poolProfiles}
+              value={armedPoolId}
+              onChange={setSelectedPoolId}
+              focusedIndex={poolIndex}
+              isFocused={focusZone === "pool"}
+              onKeyDown={handlePoolKeyDown}
+              getTabProps={getPoolButtonProps}
+              disabled={isSaving || source.status !== "passed"}
+            />
+          ) : null}
 
           <ModelFilterTabs
             value={tierFilter}
@@ -206,6 +288,8 @@ export function ModelSelectDialog({
           <ModelList
             ref={listContainerRef}
             models={filteredModels}
+            poolContext={poolContext}
+            armedPoolId={armedPoolId}
             focusedModelId={focusedModelId}
             currentModelId={checkedModelId}
             isFocused={focusZone === "list" && !isSaving && source.status === "passed"}
@@ -217,9 +301,15 @@ export function ModelSelectDialog({
             isSaving={isSaving}
             emptyLabel={emptyLabel}
           />
+
+          {poolBillingChangeNote ? (
+            // Selecting the sibling pool changes which wallet drains, so the
+            // consequence is stated where the eye already is before Confirm.
+            <p className="mx-5 mb-2 text-2xs text-muted-foreground">{poolBillingChangeNote}</p>
+          ) : null}
         </DialogBody>
 
-        <DialogFooter hints={FOOTER_HINTS}>
+        <DialogFooter hints={footerHints}>
           <DialogClose
             {...getFooterButtonProps(0)}
             variant="ghost"

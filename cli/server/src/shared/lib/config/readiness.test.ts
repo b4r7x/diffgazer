@@ -11,7 +11,7 @@ import {
   computeProviderReadinessResult,
   type ProviderReadinessInput,
 } from "./readiness.js";
-import { createEnvironmentSecretBinding } from "./secret-bindings.js";
+import { createEnvironmentSecretBinding } from "./secret-binding-model.js";
 
 const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 const NOW = "2026-07-31T12:05:00.000Z";

@@ -100,6 +100,37 @@ function makeMutations(
   };
 }
 
+/** The only product with two billing pools, so pool-moving selects use its own endpoints. */
+function opencodeZenStatus(): ConfigurationStatus {
+  const notice = PRODUCT_REGISTRY["opencode-zen"].notice;
+  return {
+    configuration: {
+      configurationId: "opencode-primary",
+      revision: 1,
+      status: "supported",
+      transportFamily: "hosted-api",
+      productId: "opencode-zen",
+      endpoint: "https://opencode.ai/zen/v1",
+      selectedModelId: null,
+      notices: [makeClientNotice("opencode-zen")],
+      availableActions: ["inspect", "select", "test", "update", "delete"],
+    },
+    readiness: ReadinessSchema.parse({
+      status: "conformance-pending",
+      ready: false,
+      evidenceStatus: "pending",
+      checkedAt: CHECKED_AT,
+      acknowledgement: {
+        status: "accepted",
+        noticeId: notice.id,
+        noticeVersion: notice.noticeVersion,
+        acceptedAt: CHECKED_AT,
+      },
+      ...READINESS_PRESENTATION["conformance-pending"],
+    }),
+  };
+}
+
 function setup(
   mutations: ProviderManagementMutations,
   providers: readonly ProviderListRow[] = mapProviderList([readyStatus()]),
@@ -360,6 +391,39 @@ describe("useProviderManagement", () => {
     expect(outcome).toEqual({ status: "failed", message: explanation });
     expect(succeeded).toEqual([]);
     expect(failures).toEqual([expect.objectContaining({ action: "test", message: explanation })]);
+  });
+
+  it("sends the billing pool chosen in the model dialog, and sends none when the pool does not move", async () => {
+    const mutations = makeMutations();
+    const { hook } = setup(mutations, mapProviderList([opencodeZenStatus()]));
+
+    act(() => hook.result.current.openModelDialog("opencode-primary"));
+    const owner = hook.result.current.dialogOwner;
+    if (owner?.kind !== "model") throw new Error("Expected a model dialog owner");
+
+    await act(async () => {
+      await hook.result.current.handleSelectModel(
+        owner,
+        "glm-5.3",
+        "https://opencode.ai/zen/go/v1",
+      );
+    });
+
+    expect(mutations.selectConfiguration).toHaveBeenLastCalledWith(
+      "opencode-primary",
+      "glm-5.3",
+      "https://opencode.ai/zen/go/v1",
+    );
+
+    await act(async () => {
+      await hook.result.current.handleSelectModel(owner, "glm-5.3");
+    });
+
+    expect(mutations.selectConfiguration).toHaveBeenLastCalledWith(
+      "opencode-primary",
+      "glm-5.3",
+      undefined,
+    );
   });
 
   it("opens the model dialog instead of selecting a configuration without a model", async () => {

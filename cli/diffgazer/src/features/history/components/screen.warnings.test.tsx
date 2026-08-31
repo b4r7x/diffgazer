@@ -364,7 +364,7 @@ describe("HistoryScreen unreadable review warnings", () => {
     const frame = view.lastFrame() ?? "";
     expect(frame).toContain("RUNS");
     expect(frame).toContain(runIdLookup.get(visibleSalvagedId) ?? visibleSalvagedId);
-    expect(frame).toContain("[Salvaged]");
+    expect(frame).toContain("[Omitted]");
     expect(frame).toContain("Re-run the affected reviews for complete results.");
     expect(frame).toContain("Press w to view all affected run IDs.");
     expect(frame.split("\n")).toHaveLength(24);
@@ -375,7 +375,7 @@ describe("HistoryScreen unreadable review warnings", () => {
     const detailFrame = view.lastFrame() ?? "";
     expect(detailFrame).toContain("History warning · All affected run IDs");
     expect(detailFrame).toContain(visibleSalvagedId);
-    expect(detailFrame).toContain("[Salvaged]");
+    expect(detailFrame).toContain("[Omitted]");
     expect(detailFrame).toContain("Search ID, branch, path, staged");
     expect(detailFrame).toContain("Press w or Esc to hide IDs.");
     expect(detailFrame.split("\n")).toHaveLength(24);
@@ -481,8 +481,8 @@ describe("HistoryScreen unreadable review warnings", () => {
     expect(frame).toContain("1 saved review (#abcdef00-0) could not be read.");
     expect(frame).toContain("1 invalid saved issue was omitted from #abcdef00-1.");
     expect(frame).toContain("#abcdef00-1");
-    expect(affectedLine).toContain("[Salvaged]");
-    expect(unaffectedLine).not.toContain("[Salvaged]");
+    expect(affectedLine).toContain("[Omitted]");
+    expect(unaffectedLine).not.toContain("[Omitted]");
     expect(frame).toContain("INSIGHTS: RUN #ABCDEF00-1");
   });
 });

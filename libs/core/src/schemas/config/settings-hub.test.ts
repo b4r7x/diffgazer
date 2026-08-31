@@ -8,6 +8,8 @@ import { requireValue } from "../../testing/assertions.js";
 import {
   buildProviderRows,
   configurationStatus,
+  configuredRow,
+  OPENCODE_GO_CONFIGURATION,
   ZAI_CONFIGURATION,
 } from "../../testing/provider-fixtures.js";
 import { READINESS_PRESENTATION, ReadinessSchema } from "./readiness.js";
@@ -82,6 +84,44 @@ describe("buildProviderSettingsRows", () => {
 
     expect(billing?.description).toContain("charged per token");
     expect(privacy?.value).toContain("may retain prompts and train on them");
+  });
+
+  test("leaves the pool label to the pane's name and states the URL once", () => {
+    const rows = buildProviderSettingsRows(
+      configuredRow(OPENCODE_GO_CONFIGURATION, "model-missing"),
+    );
+
+    expect(rows.map(({ id }) => id)).toContain("endpoint");
+    // The pane's own name already reads "OpenCode Go"; repeating the profile
+    // label here — as value and description both — said one thing twice.
+    expect(rows.find(({ id }) => id === "endpoint")).toEqual({
+      id: "endpoint",
+      kind: "fact",
+      label: "Endpoint",
+      value: "https://opencode.ai/zen/go/v1",
+    });
+  });
+
+  test("labels a single-endpoint product's configuration with its profile label", () => {
+    const rows = buildProviderSettingsRows(
+      requireValue(
+        buildProviderRows([configurationStatus(ZAI_CONFIGURATION, "ready")]).find(
+          (row) => row.configuration?.configurationId === ZAI_CONFIGURATION.configurationId,
+        ),
+        "zai row",
+      ),
+    );
+
+    expect(rows.find(({ id }) => id === "endpoint")).toMatchObject({
+      value: "General Open Platform PAYG",
+      description: "https://api.z.ai/api/paas/v4",
+    });
+  });
+
+  test("renders no endpoint row for an unconfigured product", () => {
+    const ids = buildProviderSettingsRows(metadataFor("opencode-zen")).map(({ id }) => id);
+
+    expect(ids).not.toContain("endpoint");
   });
 
   test("renders readiness with the shared status label from the client projection", () => {

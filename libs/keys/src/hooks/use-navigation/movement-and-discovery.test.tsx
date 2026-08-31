@@ -3,9 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { getNavigationItems } from "../../dom/navigation-items.js";
+import {
+  expectActiveOptionText,
+  focusListbox,
+  itemId,
+  TestList,
+} from "../../testing/internal/navigation-test-list.js";
 import { testNavigationBehavior } from "../../testing/navigation-behavior.js";
 import { useNavigation } from "../use-navigation.js";
-import { expectActiveOptionText, focusListbox, itemId, TestList } from "./test-list.js";
 
 describe("useNavigation", () => {
   describe("movement and discovery", () => {

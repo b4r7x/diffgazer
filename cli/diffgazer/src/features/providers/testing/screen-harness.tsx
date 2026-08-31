@@ -41,11 +41,7 @@ export async function pressRoot(view: RootFrameView, input: string): Promise<voi
   await flush();
 }
 
-export async function flushUntilRoot(
-  _view: RootFrameView,
-  predicate: () => boolean,
-  attempts = 500,
-): Promise<void> {
+export async function flushUntilRoot(predicate: () => boolean, attempts = 500): Promise<void> {
   for (let i = 0; i < attempts; i += 1) {
     if (predicate()) return;
     await new Promise((resolve) => setImmediate(resolve));

@@ -18,6 +18,7 @@ import type {
 } from "../schemas/config/provider-config.js";
 import { ClientConfigurationActionResponseSchema } from "../schemas/config/provider-config.js";
 import type { ReadinessAcknowledgement } from "../schemas/config/readiness.js";
+import type { HostedApiEndpoint } from "../schemas/config/transports.js";
 import type { ApiClient } from "./types.js";
 
 type AcceptedAcknowledgement = Extract<ReadinessAcknowledgement, { status: "accepted" }>;
@@ -85,12 +86,22 @@ export function inspectConfiguration(client: ApiClient, configurationId: Configu
   return executeConfigurationAction(client, { action: "inspect", configurationId });
 }
 
+/**
+ * `endpoint` is the billing pool the chosen model bills. Omitting it keeps the
+ * pool the configuration is already bound to.
+ */
 export function selectConfiguration(
   client: ApiClient,
   configurationId: ConfigurationId,
   modelId: ExactModelId,
+  endpoint?: HostedApiEndpoint,
 ) {
-  return executeConfigurationAction(client, { action: "select", configurationId, modelId });
+  return executeConfigurationAction(client, {
+    action: "select",
+    configurationId,
+    modelId,
+    ...(endpoint === undefined ? {} : { endpoint }),
+  });
 }
 
 export function testConfiguration(client: ApiClient, configurationId: ConfigurationId) {
@@ -199,8 +210,11 @@ export const bindConfig = (client: ApiClient) => ({
   }) => createConfiguration(client, request),
   inspectConfiguration: (configurationId: ConfigurationId) =>
     inspectConfiguration(client, configurationId),
-  selectConfiguration: (configurationId: ConfigurationId, modelId: ExactModelId) =>
-    selectConfiguration(client, configurationId, modelId),
+  selectConfiguration: (
+    configurationId: ConfigurationId,
+    modelId: ExactModelId,
+    endpoint?: HostedApiEndpoint,
+  ) => selectConfiguration(client, configurationId, modelId, endpoint),
   testConfiguration: (configurationId: ConfigurationId) =>
     testConfiguration(client, configurationId),
   updateConfiguration: (

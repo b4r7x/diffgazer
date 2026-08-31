@@ -15,6 +15,7 @@ import {
   PRODUCT_REGISTRY,
 } from "@diffgazer/core/providers";
 import { CANDIDATE_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import {
   assertCatalogSnapshotBundleEvidence,
   getCatalogSnapshotBundleEvidence,
@@ -145,6 +146,12 @@ describe("bundled catalog observations", () => {
       expect(observation.checkedAt).toBe(CHECKED_AT);
 
       const configurationId = `cfg-${observation.productId}-bundle`;
+      // Every product binds `endpoints[0]` under quick setup, which is the
+      // endpoint a bundle-tier discovery would carry.
+      const endpoint = requireValue(
+        PRODUCT_REGISTRY[observation.productId].configuration.endpoints[0],
+        `${observation.productId} endpoint tuple`,
+      ).endpoint;
       // Picker rows are the OFFERED subset — review-capable and admitted by the
       // product's model policy — so parity is measured against that subset
       // rather than every observed model, or every merely capable one.
@@ -152,7 +159,6 @@ describe("bundled catalog observations", () => {
         .filter((model) => isOfferableObservation(observation.productId, model))
         .map((model) => String(model.modelId))
         .sort();
-
       if (offeredModelIds.length === 0) {
         const serverModels = await catalogProviderModels.get(observation.productId);
         expect(serverModels.source).toBe("snapshot");
@@ -170,6 +176,7 @@ describe("bundled catalog observations", () => {
         const discovery = await discoverConfigurationCatalog({
           configurationId,
           productId: observation.productId,
+          endpoint,
         });
         expect(discovery).toMatchObject({
           status: "skipped",
@@ -199,12 +206,15 @@ describe("bundled catalog observations", () => {
       const discovery = await discoverConfigurationCatalog({
         configurationId,
         productId: observation.productId,
+        endpoint,
       });
       expect(discovery.status).toBe("passed");
       if (discovery.status !== "passed") throw new Error("Expected passed catalog discovery");
       expect(discovery.configurationId).toBe(configurationId);
       expect(discovery.source).toBe("snapshot");
       expect(discovery.checkedAt).toBe(discovery.fetchedAt);
+      // Including a dual-pool product, whose offered ids span both of its
+      // catalog sources: the picker lists the union of both pools.
       expect(discovery.models.map((model) => model.id).sort()).toEqual(offeredModelIds);
     }
   });

@@ -81,7 +81,7 @@ export function HistoryInsightsPane({
           </div>
         ) : null}
 
-        {severityCounts && !cleanRun ? (
+        {severityCounts ? (
           <div>
             <SectionHeader as="h3" bordered>
               Severity Breakdown

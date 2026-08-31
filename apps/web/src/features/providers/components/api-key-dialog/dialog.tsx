@@ -3,6 +3,7 @@ import {
   buildSetupAcknowledgement,
   buildSetupInput,
   CREDENTIAL_ENV_VARS,
+  getEndpointProfile,
   getSetupLayoutCopy,
   requiresExplicitModelSelection,
   toSetupCredential,
@@ -25,6 +26,7 @@ import {
   DialogTitle,
 } from "@diffgazer/ui/components/dialog";
 import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
+import { EndpointProfileRadioGroup } from "@/components/shared/endpoint-profile-radio-group";
 import { ApiKeyFooter } from "./footer";
 import { ApiKeyMethodSelector } from "./method-selector";
 import { useApiKeyDialogKeyboard } from "./use-keyboard";
@@ -77,6 +79,17 @@ export function ApiKeyDialog({
   const [accepted, setAccepted] = useState(false);
   const acknowledged = !needsAcceptance || accepted;
 
+  // The endpoint a key is filed under is a purchase, not a preference: it is
+  // chosen once at create and read back on update, so re-keying can never move
+  // a configuration to another endpoint behind the user's back.
+  const endpointProfiles = row.product.endpoints;
+  const hasEndpointChoice = !isUpdating && endpointProfiles.length > 1;
+  const boundEndpointLabel =
+    row.configuration != null && endpointProfiles.length > 1
+      ? getEndpointProfile(row.product.productId, row.configuration.endpoint)?.label
+      : undefined;
+  const [endpoint, setEndpoint] = useState(endpointProfiles[0]?.endpoint);
+
   const storageNote =
     secretsStorage === "keyring"
       ? `Keys are stored in your OS keychain. Context is only sent to ${row.product.name}.`
@@ -88,7 +101,7 @@ export function ApiKeyDialog({
   const entry = useApiKeyEntry({
     onSubmit: async (method, value) => {
       if (!acknowledged) return false;
-      const input = buildSetupInput(row, toSetupCredential(method, value));
+      const input = buildSetupInput(row, toSetupCredential(method, value), { endpoint });
 
       const outcome =
         row.configuration != null
@@ -136,9 +149,12 @@ export function ApiKeyDialog({
     cancelHighlighted,
     confirmHighlighted,
     acknowledgementHighlighted,
+    isEndpointZone,
+    handleEndpointBoundary,
   } = useApiKeyDialogKeyboard({
     open,
     hasAcknowledgement: needsAcceptance,
+    hasEndpointChoice,
     method: entry.method,
     setMethod: entry.setMethod,
     canSubmit: canConfirm,
@@ -154,6 +170,7 @@ export function ApiKeyDialog({
   const resetDialogState = useEffectEvent(() => {
     entry.reset();
     setAccepted(false);
+    setEndpoint(endpointProfiles[0]?.endpoint);
   });
 
   useEffect(() => {
@@ -183,6 +200,27 @@ export function ApiKeyDialog({
 
         <DialogBody className="space-y-6">
           <p className="text-sm text-muted-foreground leading-relaxed">{layoutCopy}</p>
+
+          {hasEndpointChoice ? (
+            <EndpointProfileRadioGroup
+              profiles={endpointProfiles}
+              value={endpoint}
+              onChange={setEndpoint}
+              active={isEndpointZone}
+              // The endpoint is a billing pool, not a preference: arrowing past the
+              // group to reach the key field must not re-file the key under the
+              // sibling pool, so the binding only moves on Space, Enter, or a click.
+              activationMode="manual"
+              disabled={entry.isSubmitting}
+              onBoundaryReached={handleEndpointBoundary}
+            />
+          ) : null}
+
+          {boundEndpointLabel ? (
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {`Endpoint: ${boundEndpointLabel}`}
+            </p>
+          ) : null}
 
           <ApiKeyMethodSelector
             value={entry.method}

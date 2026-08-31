@@ -6,22 +6,18 @@ import {
   HISTORY_SEARCH_PLACEHOLDER,
   summarizeHistoryWarnings,
 } from "@diffgazer/core/review";
-import { pluralize } from "@diffgazer/core/strings";
-import { hasModifierKey, isListNavigationKey } from "@diffgazer/keys";
+import { hasModifierKey } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
-import { EmptyState } from "@diffgazer/ui/components/empty-state";
-import { Kbd } from "@diffgazer/ui/components/kbd";
-import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { useNavigate } from "@tanstack/react-router";
-import type { KeyboardEvent } from "react";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { FailureView } from "@/components/shared/failure-view";
 import { TrustPanel } from "@/components/shared/trust-panel";
 import { HistoryInsightsPane } from "@/features/history/components/insights-pane";
+import { HistoryRunsPane } from "@/features/history/components/runs-pane";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { HistoryWarnings } from "@/features/history/components/warnings";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-keyboard";
@@ -73,7 +69,6 @@ function HistoryPageContent() {
     cleanRun,
     sortedIssues,
     duration,
-    hasReviews,
     emptyRunsMessage,
     hasSearchQuery,
     hasMoreReviews,
@@ -100,6 +95,9 @@ function HistoryPageContent() {
     error: reviewDetailQuery.error,
     refetch: reviewDetailQuery.refetch,
   });
+
+  const loadMoreError =
+    reviewsQuery.isFetchNextPageError && reviewsQuery.error ? reviewsQuery.error.message : null;
 
   const listFetchError =
     hasLoadedReviews &&
@@ -142,11 +140,6 @@ function HistoryPageContent() {
   const runsFocus = useFocusWithin<HTMLElement>();
   const insightsFocus = useFocusWithin<HTMLElement>();
 
-  // Space is deliberately absent: NavigationList already routes it to onSelect.
-  const handleRunsKeyDown = (event: KeyboardEvent) => {
-    if (focusZone !== "runs" && isListNavigationKey(event.key)) event.preventDefault();
-  };
-
   const warningRegion = (
     <HistoryWarnings
       summary={warningSummary}
@@ -182,7 +175,9 @@ function HistoryPageContent() {
     );
   }
 
-  const salvagedRunIds = new Set(warningSummary.droppedIssueReviewIds);
+  // Issue records this build could not decode at read time - a different fact
+  // from a lens that answered incompletely, which the run's summary line reports.
+  const droppedIssueRunIds = new Set(warningSummary.droppedIssueReviewIds);
   const selectedRunDisplayId = selectedRun ? (runIdLookup.get(selectedRun.id) ?? null) : null;
 
   return (
@@ -308,110 +303,25 @@ function HistoryPageContent() {
           <Panel.Label variant="border" className="left-auto right-4">
             Newest first
           </Panel.Label>
-          {/* Full-bleed like SECTIONS: the highlighted row fill and every
-              border-b rule span border-to-border, TUI-style. */}
-          <ScrollArea overlay className="pl-[2px] pb-2 md:min-h-0 md:flex-1">
-            {mappedRuns.length > 0 ? (
-              <NavigationList
-                ref={runsListRef}
-                aria-label="Review runs"
-                selectedId={selectedRunId}
-                highlighted={focusZone === "runs" ? selectedRunId : null}
-                onFocus={() => setFocusZone("runs")}
-                onSelect={handleRunSelect}
-                onEnter={handleRunActivate}
-                onHighlightChange={setSelectedRunId}
-                onNavigationBoundaryReached={handleRunsBoundary}
-                onKeyDown={handleRunsKeyDown}
-                wrap={false}
-                focused={focusZone === "runs"}
-                // "/" and o are window-level shortcuts for this zone; list
-                // typeahead would claim those keystrokes before they arrive.
-                typeahead={false}
-              >
-                {mappedRuns.map((run) => (
-                  <NavigationList.Item
-                    key={run.id}
-                    id={run.id}
-                    className="border-b border-b-border last:border-b-0"
-                  >
-                    <NavigationList.Title>{run.displayId}</NavigationList.Title>
-                    <NavigationList.Status className="text-muted-foreground group-data-[highlighted]:text-primary-foreground/70">
-                      {run.timestamp}
-                    </NavigationList.Status>
-                    {/* flex-wrap plus the summary's min-w-full stack the branch
-                        chip and summary on their own lines, so a run reads as
-                        three lines and the list fills the pane. The indent (glyph
-                        advance 1ch + its mr-2) left-aligns rows 2-3 with the
-                        run-id text above. */}
-                    <NavigationList.Meta className="min-w-0 flex-wrap pl-[calc(1ch+0.5rem)]">
-                      <NavigationList.Badge variant="neutral" size="sm">
-                        {run.branch}
-                      </NavigationList.Badge>
-                      {salvagedRunIds.has(run.id) ? (
-                        <NavigationList.Badge variant="warning" size="sm">
-                          Salvaged
-                        </NavigationList.Badge>
-                      ) : null}
-                      <span className="min-w-full line-clamp-2 text-sm text-muted-foreground group-data-[highlighted]:text-primary-foreground/85">
-                        {run.summary}
-                      </span>
-                    </NavigationList.Meta>
-                  </NavigationList.Item>
-                ))}
-              </NavigationList>
-            ) : null}
-            {/* The list ends well above the pane floor on a short history; the
-                marker names that void as the end of the runs rather than
-                inflating the cards to fill it. */}
-            {mappedRuns.length > 0 ? (
-              <p className="mt-6 text-center text-2xs text-muted-foreground">
-                ── {pluralize(mappedRuns.length, "run")} ──
-              </p>
-            ) : null}
-            {/* Live region stays mounted across the runs→empty transition so the
-                empty message is announced; empty (and collapsed) while runs exist. */}
-            <EmptyState
-              variant="inline"
-              size="sm"
-              live
-              className={mappedRuns.length === 0 ? "h-full flex-col gap-1" : "p-0"}
-            >
-              {mappedRuns.length === 0 ? (
-                <EmptyState.Message>{emptyRunsMessage}</EmptyState.Message>
-              ) : null}
-              {/* Only a search has a key to press: the "no runs yet" and
-                  date-filtered empties stay honest with no hint. Hidden below sm
-                  because a phone has no Esc — mobile clears with the input. */}
-              {mappedRuns.length === 0 && hasSearchQuery ? (
-                <EmptyState.Hint className="max-sm:hidden">
-                  <Kbd size="sm">Esc</Kbd> clear search
-                </EmptyState.Hint>
-              ) : null}
-            </EmptyState>
-            {hasMoreReviews ? (
-              // The list is full-bleed, so the button re-insets itself: a
-              // border-to-border control would read as another run row.
-              <div className="space-y-2 px-2 pt-2">
-                {reviewsQuery.isFetchNextPageError && reviewsQuery.error ? (
-                  <p className="text-center text-2xs text-error-text">
-                    Could not load older runs. {reviewsQuery.error.message}
-                  </p>
-                ) : null}
-                <Button
-                  ref={loadMoreRef}
-                  variant="outline"
-                  size="sm"
-                  bracket
-                  loading={isLoadingMoreReviews}
-                  onClick={() => void loadMoreReviews()}
-                  className="w-full"
-                >
-                  Load older runs
-                </Button>
-              </div>
-            ) : null}
-          </ScrollArea>
+          <HistoryRunsPane
+            runs={mappedRuns}
+            selectedRunId={selectedRunId}
+            droppedIssueRunIds={droppedIssueRunIds}
+            emptyRunsMessage={emptyRunsMessage}
+            hasSearchQuery={hasSearchQuery}
+            hasMoreReviews={hasMoreReviews}
+            isLoadingMoreReviews={isLoadingMoreReviews}
+            loadMoreError={loadMoreError}
+            isFocused={focusZone === "runs"}
+            listRef={runsListRef}
+            loadMoreRef={loadMoreRef}
+            onSelect={handleRunSelect}
+            onActivate={handleRunActivate}
+            onHighlightChange={setSelectedRunId}
+            onBoundaryReached={handleRunsBoundary}
+            onFocus={() => setFocusZone("runs")}
+            onLoadMore={() => void loadMoreReviews()}
+          />
         </Panel>
 
         <Panel
@@ -431,9 +341,9 @@ function HistoryPageContent() {
           </Panel.Label>
           <HistoryInsightsPane
             runId={selectedRun?.id ?? null}
-            severityCounts={hasReviews ? severityCounts : null}
-            cleanRun={hasReviews ? cleanRun : null}
-            issues={hasReviews ? sortedIssues : []}
+            severityCounts={severityCounts}
+            cleanRun={cleanRun}
+            issues={sortedIssues}
             detailState={insightsDetailState}
             duration={duration}
             highlightedIssueId={highlightedIssueId}

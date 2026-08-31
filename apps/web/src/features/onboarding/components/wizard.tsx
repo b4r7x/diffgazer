@@ -137,8 +137,12 @@ export function OnboardingWizard() {
             isPreparing={isPreparingDraftConfiguration}
             onRetry={() => void prepareDraftConfiguration()}
             value={selectedModelId}
-            onChange={(model) => updateData({ selectedModelId: model })}
-            onCommit={(model) => handleStepCommit({ selectedModelId: model })}
+            onChange={(model, poolEndpoint) =>
+              updateData({ selectedModelId: model, selectedModelEndpoint: poolEndpoint })
+            }
+            onCommit={(model, poolEndpoint) =>
+              handleStepCommit({ selectedModelId: model, selectedModelEndpoint: poolEndpoint })
+            }
             enabled={!footer.inActions}
             onBoundaryReached={handleStepBoundary}
           />

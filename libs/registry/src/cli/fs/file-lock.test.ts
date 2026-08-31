@@ -3,6 +3,7 @@ import {
   promises as fs,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   renameSync,
@@ -16,6 +17,33 @@ import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { withFileLock, withProjectFileLock } from "./file-lock.js";
+
+const WAIT_NOTICE = "Waiting for another dgadd run to finish";
+
+// A contender announces the wait exactly once, before its first sleep, so this
+// resolves the moment it has tried to acquire, been refused, and parked behind
+// the live owner. Coordinating on that event instead of a wall-clock sleep is
+// what keeps the tests below honest on a loaded machine.
+function contenderParked(): Promise<void> {
+  return new Promise((resolveParked) => {
+    vi.spyOn(console, "log").mockImplementation((line: unknown) => {
+      if (typeof line === "string" && line.includes(WAIT_NOTICE)) resolveParked();
+    });
+  });
+}
+
+// Every poll re-reads the lock file and probes the owner it names with
+// `process.kill(pid, 0)`, so this resolves on the first poll that saw the
+// current contents of the lock.
+function ownerProbed(): Promise<void> {
+  return new Promise((resolveProbed) => {
+    const kill = process.kill.bind(process);
+    vi.spyOn(process, "kill").mockImplementation((pid, signal) => {
+      resolveProbed();
+      return kill(pid, signal);
+    });
+  });
+}
 
 describe("withFileLock", () => {
   let root: string;
@@ -79,11 +107,12 @@ describe("withFileLock", () => {
     });
     await acquired;
 
+    const parked = contenderParked();
     let contenderRan = false;
     const contender = withFileLock(lockPath, async () => {
       contenderRan = true;
     });
-    await new Promise((resolve) => setTimeout(resolve, 75));
+    await Promise.race([parked, contender]);
 
     expect(contenderRan).toBe(false);
     releaseOwner();
@@ -101,14 +130,18 @@ describe("withFileLock", () => {
 
   it("rechecks a partial lock before recovery when a live owner finishes writing it", async () => {
     writeFileSync(lockPath, '{"pid":');
+    const parked = contenderParked();
     let contenderRan = false;
     const contender = withFileLock(lockPath, async () => {
       contenderRan = true;
     });
+    await Promise.race([parked, contender]);
 
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    const probed = ownerProbed();
     writeFileSync(lockPath, JSON.stringify({ pid: process.pid, token: "live-owner" }));
-    await new Promise((resolve) => setTimeout(resolve, 75));
+    // The contender either re-reads and defers to the finished owner, or recovers
+    // the partial lock it snapshotted first and runs.
+    await Promise.race([probed, contender]);
 
     expect(contenderRan).toBe(false);
     unlinkSync(lockPath);
@@ -232,11 +265,12 @@ describe("withFileLock", () => {
     });
     await acquired;
 
+    const parked = contenderParked();
     let contenderRan = false;
     const contender = withProjectFileLock(root, ".diffgazer/mutation.lock", async () => {
       contenderRan = true;
     });
-    await new Promise((resolve) => setTimeout(resolve, 75));
+    await Promise.race([parked, contender]);
 
     expect(contenderRan).toBe(false);
     releaseOwner();
@@ -261,18 +295,19 @@ describe("withFileLock", () => {
     });
     await acquired;
 
-    let contenderAcquired = () => {};
-    const contenderReady = new Promise<void>((resolve) => {
-      contenderAcquired = resolve;
-    });
+    const parked = contenderParked();
+    let contenderRan = false;
     const contender = withProjectFileLock(root, ".diffgazer/mutation.lock", async () => {
-      contenderAcquired();
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      contenderRan = true;
+      // Hold the lock until the owner has finished cleaning up, so the directory
+      // is left behind by a creator that could not remove it.
+      await owner;
     });
-    await new Promise((resolve) => setTimeout(resolve, 75));
+    await Promise.race([parked, contender]);
+
     releaseOwner();
-    await contenderReady;
     await Promise.all([owner, contender]);
+    expect(contenderRan).toBe(true);
     expect(existsSync(dirname(lockPath))).toBe(false);
   });
 
@@ -291,6 +326,26 @@ describe("withFileLock", () => {
     await withProjectFileLock(root, ".diffgazer/mutation.lock", async () => {});
 
     expect(readFileSync(mutationLockPath, "utf8")).toBe(foreignOwner);
+  });
+
+  it("drops the quarantine copy when the lock path is recreated before restore", async () => {
+    const mutationLockPath = join(dirname(lockPath), "mutation.lock");
+    const foreignOwner = JSON.stringify({ pid: process.pid, token: "foreign-owner" });
+    const rename = fs.rename.bind(fs);
+    vi.spyOn(fs, "rename").mockImplementationOnce(async (from, to) => {
+      const activeLockPath = String(from);
+      unlinkSync(activeLockPath);
+      writeFileSync(activeLockPath, foreignOwner);
+      await rename(from, to);
+      writeFileSync(activeLockPath, foreignOwner);
+    });
+
+    await withProjectFileLock(root, ".diffgazer/mutation.lock", async () => {});
+
+    expect(readFileSync(mutationLockPath, "utf8")).toBe(foreignOwner);
+    expect(readdirSync(dirname(mutationLockPath)).filter((n) => n.endsWith(".cleanup"))).toEqual(
+      [],
+    );
   });
 
   it("revalidates the project lock directory before cleanup", async () => {

@@ -15,6 +15,14 @@ export interface OnboardingDraft {
   readonly kind: "runnable";
   readonly configurationInput: OnboardingConfigurationDraft;
   readonly selectedModelId: string | null;
+  /**
+   * The billing pool the selected model runs on, when that is the sibling of
+   * the bound endpoint; null whenever the model bills the bound pool. The
+   * wizard lists the union of both pools and badges each row, so without this
+   * a first-run user picking a sibling-only model would save a configuration
+   * the bound pool cannot serve.
+   */
+  readonly selectedModelEndpoint: string | null;
   readonly acknowledgement: OnboardingAcknowledgement;
   readonly defaultLenses: readonly SelectableLensId[];
   readonly agentExecution: AgentExecution;
@@ -46,6 +54,7 @@ export function getInitialWizardData(
     kind: "runnable",
     configurationInput: buildConfigurationDraft(productId),
     selectedModelId: null,
+    selectedModelEndpoint: null,
     acknowledgement: { status: "required" },
     defaultLenses: [...SELECTABLE_LENS_IDS],
     agentExecution: "sequential",

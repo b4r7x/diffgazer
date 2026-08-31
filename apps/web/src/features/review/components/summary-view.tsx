@@ -5,6 +5,7 @@ import {
   buildDroppedFindingsNotice,
   buildDuplicateCollapseNotice,
   buildHiddenIssuesNotice,
+  buildIncompleteAnswerNotice,
   buildLensSummaryRows,
   buildReviewSummary,
   type FailedTerminalOutcome,
@@ -151,6 +152,7 @@ export function ReviewSummaryView({
     buildDuplicateCollapseNotice(droppedDuplicates, summary.total),
     buildHiddenIssuesNotice(droppedBelowThreshold, minSeverity),
     buildDroppedFindingsNotice(outcome),
+    buildIncompleteAnswerNotice(lensStats),
   ].filter((notice): notice is string => Boolean(notice));
   const lensRows = buildLensSummaryRows(lensStats);
 
@@ -190,10 +192,11 @@ export function ReviewSummaryView({
   // only when it failed: a clean run tells its whole story here, and a partial
   // one that found nothing has no list to open either.
   const canOpenResults = issues.length > 0;
-  const resultsActions: SummaryAction[] = canOpenResults
+  // With no list to open, the exits the route supplied are the only way on -
+  // a partial run that found nothing needs them exactly as much as a clean one.
+  const actions: SummaryAction[] = canOpenResults
     ? [{ label: "View Results", onSelect: onEnterReview }]
-    : [];
-  const actions = isClean ? (cleanRunActions ?? []) : resultsActions;
+    : (cleanRunActions ?? []);
 
   useScope(SUMMARY_SCOPE);
   useKey(

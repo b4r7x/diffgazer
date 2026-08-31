@@ -2,6 +2,7 @@ import { CATALOG_MODEL_DERIVED } from "../catalog/model-derived.js";
 import type { Readiness, ReadinessAction, ReadinessStatus } from "../schemas/config/readiness.js";
 import type { RunnableProductId } from "../schemas/config/transports.js";
 import type { BadgeVariant } from "../schemas/presentation/index.js";
+import { getEndpointPoolContext } from "./endpoint-pools.js";
 import { PRODUCT_REGISTRY } from "./product-registry.js";
 
 interface ReadinessBadge {
@@ -106,11 +107,22 @@ export function getCatalogModelName(productId: RunnableProductId, modelId: strin
   return CATALOG_MODEL_DERIVED[productId]?.[modelId]?.name ?? modelId;
 }
 
-export function getProviderDisplay(productId?: RunnableProductId, modelId?: string): string {
+/**
+ * The provider a surface names. With an endpoint, a product whose endpoints are
+ * separate billing pools reads as the bound pool — the wallet, not the product,
+ * is what the user picked. History passes no endpoint on purpose: its records
+ * predate the pool label, and one render path cannot relabel only the new ones.
+ */
+export function getProviderDisplay(
+  productId?: RunnableProductId,
+  modelId?: string,
+  endpoint?: string,
+): string {
   if (!productId) return "Not configured";
-  const productName = PRODUCT_REGISTRY[productId].presentation.name;
-  if (modelId) return `${productName} / ${getCatalogModelName(productId, modelId)}`;
-  return productName;
+  const poolLabel = endpoint ? getEndpointPoolContext(productId, endpoint)?.bound.label : undefined;
+  const name = poolLabel ?? PRODUCT_REGISTRY[productId].presentation.name;
+  if (modelId) return `${name} / ${getCatalogModelName(productId, modelId)}`;
+  return name;
 }
 
 /**
@@ -126,6 +138,8 @@ export type ShellProviderState =
       readonly readiness: Readiness;
       readonly productId: RunnableProductId;
       readonly modelId?: string | null;
+      /** The configuration's bound endpoint, so a pool product headers as its pool. */
+      readonly endpoint?: string;
     };
 
 export interface ShellProviderIdentity {
@@ -161,7 +175,7 @@ export function resolveShellProviderIdentity(state: ShellProviderState): ShellPr
   }
 
   return {
-    providerName: getProviderDisplay(state.productId, state.modelId ?? undefined),
+    providerName: getProviderDisplay(state.productId, state.modelId ?? undefined, state.endpoint),
     providerStatus: getProviderDisplayStatus(state.readiness),
   };
 }

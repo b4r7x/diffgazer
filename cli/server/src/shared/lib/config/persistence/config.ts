@@ -14,6 +14,8 @@ import {
   type V1ConfigurationRecord,
 } from "../types.js";
 import {
+  byteArraysEqual,
+  copyBytes,
   type JsonPropertySlice,
   scanJsonObjectProperties,
   scanJsonObjectPropertiesWithObserver,
@@ -39,8 +41,6 @@ type V2DocumentWithSnapshot = ConfigDocumentV2 & {
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder("utf-8", { fatal: true });
-
-const copyBytes = (bytes: Uint8Array): Uint8Array => new Uint8Array(bytes);
 
 const decodeConfigText = (bytes: Uint8Array): string => {
   try {
@@ -80,9 +80,6 @@ const createV2Snapshot = (
   });
   return value;
 };
-
-const byteArraysEqual = (left: Uint8Array, right: Uint8Array): boolean =>
-  left.byteLength === right.byteLength && left.every((value, index) => value === right[index]);
 
 const recordBytesForDocument = (document: ConfigDocumentV2): Uint8Array[] =>
   document.configurations.map((record) => copyBytes(record.rawBytes));

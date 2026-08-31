@@ -41,6 +41,15 @@ function getSourceTypeProgram(): ts.Program {
   return sourceTypeProgram;
 }
 
+/**
+ * Pays the program build up front. Callers whose budget must measure their own
+ * work — a timed test around `sourceTypeHasMember` — call this from setup so the
+ * one-second bind is not charged to the first assertion that happens to trigger it.
+ */
+export function warmSourceTypeProgram(): void {
+  getSourceTypeProgram();
+}
+
 function getSourceTypeChecker(): ts.TypeChecker {
   return getSourceTypeProgram().getTypeChecker();
 }
@@ -437,7 +446,15 @@ function findDeclaration(source: ts.SourceFile, name: string): SourceDeclaration
   }
 
   const candidates = sourceTypeIndex.declarationsByName.get(name) ?? [];
-  return candidates.length === 1 ? candidates[0] : undefined;
+  // Callers read `undefined` as "no such declaration" and pass vacuously, so an
+  // ambiguous name would silently switch the sync gate off for that type.
+  if (candidates.length > 1) {
+    const files = candidates.map((candidate) => candidate.getSourceFile().fileName).join(", ");
+    throw new Error(
+      `Type "${name}" is declared in ${candidates.length} registry files (${files}); the JSDoc sync cannot tell which one ${source.fileName} means`,
+    );
+  }
+  return candidates[0];
 }
 
 function findExportedDeclaration(

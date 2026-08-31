@@ -70,6 +70,7 @@ export const ReviewMetadataSchema = z
     lenses: z.array(LensIdSchema),
     issueCount: CountFieldSchema,
     failedLensCount: CountFieldSchema.optional(),
+    salvagedLensCount: CountFieldSchema.optional(),
     blockerCount: CountFieldSchema.default(0),
     highCount: CountFieldSchema.default(0),
     mediumCount: CountFieldSchema.default(0),

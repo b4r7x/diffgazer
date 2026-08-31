@@ -507,6 +507,9 @@ describe("configuration catalog model discovery", () => {
     expect(catalog.discoverConfigurationCatalog).toHaveBeenCalledWith({
       configurationId,
       productId: "openrouter",
+      // The bound endpoint travels with the tuple: it keys the live-list cache
+      // and names the pool a row has to be servable from.
+      endpoint: "https://openrouter.ai/api/v1",
     });
   });
 

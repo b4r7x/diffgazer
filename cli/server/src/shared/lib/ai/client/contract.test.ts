@@ -176,7 +176,9 @@ describe("executeReviewGeneration contract", () => {
     const serialized = JSON.stringify(result.diagnostic);
     expect(serialized).not.toContain(home);
     expect(serialized).not.toContain(CLIENT_TEST_SECRET_LITERAL);
-    expect(serialized).toContain(result.diagnostic.correlationId);
+    expect(result.diagnostic.correlationId).toMatch(
+      /^diag-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
   });
 
   it("preserves provider-specific adapter behavior only through the admitted adapter route", async () => {

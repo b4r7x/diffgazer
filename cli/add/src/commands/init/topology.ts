@@ -22,32 +22,18 @@ interface InitTopology {
 
 function deriveInitTopology(cwd: string, opts: Record<string, unknown>): InitTopology {
   const { project, componentsDir, libDir, stylesDir, hooksDir } = initPlan(cwd, opts);
-
-  const stripSource = (p: string) => {
-    const prefix = project.sourceDir === "." ? "" : `${project.sourceDir}/`;
-    return prefix && p.startsWith(prefix) ? p.slice(prefix.length) : p;
-  };
-  const aliasPath = (path: string) => `${project.importAliasPrefix}/${path}`;
-  const aliases = {
-    components: aliasPath(stripSource(componentsDir)),
-    utils: aliasPath(`${stripSource(libDir)}/utils`),
-    lib: aliasPath(stripSource(libDir)),
-    hooks: aliasPath(stripSource(hooksDir)),
-  };
-
-  return {
-    aliases,
+  const paths = {
     componentsFsPath: componentsDir,
     libFsPath: libDir,
     hooksFsPath: hooksDir,
+  };
+
+  return {
+    aliases: aliasesFromResolvedPaths(project, paths),
+    ...paths,
     rsc: project.rsc,
     tailwind: { css: `${stylesDir}/styles.css` },
   };
-}
-
-function areConfigAliasesValid(config: DiffgazerAddConfig): boolean {
-  if (config.aliases === undefined) return true;
-  return DiffgazerAddConfigSchema.shape.aliases.safeParse(config.aliases).success;
 }
 
 function aliasesFromResolvedPaths(
@@ -67,9 +53,36 @@ function aliasesFromResolvedPaths(
   };
 }
 
-function existingInitTopology(cwd: string, config: DiffgazerAddConfig): InitTopology {
-  const aliasesValid = areConfigAliasesValid(config);
-  const resolved = resolveConfig(aliasesValid ? config : { ...config, aliases: undefined }, cwd);
+interface RecoveredConfig {
+  config: DiffgazerAddConfig;
+  droppedFields: Set<string>;
+}
+
+// `--force` hands this the raw JSON when diffgazer.json parses but fails schema
+// validation, so keep only the fields that validate on their own instead of
+// deriving the comparison topology from arbitrary values.
+function recoverExistingConfig(
+  value: DiffgazerAddConfig | Record<string, unknown>,
+): RecoveredConfig {
+  const parsed = DiffgazerAddConfigSchema.safeParse(value);
+  if (parsed.success) return { config: parsed.data, droppedFields: new Set() };
+
+  const shape = DiffgazerAddConfigSchema.shape;
+  const kept: Record<string, unknown> = {};
+  const droppedFields = new Set<string>();
+  for (const [key, field] of Object.entries(value)) {
+    const fieldSchema = shape[key as keyof typeof shape];
+    if (fieldSchema && !fieldSchema.safeParse(field).success) {
+      droppedFields.add(key);
+      continue;
+    }
+    kept[key] = field;
+  }
+  return { config: DiffgazerAddConfigSchema.parse(kept), droppedFields };
+}
+
+function existingInitTopology(cwd: string, existing: RecoveredConfig): InitTopology {
+  const resolved = resolveConfig(existing.config, cwd);
   const tailwind = resolved.tailwind ?? { css: `${resolved.stylesFsPath}/styles.css` };
   const paths = {
     componentsFsPath: resolved.componentsFsPath,
@@ -78,9 +91,9 @@ function existingInitTopology(cwd: string, config: DiffgazerAddConfig): InitTopo
   };
 
   return {
-    aliases: aliasesValid
-      ? resolved.aliases
-      : aliasesFromResolvedPaths(resolveInitProject(cwd, parseInitOptions({})), paths),
+    aliases: existing.droppedFields.has("aliases")
+      ? aliasesFromResolvedPaths(resolveInitProject(cwd, parseInitOptions({})), paths)
+      : resolved.aliases,
     ...paths,
     rsc: resolved.rsc,
     tailwind,
@@ -89,16 +102,17 @@ function existingInitTopology(cwd: string, config: DiffgazerAddConfig): InitTopo
 
 export function validateReinitializeTopology(context: {
   cwd: string;
-  existingConfig: DiffgazerAddConfig;
+  existingConfig: DiffgazerAddConfig | Record<string, unknown>;
   options: Record<string, unknown>;
 }): void {
   const initOptions = parseInitOptions(context.options);
-  const installedItems = context.existingConfig.installedItems;
+  const existingConfig = recoverExistingConfig(context.existingConfig);
+  const installedItems = existingConfig.config.installedItems;
   if (initOptions.resetManifest || !installedItems || Object.keys(installedItems).length === 0) {
     return;
   }
 
-  const existing = existingInitTopology(context.cwd, context.existingConfig);
+  const existing = existingInitTopology(context.cwd, existingConfig);
   const next = deriveInitTopology(context.cwd, context.options);
   if (isDeepStrictEqual(existing, next)) return;
 

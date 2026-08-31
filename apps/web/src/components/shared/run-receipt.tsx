@@ -33,6 +33,8 @@ export function buildRunReceiptRows(source: RunReceiptSource): RunReceiptRow[] {
   const lenses = source.lenses ?? source.lensStats?.map((stat) => stat.lensId);
   const rows: RunReceiptRow[] = [];
   const scope = buildScopeValue(source);
+  // Product-named on purpose: a receipt is a record, and history is not
+  // retro-relabelled by pool. The live review header beside it names the pool.
   const model = buildModelValue(source.productId, source.modelId);
 
   if (scope) rows.push({ label: CLEAN_RUN_RECEIPT_LABELS.scope, value: scope });

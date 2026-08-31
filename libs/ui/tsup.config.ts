@@ -186,7 +186,6 @@ export default defineConfig({
       );
     }
 
-    // Validate all entries produced output
     const missing: string[] = [];
     for (const key of Object.keys(entry)) {
       const outFile = resolve(dist, `${key}.js`);

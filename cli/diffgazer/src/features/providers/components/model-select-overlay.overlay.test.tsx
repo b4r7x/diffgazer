@@ -1,6 +1,9 @@
 import "../testing/terminal-mock";
 import { useFooterData } from "@diffgazer/core/footer";
-import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
+import {
+  GEMINI_CONFIGURATION,
+  OPENCODE_ZEN_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import stripAnsi from "strip-ansi";
@@ -68,6 +71,31 @@ describe("ModelSelectOverlay reads as an overlay", () => {
     expect(frame).toContain("[Esc] Close");
     expect(frame).not.toContain("Tab: zone");
     expect(frame).not.toContain("/: search");
+  });
+
+  // Taught only where it does something: the pool row renders on dual-pool
+  // products alone.
+  test("teaches p only on a product whose endpoints are billing pools", async () => {
+    const { lastFrame } = renderOverlay();
+
+    await flushUntil(() => lastFrame()?.includes("[Tab] Switch Zone") ?? false);
+    expect(stripAnsi(lastFrame() ?? "")).not.toContain("[p] Pool");
+
+    cleanup();
+    const zen = render(
+      <Wrapper>
+        <FooterProbe />
+        <ModelSelectOverlay
+          open
+          onOpenChange={() => {}}
+          configuration={OPENCODE_ZEN_CONFIGURATION}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => zen.lastFrame()?.includes("[p] Pool") ?? false);
+    // p sits beside the other list keys, before the tier filter it precedes.
+    expect(stripAnsi(zen.lastFrame() ?? "")).toContain("[/] Search [p] Pool [f] Filter Tier");
   });
 
   test("marks the selected tier tab with a glyph, so the state survives a stripped frame", async () => {

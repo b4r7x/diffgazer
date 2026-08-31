@@ -15,6 +15,8 @@ export interface LensResult {
   lensId: Lens["id"];
   issues: ReviewIssue[];
   droppedIncompleteProviderIssues: number;
+  /** Candidates the client dropped when a batch's answer arrived incomplete; 0 for a whole answer. */
+  droppedCandidateCount: number;
   /** One entry per model call this lens made, in dispatch order. */
   dispatches: LensDispatch[];
   /**

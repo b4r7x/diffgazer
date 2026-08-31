@@ -158,6 +158,19 @@ describe("theme-base.css scrollbar capability contract", () => {
       .filter((rule) => rule.selector === '[data-slot="scroll-area-overlay"]')
       .flatMap(declarationsOf);
     expect(railHide).toContainEqual({ prop: "display", value: "none" });
+
+    // The grab state must out-specify the container-hover rule above it, or it
+    // never paints: the thumb cannot be hovered without the container also being.
+    const grabIndex = hoverRules.findIndex((rule) =>
+      rule.selector.endsWith(`${OVERLAY_THUMB}:hover`),
+    );
+    const containerHoverIndex = hoverRules.findIndex((rule) =>
+      rule.selector.includes(`:hover ${OVERLAY_THUMB}`),
+    );
+    expect(grabIndex).toBeGreaterThan(containerHoverIndex);
+    expect(hoverRules[grabIndex]?.selector).toBe(
+      `[data-slot="scroll-area"] ${OVERLAY_THUMB}:hover`,
+    );
   });
 });
 

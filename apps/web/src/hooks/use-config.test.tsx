@@ -6,9 +6,11 @@ import type {
 } from "@diffgazer/core/schemas/config";
 import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import {
+  configurationStatus,
   GEMINI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeConfigurationListResponse,
+  OPENCODE_GO_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
@@ -72,6 +74,8 @@ function ConfigConsumer() {
       <p>Ready: {String(data.isReady)}</p>
       <p>Rows: {data.configurations.length}</p>
       <p>Selected: {data.selectedConfiguration?.configurationId ?? "none"}</p>
+      {/* The home Provider row reads this string verbatim. */}
+      <p>Provider: {data.provider ?? "none"}</p>
       <p>Project: {data.projectId ?? "none"}</p>
       <pre data-testid="context-json">{JSON.stringify(data)}</pre>
       <button type="button" onClick={() => void actions.inspectConfiguration("gemini-primary")}>
@@ -79,7 +83,9 @@ function ConfigConsumer() {
       </button>
       <button
         type="button"
-        onClick={() => void actions.selectConfiguration("gemini-primary", "gemini-2.5-flash")}
+        onClick={() =>
+          void actions.selectConfiguration("gemini-primary", "gemini-2.5-flash", geminiEndpoint)
+        }
       >
         Select configuration
       </button>
@@ -186,6 +192,18 @@ describe("ConfigProvider", () => {
     expect(serialized).not.toMatch(/"secret"\s*:/);
   });
 
+  it("names the bound billing pool in the home Provider row", async () => {
+    mockApi.loadConfigurationInit.mockResolvedValue(
+      makeConfigurationInitResponse([configurationStatus(OPENCODE_GO_CONFIGURATION, "ready")]),
+    );
+
+    renderWithProvider();
+
+    await waitFor(() => {
+      expect(screen.getByText("Provider: OpenCode Go")).toBeInTheDocument();
+    });
+  });
+
   it("keeps both context values referentially stable across a configuration mutation", async () => {
     const dataValues: unknown[] = [];
     const actionValues: unknown[] = [];
@@ -265,6 +283,25 @@ describe("ConfigProvider", () => {
 
     await waitFor(() => {
       expect(mockApi[method as keyof typeof mockApi]).toHaveBeenCalled();
+    });
+  });
+
+  it("carries the billing pool from the select action through to the API call", async () => {
+    const user = userEvent.setup();
+    renderWithProvider();
+
+    await waitFor(() => {
+      expect(screen.getByText("Loading: false")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Select configuration" }));
+
+    await waitFor(() => {
+      expect(mockApi.selectConfiguration).toHaveBeenCalledWith(
+        "gemini-primary",
+        "gemini-2.5-flash",
+        geminiEndpoint,
+      );
     });
   });
 

@@ -623,7 +623,7 @@ describe("useWizardState", () => {
     });
     expect(result.current.currentStep).toBe("model");
 
-    let firstPrepare: Promise<unknown>;
+    let firstPrepare!: Promise<unknown>;
     act(() => {
       firstPrepare = result.current.prepareDraftConfiguration();
     });
@@ -646,7 +646,7 @@ describe("useWizardState", () => {
 
     await act(async () => {
       firstCreateGate.resolve();
-      await firstPrepare!;
+      await firstPrepare;
       const secondConfiguration = await result.current.prepareDraftConfiguration();
       expect(secondConfiguration?.configurationId).toBe("created-configuration");
     });
@@ -681,7 +681,7 @@ describe("useWizardState", () => {
     });
     expect(result.current.currentStep).toBe("model");
 
-    let preparePromise: Promise<unknown>;
+    let preparePromise!: Promise<unknown>;
     act(() => {
       preparePromise = result.current.prepareDraftConfiguration();
     });
@@ -691,7 +691,7 @@ describe("useWizardState", () => {
     });
     createGate.resolve();
     await act(async () => {
-      await preparePromise!.catch(() => {});
+      await preparePromise.catch(() => {});
     });
 
     await vi.waitFor(() => {

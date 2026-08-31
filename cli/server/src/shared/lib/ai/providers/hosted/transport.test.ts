@@ -108,7 +108,7 @@ describe("openrouter structured-output capability at dispatch", () => {
 
     expect(result.receipt.outcome).toBe("completed");
     expect(readCachedLiveModelListMock).toHaveBeenCalledWith({
-      configurationId: "configuration-1",
+      kind: "public",
       productId: "openrouter",
     });
     const body = requestBodyAt(fetch, 0);

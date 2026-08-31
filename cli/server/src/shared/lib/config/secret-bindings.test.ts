@@ -15,17 +15,19 @@ import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { assertTempHome } from "../testing/temp-home.js";
 import {
-  bindWriteOnlySecret,
   createEnvironmentSecretBinding,
   createFileSecretBinding,
   createKeyringSecretBinding,
   createLocalBearerBinding,
   createNoneSecretBinding,
+  markSecretBindingRemoved,
+  SecretBindingError,
+} from "./secret-binding-model.js";
+import {
+  bindWriteOnlySecret,
   deleteSecretBinding,
   type KeyringSecretStore,
-  markSecretBindingRemoved,
   resolveSecretBinding,
-  SecretBindingError,
   writeSecretBinding,
 } from "./secret-bindings.js";
 

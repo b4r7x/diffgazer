@@ -48,11 +48,11 @@ function makeClient(results: Array<Result<unknown, AIError>>): AIClient {
     generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
       const next = queue.shift();
       if (!next) {
-        return ok(schema.parse({ issues: [] }) as z.output<T>);
+        return ok({ data: schema.parse({ issues: [] }) as z.output<T> });
       }
       if (!next.ok) return next;
 
-      return ok(schema.parse(next.value) as z.output<T>);
+      return ok({ data: schema.parse(next.value) as z.output<T> });
     },
   };
 }
@@ -122,7 +122,7 @@ describe("orchestrateReview", () => {
       provider: "openrouter",
       generate: async <T extends z.ZodType>(prompt: string, schema: T) => {
         prompts.push(prompt);
-        return ok(schema.parse({ issues: [] }) as z.output<T>);
+        return ok({ data: schema.parse({ issues: [] }) as z.output<T> });
       },
     };
 
@@ -158,7 +158,7 @@ describe("orchestrateReview", () => {
       provider: "openrouter",
       generate: async <T extends z.ZodType>(prompt: string, schema: T) => {
         prompts.push(prompt);
-        return ok(schema.parse({ issues: [] }) as z.output<T>);
+        return ok({ data: schema.parse({ issues: [] }) as z.output<T> });
       },
     };
     const diff = createDiffForFiles(["src/a.ts", "src/b.ts"]);
@@ -274,6 +274,88 @@ describe("orchestrateReview", () => {
         expect.objectContaining({ lensId: "security", errorCode: "MODEL_ERROR" }),
       ]);
     }
+  });
+
+  it("records droppedCandidateCount on the salvaged lens's stat", async () => {
+    const events: Array<Record<string, unknown>> = [];
+    let call = 0;
+    const client: AIClient = {
+      provider: "openrouter",
+      generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
+        call += 1;
+        if (call === 1) {
+          return ok({
+            data: schema.parse({
+              issues: [makeIssue({ id: "kept-1", file: "file-1" })],
+            }) as z.output<T>,
+            warning: { droppedCandidateCount: 4 },
+          });
+        }
+        return ok({ data: schema.parse({ issues: [] }) as z.output<T> });
+      },
+    };
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts"]),
+      { lenses: ["correctness", "security"] },
+      (event) => events.push(event as Record<string, unknown>),
+      { concurrency: 1 },
+    );
+
+    expect(result.ok).toBe(true);
+    const complete = events.find((event) => event.type === "orchestrator_complete");
+    const lensStats = complete?.lensStats as Array<Record<string, unknown>>;
+    expect(lensStats).toMatchObject([
+      { lensId: "correctness", status: "success", droppedCandidateCount: 4 },
+      { lensId: "security", status: "success" },
+    ]);
+    // A lens that answered in full stays byte-identical: no key at all.
+    expect(lensStats[1]).not.toHaveProperty("droppedCandidateCount");
+  });
+
+  it("records droppedCandidateCount on the synthesis stat when its answer was salvaged", async () => {
+    const events: Array<Record<string, unknown>> = [];
+    let call = 0;
+    // Two batch calls for the single lens, then the synthesis pass on call 3.
+    const client: AIClient = {
+      provider: "openrouter",
+      generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
+        call += 1;
+        if (call === 3) {
+          return ok({
+            data: schema.parse({
+              issues: [makeIssue({ id: "cross-1", file: "file-1" })],
+            }) as z.output<T>,
+            warning: { droppedCandidateCount: 2 },
+          });
+        }
+        return ok({ data: schema.parse({ issues: [] }) as z.output<T> });
+      },
+    };
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts", "src/b.ts"]),
+      { lenses: ["correctness"] },
+      (event) => events.push(event as Record<string, unknown>),
+      {
+        concurrency: 1,
+        batches: [createDiffForFiles(["src/a.ts"]), createDiffForFiles(["src/b.ts"])],
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    const complete = events.find((event) => event.type === "orchestrator_complete");
+    const lensStats = complete?.lensStats as Array<Record<string, unknown>>;
+    expect(lensStats.find((stat) => stat.lensId === "synthesis")).toMatchObject({
+      status: "success",
+      droppedCandidateCount: 2,
+    });
+    // The whole-answer lens stat stays byte-identical: no key at all.
+    expect(lensStats.find((stat) => stat.lensId === "correctness")).not.toHaveProperty(
+      "droppedCandidateCount",
+    );
   });
 
   it("returns the last error when every lens fails", async () => {
@@ -507,7 +589,9 @@ describe("orchestrateReview", () => {
         dispatchCount += 1;
         if (dispatchCount === 1) {
           await correctnessGate;
-          return ok(schema.parse({ issues: [makeIssue({ id: "issue-1", file: "file-1" })] }));
+          return ok({
+            data: schema.parse({ issues: [makeIssue({ id: "issue-1", file: "file-1" })] }),
+          });
         }
         if (dispatchCount === 2) {
           await budgetErrorGate;
@@ -678,7 +762,9 @@ describe("orchestrateReview", () => {
           dispatchCount += 1;
           const issueId = `issue-${dispatchCount}`;
           await new Promise((resolve) => setTimeout(resolve, 5));
-          return ok(schema.parse({ issues: [makeIssue({ id: issueId, file: "file-1" })] }));
+          return ok({
+            data: schema.parse({ issues: [makeIssue({ id: issueId, file: "file-1" })] }),
+          });
         },
       };
       return orchestrateReview(
@@ -785,7 +871,7 @@ describe("orchestrateReview", () => {
       provider: "openrouter",
       generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
         controller.abort("cancel test");
-        return ok(schema.parse({ issues: [] }) as z.output<T>);
+        return ok({ data: schema.parse({ issues: [] }) as z.output<T> });
       },
     };
 
@@ -928,7 +1014,7 @@ describe("orchestrateReview", () => {
         maxInFlight = Math.max(maxInFlight, inFlight);
         await new Promise<void>((resolve) => pendingReleases.push(resolve));
         inFlight--;
-        return ok(schema.parse({ issues: [] }) as z.output<T>);
+        return ok({ data: schema.parse({ issues: [] }) as z.output<T> });
       },
     };
 

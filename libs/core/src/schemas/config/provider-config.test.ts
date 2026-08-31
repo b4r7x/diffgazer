@@ -196,6 +196,42 @@ describe("client configuration actions", () => {
     }
   });
 
+  it("carries an optional billing-pool endpoint on select, and only a normalized HTTPS one", () => {
+    expect(
+      ClientConfigurationActionSchema.parse({
+        action: "select",
+        configurationId: "configuration-1",
+        modelId: "glm-4.7",
+        endpoint: "https://opencode.ai/zen/go/v1",
+      }),
+    ).toMatchObject({ endpoint: "https://opencode.ai/zen/go/v1" });
+
+    // Omitting it is the pre-pool-switching payload, and it must stay valid.
+    expect(
+      ClientConfigurationActionSchema.parse({
+        action: "select",
+        configurationId: "configuration-1",
+        modelId: "glm-4.7",
+      }),
+    ).toEqual({ action: "select", configurationId: "configuration-1", modelId: "glm-4.7" });
+
+    for (const endpoint of [
+      "http://opencode.ai/zen/go/v1",
+      "https://opencode.ai/zen/go/v1?pool=go",
+      "https://opencode.ai:8443/zen/go/v1",
+      "zen/go/v1",
+    ]) {
+      expect(
+        ClientConfigurationActionSchema.safeParse({
+          action: "select",
+          configurationId: "configuration-1",
+          modelId: "glm-4.7",
+          endpoint,
+        }).success,
+      ).toBe(false);
+    }
+  });
+
   it("rejects unsafe exact model identifiers without rewriting them", () => {
     for (const modelId of [
       "",

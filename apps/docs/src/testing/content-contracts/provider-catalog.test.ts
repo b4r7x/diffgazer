@@ -251,6 +251,7 @@ describe("provider catalog privacy copy", () => {
     const sharedCatalogProducts = SELECTABLE_PRODUCT_IDS.filter(
       (productId) => PROVIDER_OVERLAY[productId] !== undefined,
     );
+    expect(sharedCatalogProducts).toHaveLength(9);
     for (const productId of sharedCatalogProducts) {
       expect(keylessCatalogBullet).toContain(PRODUCT_REGISTRY[productId].presentation.name);
     }

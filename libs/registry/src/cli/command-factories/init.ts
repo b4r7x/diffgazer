@@ -29,13 +29,12 @@ function resolveExistingConfigForReinitializeValidation<TConfig>(
   cwd: string,
   existing: ConfigLoadResult<TConfig>,
   resetManifest: boolean,
-): TConfig | undefined {
+): TConfig | Record<string, unknown> | undefined {
   if (resetManifest) return undefined;
   if (existing.ok) return existing.config;
   if (existing.error !== "validation_error") return undefined;
 
-  const raw = readParseableConfigObject(configFileName, cwd);
-  return raw ? (raw as TConfig) : undefined;
+  return readParseableConfigObject(configFileName, cwd);
 }
 
 export interface InitCommandConfig<TConfig> {
@@ -65,9 +64,14 @@ export interface InitCommandConfig<TConfig> {
   onSkipInstall: (dependencies: string[]) => void;
   writeConfig: (cwd: string, opts: SharedCommandOptions) => void | Promise<void>;
   nextSteps: string[];
+  /**
+   * `existingConfig` is the loaded config, or — when the file parses but fails
+   * schema validation and the ledger must still be protected — its raw JSON
+   * object. Validate the fields you read; they are not schema-proved.
+   */
   validateReinitialize?: (context: {
     cwd: string;
-    existingConfig: TConfig;
+    existingConfig: TConfig | Record<string, unknown>;
     options: SharedCommandOptions;
   }) => void | Promise<void>;
   withLock?: <T>(cwd: string, operation: () => Promise<T>) => Promise<T>;

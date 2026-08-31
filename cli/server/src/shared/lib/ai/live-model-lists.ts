@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import { CatalogModelNameSchema } from "@diffgazer/core/catalog";
 import { getErrorMessage } from "@diffgazer/core/errors";
+import { type EndpointProfile, getEndpointProfile } from "@diffgazer/core/providers";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import {
   type ConfigurationId,
@@ -57,6 +58,19 @@ const stripGeminiModelsPrefix = (raw: unknown): unknown => {
     ? { ...raw, id: id.slice("models/".length) }
     : raw;
 };
+
+/**
+ * The list URL and the id shape to expect from it. Both writers of a
+ * configuration's cache key go through this, so a bound list and its sibling
+ * can never disagree about the shape they store under the same namespace.
+ */
+const listRequestFor = (
+  productId: RunnableProductId,
+  endpoint: string,
+): { url: string; normalizeModel?: (raw: unknown) => unknown } =>
+  productId === "gemini"
+    ? { url: `${endpoint}${GEMINI_MODEL_LIST_PATH}`, normalizeModel: stripGeminiModelsPrefix }
+    : { url: `${endpoint}/models` };
 
 const LiveModelSchema = z.object({
   id: ExactModelIdSchema,
@@ -164,6 +178,14 @@ const memory = new Map<string, LiveModelListEntry>();
 const cachePathFor = (key: string): string =>
   path.join(getGlobalDiffgazerDir(), "model-lists", `${key}.json`);
 
+// The endpoint profile is part of the key: after a pool switch the old
+// endpoint's still-fresh file must be a miss, never the served list. Files
+// under the pre-profile `configuration-<id>` name are simply never read again.
+const configurationCacheKey = (
+  configurationId: ConfigurationId,
+  endpointProfileId: string,
+): string => `configuration-${configurationId}-${endpointProfileId}`;
+
 const readFreshModelList = (key: string): LiveModelList | null => {
   const cachePath = cachePathFor(key);
   const cached = memory.get(cachePath) ?? loadDiskCache(cachePath, LiveModelListEntrySchema);
@@ -206,15 +228,10 @@ const fetchAndStoreModelList = async (
   return { ...entry, cached: false };
 };
 
-interface ConfigurationAccess {
-  readonly endpoint: string;
-  readonly credential: string;
-}
-
-/** The configuration's own endpoint and credential — the only pair a key-bearing list request may use. */
-const resolveConfigurationAccess = async (
+/** The configuration's own credential — the only one a key-bearing list request may carry. */
+const resolveConfigurationCredential = async (
   configurationId: ConfigurationId,
-): Promise<ConfigurationAccess | null> => {
+): Promise<string | null> => {
   const current = await getStore().readCurrentState();
   if (!current.ok) return null;
   const configuration = current.value.config.configurations.find(
@@ -226,13 +243,34 @@ const resolveConfigurationAccess = async (
   if (record.input.transportFamily !== "hosted-api") return null;
   const binding = findSecretBinding(current.value.secrets, record.configurationId, record.revision);
   if (!binding) return null;
-  const credential = await resolveSecretBinding(binding, secretIO, {
+  return resolveSecretBinding(binding, secretIO, {
     configurationId: record.configurationId,
     revision: record.revision,
   });
-  if (credential === null) return null;
-  return { endpoint: record.input.endpoint, credential };
 };
+
+const resolveCredentialOrNull = (configurationId: ConfigurationId): Promise<string | null> =>
+  resolveConfigurationCredential(configurationId).catch((error) => {
+    log("info", "live_model_list_credential_unavailable", {
+      configurationId,
+      error: getErrorMessage(error),
+    });
+    return null;
+  });
+
+/**
+ * Which cached list to read. A product's public list is keyed by product alone;
+ * a key-bearing list is keyed by the configuration AND the endpoint profile it
+ * was fetched from, so the profile cannot be forgotten into a silent cache miss.
+ */
+export type CachedModelListKey =
+  | { readonly kind: "public"; readonly productId: RunnableProductId }
+  | {
+      readonly kind: "configuration";
+      readonly configurationId: ConfigurationId;
+      readonly productId: RunnableProductId;
+      readonly endpointProfileId: string;
+    };
 
 /**
  * The already-cached live list only, never a fetch: dispatch-time capability
@@ -244,13 +282,12 @@ const resolveConfigurationAccess = async (
  * the picker was last opened before the TTL ran out — stale capability
  * evidence still beats guessing.
  */
-export const readCachedLiveModelList = (tuple: {
-  readonly configurationId: ConfigurationId;
-  readonly productId: RunnableProductId;
-}): LiveModelList | null => {
-  if (tuple.productId in PUBLIC_MODEL_LIST_URLS) return readStoredModelList(tuple.productId);
-  if (!CONFIGURATION_MODEL_LIST_PRODUCTS.has(tuple.productId)) return null;
-  return readStoredModelList(`configuration-${tuple.configurationId}`);
+export const readCachedLiveModelList = (key: CachedModelListKey): LiveModelList | null => {
+  if (key.kind === "public") {
+    return key.productId in PUBLIC_MODEL_LIST_URLS ? readStoredModelList(key.productId) : null;
+  }
+  if (!CONFIGURATION_MODEL_LIST_PRODUCTS.has(key.productId)) return null;
+  return readStoredModelList(configurationCacheKey(key.configurationId, key.endpointProfileId));
 };
 
 /**
@@ -262,6 +299,8 @@ export const readCachedLiveModelList = (tuple: {
 export const resolveLiveModelList = async (tuple: {
   readonly configurationId: ConfigurationId;
   readonly productId: RunnableProductId;
+  /** The configuration's bound endpoint: it decides the cache key and the URL together, so a store write landing mid-request can never key one pool's list under the other pool's name. */
+  readonly endpoint: string;
 }): Promise<LiveModelList | null> => {
   const publicUrl = PUBLIC_MODEL_LIST_URLS[tuple.productId];
   if (publicUrl) {
@@ -270,25 +309,90 @@ export const resolveLiveModelList = async (tuple: {
     );
   }
   if (!CONFIGURATION_MODEL_LIST_PRODUCTS.has(tuple.productId)) return null;
+  const profile = getEndpointProfile(tuple.productId, tuple.endpoint);
+  if (!profile) {
+    // A stored configuration bound to an endpoint a later release stopped
+    // declaring would otherwise lose its live list without a trace.
+    log("info", "live_model_list_endpoint_unrecognized", {
+      productId: tuple.productId,
+      configurationId: tuple.configurationId,
+    });
+    return null;
+  }
 
-  // A fresh cached list needs no credential, so the secret is read only when a fetch is due.
-  const key = `configuration-${tuple.configurationId}`;
+  // A fresh cached list needs no credential, so the key is read before any
+  // store or secret read.
+  const key = configurationCacheKey(tuple.configurationId, profile.id);
   const cached = readFreshModelList(key);
   if (cached) return cached;
 
-  const access = await resolveConfigurationAccess(tuple.configurationId).catch((error) => {
-    log("info", "live_model_list_credential_unavailable", {
-      configurationId: tuple.configurationId,
-      error: getErrorMessage(error),
-    });
-    return null;
-  });
-  if (!access) return null;
-  const gemini = tuple.productId === "gemini";
+  const credential = await resolveCredentialOrNull(tuple.configurationId);
+  if (credential === null) return null;
+  const request = listRequestFor(tuple.productId, tuple.endpoint);
   return fetchAndStoreModelList(
     key,
-    `${access.endpoint}${gemini ? GEMINI_MODEL_LIST_PATH : "/models"}`,
-    { authorization: `Bearer ${access.credential}` },
-    gemini ? stripGeminiModelsPrefix : undefined,
+    request.url,
+    { authorization: `Bearer ${credential}` },
+    request.normalizeModel,
+  );
+};
+
+/**
+ * How long the picker waits for the sibling pool's list. The bound pool's list
+ * is often a cache hit that returns at once, which would leave the whole
+ * response waiting out the sibling's full request timeout; past this deadline
+ * membership labelling falls back to the catalog, which is exactly the offline
+ * behaviour, while the fetch runs on and warms the cache for the next open.
+ */
+export const SIBLING_LIST_DEADLINE_MS = 2000;
+
+const settledWithin = (
+  pending: Promise<LiveModelList | null>,
+  deadlineMs: number,
+): Promise<LiveModelList | null> =>
+  new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), deadlineMs);
+    const settle = (list: LiveModelList | null) => {
+      clearTimeout(timer);
+      resolve(list);
+    };
+    pending.then(settle, () => settle(null));
+  });
+
+/**
+ * The sibling pool's list for a dual-pool configuration, fetched with the
+ * configuration's own credential (the one key serves both pools) and cached
+ * under the sibling's profile id. Membership labeling is best-effort, so any
+ * failure — credential, network, status, shape — degrades to null; it never
+ * throws, never blocks the bound list, and never holds the response past the
+ * sibling deadline.
+ */
+export const resolveSiblingLiveModelList = async (tuple: {
+  readonly configurationId: ConfigurationId;
+  readonly productId: RunnableProductId;
+  readonly siblingProfile: EndpointProfile;
+}): Promise<LiveModelList | null> => {
+  // A product whose list is public is excluded from this set: its pools must
+  // never be probed with the configuration's credential.
+  if (!CONFIGURATION_MODEL_LIST_PRODUCTS.has(tuple.productId)) return null;
+  const key = configurationCacheKey(tuple.configurationId, tuple.siblingProfile.id);
+  const cached = readFreshModelList(key);
+  if (cached) return cached;
+  // The credential read is inside the deadline too: it reaches the OS keyring,
+  // which has no abort signal, so leaving it outside would let a locked
+  // keychain hold the whole picker response open for a best-effort label.
+  return settledWithin(
+    (async () => {
+      const credential = await resolveCredentialOrNull(tuple.configurationId);
+      if (credential === null) return null;
+      const request = listRequestFor(tuple.productId, tuple.siblingProfile.endpoint);
+      return fetchAndStoreModelList(
+        key,
+        request.url,
+        { authorization: `Bearer ${credential}` },
+        request.normalizeModel,
+      );
+    })(),
+    SIBLING_LIST_DEADLINE_MS,
   );
 };

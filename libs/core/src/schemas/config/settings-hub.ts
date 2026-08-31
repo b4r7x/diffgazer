@@ -4,6 +4,7 @@ import type {
   ClientProductMetadata,
 } from "../../providers/client-metadata.js";
 import { getProviderDisplayStatus } from "../../providers/display-status.js";
+import { getEndpointPoolContext, getEndpointProfile } from "../../providers/endpoint-pools.js";
 import { pluralize } from "../../strings.js";
 import type { SettingsAction } from "../presentation/navigation.js";
 import type { Readiness } from "./readiness.js";
@@ -21,6 +22,7 @@ type BillingMode = ClientProductMetadata["billing"]["modes"][number];
 export type ProviderSettingsRowId =
   | "product"
   | "transport"
+  | "endpoint"
   | "billing"
   | "privacy"
   | "readiness"
@@ -72,10 +74,29 @@ function describeVerification(readiness: Readiness): string {
   }
 }
 
+/**
+ * On a billing-pool product the pane's own name already reads "OpenCode Go", so
+ * repeating the profile label here would state one thing twice; the URL is the
+ * fact the row still adds. Everywhere else the profile label names the region
+ * the URL only implies, so it leads and the URL explains it.
+ */
+function buildEndpointRow(productId: RunnableProductId, endpoint: string): ProviderSettingsRow {
+  if (getEndpointPoolContext(productId, endpoint)) {
+    return { id: "endpoint", kind: "fact", label: "Endpoint", value: endpoint };
+  }
+  return {
+    id: "endpoint",
+    kind: "fact",
+    label: "Endpoint",
+    value: getEndpointProfile(productId, endpoint)?.label ?? endpoint,
+    description: endpoint,
+  };
+}
+
 export function buildProviderSettingsRows(
   metadata: ClientMetadataPayload,
 ): readonly ProviderSettingsRow[] {
-  const { product, readiness } = metadata;
+  const { configuration, product, readiness } = metadata;
 
   return [
     {
@@ -91,6 +112,7 @@ export function buildProviderSettingsRows(
       label: "Transport",
       value: "Hosted API",
     },
+    ...(configuration ? [buildEndpointRow(product.productId, configuration.endpoint)] : []),
     {
       id: "billing",
       kind: "prose",

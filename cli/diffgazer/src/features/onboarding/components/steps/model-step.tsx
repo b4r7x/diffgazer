@@ -1,4 +1,11 @@
-import { getModelTierBadge, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import {
+  getEndpointPoolContext,
+  getModelBillingPool,
+  getModelTierBadge,
+  PRODUCT_REGISTRY,
+  poolBadgeLabel,
+  resolveSelectEndpoint,
+} from "@diffgazer/core/providers";
 import { useModelSource } from "@diffgazer/core/providers/hooks";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import type { ClientConfigurationSummary, ModelInfo } from "@diffgazer/core/schemas/config";
@@ -9,6 +16,7 @@ import { Button } from "../../../../components/ui/button";
 import { RadioGroup } from "../../../../components/ui/radio";
 import { Spinner } from "../../../../components/ui/spinner";
 import { useTerminalDimensions } from "../../../../hooks/use-terminal-dimensions";
+import { getModelDetail } from "../../../../lib/model-detail";
 import { useTheme } from "../../../../theme/provider";
 
 const MODEL_STEP_RESERVED_ROWS = 12;
@@ -21,25 +29,19 @@ interface ModelStepProps {
   isPreparing: boolean;
   onRetry: () => void;
   value?: string | null;
-  onChange: (modelId: string) => void;
+  /** `poolEndpoint` is the billing pool the row runs on, null when it is the bound one. */
+  onChange: (modelId: string, poolEndpoint: string | null) => void;
   isActive?: boolean;
   onDownBoundary?: () => void;
 }
 
-/**
- * The exact id leads the secondary line because it is the string this step saves
- * and a review pins: the catalog publishes distinct routes under one display
- * name (two OpenRouter entries are both "Nano Banana Pro"), so the name alone
- * cannot identify the model. The context blurb trails it, and when upstream
- * publishes no display name the two are equal and only the row title is shown.
- */
-function getModelDetail(model: ModelInfo): string {
-  const parts = model.id === model.name ? [] : [model.id];
-  if (model.description) parts.push(model.description);
-  return parts.join(" · ");
-}
-
-function ModelRowLabel({ model }: { model: ModelInfo }): ReactElement {
+function ModelRowLabel({
+  model,
+  poolBadge,
+}: {
+  model: ModelInfo;
+  poolBadge?: string;
+}): ReactElement {
   const tierBadge = getModelTierBadge(model.tier);
 
   return (
@@ -47,6 +49,7 @@ function ModelRowLabel({ model }: { model: ModelInfo }): ReactElement {
       <Text>{sanitizeTerminalText(model.name)}</Text>
       {model.recommended && <Badge variant="info">recommended</Badge>}
       {tierBadge && <Badge variant={tierBadge.variant}>{tierBadge.label}</Badge>}
+      {poolBadge && <Badge>{poolBadge}</Badge>}
     </Box>
   );
 }
@@ -81,7 +84,7 @@ interface DiscoveredModelsProps {
   configuration: ClientConfigurationSummary;
   subtitle: string;
   value?: string | null;
-  onChange: (modelId: string) => void;
+  onChange: (modelId: string, poolEndpoint: string | null) => void;
   isActive: boolean;
   onDownBoundary?: () => void;
 }
@@ -152,10 +155,30 @@ function DiscoveredModels({
     );
   }
 
-  const rowsWithDetail = source.models.map((model) => ({
-    model,
-    detail: getModelDetail(model),
-  }));
+  // No pool selector here: the endpoint step a moment earlier is the wallet
+  // control. The badge names the pool each row bills, and the save carries it,
+  // so a sibling-only row is reachable at first run without being written
+  // against a pool that cannot serve it.
+  const poolContext = getEndpointPoolContext(configuration.productId, configuration.endpoint);
+  const resolvePoolEndpoint = (modelId: string) => {
+    const model = source.models.find((candidate) => candidate.id === modelId);
+    if (!model) return null;
+    return (
+      resolveSelectEndpoint({
+        context: poolContext,
+        model,
+        boundEndpoint: configuration.endpoint,
+      }) ?? null
+    );
+  };
+  const rowsWithDetail = source.models.map((model) => {
+    const billingPool = getModelBillingPool(poolContext, model);
+    return {
+      model,
+      detail: getModelDetail(model),
+      poolBadge: poolBadgeLabel(billingPool),
+    };
+  });
   const rowLines = rowsWithDetail.some(({ detail }) => detail !== "")
     ? MODEL_ROW_LINES_WITH_DETAIL
     : 1;
@@ -165,7 +188,7 @@ function DiscoveredModels({
       <Text color={tokens.muted}>{subtitle}</Text>
       <RadioGroup
         value={value ?? undefined}
-        onChange={onChange}
+        onChange={(modelId) => onChange(modelId, resolvePoolEndpoint(modelId))}
         isActive={isActive}
         wrap={!onDownBoundary}
         onNavigationBoundaryReached={(direction) => {
@@ -173,11 +196,11 @@ function DiscoveredModels({
         }}
         maxVisibleItems={Math.max(1, Math.floor((rows - MODEL_STEP_RESERVED_ROWS) / rowLines))}
       >
-        {rowsWithDetail.map(({ model, detail }) => (
+        {rowsWithDetail.map(({ model, detail, poolBadge }) => (
           <RadioGroup.Item
             key={model.id}
             value={model.id}
-            label={<ModelRowLabel model={model} />}
+            label={<ModelRowLabel model={model} poolBadge={poolBadge} />}
             description={detail === "" ? undefined : sanitizeTerminalText(detail)}
           />
         ))}

@@ -1,4 +1,4 @@
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { getEndpointPoolContext, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { describe, expect, it } from "vitest";
 import { decodeConfigV2, selectConfigV2, serializeConfigV2 } from "./persistence/config.js";
 import {
@@ -177,6 +177,110 @@ describe("server V2 provider configuration records", () => {
     expect(decoded.status).toBe("unknown");
     if (decoded.status !== "unknown") return;
     expect(decoded.configurationId).toBe("qwen-legacy");
+  });
+
+  it("parses an opencode-zen record written before pool support and adds no persisted field", () => {
+    // A record in the shape a pre-pool build wrote: pool membership is derived
+    // from the already-persisted endpoint, so the shape must still be the one
+    // this build writes and reads back unchanged.
+    const prePoolRecord = {
+      schemaVersion: 2,
+      status: "supported",
+      configurationId: "opencode-primary",
+      revision: 4,
+      productId: "opencode-zen",
+      transportFamily: "hosted-api",
+      input: {
+        transportFamily: "hosted-api",
+        productId: "opencode-zen",
+        endpoint: "https://opencode.ai/zen/v1",
+      },
+      selectedModelId: "deepseek-v4-flash",
+      acknowledgement: {
+        noticeId: "opencode-zen-hosted-api",
+        noticeVersion: 2,
+        acceptedAt: "2026-07-31T12:00:00.000Z",
+      },
+      evidenceReference: "evidence-opencode-4",
+      budget,
+      createdAt: "2026-07-31T11:00:00.000Z",
+      updatedAt: "2026-07-31T12:00:00.000Z",
+    };
+
+    const decoded = decodeProviderConfigurationRecord(
+      encoder.encode(JSON.stringify(prePoolRecord)),
+    );
+    expect(decoded.status).toBe("supported");
+    if (decoded.status !== "supported") return;
+    expect(decoded.record).toEqual(prePoolRecord);
+    expect(Object.keys(SupportedProviderConfigurationRecordSchema.shape).sort()).toEqual([
+      "acknowledgement",
+      "budget",
+      "configurationId",
+      "createdAt",
+      "evidenceReference",
+      "input",
+      "productId",
+      "revision",
+      "schemaVersion",
+      "selectedModelId",
+      "status",
+      "transportFamily",
+      "updatedAt",
+    ]);
+    expect(Object.keys(decoded.record.input).sort()).toEqual([
+      "endpoint",
+      "productId",
+      "transportFamily",
+    ]);
+  });
+
+  it("reads a go-bound opencode-zen record exactly like a zen-bound one", () => {
+    // The pool is the persisted endpoint and nothing else: a Go-bound record
+    // differs from a Zen-bound one in that one string, and the pool it bills is
+    // derived back out of it on read rather than stored beside it.
+    const goRecord = {
+      ...supportedRecord(),
+      configurationId: "opencode-go",
+      productId: "opencode-zen",
+      input: {
+        transportFamily: "hosted-api",
+        productId: "opencode-zen",
+        endpoint: "https://opencode.ai/zen/go/v1",
+      },
+      // A model both pools serve, so the paired zen record below is a
+      // combination that can really exist.
+      selectedModelId: "deepseek-v4-flash",
+      acknowledgement: {
+        noticeId: "opencode-zen-hosted-api",
+        noticeVersion: 2,
+        acceptedAt: "2026-07-31T12:00:00.000Z",
+      },
+      evidenceReference: "evidence-opencode-go-4",
+    };
+    const zenRecord = {
+      ...goRecord,
+      input: { ...goRecord.input, endpoint: "https://opencode.ai/zen/v1" },
+    };
+
+    const go = decodeProviderConfigurationRecord(encoder.encode(JSON.stringify(goRecord)));
+    const zen = decodeProviderConfigurationRecord(encoder.encode(JSON.stringify(zenRecord)));
+    expect(go.status).toBe("supported");
+    expect(zen.status).toBe("supported");
+    if (go.status !== "supported" || zen.status !== "supported") return;
+    expect(go.record).toEqual(goRecord);
+    expect(go.record).toEqual({
+      ...zen.record,
+      input: { ...zen.record.input, endpoint: goRecord.input.endpoint },
+    });
+    // The derivation the round-trip exists to protect: the same two records
+    // report the pool they bill purely from the endpoint they stored.
+    expect(
+      getEndpointPoolContext(go.record.input.productId, go.record.input.endpoint)?.bound.id,
+    ).toBe("go");
+    expect(
+      getEndpointPoolContext(zen.record.input.productId, zen.record.input.endpoint)?.bound.id,
+    ).toBe("zen");
   });
 
   it("does not accept a supported record carrying secret input", () => {

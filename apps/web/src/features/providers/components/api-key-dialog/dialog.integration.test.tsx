@@ -5,7 +5,9 @@ import type { ProviderManagementOutcome } from "@diffgazer/core/providers/hooks"
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import {
   buildProviderRows,
+  configuredRow,
   makeReadiness,
+  OPENCODE_GO_CONFIGURATION,
   unconfiguredRow,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
@@ -178,6 +180,172 @@ describe("ApiKeyDialog acknowledgement and write-only secrets", () => {
     expect(keyInput).toHaveAttribute("aria-describedby", alert.id);
     expect(dialog.textContent).not.toContain("sk-test-key");
     expect(dialog).toBeInTheDocument();
+  });
+});
+
+const ZEN_ENDPOINT = "https://opencode.ai/zen/v1";
+const GO_ENDPOINT = "https://opencode.ai/zen/go/v1";
+
+describe("ApiKeyDialog endpoint choice", () => {
+  it("offers one option per endpoint profile, with the endpoint URL, when creating", () => {
+    renderSetupDialog(unconfiguredRow("opencode-zen"));
+
+    const group = screen.getByRole("radiogroup", { name: "Endpoint profile" });
+    expect(within(group).getByRole("radio", { name: /OpenCode Zen/ })).toBeChecked();
+    expect(within(group).getByRole("radio", { name: /OpenCode Go/ })).not.toBeChecked();
+    expect(within(group).getByText(ZEN_ENDPOINT)).toBeInTheDocument();
+    expect(within(group).getByText(GO_ENDPOINT)).toBeInTheDocument();
+  });
+
+  it("also offers the choice to the other multi-endpoint product", () => {
+    renderSetupDialog(unconfiguredRow("moonshot"));
+
+    const group = screen.getByRole("radiogroup", { name: "Endpoint profile" });
+    expect(within(group).getByRole("radio", { name: /International/ })).toBeChecked();
+    expect(within(group).getByRole("radio", { name: /Mainland China/ })).toBeInTheDocument();
+  });
+
+  it("binds the first endpoint profile when the choice is left untouched", async () => {
+    const user = userEvent.setup();
+    const { onCreate } = renderSetupDialog(unconfiguredRow("opencode-zen"));
+
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByLabelText(/OpenCode Zen API Key/i), "sk-zen");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ endpoint: ZEN_ENDPOINT }),
+      expect.anything(),
+    );
+  });
+
+  it("binds the chosen endpoint profile", async () => {
+    const user = userEvent.setup();
+    const { onCreate } = renderSetupDialog(unconfiguredRow("opencode-zen"));
+
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("radio", { name: /OpenCode Go/ }));
+    await user.type(within(dialog).getByLabelText(/OpenCode Zen API Key/i), "sk-go");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ endpoint: GO_ENDPOINT }),
+      expect.anything(),
+    );
+  });
+
+  it("binds the highlighted profile once the keyboard commits it", async () => {
+    const user = userEvent.setup();
+    const { onCreate } = renderSetupDialog(unconfiguredRow("opencode-zen"));
+
+    const dialog = screen.getByRole("dialog");
+    await waitFor(() =>
+      expect(within(dialog).getByRole("radio", { name: /OpenCode Zen/ })).toHaveFocus(),
+    );
+    await user.keyboard("{ArrowDown} ");
+    expect(within(dialog).getByRole("radio", { name: /OpenCode Go/ })).toBeChecked();
+
+    await user.type(within(dialog).getByLabelText(/OpenCode Zen API Key/i), "sk-go");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ endpoint: GO_ENDPOINT }),
+      expect.anything(),
+    );
+  });
+
+  it("keeps the first profile bound when arrows only pass through the group", async () => {
+    const user = userEvent.setup();
+    const { onCreate } = renderSetupDialog(unconfiguredRow("opencode-zen"));
+
+    const dialog = screen.getByRole("dialog");
+    await waitFor(() =>
+      expect(within(dialog).getByRole("radio", { name: /OpenCode Zen/ })).toHaveFocus(),
+    );
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+    expect(within(dialog).getByRole("radio", { name: /OpenCode Zen/ })).toBeChecked();
+
+    await user.type(within(dialog).getByLabelText(/OpenCode Zen API Key/i), "sk-zen");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ endpoint: ZEN_ENDPOINT }),
+      expect.anything(),
+    );
+  });
+
+  it("renders no endpoint control for a single-endpoint product and submits the same payload", async () => {
+    const user = userEvent.setup();
+    const { onCreate } = renderSetupDialog(unconfiguredRow("deepseek"));
+
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).queryByRole("radiogroup", { name: "Endpoint profile" }),
+    ).not.toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/DeepSeek API Key/i), "sk-deepseek");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onCreate.mock.calls[0]?.[0]).toEqual({
+      transportFamily: "hosted-api",
+      productId: "deepseek",
+      endpoint: "https://api.deepseek.com/v1",
+      credential: { kind: "literal", value: "sk-deepseek" },
+    });
+  });
+
+  it("states the bound endpoint read-only when re-keying, and keeps it on save", async () => {
+    const user = userEvent.setup();
+    const { onUpdate } = renderSetupDialog(configuredRow(OPENCODE_GO_CONFIGURATION));
+
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).queryByRole("radiogroup", { name: "Endpoint profile" }),
+    ).not.toBeInTheDocument();
+    expect(within(dialog).getByText("Endpoint: OpenCode Go")).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText(/OpenCode Zen API Key/i), "sk-rotated");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce());
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ input: expect.objectContaining({ endpoint: GO_ENDPOINT }) }),
+      expect.anything(),
+    );
+  });
+
+  it("joins the endpoint group to the dialog's arrow cycle", async () => {
+    const user = userEvent.setup();
+    renderSetupDialog(unconfiguredRow("opencode-zen"));
+
+    const zen = screen.getByRole("radio", { name: /OpenCode Zen/ });
+    const go = screen.getByRole("radio", { name: /OpenCode Go/ });
+    const paste = screen.getByRole("radio", { name: "Paste Key Now" });
+
+    await waitFor(() => expect(zen).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+    expect(go).toHaveFocus();
+
+    // Past the last endpoint the cycle hands over to the credential controls.
+    await user.keyboard("{ArrowDown}");
+    expect(paste).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    await waitFor(() => expect(go).toHaveFocus());
+
+    await user.keyboard("{ArrowUp}");
+    expect(zen).toHaveFocus();
+
+    // Above the first endpoint sits the [x], as it does above the first method.
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Close dialog" })).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(zen).toHaveFocus());
   });
 });
 

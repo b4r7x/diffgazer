@@ -119,6 +119,32 @@ export const OPENROUTER_CONFIGURATION = {
   availableActions: ["inspect", "select", "test", "update", "delete"],
 } satisfies ClientConfigurationSummary;
 
+/** The Zen endpoint of the one product whose endpoints are separate billing pools. */
+export const OPENCODE_ZEN_CONFIGURATION = {
+  configurationId: "opencode-zen-primary",
+  revision: 1,
+  status: "supported",
+  transportFamily: "hosted-api",
+  productId: "opencode-zen",
+  endpoint: "https://opencode.ai/zen/v1",
+  selectedModelId: null,
+  notices: [makeClientNotice("opencode-zen")],
+  availableActions: ["inspect", "select", "test", "update", "delete"],
+} satisfies ClientConfigurationSummary;
+
+/** The same product bound to its other pool: the Go endpoint bills separately. */
+export const OPENCODE_GO_CONFIGURATION = {
+  configurationId: "opencode-go",
+  revision: 1,
+  status: "supported",
+  transportFamily: "hosted-api",
+  productId: "opencode-zen",
+  endpoint: "https://opencode.ai/zen/go/v1",
+  selectedModelId: "deepseek-v4-flash",
+  notices: [makeClientNotice("opencode-zen")],
+  availableActions: ["inspect", "select", "test", "update", "delete"],
+} satisfies ClientConfigurationSummary;
+
 export function configurationStatus(
   configuration: ClientConfigurationSummary,
   readinessStatus: ReadinessStatus,
@@ -187,6 +213,18 @@ export function buildProviderRows(
   statuses: ConfigurationStatus[] = representativeConfigurationStatuses(),
 ): ProviderListRow[] {
   return mapProviderList(statuses);
+}
+
+/** The row a single configuration projects to, picked out of the full product list. */
+export function configuredRow(
+  configuration: ClientConfigurationSummary,
+  readinessStatus: ReadinessStatus = "ready",
+): ProviderListRow {
+  const row = mapProviderList([configurationStatus(configuration, readinessStatus)]).find(
+    (candidate) => candidate.configuration?.configurationId === configuration.configurationId,
+  );
+  if (!row) throw new Error(`Missing provider row: ${configuration.configurationId}`);
+  return row;
 }
 
 export function unconfiguredRow(productId: RunnableProductId): ProviderListRow {

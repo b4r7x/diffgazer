@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { acceptNotice, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { HostedApiProductId } from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { describe, expect, it, vi } from "vitest";
@@ -12,8 +12,8 @@ const okResponse = (body: unknown): Response =>
 const loadLiveModelLists = () => import("./live-model-lists.js");
 
 const KEY_BEARING_INPUTS = {
-  zai: { endpoint: "https://api.z.ai/api/paas/v4" },
-  "opencode-zen": { endpoint: "https://opencode.ai/zen/v1" },
+  zai: { endpoint: "https://api.z.ai/api/paas/v4", profileId: "general-payg" },
+  "opencode-zen": { endpoint: "https://opencode.ai/zen/v1", profileId: "zen" },
 } as const;
 
 async function seedConfiguration(
@@ -27,7 +27,7 @@ async function seedConfiguration(
     input: {
       transportFamily: "hosted-api",
       productId,
-      ...input,
+      endpoint: input.endpoint,
       ...(credential === null ? {} : { credential: { kind: "literal", value: credential } }),
     },
   });
@@ -44,7 +44,10 @@ const fetchCalls = (spy: { mock: { calls: unknown[][] } }) =>
 
 describe("resolveLiveModelList — key-bearing provider lists", () => {
   it.each(
-    Object.entries(KEY_BEARING_INPUTS) as [HostedApiProductId, { endpoint: string }][],
+    Object.entries(KEY_BEARING_INPUTS) as [
+      HostedApiProductId,
+      { endpoint: string; profileId: string },
+    ][],
   )("%s: requests {endpoint}/models with that configuration's own bearer credential", async (productId, input) => {
     const configurationId = await seedConfiguration(productId, input, `${productId}-secret`);
     const spy = vi
@@ -52,7 +55,11 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
       .mockResolvedValue(okResponse({ object: "list", data: [{ id: "model-a" }] }));
     const { resolveLiveModelList } = await loadLiveModelLists();
 
-    const list = await resolveLiveModelList({ configurationId, productId });
+    const list = await resolveLiveModelList({
+      configurationId,
+      productId,
+      endpoint: input.endpoint,
+    });
 
     expect(fetchCalls(spy)).toEqual([
       {
@@ -65,8 +72,16 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
       cached: false,
       models: [{ id: "model-a", tier: "unknown" }],
     });
+    // The list is stored under the endpoint-keyed name, so the profile it was
+    // fetched from can never be forgotten into a silent cross-pool cache hit.
     expect(
-      existsSync(join(diffgazerHome, "model-lists", `configuration-${configurationId}.json`)),
+      existsSync(
+        join(
+          diffgazerHome,
+          "model-lists",
+          `configuration-${configurationId}-${input.profileId}.json`,
+        ),
+      ),
     ).toBe(true);
   });
 
@@ -82,8 +97,16 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
       .mockResolvedValue(okResponse({ data: [{ id: "model-a" }] }));
     const { resolveLiveModelList } = await loadLiveModelLists();
 
-    await resolveLiveModelList({ configurationId: zaiId, productId: "zai" });
-    await resolveLiveModelList({ configurationId: zenId, productId: "opencode-zen" });
+    await resolveLiveModelList({
+      configurationId: zaiId,
+      productId: "zai",
+      endpoint: KEY_BEARING_INPUTS.zai.endpoint,
+    });
+    await resolveLiveModelList({
+      configurationId: zenId,
+      productId: "opencode-zen",
+      endpoint: KEY_BEARING_INPUTS["opencode-zen"].endpoint,
+    });
 
     expect(fetchCalls(spy)).toEqual([
       {
@@ -112,7 +135,11 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
     );
     const { resolveLiveModelList } = await loadLiveModelLists();
 
-    const list = await resolveLiveModelList({ configurationId, productId: "zai" });
+    const list = await resolveLiveModelList({
+      configurationId,
+      productId: "zai",
+      endpoint: KEY_BEARING_INPUTS.zai.endpoint,
+    });
 
     // `owned_by` is a vendor slug, not a display name; nothing here is a price.
     expect(list?.models).toEqual([
@@ -128,8 +155,16 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
       .mockResolvedValue(okResponse({ data: [{ id: "glm-4.7-flash" }] }));
     const { resolveLiveModelList } = await loadLiveModelLists();
 
-    const first = await resolveLiveModelList({ configurationId, productId: "zai" });
-    const second = await resolveLiveModelList({ configurationId, productId: "zai" });
+    const first = await resolveLiveModelList({
+      configurationId,
+      productId: "zai",
+      endpoint: KEY_BEARING_INPUTS.zai.endpoint,
+    });
+    const second = await resolveLiveModelList({
+      configurationId,
+      productId: "zai",
+      endpoint: KEY_BEARING_INPUTS.zai.endpoint,
+    });
 
     expect(spy).toHaveBeenCalledTimes(1);
     expect(first?.cached).toBe(false);
@@ -141,13 +176,20 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse({ data: [{ id: "glm-4.7" }] }));
     const { resolveLiveModelList } = await loadLiveModelLists();
 
-    const first = await resolveLiveModelList({ configurationId, productId: "zai" });
+    const first = await resolveLiveModelList({
+      configurationId,
+      productId: "zai",
+      endpoint: KEY_BEARING_INPUTS.zai.endpoint,
+    });
     rmSync(join(diffgazerHome, "credentials"), { recursive: true, force: true });
 
-    expect(await resolveLiveModelList({ configurationId, productId: "zai" })).toEqual({
-      ...first,
-      cached: true,
-    });
+    expect(
+      await resolveLiveModelList({
+        configurationId,
+        productId: "zai",
+        endpoint: KEY_BEARING_INPUTS.zai.endpoint,
+      }),
+    ).toEqual({ ...first, cached: true });
   });
 
   it("requests nothing when the configuration has no credential", async () => {
@@ -155,7 +197,13 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
     const spy = vi.spyOn(globalThis, "fetch");
     const { resolveLiveModelList } = await loadLiveModelLists();
 
-    expect(await resolveLiveModelList({ configurationId, productId: "zai" })).toBeNull();
+    expect(
+      await resolveLiveModelList({
+        configurationId,
+        productId: "zai",
+        endpoint: KEY_BEARING_INPUTS.zai.endpoint,
+      }),
+    ).toBeNull();
     expect(spy).not.toHaveBeenCalled();
   });
 
@@ -165,7 +213,11 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
     const { resolveLiveModelList } = await loadLiveModelLists();
 
     expect(
-      await resolveLiveModelList({ configurationId: "cfg-missing", productId: "zai" }),
+      await resolveLiveModelList({
+        configurationId: "cfg-missing",
+        productId: "zai",
+        endpoint: KEY_BEARING_INPUTS.zai.endpoint,
+      }),
     ).toBeNull();
     expect(spy).not.toHaveBeenCalled();
   });
@@ -190,8 +242,360 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
     } as Response);
     const { resolveLiveModelList } = await loadLiveModelLists();
 
-    expect(await resolveLiveModelList({ configurationId, productId })).toBeNull();
+    expect(
+      await resolveLiveModelList({ configurationId, productId, endpoint: input.endpoint }),
+    ).toBeNull();
     expect(existsSync(join(diffgazerHome, "model-lists"))).toBe(false);
+  });
+});
+
+describe("resolveLiveModelList — endpoint-keyed configuration caches", () => {
+  const GO_ENDPOINT = "https://opencode.ai/zen/go/v1";
+
+  it("refetches from the new endpoint after a pool switch instead of serving the old pool's fresh cache", async () => {
+    const configurationId = await seedConfiguration(
+      "opencode-zen",
+      KEY_BEARING_INPUTS["opencode-zen"],
+      "zen-secret",
+    );
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(okResponse({ data: [{ id: "zen-only-model" }] }))
+      .mockResolvedValueOnce(okResponse({ data: [{ id: "go-only-model" }] }));
+    const { resolveLiveModelList, readCachedLiveModelList } = await loadLiveModelLists();
+
+    const zenList = await resolveLiveModelList({
+      configurationId,
+      productId: "opencode-zen",
+      endpoint: KEY_BEARING_INPUTS["opencode-zen"].endpoint,
+    });
+    expect(zenList?.models).toEqual([{ id: "zen-only-model", tier: "unknown" }]);
+
+    const store = await loadStore();
+    const updated = await store.runConfigurationAction({
+      action: "update",
+      configurationId,
+      expectedRevision: 1,
+      input: { transportFamily: "hosted-api", productId: "opencode-zen", endpoint: GO_ENDPOINT },
+      acknowledgement: acceptNotice(PRODUCT_REGISTRY["opencode-zen"].notice),
+    });
+    if (!updated.ok) throw new Error(`expected endpoint switch: ${updated.error.message}`);
+
+    // Dispatch-time read for the new pool misses; the zen cache is never served for it.
+    expect(
+      readCachedLiveModelList({
+        kind: "configuration",
+        configurationId,
+        productId: "opencode-zen",
+        endpointProfileId: "go",
+      }),
+    ).toBeNull();
+
+    // Within the zen cache's 5-minute TTL, discovery still refetches from Go.
+    const goList = await resolveLiveModelList({
+      configurationId,
+      productId: "opencode-zen",
+      endpoint: GO_ENDPOINT,
+    });
+    expect(fetchCalls(spy).map((call) => call.url)).toEqual([
+      "https://opencode.ai/zen/v1/models",
+      `${GO_ENDPOINT}/models`,
+    ]);
+    expect(goList).toMatchObject({
+      cached: false,
+      models: [{ id: "go-only-model", tier: "unknown" }],
+    });
+    expect(
+      readCachedLiveModelList({
+        kind: "configuration",
+        configurationId,
+        productId: "opencode-zen",
+        endpointProfileId: "go",
+      })?.models,
+    ).toEqual([{ id: "go-only-model", tier: "unknown" }]);
+  });
+
+  it("keys and fetches from the caller's endpoint on a cache miss, reading the store only for the credential", async () => {
+    const configurationId = await seedConfiguration(
+      "opencode-zen",
+      KEY_BEARING_INPUTS["opencode-zen"],
+      "zen-secret",
+    );
+    const store = await loadStore();
+    const updated = await store.runConfigurationAction({
+      action: "update",
+      configurationId,
+      expectedRevision: 1,
+      input: { transportFamily: "hosted-api", productId: "opencode-zen", endpoint: GO_ENDPOINT },
+      acknowledgement: acceptNotice(PRODUCT_REGISTRY["opencode-zen"].notice),
+    });
+    if (!updated.ok) throw new Error(`expected endpoint switch: ${updated.error.message}`);
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(okResponse({ data: [{ id: "zen-only-model" }] }));
+    const { resolveLiveModelList, readCachedLiveModelList } = await loadLiveModelLists();
+
+    // The store has moved to Go between the caller's own read and this one. The
+    // endpoint the caller passed decides the URL and the key together, so the
+    // list a Zen request asked for can never be stored under Go's name.
+    const list = await resolveLiveModelList({
+      configurationId,
+      productId: "opencode-zen",
+      endpoint: KEY_BEARING_INPUTS["opencode-zen"].endpoint,
+    });
+
+    expect(fetchCalls(spy)).toEqual([
+      {
+        url: `${KEY_BEARING_INPUTS["opencode-zen"].endpoint}/models`,
+        headers: { authorization: "Bearer zen-secret" },
+        redirect: "error",
+      },
+    ]);
+    expect(list?.models).toEqual([{ id: "zen-only-model", tier: "unknown" }]);
+    expect(
+      readCachedLiveModelList({
+        kind: "configuration",
+        configurationId,
+        productId: "opencode-zen",
+        endpointProfileId: "zen",
+      })?.models,
+    ).toEqual([{ id: "zen-only-model", tier: "unknown" }]);
+    expect(
+      existsSync(join(diffgazerHome, "model-lists", `configuration-${configurationId}-go.json`)),
+    ).toBe(false);
+  });
+
+  it("treats a file under the legacy configuration-<id> key as a cache miss, not a crash", async () => {
+    const configurationId = await seedConfiguration("zai", KEY_BEARING_INPUTS.zai, "zai-secret");
+    mkdirSync(join(diffgazerHome, "model-lists"), { recursive: true });
+    writeFileSync(
+      join(diffgazerHome, "model-lists", `configuration-${configurationId}.json`),
+      JSON.stringify({
+        models: [{ id: "legacy-model", tier: "unknown" }],
+        fetchedAt: new Date().toISOString(),
+        shapeVersion: 2,
+      }),
+    );
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(okResponse({ data: [{ id: "current-model" }] }));
+    const { resolveLiveModelList, readCachedLiveModelList } = await loadLiveModelLists();
+
+    expect(
+      readCachedLiveModelList({
+        kind: "configuration",
+        configurationId,
+        productId: "zai",
+        endpointProfileId: KEY_BEARING_INPUTS.zai.profileId,
+      }),
+    ).toBeNull();
+
+    const list = await resolveLiveModelList({
+      configurationId,
+      productId: "zai",
+      endpoint: KEY_BEARING_INPUTS.zai.endpoint,
+    });
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(list?.models).toEqual([{ id: "current-model", tier: "unknown" }]);
+  });
+});
+
+describe("resolveSiblingLiveModelList", () => {
+  const GO_PROFILE = requireValue(
+    PRODUCT_REGISTRY["opencode-zen"].configuration.endpoints.find((profile) => profile.id === "go"),
+    "go endpoint profile",
+  );
+
+  it("fetches the sibling pool's list with the configuration's own bearer credential and caches it under the sibling key", async () => {
+    const configurationId = await seedConfiguration(
+      "opencode-zen",
+      KEY_BEARING_INPUTS["opencode-zen"],
+      "zen-secret",
+    );
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(okResponse({ data: [{ id: "go-model" }] }));
+    const { resolveSiblingLiveModelList, readCachedLiveModelList } = await loadLiveModelLists();
+
+    const list = await resolveSiblingLiveModelList({
+      configurationId,
+      productId: "opencode-zen",
+      siblingProfile: GO_PROFILE,
+    });
+
+    expect(fetchCalls(spy)).toEqual([
+      {
+        url: "https://opencode.ai/zen/go/v1/models",
+        headers: { authorization: "Bearer zen-secret" },
+        redirect: "error",
+      },
+    ]);
+    expect(list).toMatchObject({
+      cached: false,
+      models: [{ id: "go-model", tier: "unknown" }],
+    });
+    expect(
+      existsSync(join(diffgazerHome, "model-lists", `configuration-${configurationId}-go.json`)),
+    ).toBe(true);
+    expect(
+      readCachedLiveModelList({
+        kind: "configuration",
+        configurationId,
+        productId: "opencode-zen",
+        endpointProfileId: "go",
+      })?.models,
+    ).toEqual([{ id: "go-model", tier: "unknown" }]);
+  });
+
+  it("degrades to null when the sibling fetch rejects", async () => {
+    const configurationId = await seedConfiguration(
+      "opencode-zen",
+      KEY_BEARING_INPUTS["opencode-zen"],
+      "zen-secret",
+    );
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
+    const { resolveSiblingLiveModelList } = await loadLiveModelLists();
+
+    await expect(
+      resolveSiblingLiveModelList({
+        configurationId,
+        productId: "opencode-zen",
+        siblingProfile: GO_PROFILE,
+      }),
+    ).resolves.toBeNull();
+  });
+
+  it("gives up on a sibling list that keeps the picker waiting, and caches it when it lands", async () => {
+    const configurationId = await seedConfiguration(
+      "opencode-zen",
+      KEY_BEARING_INPUTS["opencode-zen"],
+      "zen-secret",
+    );
+    let answer: (response: Response) => void = () => {};
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve;
+        }),
+    );
+    const { resolveSiblingLiveModelList, readCachedLiveModelList, SIBLING_LIST_DEADLINE_MS } =
+      await loadLiveModelLists();
+
+    // The bound pool's own list is often a cache hit, so this leg decides how
+    // long the picker waits: the whole probe — credential read included — must
+    // give up at the deadline and not a moment later.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const flushEventLoop = () => new Promise((resolve) => setImmediate(resolve));
+    let settled = false;
+    const pending = resolveSiblingLiveModelList({
+      configurationId,
+      productId: "opencode-zen",
+      siblingProfile: GO_PROFILE,
+    });
+    void pending.then(() => {
+      settled = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(SIBLING_LIST_DEADLINE_MS - 1);
+    await flushEventLoop();
+    expect(settled).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(pending).resolves.toBeNull();
+    vi.useRealTimers();
+
+    // The fetch runs on past the deadline and still warms the cache.
+    await vi.waitFor(() => expect(spy).toHaveBeenCalled());
+    answer(okResponse({ data: [{ id: "go-model" }] }));
+    await vi.waitFor(() =>
+      expect(
+        readCachedLiveModelList({
+          kind: "configuration",
+          configurationId,
+          productId: "opencode-zen",
+          endpointProfileId: "go",
+        })?.models,
+      ).toEqual([{ id: "go-model", tier: "unknown" }]),
+    );
+  });
+
+  it("gives up at the deadline when the credential read itself hangs, without touching the network", async () => {
+    const configurationId = await seedConfiguration(
+      "opencode-zen",
+      KEY_BEARING_INPUTS["opencode-zen"],
+      "zen-secret",
+    );
+    // The credential read reaches the OS keyring, which has no abort signal: a
+    // locked keychain must not hold the picker open past the sibling deadline.
+    const store = await loadStore();
+    vi.spyOn(store, "readCurrentState").mockImplementation(() => new Promise<never>(() => {}));
+    const spy = vi.spyOn(globalThis, "fetch");
+    const { resolveSiblingLiveModelList, SIBLING_LIST_DEADLINE_MS } = await loadLiveModelLists();
+
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const flushEventLoop = () => new Promise((resolve) => setImmediate(resolve));
+    let settled = false;
+    const pending = resolveSiblingLiveModelList({
+      configurationId,
+      productId: "opencode-zen",
+      siblingProfile: GO_PROFILE,
+    });
+    void pending.then(() => {
+      settled = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(SIBLING_LIST_DEADLINE_MS - 1);
+    await flushEventLoop();
+    expect(settled).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await flushEventLoop();
+    expect(settled).toBe(true);
+    await expect(pending).resolves.toBeNull();
+    vi.useRealTimers();
+
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("requests nothing and returns null when the configuration has no credential", async () => {
+    const configurationId = await seedConfiguration(
+      "opencode-zen",
+      KEY_BEARING_INPUTS["opencode-zen"],
+      null,
+    );
+    const spy = vi.spyOn(globalThis, "fetch");
+    const { resolveSiblingLiveModelList } = await loadLiveModelLists();
+
+    expect(
+      await resolveSiblingLiveModelList({
+        configurationId,
+        productId: "opencode-zen",
+        siblingProfile: GO_PROFILE,
+      }),
+    ).toBeNull();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("requests nothing and returns null for a product whose model list is public", async () => {
+    const configurationId = await seedConfiguration(
+      "openrouter",
+      { endpoint: "https://openrouter.ai/api/v1" },
+      "openrouter-secret",
+    );
+    const spy = vi.spyOn(globalThis, "fetch");
+    const { resolveSiblingLiveModelList } = await loadLiveModelLists();
+
+    expect(
+      await resolveSiblingLiveModelList({
+        configurationId,
+        productId: "openrouter",
+        siblingProfile: requireValue(
+          PRODUCT_REGISTRY.openrouter.configuration.endpoints[0],
+          "openrouter endpoint profile",
+        ),
+      }),
+    ).toBeNull();
+    expect(spy).not.toHaveBeenCalled();
   });
 });
 
@@ -225,7 +629,11 @@ describe("resolveLiveModelList — public products", () => {
     );
     const { resolveLiveModelList } = await loadLiveModelLists();
 
-    const list = await resolveLiveModelList({ configurationId, productId: "openrouter" });
+    const list = await resolveLiveModelList({
+      configurationId,
+      productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
+    });
 
     expect(fetchCalls(spy)).toEqual([
       { url: "https://openrouter.ai/api/v1/models", headers: {}, redirect: "error" },
@@ -260,12 +668,16 @@ describe("readCachedLiveModelList — dispatch-time capability reads", () => {
       }),
     );
     const { resolveLiveModelList, readCachedLiveModelList } = await loadLiveModelLists();
-    await resolveLiveModelList({ configurationId, productId: "openrouter" });
+    await resolveLiveModelList({
+      configurationId,
+      productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
+    });
 
     vi.useFakeTimers();
     try {
       vi.setSystemTime(Date.now() + 6 * 60 * 1000);
-      const list = readCachedLiveModelList({ configurationId, productId: "openrouter" });
+      const list = readCachedLiveModelList({ kind: "public", productId: "openrouter" });
       expect(list?.cached).toBe(true);
       expect(list?.models.find((model) => model.id === "provider/strict-model")).toMatchObject({
         structuredOutput: true,
@@ -278,7 +690,14 @@ describe("readCachedLiveModelList — dispatch-time capability reads", () => {
   it("returns null for a configuration whose list was never fetched", async () => {
     const configurationId = await seedConfiguration("zai", KEY_BEARING_INPUTS.zai, "zai-secret");
     const { readCachedLiveModelList } = await loadLiveModelLists();
-    expect(readCachedLiveModelList({ configurationId, productId: "zai" })).toBeNull();
+    expect(
+      readCachedLiveModelList({
+        kind: "configuration",
+        configurationId,
+        productId: "zai",
+        endpointProfileId: KEY_BEARING_INPUTS.zai.profileId,
+      }),
+    ).toBeNull();
   });
 
   it("treats a pre-shapeVersion cache as expired on the picker path but still serves it at dispatch", async () => {
@@ -306,12 +725,16 @@ describe("readCachedLiveModelList — dispatch-time capability reads", () => {
     const { resolveLiveModelList, readCachedLiveModelList } = await loadLiveModelLists();
 
     // Dispatch path stays no-network: stale capability evidence beats guessing.
-    const dispatchList = readCachedLiveModelList({ configurationId, productId: "openrouter" });
+    const dispatchList = readCachedLiveModelList({ kind: "public", productId: "openrouter" });
     expect(dispatchList?.models[0]?.id).toBe("provider/old-shape-model");
     expect(spy).not.toHaveBeenCalled();
 
     // Picker path refetches despite the fresh timestamp, healing the shape.
-    const pickerList = await resolveLiveModelList({ configurationId, productId: "openrouter" });
+    const pickerList = await resolveLiveModelList({
+      configurationId,
+      productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
+    });
     expect(spy).toHaveBeenCalledTimes(1);
     expect(pickerList?.models[0]).toMatchObject({
       id: "provider/reasoning-model",
@@ -342,7 +765,11 @@ describe("resolveLiveModelList — Gemini's OpenAI-compat list", () => {
     );
     const { resolveLiveModelList } = await loadLiveModelLists();
 
-    const list = await resolveLiveModelList({ configurationId, productId: "gemini" });
+    const list = await resolveLiveModelList({
+      configurationId,
+      productId: "gemini",
+      endpoint: GEMINI_ENDPOINT,
+    });
 
     expect(fetchCalls(spy)).toEqual([
       {

@@ -2,8 +2,13 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
+import {
+  expectActiveOptionText,
+  focusListbox,
+  itemId,
+  TestList,
+} from "../../testing/internal/navigation-test-list.js";
 import { useNavigation } from "../use-navigation.js";
-import { expectActiveOptionText, focusListbox, itemId, TestList } from "./test-list.js";
 
 function FocusedActionList({
   onSelect,

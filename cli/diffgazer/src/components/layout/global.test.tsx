@@ -2,6 +2,7 @@ import {
   configurationStatus,
   GEMINI_CONFIGURATION,
   makeConfigurationInitResponse,
+  OPENCODE_GO_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { Text } from "ink";
 import stripAnsi from "strip-ansi";
@@ -55,6 +56,17 @@ describe("GlobalLayout", () => {
 
     await vi.waitFor(() => expect(lastFrame()).toContain("Google Gemini"));
     expect(lastFrame()).toContain("Gemini 2.5 Flash");
+  });
+
+  test("headers a pool-bound configuration as the pool it bills, not the product", async () => {
+    initState.data = makeConfigurationInitResponse([
+      configurationStatus(OPENCODE_GO_CONFIGURATION, "ready"),
+    ]);
+
+    const { lastFrame } = renderRootFrame(120, 24, <Text>content</Text>);
+
+    await vi.waitFor(() => expect(stripAnsi(lastFrame() ?? "")).toContain("OpenCode Go"));
+    expect(stripAnsi(lastFrame() ?? "")).not.toContain("OpenCode Zen");
   });
 
   test("joins distinct header chip segments with a separator", async () => {

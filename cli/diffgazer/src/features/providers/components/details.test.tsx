@@ -8,7 +8,9 @@ import { requireValue } from "@diffgazer/core/testing/assertions";
 import {
   buildProviderRows,
   configurationStatus,
+  configuredRow,
   GEMINI_CONFIGURATION,
+  OPENCODE_GO_CONFIGURATION,
   unconfiguredRow,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { cleanup, render } from "ink-testing-library";
@@ -145,6 +147,20 @@ describe("ProviderDetails", () => {
     for (const line of row.product.notice.billing) {
       expect(frame).not.toContain(line.replace(/\s+/g, " "));
     }
+  });
+
+  test("states a bound pool once: the name says it, the endpoint row gives the URL", () => {
+    const frame = renderDetails(configuredRow(OPENCODE_GO_CONFIGURATION));
+
+    expect(frame).toContain("Name : OpenCode Go");
+    expect(frame).toContain("Endpoint : https://opencode.ai/zen/go/v1");
+    // The pane used to read "OpenCode Go" as the name, the endpoint value and
+    // its description — one thing said three times.
+    expect(frame).not.toContain("Endpoint : OpenCode Go");
+  });
+
+  test("says nothing about an endpoint before a configuration is bound", () => {
+    expect(renderDetails(unconfiguredRow("opencode-zen"))).not.toContain("Endpoint :");
   });
 
   test("says nothing to remediate on a ready provider", () => {

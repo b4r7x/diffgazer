@@ -219,14 +219,15 @@ describe("CommandPalette", () => {
     );
 
     const input = screen.getByRole("combobox") as HTMLInputElement;
-    await user.type(input, "item-42");
+    // Pasted, not typed: seven keystrokes would re-filter and re-mount 200 rows
+    // seven times over to prove the same single-query claim.
+    await user.click(input);
+    await user.paste("item-42");
     expect(input.value).toBe("item-42");
 
-    await waitFor(() => {
-      const visible = screen.getAllByRole("option");
-      expect(visible).toHaveLength(1);
-      expect(visible[0]).toHaveAccessibleName(/^item-42\b/);
-    });
+    const visible = screen.getAllByRole("option");
+    expect(visible).toHaveLength(1);
+    expect(visible[0]).toHaveAccessibleName(/^item-42\b/);
   });
 
   it("activates item on click, calls onSelect, closes palette, and skips disabled items", async () => {

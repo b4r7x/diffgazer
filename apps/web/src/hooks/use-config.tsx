@@ -10,7 +10,7 @@ import {
   useTestConfiguration,
   useUpdateConfiguration,
 } from "@diffgazer/core/api/hooks";
-import { getCatalogModelName, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { getCatalogModelName, getProviderDisplay } from "@diffgazer/core/providers";
 import {
   type ClientConfigurationAction,
   type ClientConfigurationActionResponse,
@@ -21,6 +21,7 @@ import {
   type ConfigurationRevision,
   type ConfigurationStatus,
   type ExactModelId,
+  type HostedApiEndpoint,
   type Readiness,
   type ReadinessAcknowledgement,
   type RunnableProductId,
@@ -66,7 +67,12 @@ interface ConfigActionsContextValue {
     acknowledgement?: AcceptedAcknowledgement;
   }) => Promise<ClientConfigurationActionResponse>;
   inspectConfiguration: (configurationId: ConfigurationId) => Promise<void>;
-  selectConfiguration: (configurationId: ConfigurationId, modelId: ExactModelId) => Promise<void>;
+  /** `endpoint` moves the billing pool with the model; omitted keeps the bound pool. */
+  selectConfiguration: (
+    configurationId: ConfigurationId,
+    modelId: ExactModelId,
+    endpoint?: HostedApiEndpoint,
+  ) => Promise<void>;
   testConfiguration: (
     configurationId: ConfigurationId,
   ) => Promise<Extract<ClientConfigurationActionResponse, { action: "test" }>>;
@@ -131,9 +137,13 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       isReady: selectedReadiness?.ready ?? false,
       isConfigured: selectedConfiguration != null,
       provider:
-        selectedProductId === undefined
+        selectedConfiguration === null
           ? undefined
-          : PRODUCT_REGISTRY[selectedProductId].presentation.name,
+          : getProviderDisplay(
+              selectedConfiguration.productId,
+              undefined,
+              selectedConfiguration.endpoint,
+            ),
       model: selectedConfiguration?.selectedModelId
         ? getCatalogModelName(
             selectedConfiguration.productId,
@@ -161,8 +171,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       inspectConfiguration: async (configurationId) => {
         await inspectConfigurationMutate(configurationId);
       },
-      selectConfiguration: async (configurationId, modelId) => {
-        await selectConfigurationMutate({ configurationId, modelId });
+      selectConfiguration: async (configurationId, modelId, endpoint) => {
+        await selectConfigurationMutate({ configurationId, modelId, endpoint });
       },
       testConfiguration: testConfigurationMutate,
       updateConfiguration: async (input) => {

@@ -14,6 +14,7 @@ import type {
 } from "@diffgazer/core/schemas/config";
 import { log } from "../../log.js";
 import type { LiveModel, LiveModelList } from "../live-model-lists.js";
+import { endpointProfileIdsForModel, type PoolMembership } from "./pool-membership.js";
 
 export type CatalogTierSource = "live" | "cache" | "snapshot";
 
@@ -179,10 +180,68 @@ const providerModelsResponse = (
     ? { models, fetchedAt, source, cached: true }
     : { models, fetchedAt, source, cached: false };
 
+/**
+ * Pool labels for a dual-pool configuration's rows: every row a source observed
+ * carries the profile ids that serve it, so the picker can say which wallet the
+ * row bills and the select can move the pool along with the model. Nothing is
+ * dropped — both pools are the same product behind the same key. Rows whose
+ * membership no source carried keep their place unlabeled.
+ *
+ * `boundLiveIds` is null when the bound pool has no live list. When it has one
+ * it is authoritative for that pool, so a row it does not name loses its bound
+ * label even where the catalog still claims it: the picker must never offer a
+ * route as billable on a wallet whose own list has stopped serving it.
+ */
+const poolLabelledRows = (
+  models: readonly ModelInfo[],
+  membership: PoolMembership | null,
+  boundLiveIds: ReadonlySet<string> | null,
+): ModelInfo[] => {
+  if (!membership) return [...models];
+  return models.map((model) => {
+    const inBoundLiveList = boundLiveIds?.has(model.id) ?? false;
+    const observed = endpointProfileIdsForModel(membership, model.id, { inBoundLiveList });
+    const served =
+      boundLiveIds && !inBoundLiveList
+        ? observed?.filter((profileId) => profileId !== membership.boundProfileId)
+        : observed;
+    return served === undefined || served.length === 0
+      ? model
+      : { ...model, endpointProfileIds: [...served] };
+  });
+};
+
+/**
+ * Catalog rows the bound pool's live list does not carry but the sibling pool
+ * is observed to serve. The live list is authoritative for the pool it was
+ * fetched from and for that pool only, so on its own it would shrink the picker
+ * to one wallet's routes; the sibling's rows are real and reachable by moving
+ * the pool with the model, so they join the list instead of being thrown away.
+ * A row the bound list named and the merge withheld stays withheld.
+ */
+const siblingServedRows = (
+  offered: readonly ModelInfo[],
+  merged: readonly ModelInfo[],
+  membership: PoolMembership | null,
+  boundLiveIds: ReadonlySet<string>,
+): ModelInfo[] => {
+  if (!membership) return [];
+  const mergedIds = new Set(merged.map((model) => model.id));
+  return offered.filter(
+    (model) =>
+      !mergedIds.has(model.id) &&
+      !boundLiveIds.has(model.id) &&
+      (endpointProfileIdsForModel(membership, model.id, { inBoundLiveList: false }) ?? []).includes(
+        membership.siblingProfileId,
+      ),
+  );
+};
+
 export const providerModelsFromTier = (
   tier: CatalogTier,
   productId: RunnableProductId,
   liveList: LiveModelList | null,
+  poolMembership: PoolMembership | null = null,
 ): ProviderModelsResponse => {
   const offered = modelInfoFromBoundedObservation(
     tier.catalog,
@@ -190,17 +249,29 @@ export const providerModelsFromTier = (
     observationSourceForResult(tier.source),
     tier.fetchedAt,
   );
-  if (!liveList) return providerModelsResponse(offered, tier.fetchedAt, tier.source);
+  const catalogOnly = (): ProviderModelsResponse =>
+    providerModelsResponse(
+      poolLabelledRows(offered, poolMembership, null),
+      tier.fetchedAt,
+      tier.source,
+    );
+  if (!liveList) return catalogOnly();
+
   const merged = mergeLiveModelList(tier.catalog, productId, offered, liveList.models);
   if (merged.length === 0) {
     // A list naming only ids the product policy rejects (a provider that lists
     // aliases instead of exact ids) must not blank a picker the catalog can
     // still fill.
     log("info", "live_model_list_ignored", { productId });
-    return providerModelsResponse(offered, tier.fetchedAt, tier.source);
+    return catalogOnly();
   }
+  const boundLiveIds = new Set(liveList.models.map((model) => model.id));
+  const rows = [
+    ...merged,
+    ...siblingServedRows(offered, merged, poolMembership, boundLiveIds),
+  ].sort(compareModelsNewestFirst);
   return providerModelsResponse(
-    merged,
+    poolLabelledRows(rows, poolMembership, boundLiveIds),
     liveList.fetchedAt,
     liveList.cached ? "provider-cache" : "provider-live",
   );

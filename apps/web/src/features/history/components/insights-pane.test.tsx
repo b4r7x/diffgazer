@@ -28,12 +28,13 @@ describe("HistoryInsightsPane", () => {
     expect(screen.getByText("4m 12s")).toBeInTheDocument();
   });
 
-  it("states the pass and the run's fact line instead of five zero bars for a clean run", () => {
-    const zeros: SeverityCounts = { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 };
+  // The page withholds the counts for a clean run - five zero bars are not the
+  // verdict - so the pane is rendered here the way that page renders it.
+  it("states the pass and the run's fact line instead of a severity breakdown for a clean run", () => {
     render(
       <HistoryInsightsPane
         runId="run-42"
-        severityCounts={zeros}
+        severityCounts={null}
         cleanRun={{
           statement: "Passed — no issues found",
           factLine: "No issues across 4 files · 2 lenses · 3s",

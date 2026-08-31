@@ -43,6 +43,21 @@ describe("areDraftsEqual", () => {
     expect(areDraftsEqual(draft, { ...draft, selectedModelId: "some-other-model" })).toBe(false);
   });
 
+  it("treats a changed billing pool as unequal, even under the same model id", () => {
+    const draft = getInitialWizardData("opencode-zen");
+
+    expect(
+      areDraftsEqual(
+        { ...draft, selectedModelId: "deepseek-v4-flash", selectedModelEndpoint: null },
+        {
+          ...draft,
+          selectedModelId: "deepseek-v4-flash",
+          selectedModelEndpoint: "https://opencode.ai/zen/go/v1",
+        },
+      ),
+    ).toBe(false);
+  });
+
   it("reports drafts that differ only in acknowledgement status as unequal", () => {
     const draft = getInitialWizardData("gemini");
 

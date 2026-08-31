@@ -1,15 +1,18 @@
-import { CREDENTIAL_ENV_VARS, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import { HOSTED_API_PRODUCT_IDS, type HostedApiProductId } from "@diffgazer/core/schemas/config";
+/**
+ * The offline hosted conformance matrix: the observation shapes every case
+ * reports, the harness that drives one mock case through the production
+ * adapter, and the REQ-084/085/086 case tables. Every request here is stubbed;
+ * the network-bearing probes live in `live-probe.ts`.
+ */
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import type { HostedApiProductId } from "@diffgazer/core/schemas/config";
 import type { EvidenceKey, TerminalOutcome } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
-import { z } from "zod";
 import {
   DEFAULT_HOSTED_REVIEW_SCHEMA,
   executeHostedReview,
   type HostedExecutionContext,
 } from "./transport.js";
-
-export const HOSTED_LIVE_PROBE_OPT_IN_ENV = "DIFFGAZER_LIVE_PROBES" as const;
 
 type HostedConformanceRequirement = "REQ-084" | "REQ-085" | "REQ-086";
 
@@ -62,21 +65,13 @@ export type HostedMockConformanceCase = Readonly<{
   expectedEndpoint?: string;
 }>;
 
-export type HostedLiveProbeDescriptor = Readonly<{
-  productId: HostedApiProductId;
-  credentialEnv: string;
-  /** Null when the product suggests no model; the live probe discovers one instead. */
-  modelId: string | null;
-  normalizedEndpoint?: string;
-}>;
-
 /** Stand-in model id for mock cases, whose requests never leave the process. */
 const MOCK_MODEL_ID = "model-1";
 const SCHEMA_SHA256 = "1".repeat(64);
 const CREDENTIAL_REFERENCE_IDENTITY = "3".repeat(64);
 const TEST_CREDENTIAL = "hosted-conformance-synthetic-credential";
 
-const STRUCTURED_OUTPUT_SCHEMA = {
+export const STRUCTURED_OUTPUT_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
@@ -104,7 +99,7 @@ const LONG_DIFF_PROMPT = `Review this diff:\n${"@@ -1,1 +1,1 @@\n-old\n+new\n".r
  * `discovered-exact` product rotates its routes, so its ids come from discovery
  * and a pinned guess would name a dead route.
  */
-function suggestedModelId(productId: HostedApiProductId): string | null {
+export function suggestedModelId(productId: HostedApiProductId): string | null {
   const policy = PRODUCT_REGISTRY[productId].modelPolicy;
   if ("suggestedModelId" in policy && policy.suggestedModelId) {
     return policy.suggestedModelId;
@@ -114,13 +109,13 @@ function suggestedModelId(productId: HostedApiProductId): string | null {
   return null;
 }
 
-function defaultEndpoint(productId: HostedApiProductId): string {
+export function defaultEndpoint(productId: HostedApiProductId): string {
   return (
     PRODUCT_REGISTRY[productId].configuration.endpoints[0]?.endpoint ?? "https://example.invalid/v1"
   );
 }
 
-function evidenceKeyFor(
+export function evidenceKeyFor(
   productId: HostedApiProductId,
   patch: Partial<Extract<EvidenceKey, { transportFamily: "hosted-api" }>> = {},
 ): EvidenceKey {
@@ -197,38 +192,11 @@ function hostedContext(fetchFn: typeof fetch): HostedExecutionContext {
   };
 }
 
-export function isHostedLiveProbeOptIn(): boolean {
-  return process.env[HOSTED_LIVE_PROBE_OPT_IN_ENV] === "1";
-}
-
 export function canProduceReadyEvidence(
   observation: HostedConformanceObservation | HostedMockObservation,
 ): boolean {
   if (observation.source === "mock") return false;
-  if (observation.status === "skipped") return false;
   return observation.status === "passed" && observation.outcome === "completed";
-}
-
-export function reportHostedLiveSkipped(
-  descriptor: HostedLiveProbeDescriptor,
-  reason: HostedConformanceSkipReason,
-): HostedConformanceObservation {
-  return {
-    status: "skipped",
-    requirement: "REQ-084",
-    caseId: `live:${descriptor.productId}`,
-    productId: descriptor.productId,
-    skipReason: reason,
-    source: "live",
-  };
-}
-
-export function resolveHostedLiveSkipReason(
-  descriptor: HostedLiveProbeDescriptor,
-): HostedConformanceSkipReason | null {
-  if (!isHostedLiveProbeOptIn()) return "live-probes-disabled";
-  if (!process.env[descriptor.credentialEnv]) return "credential-missing";
-  return null;
 }
 
 export async function runHostedMockConformanceCase(
@@ -519,84 +487,3 @@ export const HOSTED_REQ_086_CASES: readonly HostedMockConformanceCase[] = DEPTH_
     expectedEndpoint: defaultEndpoint("openrouter"),
   }),
 );
-
-export const HOSTED_LIVE_PROBE_DESCRIPTORS: readonly HostedLiveProbeDescriptor[] =
-  HOSTED_API_PRODUCT_IDS.map((productId) => ({
-    productId,
-    credentialEnv: CREDENTIAL_ENV_VARS[productId],
-    modelId: suggestedModelId(productId),
-    normalizedEndpoint: defaultEndpoint(productId),
-  }));
-
-const LiveModelListSchema = z.object({
-  data: z.array(z.object({ id: z.string().min(1) })).nonempty(),
-});
-
-/**
- * The first model the product's own `/models` list names, or null when the list
- * cannot be read — the caller reports that as a skip, never a failed probe,
- * because an unreadable list is a missing prerequisite and not a verdict.
- */
-async function discoverLiveModelId(
-  descriptor: HostedLiveProbeDescriptor,
-  credential: string,
-): Promise<string | null> {
-  const endpoint = descriptor.normalizedEndpoint ?? defaultEndpoint(descriptor.productId);
-  const response = await globalThis
-    .fetch(`${endpoint}/models`, { headers: { authorization: `Bearer ${credential}` } })
-    .catch(() => null);
-  if (!response?.ok) return null;
-
-  const body = await response.json().catch(() => null);
-  const parsed = LiveModelListSchema.safeParse(body);
-  return parsed.success ? (parsed.data.data[0]?.id ?? null) : null;
-}
-
-export async function runHostedLiveProbe(
-  descriptor: HostedLiveProbeDescriptor,
-): Promise<HostedConformanceObservation> {
-  const skipReason = resolveHostedLiveSkipReason(descriptor);
-  if (skipReason) {
-    return reportHostedLiveSkipped(descriptor, skipReason);
-  }
-
-  const credential = process.env[descriptor.credentialEnv] as string;
-  const fetch = globalThis.fetch;
-  const modelId = descriptor.modelId ?? (await discoverLiveModelId(descriptor, credential));
-  if (modelId === null) {
-    return reportHostedLiveSkipped(descriptor, "model-unresolved");
-  }
-
-  const evidenceKey = evidenceKeyFor(descriptor.productId, {
-    modelId,
-    ...(descriptor.normalizedEndpoint === undefined
-      ? {}
-      : { normalizedEndpoint: descriptor.normalizedEndpoint }),
-  });
-
-  const result = await executeHostedReview({
-    configurationId: "live-conformance-configuration",
-    configurationRevision: 1,
-    evidenceKey,
-    prompt: 'Return {"issues":[]} as JSON.',
-    context: {
-      credential,
-      reviewSchema: DEFAULT_HOSTED_REVIEW_SCHEMA,
-      structuredOutputSchema: STRUCTURED_OUTPUT_SCHEMA,
-      fetch,
-    },
-  });
-
-  const passed = result.receipt.outcome === "completed" && result.result.issues.length === 0;
-
-  return {
-    status: passed ? "passed" : "failed",
-    requirement: "REQ-084",
-    caseId: `live:${descriptor.productId}`,
-    productId: descriptor.productId,
-    outcome: result.receipt.outcome,
-    attemptCount: result.receipt.attemptCount,
-    findingsCount: result.result.issues.length,
-    source: "live",
-  };
-}

@@ -5,7 +5,7 @@ import {
   describeTerminalOutcome,
   type FailedTerminalOutcome,
   getLensCoverage,
-  hasFailedLenses,
+  isPartiallyComplete,
 } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { CategoryStats } from "@diffgazer/core/schemas/presentation";
@@ -47,8 +47,9 @@ type RunStatusTone = "error" | "warning" | "success";
 
 /**
  * The frame's tone follows the headline: a terminal failure is the error frame,
- * a completed run with failed lenses headlines "Partially Complete" and must
- * not wear success-green — it takes the warning frame instead.
+ * a completed run with failed or incompletely-answered lenses headlines
+ * "Partially Complete" and must not wear success-green — it takes the warning
+ * frame instead.
  */
 function getRunStatusTone(hasFailure: boolean, isPartial: boolean): RunStatusTone {
   if (hasFailure) return "error";
@@ -93,7 +94,7 @@ export function ReviewCompleteSummary({
   // names-only half - the same fact twice in opposite polarity reads as padding.
   const failure = outcome ? describeTerminalOutcome(outcome) : null;
   const missingFindings = failure ? buildMissingLensIssuesNotice(lensStats) : "";
-  const runTone = getRunStatusTone(failure !== null, hasFailedLenses(lensStats));
+  const runTone = getRunStatusTone(failure !== null, isPartiallyComplete(lensStats));
   const runStyles = RUN_STATUS_STYLES[runTone];
   const hasBreakdowns = stats.totalIssues > 0;
 

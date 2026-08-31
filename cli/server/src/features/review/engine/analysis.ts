@@ -14,7 +14,8 @@ import {
   severityRank,
 } from "@diffgazer/core/schemas/review";
 import { pluralize } from "@diffgazer/core/strings";
-import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
+import type { AIClient, AIError, GenerateSuccess } from "../../../shared/lib/ai/types.js";
+import { log } from "../../../shared/lib/log.js";
 import type { ParsedDiff } from "./diff/types.js";
 import { createIssueEvidenceResolver } from "./issues/evidence.js";
 import {
@@ -154,8 +155,13 @@ function resolveBatchIssues(
  * Each single call is already capped by `LensReviewResultSchema`; only a batched
  * lens can exceed it.
  */
-function capIssuesBySeverity(issues: ReviewIssue[]): ReviewIssue[] {
+function capIssuesBySeverity(issues: ReviewIssue[], lensId: Lens["id"]): ReviewIssue[] {
   if (issues.length <= MAX_REVIEW_ISSUES_PER_LENS) return issues;
+  log("warn", "lens_issue_cap_exceeded", {
+    lensId,
+    cap: MAX_REVIEW_ISSUES_PER_LENS,
+    dropped: issues.length - MAX_REVIEW_ISSUES_PER_LENS,
+  });
   return issues
     .map((issue, index) => ({ issue, index }))
     .sort(
@@ -235,7 +241,7 @@ async function generateWithWaitProgress(params: {
   dispatchWallTimeMs?: number;
   onEvent: (event: AgentStreamEvent | StepEvent) => void;
   signal?: AbortSignal;
-}): Promise<Result<LensReviewResult, AIError>> {
+}): Promise<Result<GenerateSuccess<typeof LensReviewResultSchema>, AIError>> {
   const { client, prompt, system, agentId, batchSuffix, dispatchWallTimeMs, onEvent, signal } =
     params;
   const timerStart = Date.now();
@@ -332,6 +338,7 @@ export async function runLensAnalysis({
   const collectedIssues: ReviewIssue[] = [];
   const dispatches: LensDispatch[] = [];
   let droppedIncompleteProviderIssues = 0;
+  let droppedCandidateCount = 0;
   let filesReported = 0;
   let batchError: ReviewError | undefined;
 
@@ -399,13 +406,14 @@ export async function runLensAnalysis({
       break;
     }
 
-    const batchIssues = resolveBatchIssues(batch, promptFiles, result.value.issues);
+    const batchIssues = resolveBatchIssues(batch, promptFiles, result.value.data.issues);
     collectedIssues.push(...batchIssues.issues);
     droppedIncompleteProviderIssues += batchIssues.droppedCount;
+    droppedCandidateCount += result.value.warning?.droppedCandidateCount ?? 0;
   }
 
   const uniqueIssues = ensureUniqueIssueIds(collectedIssues, lens.id);
-  const processedIssues = capIssuesBySeverity(uniqueIssues);
+  const processedIssues = capIssuesBySeverity(uniqueIssues, lens.id);
 
   streamLensCompletion({ agentId, issues: processedIssues, severityFilter, onEvent });
 
@@ -413,6 +421,7 @@ export async function runLensAnalysis({
     lensId: lens.id,
     issues: processedIssues,
     droppedIncompleteProviderIssues,
+    droppedCandidateCount,
     batchError,
     dispatches,
   });
@@ -501,8 +510,11 @@ export async function runSynthesisAnalysis({
     return err({ ...result.error, dispatches });
   }
 
-  const resolved = resolveBatchIssues(diff, promptFiles, result.value.issues);
-  const processedIssues = capIssuesBySeverity(ensureUniqueIssueIds(resolved.issues, lens.id));
+  const resolved = resolveBatchIssues(diff, promptFiles, result.value.data.issues);
+  const processedIssues = capIssuesBySeverity(
+    ensureUniqueIssueIds(resolved.issues, lens.id),
+    lens.id,
+  );
 
   streamLensCompletion({ agentId, issues: processedIssues, severityFilter, onEvent });
 
@@ -510,6 +522,7 @@ export async function runSynthesisAnalysis({
     lensId: lens.id,
     issues: processedIssues,
     droppedIncompleteProviderIssues: resolved.droppedCount,
+    droppedCandidateCount: result.value.warning?.droppedCandidateCount ?? 0,
     dispatches,
   });
 }

@@ -1,5 +1,9 @@
 import { resolve } from "node:path";
-import { ensureWithinDir, PACKAGE_MANAGER_LOCKFILES } from "@diffgazer/registry/cli";
+import {
+  ensureWithinDir,
+  isSymlinkTraversalError,
+  PACKAGE_MANAGER_LOCKFILES,
+} from "@diffgazer/registry/cli";
 import { z } from "zod";
 import { detectProject } from "../../utils/detect.js";
 import {
@@ -58,8 +62,7 @@ function suggestedComponentsDir(
   if (project.sourceDir === "." || resolved.startsWith(sourcePrefix)) {
     return resolved;
   }
-  const withoutSourcePrefix = resolved.replace(new RegExp(`^${project.sourceDir}/`), "");
-  return `${sourcePrefix}${withoutSourcePrefix}`;
+  return `${sourcePrefix}${resolved}`;
 }
 
 function rejectComponentsDirOutsideSource(
@@ -97,7 +100,10 @@ function derivePaths(cwd: string, componentsDir: string | undefined, project = d
   try {
     ensureWithinDir(componentsRoot, sourceRoot);
     ensureWithinDir(componentsRoot, cwd);
-  } catch {
+  } catch (error) {
+    // A symlink escape is not a "put it under src/" mistake; surfacing the usage
+    // hint would hide it behind a suggestion that fails the same way.
+    if (isSymlinkTraversalError(error)) throw error;
     rejectComponentsDirOutsideSource(resolvedComponentsDir, project, cwd);
   }
   return {

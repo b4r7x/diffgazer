@@ -41,13 +41,14 @@ export function LogEntry({
       </Badge>
       {source && (
         <>
-          <span className="font-bold text-foreground">{source}</span>
+          <span className="font-bold text-foreground pl-2">{source}</span>
           <span className="text-muted-foreground"> → </span>
         </>
       )}
       <span
         className={cn(
           "wrap-anywhere text-muted-foreground",
+          !source && "pl-2",
           isWarning && "text-warning-text",
           isError && "text-error-text",
         )}

@@ -6,6 +6,7 @@ import {
   useProviderManagement as useProviderManagementMachine,
 } from "@diffgazer/core/providers/hooks";
 import { toast } from "@diffgazer/ui/components/toast";
+import { getProviderRowDisplayName } from "@/features/providers/lib/display-name";
 import { useConfigActions, useConfigData } from "@/hooks/use-config";
 
 export type {
@@ -32,7 +33,10 @@ function describeSuccess(
     case "select":
       return {
         title: "Configuration Selected",
-        message: `${event.row.product.name} is now active`,
+        // The row, the pane chip and the shell header all name a configured
+        // dual-pool product by the pool its runs will bill; the toast names the
+        // same thing they do.
+        message: `${getProviderRowDisplayName(event.row)} is now active`,
       };
     case "select-model":
       return { title: "Model Selected", message: `Selected ${event.modelId}` };

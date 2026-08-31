@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { getEndpointPoolContext, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import {
   type ClientConfigurationAction,
@@ -29,7 +29,7 @@ import {
   createNoneSecretBinding,
   type SecretBinding,
   SecretBindingSchema,
-} from "../secret-bindings.js";
+} from "../secret-binding-model.js";
 import {
   type ConfigDocumentV2,
   type ConfigurationActionError,
@@ -205,8 +205,35 @@ export function createCrudActions(deps: CrudActionDependencies) {
         configurationActionFailure("CONFIGURATION_UNSUPPORTED", "Configuration is not supported"),
       );
     }
+    // The pool travels with the model, so only the two billing pools of the
+    // bound configuration's own pool context are reachable — never an arbitrary
+    // endpoint of the product. Products whose endpoints are separate accounts
+    // with separate keys (moonshot's regions) carry no pool context at all, so
+    // they reject every endpoint: moving one would strand its credential.
+    // The revision deliberately does not move: secret bindings are keyed
+    // (configurationId, revision), so the credential stays bound and a pool flip
+    // never asks for the key again.
+    const endpoint = action.endpoint;
+    if (endpoint !== undefined) {
+      const pool = getEndpointPoolContext(
+        record.record.input.productId,
+        record.record.input.endpoint,
+      );
+      if (!pool || (endpoint !== pool.bound.endpoint && endpoint !== pool.sibling.endpoint)) {
+        return err(
+          configurationActionFailure(
+            "INVALID_ACTION",
+            "Endpoint is not a billing pool of this configuration",
+          ),
+        );
+      }
+    }
     const nextRecord: SupportedProviderConfigurationRecord = {
       ...record.record,
+      input:
+        endpoint === undefined
+          ? record.record.input
+          : NonSecretTransportInputSchema.parse({ ...record.record.input, endpoint }),
       selectedModelId: modelId.data,
       budget: budgetForSelectedModel(record.record.budget, record.record.productId, modelId.data),
       evidenceReference: null,

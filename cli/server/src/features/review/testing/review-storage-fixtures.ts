@@ -1,12 +1,13 @@
-import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { SavedReview } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
+import { CURSOR_INDEX_MARKER, projectHash } from "../storage/project-index.js";
+
+export { CURSOR_INDEX_MARKER };
 
 export const REVIEW_ID = "550e8400-e29b-41d4-a716-446655440000";
 export const REVIEW_ID_2 = "660e8400-e29b-41d4-a716-446655440001";
-export const CURSOR_INDEX_MARKER = "createdAt+id-v1\n";
 
 export const makeReviewId = (value: number): string =>
   `00000000-0000-4000-8000-${value.toString().padStart(12, "0")}`;
@@ -77,14 +78,16 @@ export function makeProjectReview(
 export function reviewStorageFixtures(homeDir: () => string) {
   const reviewsDir = (): string => join(homeDir(), "triage-reviews");
   const reviewPath = (id: string): string => join(reviewsDir(), `${id}.json`);
-  const indexHash = (projectPath: string): string =>
-    createHash("sha256").update(projectPath).digest("hex").slice(0, 16);
+  // The hash comes from production, so a derivation change cannot leave these
+  // helpers writing to a filename production never reads. The join is rebuilt
+  // here because `homeDir()` moves per suite while production's REVIEWS_DIR is
+  // fixed at import time.
   const projectIndexPath = (projectPath: string): string =>
-    join(reviewsDir(), ".index", `${indexHash(projectPath)}.json`);
+    join(reviewsDir(), ".index", `${projectHash(projectPath)}.json`);
   const projectReconcileMarkerPath = (projectPath: string): string =>
-    join(reviewsDir(), ".index", `${indexHash(projectPath)}.reconcile`);
+    join(reviewsDir(), ".index", `${projectHash(projectPath)}.reconcile`);
   const projectCursorMarkerPath = (projectPath: string): string =>
-    join(reviewsDir(), ".index", `${indexHash(projectPath)}.cursor-v1`);
+    join(reviewsDir(), ".index", `${projectHash(projectPath)}.cursor-v1`);
 
   async function readJson<T>(filePath: string): Promise<T> {
     return JSON.parse(await readFile(filePath, "utf-8")) as T;

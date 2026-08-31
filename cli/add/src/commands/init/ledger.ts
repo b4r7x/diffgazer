@@ -83,6 +83,12 @@ export function assertForceRecoveryAllowed(
   }
 
   if (!existing.ok && existing.error === "validation_error") {
-    recoverInstalledItemsLedger(cwd);
+    assertLedgerRecoverable(cwd);
   }
+}
+
+// init fails before touching the project when the ledger cannot survive --force;
+// the recovered value itself is read again at write time.
+function assertLedgerRecoverable(cwd: string): void {
+  recoverInstalledItemsLedger(cwd);
 }

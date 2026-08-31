@@ -198,6 +198,24 @@ describe("HistoryPage review detail status", () => {
     expect(screen.getByText("No issues across 1 file · 0 lenses · 1s")).toBeInTheDocument();
   });
 
+  it("withholds the clean-run statement when a lens answered incompletely", async () => {
+    mockGetReviews.mockResolvedValue({
+      reviews: [
+        makeReviewMetadata({ id: "11111111-1111-4111-8111-111111111111", salvagedLensCount: 1 }),
+      ],
+    });
+
+    renderHistoryPage(<HistoryPage />);
+
+    expect(
+      await screen.findByText("Partial answers: 1 lens answered incompletely; no issues found."),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByText("Loading review details...")).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByText("Passed — no issues found")).not.toBeInTheDocument();
+  });
+
   it("renders a retryable selected-review error and recovers on retry", async () => {
     mockGetReview
       .mockRejectedValueOnce(new Error("detail disk unreadable"))
@@ -358,8 +376,8 @@ describe("HistoryPage review-list warnings", () => {
     const unaffectedRun = options.find((option) => option.textContent?.includes("#fedcba99"));
 
     if (!affectedRun || !unaffectedRun) throw new Error("Expected both history runs");
-    expect(affectedRun).toHaveTextContent("Salvaged");
-    expect(unaffectedRun).not.toHaveTextContent("Salvaged");
+    expect(affectedRun).toHaveTextContent("Issues omitted");
+    expect(unaffectedRun).not.toHaveTextContent("Issues omitted");
 
     const searchInput = screen.getByRole("searchbox", { name: /search/i });
     await user.type(searchInput, "#abcdef00-1");

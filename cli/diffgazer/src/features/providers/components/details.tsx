@@ -1,5 +1,6 @@
 import type { ProviderListRow } from "@diffgazer/core/providers";
 import {
+  getProviderDisplay,
   getProviderDisplayStatus,
   getProviderRowControls,
   isProviderControlDisabled,
@@ -127,52 +128,74 @@ export function ProviderDetails({
   const modelId = row.configuration?.selectedModelId;
 
   return (
-    <Box flexDirection="column" gap={compact ? 0 : 1}>
-      <KeyValue label="Name" value={row.product.name} labelWidth={14} />
-      <KeyValue label="Product" value={row.product.productId} labelWidth={14} />
-      {/* The narrow list drops the id when the row cannot fit it, so this pane is
-          where the configured model is always named in full. */}
-      {modelId ? (
+    <Box flexDirection="column" gap={compact ? 0 : 1} minHeight={0}>
+      {/* Identity and actions are rigid; only the settings list absorbs a short
+          pane, so a terminal too small for every row still shows what the
+          configuration is and what can be done to it. */}
+      <Box flexDirection="column" gap={compact ? 0 : 1} flexShrink={0}>
+        {/* The pool, not the product, once a dual-pool configuration binds one:
+            the list row above names it the same way. */}
         <KeyValue
-          label="Model"
-          value={formatModelLabel(row.product.productId, modelId)}
+          label="Name"
+          value={getProviderDisplay(row.product.productId, undefined, row.configuration?.endpoint)}
           labelWidth={14}
         />
-      ) : null}
-      <KeyValue
-        label="Status"
-        value={
-          <Badge variant={displayStatus.variant} dot>
-            {displayStatus.label}
-          </Badge>
-        }
-        labelWidth={14}
-      />
-      {settingsRows.map((settingsRow) => (
-        <Box key={settingsRow.id} flexDirection="column">
-          <KeyValue label={settingsRow.label} value={settingsRow.value} labelWidth={14} />
-          {/* The billing notice, when the pane has room for it. Fact descriptions
-              stay out: they repeat the remediation line under the actions. */}
-          {!compact && settingsRow.kind === "prose" && settingsRow.description ? (
-            <Text color={tokens.muted}>{settingsRow.description}</Text>
-          ) : null}
-        </Box>
-      ))}
+        <KeyValue label="Product" value={row.product.productId} labelWidth={14} />
+        {/* The narrow list drops the id when the row cannot fit it, so this pane is
+            where the configured model is always named in full. */}
+        {modelId ? (
+          <KeyValue
+            label="Model"
+            value={formatModelLabel(row.product.productId, modelId)}
+            labelWidth={14}
+          />
+        ) : null}
+        <KeyValue
+          label="Status"
+          value={
+            <Badge variant={displayStatus.variant} dot>
+              {displayStatus.label}
+            </Badge>
+          }
+          labelWidth={14}
+        />
+      </Box>
 
-      {actionRow}
+      {/* Rows keep their natural height and the list is clipped instead: a row
+          squeezed by flex-shrink still paints its wrapped lines, over its
+          neighbours. */}
+      <Box flexDirection="column" gap={compact ? 0 : 1} minHeight={0} overflow="hidden">
+        {settingsRows.map((settingsRow) => (
+          <Box key={settingsRow.id} flexDirection="column" flexShrink={0}>
+            <KeyValue label={settingsRow.label} value={settingsRow.value} labelWidth={14} />
+            {/* The billing notice and the bound endpoint's URL, when the pane has
+                room for them. The other fact descriptions stay out: they repeat
+                the product blurb and the remediation line under the actions. */}
+            {!compact &&
+            settingsRow.description &&
+            (settingsRow.kind === "prose" || settingsRow.id === "endpoint") ? (
+              <Text color={tokens.muted}>{settingsRow.description}</Text>
+            ) : null}
+          </Box>
+        ))}
+      </Box>
 
-      {/* Neutral, not a warning: the app stays usable without the consent, and
-          declining the notice must leave a way back to it. */}
-      {consentRequired ? (
-        <Text color={tokens.muted}>Consent required to run reviews · [c] Review</Text>
-      ) : null}
+      <Box flexDirection="column" gap={compact ? 0 : 1} flexShrink={0}>
+        {actionRow}
 
-      {/* What to do about the status, including what Verify costs. It
-          seats under the actions like the web rail so a long remediation cannot
-          push the buttons out of this clipped pane. */}
-      {row.readiness.remediation.code === "none" ? null : (
-        <Text color={tokens.muted}>{displayStatus.remediation}</Text>
-      )}
+        {/* Neutral, not a warning: the app stays usable without the consent, and
+            declining the notice must leave a way back to it. */}
+        {consentRequired ? (
+          <Text color={tokens.muted}>Consent required to run reviews · [c] Review</Text>
+        ) : null}
+
+        {/* What to do about the status, including what Verify costs. It
+            seats under the actions like the web rail so a long remediation cannot
+            push the buttons out of this clipped pane. */}
+        {row.readiness.remediation.code === "none" ? null : (
+          <Text color={tokens.muted}>{displayStatus.remediation}</Text>
+        )}
+      </Box>
     </Box>
   );
 }

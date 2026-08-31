@@ -323,6 +323,9 @@ export async function orchestrateReview(
       lensId: result.value.lensId,
       issueCount: filterIssuesByMinSeverity(result.value.issues, filter).length,
       status: "success",
+      ...(result.value.droppedCandidateCount > 0
+        ? { droppedCandidateCount: result.value.droppedCandidateCount }
+        : {}),
       errorCode: result.value.batchError?.code,
       errorMessage: result.value.batchError?.message,
       dispatches: result.value.dispatches,
@@ -355,6 +358,9 @@ export async function orchestrateReview(
         lensId: "synthesis",
         issueCount: filterIssuesByMinSeverity(synthesisResult.value.issues, filter).length,
         status: "success",
+        ...(synthesisResult.value.droppedCandidateCount > 0
+          ? { droppedCandidateCount: synthesisResult.value.droppedCandidateCount }
+          : {}),
         dispatches: synthesisResult.value.dispatches,
       });
     } else {

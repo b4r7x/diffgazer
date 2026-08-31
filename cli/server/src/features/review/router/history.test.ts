@@ -51,9 +51,12 @@ describe("GET /api/review/reviews pagination", () => {
     expect(secondResponse.status).toBe(200);
     expect(second.reviews.map((review) => review.id)).toEqual([REVIEW_A]);
     expect(second.nextCursor).toBeNull();
-    expect(new Set([...first.reviews, ...second.reviews].map((review) => review.id))).toEqual(
-      new Set([REVIEW_A, REVIEW_B, REVIEW_C]),
-    );
+    // Concatenated, not set-compared: a Set would hide the duplicate this test is named for.
+    expect([...first.reviews, ...second.reviews].map((review) => review.id)).toEqual([
+      REVIEW_C,
+      REVIEW_B,
+      REVIEW_A,
+    ]);
 
     const refreshedResponse = await app.request(
       "/api/review/reviews?limit=2",

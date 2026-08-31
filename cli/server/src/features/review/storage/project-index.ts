@@ -14,12 +14,12 @@ import { createKeyedLock } from "./keyed-lock.js";
 // Legacy on-disk directory name kept as "triage-reviews" to avoid data migration
 export const REVIEWS_DIR = join(getGlobalDiffgazerDir(), "triage-reviews");
 const PROJECT_INDEX_DIR = join(REVIEWS_DIR, ".index");
-const CURSOR_INDEX_MARKER = "createdAt+id-v1\n";
+export const CURSOR_INDEX_MARKER = "createdAt+id-v1\n";
 const MAX_CACHED_PROJECT_INDEXES = 16;
 
 export const isValidUuid = (id: string): boolean => UuidSchema.safeParse(id).success;
 
-function projectHash(projectPath: string): string {
+export function projectHash(projectPath: string): string {
   return createHash("sha256").update(projectPath).digest("hex").slice(0, 16);
 }
 

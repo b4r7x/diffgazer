@@ -27,7 +27,7 @@ import type {
   ProviderConfigurationRecord,
   SupportedProviderConfigurationRecord,
 } from "../provider-config.js";
-import type { SecretBinding } from "../secret-bindings.js";
+import type { SecretBinding } from "../secret-binding-model.js";
 import { type ConfigurationActionError, configurationActionFailure } from "../types.js";
 import { credentialReferenceIdentityFor } from "./credential-lifecycle.js";
 import type { DocumentStore } from "./document-store.js";
@@ -211,7 +211,7 @@ export function createConformanceActions(deps: ConformanceActionDependencies) {
   const runTestAction = async (
     action: Extract<ClientConfigurationAction, { action: "test" }>,
   ): Promise<Result<ClientConfigurationActionResponse, ConfigurationActionError>> => {
-    const subject = await deps.documents.runMutation(async () =>
+    const subject = await deps.documents.runRead(async () =>
       conformanceSubjectFor(action.configurationId),
     );
     if (!subject.ok) return subject;
@@ -224,7 +224,7 @@ export function createConformanceActions(deps: ConformanceActionDependencies) {
         reason: observation.reason,
       });
     }
-    return deps.documents.runMutation(async () =>
+    return deps.documents.runRead(async () =>
       projectTestResponse(action.configurationId, observation),
     );
   };

@@ -18,6 +18,7 @@ export interface RadioGroupProps<T extends string = string> {
   wrap?: boolean;
   disabled?: boolean;
   isActive?: boolean;
+  activateOnReturn?: boolean;
   maxVisibleItems?: number;
   children: ReactNode;
 }
@@ -83,6 +84,7 @@ function RadioGroupRoot<T extends string = string>({
   wrap = true,
   disabled = false,
   isActive = true,
+  activateOnReturn = true,
   maxVisibleItems,
   children,
 }: RadioGroupProps<T>) {
@@ -124,6 +126,7 @@ function RadioGroupRoot<T extends string = string>({
     isActive: isActive && !disabled && highlighted !== null,
     orientation: "vertical",
     activateOnSpace: true,
+    activateOnReturn,
     onActivate: (item) => {
       if (value === undefined) {
         setInternalValue(item.id);

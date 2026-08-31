@@ -3,11 +3,13 @@ import { test } from "node:test";
 import {
   AXE_HELPER_MODULE,
   collectAxeCoverageViolations,
+  sourceHasAwaitedAxeCall,
+} from "./lib/testing-conventions/axe-coverage.mjs";
+import {
   collectFireEventViolations,
   FIRE_EVENT_MODULE,
   sourceFireEventCallsAreRationalized,
-  sourceHasAwaitedAxeCall,
-} from "./lib/testing-conventions.mjs";
+} from "./lib/testing-conventions/fire-event.mjs";
 
 test("retained fireEvent calls carry inline rationale", () => {
   assert.deepEqual(collectFireEventViolations(), []);

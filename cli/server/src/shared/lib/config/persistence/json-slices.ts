@@ -7,6 +7,12 @@
 
 const textEncoder = new TextEncoder();
 
+/** Detaches a slice from the buffer it was read out of, so a later write cannot alias it. */
+export const copyBytes = (bytes: Uint8Array): Uint8Array => new Uint8Array(bytes);
+
+export const byteArraysEqual = (left: Uint8Array, right: Uint8Array): boolean =>
+  left.byteLength === right.byteLength && left.every((value, index) => value === right[index]);
+
 const skipJsonWhitespace = (text: string, start: number): number => {
   let cursor = start;
   while (cursor < text.length && " \t\n\r".includes(text[cursor] ?? "")) cursor += 1;

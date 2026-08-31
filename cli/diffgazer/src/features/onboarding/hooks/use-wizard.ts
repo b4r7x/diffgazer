@@ -94,8 +94,8 @@ export function useOnboardingWizard() {
     syncCredentialDraft(effectiveInputMethod, value);
   }
 
-  function handleModelChange(modelId: string) {
-    wizard.updateData({ selectedModelId: modelId });
+  function handleModelChange(modelId: string, poolEndpoint: string | null) {
+    wizard.updateData({ selectedModelId: modelId, selectedModelEndpoint: poolEndpoint });
   }
 
   function handleAcknowledgementAccept() {

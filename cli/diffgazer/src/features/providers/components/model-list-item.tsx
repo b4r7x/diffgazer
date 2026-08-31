@@ -3,6 +3,7 @@ import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import { Badge } from "../../../components/ui/badge";
+import { getModelDetail } from "../../../lib/model-detail";
 import { terminalCellWidth } from "../../../lib/terminal-width";
 import { rowTone, selectionHue } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
@@ -12,6 +13,7 @@ interface ModelListItemProps {
   isHighlighted: boolean;
   isSelected: boolean;
   maxWidth: number;
+  poolBadgeLabel?: string;
 }
 
 function getPrefix(isSelected: boolean, isHighlighted: boolean): string {
@@ -20,27 +22,25 @@ function getPrefix(isSelected: boolean, isHighlighted: boolean): string {
   return "  ";
 }
 
-/**
- * The exact model id leads the secondary column because it is the string a
- * review pins; the context blurb trails it and is the first thing truncation
- * takes. When upstream publishes no display name the two are equal and the
- * id is not repeated.
- */
-function getDetail(model: ModelInfo): string {
-  const parts = model.id === model.name ? [] : [model.id];
-  if (model.description) parts.push(model.description);
-  return parts.join(" · ");
+function badgeColumnWidth(label: string | undefined): number {
+  return label ? terminalCellWidth(label) + 3 : 0;
 }
 
-export function ModelListItem({ model, isHighlighted, isSelected, maxWidth }: ModelListItemProps) {
+export function ModelListItem({
+  model,
+  isHighlighted,
+  isSelected,
+  maxWidth,
+  poolBadgeLabel,
+}: ModelListItemProps) {
   const { tokens } = useTheme();
 
   const prefix = getPrefix(isSelected, isHighlighted);
   const check = isSelected ? "[*]" : "[ ]";
   const tierBadge = getModelTierBadge(model.tier);
-  const badgeWidth = tierBadge ? terminalCellWidth(tierBadge.label) + 3 : 0;
+  const badgeWidth = badgeColumnWidth(tierBadge?.label) + badgeColumnWidth(poolBadgeLabel);
   const textWidth = Math.max(1, maxWidth - 6 - badgeWidth);
-  const detail = getDetail(model);
+  const detail = getModelDetail(model);
   const hasDetail = detail.length > 0 && textWidth >= 4;
   const detailWidth = hasDetail
     ? Math.min(Math.max(1, Math.floor(textWidth / 2)), textWidth - 2)
@@ -75,6 +75,9 @@ export function ModelListItem({ model, isHighlighted, isSelected, maxWidth }: Mo
           >
             {tierBadge.label}
           </Badge>
+        )}
+        {poolBadgeLabel && (
+          <Badge color={tone.background ? tone.primary : undefined}>{poolBadgeLabel}</Badge>
         )}
         {hasDetail && (
           <Box width={detailWidth} flexShrink={0}>

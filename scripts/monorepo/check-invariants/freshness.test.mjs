@@ -80,10 +80,9 @@ test("passes when dist has not been built at all", () => {
 test("ignores test files, test-only fixtures and harnesses, test-setup, and internal helpers", () => {
   const root = createConformingFixture();
   writeText(root, "libs/keys/src/hooks/use-thing.test.ts", "export {};\n");
-  writeText(root, "libs/keys/src/hooks/use-navigation/test-list.tsx", "export {};\n");
-  writeText(root, "libs/keys/src/hooks/use-focus-trap/trap-harness.ts", "export {};\n");
   writeText(root, "libs/keys/src/test-setup.ts", "export {};\n");
   writeText(root, "libs/keys/src/testing/internal/test-utils.tsx", "export {};\n");
+  writeText(root, "libs/keys/src/testing/internal/focus-trap-harness.ts", "export {};\n");
 
   assert.equal(runKeysCheck(root).ok, true);
 });

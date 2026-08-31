@@ -105,6 +105,7 @@ function toShellProviderState(config: {
     readiness: selectedReadiness,
     productId: selectedConfiguration.productId,
     modelId: selectedConfiguration.selectedModelId,
+    endpoint: selectedConfiguration.endpoint,
   };
 }
 

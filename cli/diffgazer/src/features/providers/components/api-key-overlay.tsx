@@ -5,6 +5,7 @@ import {
   buildSetupAcknowledgement,
   buildSetupInput,
   CREDENTIAL_ENV_VARS,
+  getEndpointProfile,
   getSetupLayoutCopy,
   requiresExplicitModelSelection,
   toSetupCredential,
@@ -26,6 +27,7 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { ApiKeyMethodSelector } from "../../../components/shared/api-key-method-selector";
 import { Button } from "../../../components/ui/button";
 import { Dialog } from "../../../components/ui/dialog";
+import { RadioGroup } from "../../../components/ui/radio";
 import { Spinner } from "../../../components/ui/spinner";
 import { getFirstEnabledAction, useActionRow } from "../../../hooks/use-action-row";
 import { selectionHue } from "../../../theme/chrome";
@@ -33,15 +35,21 @@ import { useTheme } from "../../../theme/provider";
 
 type AcceptedAcknowledgement = Extract<ReadinessAcknowledgement, { status: "accepted" }>;
 
-type SetupZone = "method" | "input" | "acknowledgement" | "actions";
+type SetupZone = "endpoint" | "method" | "input" | "acknowledgement" | "actions";
 
-function getSetupZones(needsAcceptance: boolean): SetupZone[] {
-  return ["method", ...(needsAcceptance ? (["acknowledgement"] as const) : []), "actions"];
+function getSetupZones(needsAcceptance: boolean, hasEndpointChoice: boolean): SetupZone[] {
+  return [
+    ...(hasEndpointChoice ? (["endpoint"] as const) : []),
+    "method",
+    ...(needsAcceptance ? (["acknowledgement"] as const) : []),
+    "actions",
+  ];
 }
 
 const KEY_FIELD_SHORTCUT: Shortcut = { key: "Tab", label: "Focus Key Field" };
 const LEAVE_FIELD_SHORTCUT: Shortcut = { key: "↑/↓", label: "Leave Field" };
 const SELECT_METHOD_SHORTCUT: Shortcut = { key: "Space", label: "Select Method" };
+const SELECT_ENDPOINT_SHORTCUT: Shortcut = { key: "Space", label: "Select Endpoint" };
 const SWITCH_ACTION_SHORTCUT: Shortcut = { key: "←/→", label: "Switch Action" };
 const CONFIRM_SHORTCUT: Shortcut = { key: "Enter", label: "Confirm" };
 const ACCEPT_SHORTCUT: Shortcut = { key: "a", label: "Accept" };
@@ -59,6 +67,7 @@ function getSetupShortcuts(
     ...(method === "paste" ? [KEY_FIELD_SHORTCUT] : []),
     NAVIGATE_SHORTCUT,
     ...(zone === "method" ? [SELECT_METHOD_SHORTCUT] : []),
+    ...(zone === "endpoint" ? [SELECT_ENDPOINT_SHORTCUT] : []),
     ...(zone === "actions" ? [SWITCH_ACTION_SHORTCUT] : []),
     CONFIRM_SHORTCUT,
     ...(needsAcceptance ? [ACCEPT_SHORTCUT] : []),
@@ -102,11 +111,28 @@ export function ApiKeyOverlay({
   const [accepted, setAccepted] = useState(false);
   const acknowledged = !needsAcceptance || accepted;
   const isUpdating = row.configuration != null;
+  // One key can buy on separate endpoints (billing pools), so a create names the
+  // pool it binds; an update keeps the stored one — re-keying must not move a
+  // configuration to another pool.
+  const endpointProfiles = row.product.endpoints;
+  const hasEndpointChoice = !isUpdating && endpointProfiles.length > 1;
+  const [endpoint, setEndpoint] = useState(endpointProfiles[0]?.endpoint ?? "");
+  // Highlight is not the binding: arrows only move the marker, and the pool a key
+  // is filed under changes on Space alone.
+  const [highlightedEndpoint, setHighlightedEndpoint] = useState(endpoint);
+  const boundEndpointProfile =
+    row.configuration && endpointProfiles.length > 1
+      ? getEndpointProfile(row.product.productId, row.configuration.endpoint)
+      : null;
 
   const entry = useApiKeyEntry({
     onSubmit: async (method, value) => {
       if (!acknowledged) return false;
-      const input = buildSetupInput(row, toSetupCredential(method, value));
+      const input = buildSetupInput(
+        row,
+        toSetupCredential(method, value),
+        hasEndpointChoice ? { endpoint } : undefined,
+      );
       const acknowledgement = buildSetupAcknowledgement(row);
       const openModelDialog = requiresExplicitModelSelection(row.product.productId);
       if (row.configuration) {
@@ -122,7 +148,7 @@ export function ApiKeyOverlay({
   const { method, value, setMethod, setValue, canSubmit, isSubmitting: saving, error } = entry;
   const [methodHighlight, setMethodHighlight] = useState<InputMethod>("paste");
   const canConfirm = canSubmit && acknowledged;
-  const zones = getSetupZones(needsAcceptance);
+  const zones = getSetupZones(needsAcceptance, hasEndpointChoice);
   const disabledActions = [!canConfirm, false];
 
   function selectMethod(next: InputMethod) {
@@ -194,7 +220,7 @@ export function ApiKeyOverlay({
           setMethodHighlight("env");
         } else if (zone === "method" && methodHighlight === "env") {
           setMethodHighlight("paste");
-        } else if (zone === "acknowledgement") {
+        } else if (zone === "method" || zone === "acknowledgement") {
           moveZone(-1);
         }
         return;
@@ -234,8 +260,10 @@ export function ApiKeyOverlay({
     if (entry.isSubmitting) return;
     entry.reset();
     actions.reset();
-    setZone("method");
+    setZone(zones[0] ?? "method");
     setMethodHighlight("paste");
+    setEndpoint(endpointProfiles[0]?.endpoint ?? "");
+    setHighlightedEndpoint(endpointProfiles[0]?.endpoint ?? "");
     setAccepted(false);
   });
 
@@ -256,6 +284,37 @@ export function ApiKeyOverlay({
         <Dialog.Body>
           <Box flexDirection="column" gap={1}>
             <Text color={tokens.muted}>{layoutCopy}</Text>
+            {hasEndpointChoice ? (
+              <Box flexDirection="column">
+                <Text color={tokens.muted}>Endpoint profile:</Text>
+                <RadioGroup
+                  value={endpoint}
+                  onChange={setEndpoint}
+                  onHighlightChange={setHighlightedEndpoint}
+                  highlighted={zone === "endpoint" ? highlightedEndpoint : null}
+                  isActive={open && !saving && zone === "endpoint"}
+                  wrap={false}
+                  activateOnReturn={false}
+                  onNavigationBoundaryReached={(direction) => {
+                    if (direction === 1) moveZone(1);
+                  }}
+                >
+                  {endpointProfiles.map((profile) => (
+                    <RadioGroup.Item
+                      key={profile.endpoint}
+                      value={profile.endpoint}
+                      // Label and URL share one row. This card is already taller
+                      // than an 80x24 terminal on the pool product, so a second
+                      // description row per profile buys nothing but clipping.
+                      label={`${profile.label} — ${profile.endpoint}`}
+                    />
+                  ))}
+                </RadioGroup>
+              </Box>
+            ) : null}
+            {boundEndpointProfile ? (
+              <Text color={tokens.muted}>{`Endpoint: ${boundEndpointProfile.label}`}</Text>
+            ) : null}
             <ApiKeyMethodSelector
               method={method}
               highlightedMethod={zone === "method" || zone === "input" ? methodHighlight : null}

@@ -63,10 +63,13 @@ async function ensureLockPathReady(
 async function restoreMovedFile(from: string, to: string): Promise<void> {
   try {
     await fs.link(from, to);
-    await fs.unlink(from);
   } catch (error) {
+    // EEXIST means the lock path was recreated while we held the quarantine
+    // copy, so there is nothing to restore — drop the copy instead of leaving
+    // it behind in the user's project.
     if (!hasErrorCode(error, "EEXIST")) throw error;
   }
+  await fs.unlink(from);
 }
 
 function isFileLockOwner(value: unknown): value is FileLockOwner {

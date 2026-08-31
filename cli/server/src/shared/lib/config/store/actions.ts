@@ -22,7 +22,7 @@ import type {
   ProviderConfigurationRecord,
 } from "../provider-config.js";
 import { buildReadiness, computeProviderReadinessResult } from "../readiness.js";
-import type { SecretBinding } from "../secret-bindings.js";
+import type { SecretBinding } from "../secret-binding-model.js";
 import { secretIO } from "../secret-io.js";
 import { getConfigurationSecretName } from "../secrets-store.js";
 import { type ConfigurationActionError, configurationActionFailure } from "../types.js";

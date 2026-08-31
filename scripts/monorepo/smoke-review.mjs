@@ -9,25 +9,45 @@
 // loader so the Bundler-resolved @diffgazer/core dist loads).
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { ENV } from "./lib/env.mjs";
 import { errorMessage } from "./lib/error-message.mjs";
 import {
-  createSseFrameParser,
-  E2E_LENS,
   E2E_OPT_IN_ENV,
-  evaluateRun,
+  E2E_SCENARIO_ENV,
+  expandScenarioCells,
   finalizeE2eDispositions,
-  HARD_TIMEOUT_MS,
+  findActiveLocalBinding,
   modelOverrideNotice,
+  parseScenarioIds,
   resolveE2eDispositions,
   runFailureLine,
+  singleProductModelOverride,
   skipLine,
-} from "./lib/smoke-review.mjs";
+} from "./lib/smoke-review/dispositions.mjs";
+import {
+  buildLargeDiffFixture,
+  LARGE_CALL_TOKEN_CAP,
+} from "./lib/smoke-review/large-diff-fixture.mjs";
+import { createSseFrameParser } from "./lib/smoke-review/sse-frames.mjs";
+import {
+  E2E_LENS,
+  evaluateBatchingProof,
+  evaluateRun,
+  HARD_TIMEOUT_MS,
+  labelCellLines,
+} from "./lib/smoke-review/verdicts.mjs";
 import { networkAllowed } from "./smoke-shared/network.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -48,6 +68,14 @@ function assertTempPath(label, path) {
   const resolved = realpathSync.native(path);
   if (resolved !== tempRoot && !resolved.startsWith(tempRoot + sep)) {
     throw new Error(`${label} must resolve under ${tempRoot}, got ${resolved}`);
+  }
+}
+
+function readJsonOrNull(path) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return null;
   }
 }
 
@@ -102,6 +130,21 @@ function createScratchRepo() {
   return repo;
 }
 
+// The large scenario's repo mirrors the small idiom: commit one-line seeds,
+// then overwrite with the deterministic fixture so the diff stays unstaged.
+function createLargeScratchRepo() {
+  const repo = realpathSync(mkdtempSync(join(tmpdir(), "diffgazer-e2e-repo-")));
+  git(repo, ["init", "--quiet"]);
+  git(repo, ["config", "user.email", "smoke-review@diffgazer.invalid"]);
+  git(repo, ["config", "user.name", "Diffgazer Smoke Review"]);
+  const files = buildLargeDiffFixture();
+  for (const file of files) writeFileSync(join(repo, file.path), file.seedContent);
+  git(repo, ["add", "."]);
+  git(repo, ["commit", "--quiet", "-m", "seed"]);
+  for (const file of files) writeFileSync(join(repo, file.path), file.modifiedContent);
+  return repo;
+}
+
 function listen(server) {
   return new Promise((resolveListen, reject) => {
     server.once("error", reject);
@@ -138,6 +181,7 @@ async function consumeStream(baseUrl, headers, reviewId, core) {
     timedOut: false,
     failedLenses: [],
     schemaErrors: [],
+    sizeWarnings: [],
   };
   const watchdog = setTimeout(() => {
     state.timedOut = true;
@@ -168,6 +212,9 @@ async function consumeStream(baseUrl, headers, reviewId, core) {
           if (event.type === "agent_error") {
             state.failedLenses.push(`${event.agent}: ${event.error}`);
           }
+          if (event.type === "review_size_warning") {
+            state.sizeWarnings.push(event.warning);
+          }
         }
       }
       if (state.terminal) break;
@@ -197,27 +244,48 @@ async function consumeStream(baseUrl, headers, reviewId, core) {
 
 async function pollPersistence(baseUrl, headers, reviewId) {
   const deadline = Date.now() + PERSISTENCE_POLL_MS;
-  let persisted = false;
-  while (!persisted && Date.now() < deadline) {
-    persisted = await requestJson(baseUrl, headers, "GET", `/api/review/reviews/${reviewId}`)
-      .then((body) => body?.review?.metadata?.id === reviewId)
-      .catch(() => false);
-    if (!persisted) {
+  let review = null;
+  while (!review && Date.now() < deadline) {
+    review = await requestJson(baseUrl, headers, "GET", `/api/review/reviews/${reviewId}`)
+      .then((body) => (body?.review?.metadata?.id === reviewId ? body.review : null))
+      .catch(() => null);
+    if (!review) {
       await new Promise((resolveSleep) => setTimeout(resolveSleep, PERSISTENCE_POLL_INTERVAL_MS));
     }
   }
   const listed = await requestJson(baseUrl, headers, "GET", "/api/review/reviews")
-    .then((body) => (body?.reviews ?? []).some((review) => review.id === reviewId))
+    .then((body) => (body?.reviews ?? []).some((entry) => entry.id === reviewId))
     .catch(() => false);
-  return { persisted, listed };
+  return { persisted: review !== null, listed, review };
 }
 
-async function runLiveE2e(disposition, core) {
+// Reads the secret named by the cell's credential-source descriptor (REQ-009).
+// Failure messages carry the mechanism only — file path or env var name, never
+// content (REQ-010).
+function resolveCredentialLiteral(cell) {
+  const source = cell.credentialSource;
+  if (source.source === "local-file") {
+    let literal;
+    try {
+      literal = readFileSync(source.filePath, "utf8").trim();
+    } catch {
+      throw new Error(`could not read credential file ${source.filePath}`);
+    }
+    if (!literal) throw new Error(`credential file ${source.filePath} is empty`);
+    return literal;
+  }
+  const varName = source.source === "local-env" ? source.varName : cell.credentialEnv;
+  const literal = process.env[varName];
+  if (!literal) throw new Error(`credential env var ${varName} is empty`);
+  return literal;
+}
+
+async function runLiveE2e(cell, core, multiCell) {
   const { PRODUCT_REGISTRY, acceptNotice } = core;
-  const product = PRODUCT_REGISTRY[disposition.productId];
+  const product = PRODUCT_REGISTRY[cell.productId];
 
   const home = mkdtempSync(join(tmpdir(), "diffgazer-e2e-home-"));
-  const repo = createScratchRepo();
+  const repo = cell.scenarioId === "large" ? createLargeScratchRepo() : createScratchRepo();
   assertTempPath("Live e2e DIFFGAZER_HOME", home);
   assertTempPath("Live e2e project root", repo);
   process.env.DIFFGAZER_HOME = home;
@@ -252,13 +320,21 @@ async function runLiveE2e(disposition, core) {
       trustMode: "persistent",
       capabilities: { readFiles: true },
     });
+    if (cell.scenarioId === "large") {
+      // Hermetic-server-only settings patch (REQ-015): the schema-minimum call
+      // token cap forces the large fixture to partition into >= 2 batches.
+      await requestJson(baseUrl, headers, "POST", "/api/settings", {
+        effectiveCallTokenCap: LARGE_CALL_TOKEN_CAP,
+      });
+    }
+    const credentialValue = resolveCredentialLiteral(cell);
     const created = await requestJson(baseUrl, headers, "POST", "/api/config/actions", {
       action: "create",
       input: {
         transportFamily: "hosted-api",
-        productId: disposition.productId,
+        productId: cell.productId,
         endpoint: product.configuration.endpoints[0].endpoint,
-        credential: { kind: "literal", value: process.env[disposition.credentialEnv] },
+        credential: { kind: "literal", value: credentialValue },
       },
       acknowledgement: acceptNotice(product.notice),
     });
@@ -267,7 +343,7 @@ async function runLiveE2e(disposition, core) {
     await requestJson(baseUrl, headers, "POST", "/api/config/actions", {
       action: "select",
       configurationId,
-      modelId: disposition.modelId,
+      modelId: cell.modelId,
     });
 
     const startedAt = Date.now();
@@ -277,20 +353,30 @@ async function runLiveE2e(disposition, core) {
     });
     const reviewId = createdReview?.reviewId;
     if (!reviewId) throw new Error("review create returned no reviewId");
-    console.log(
-      `live review e2e: ${disposition.productId}/${disposition.modelId}, review ${reviewId}`,
-    );
+    console.log(`live review e2e: ${cell.productId}/${cell.modelId}, review ${reviewId}`);
 
     const stream = await consumeStream(baseUrl, headers, reviewId, core);
     const persistence =
       stream.terminal?.type === "complete"
         ? await pollPersistence(baseUrl, headers, reviewId)
-        : { persisted: false, listed: false };
+        : { persisted: false, listed: false, review: null };
 
-    const { verdict, lines } = evaluateRun({ ...stream, ...persistence });
-    for (const line of lines) console.log(line);
+    const evaluations = [evaluateRun({ ...stream, ...persistence })];
+    if (cell.scenarioId === "large") {
+      evaluations.push(
+        evaluateBatchingProof({
+          sizeWarnings: stream.sizeWarnings,
+          lensStats: persistence.review?.lensStats ?? [],
+        }),
+      );
+    }
+    for (const evaluation of evaluations) {
+      for (const line of multiCell ? labelCellLines(evaluation.lines, cell) : evaluation.lines) {
+        console.log(line);
+      }
+    }
     console.log(`live review e2e wall time: ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
-    return verdict === "pass" ? 0 : 1;
+    return evaluations.every((evaluation) => evaluation.verdict === "pass") ? 0 : 1;
   } finally {
     await new Promise((resolveClose) => server.close(() => resolveClose()));
     // `paths.ts` re-reads DIFFGAZER_HOME per call, so the env vars stay in
@@ -315,39 +401,68 @@ async function run() {
     });
   }
 
+  // The credential fallback (REQ-009) reads the developer's real ~/.diffgazer,
+  // captured before any cell re-points DIFFGAZER_HOME at a temp home, and only
+  // when the e2e can actually run — the same gate as loadCore. Reads only —
+  // the lookup returns mechanism descriptors (binding kind, file path), never
+  // a secret value.
+  const realHome = process.env.DIFFGAZER_HOME ?? join(homedir(), ".diffgazer");
+  const configDoc = optedIn && network ? readJsonOrNull(join(realHome, "config.json")) : null;
+  const secretsDoc = optedIn && network ? readJsonOrNull(join(realHome, "secrets.json")) : null;
+  const localBindingFor = (productId) =>
+    findActiveLocalBinding({ configDoc, secretsDoc, productId });
+  const suggestedModelFor = (id) => {
+    const modelPolicy = core?.PRODUCT_REGISTRY[id]?.modelPolicy;
+    return modelPolicy && "suggestedModelId" in modelPolicy ? modelPolicy.suggestedModelId : null;
+  };
+
   const dispositions = resolveE2eDispositions({
     env: process.env,
     networkEnabled: network,
     credentialEnvFor: (id) => core?.CREDENTIAL_ENV_VARS[id],
-    suggestedModelFor: (id) => {
-      const modelPolicy = core?.PRODUCT_REGISTRY[id]?.modelPolicy;
-      return modelPolicy && "suggestedModelId" in modelPolicy ? modelPolicy.suggestedModelId : null;
-    },
+    suggestedModelFor,
     hasCoreDist: core !== null,
     coreDistError,
     hasServerDist: existsSync(SERVER_DIST),
+    localBindingFor,
+  });
+  const scenarioIds = parseScenarioIds(process.env[E2E_SCENARIO_ENV]);
+  const cells = expandScenarioCells({
+    dispositions,
+    scenarioIds,
+    modelOverride: singleProductModelOverride({ env: process.env }),
+    suggestedModelFor,
+    env: process.env,
+    localBindingFor,
   });
 
   const notice = modelOverrideNotice(process.env);
   if (notice) console.log(notice);
 
-  // Every requested product runs before a strict-skips failure is raised, so one
-  // missing key — or one product's harness throwing — does not hide the verdicts
-  // of the products that could run.
+  // Every requested cell runs before a strict-skips failure is raised, so one
+  // missing key — or one cell's harness throwing — does not hide the verdicts
+  // of the cells that could run. Verdict lines carry a (product/scenario)
+  // label only when more than one RUN cell exists — blocked dispositions do
+  // not count, so a lone run beside a skip keeps the legacy unlabeled
+  // single-cell output (REQ-017).
+  const multiCell = cells.filter((cell) => cell.kind === "run").length > 1;
   let failures = 0;
-  for (const disposition of dispositions) {
-    if (disposition.kind !== "run") {
-      console.log(skipLine(disposition));
+  for (const cell of cells) {
+    if (cell.kind !== "run") {
+      // Blocked-product dispositions pass through expansion without a scenario
+      // set; attach the requested one so the rerun command reproduces the run.
+      console.log(skipLine({ scenarioIds, ...cell }));
       continue;
     }
     try {
-      failures += await runLiveE2e(disposition, core);
+      failures += await runLiveE2e(cell, core, multiCell);
     } catch (error) {
-      console.log(runFailureLine(disposition.productId, errorMessage(error)));
+      const lines = [runFailureLine(cell.productId, errorMessage(error))];
+      for (const line of multiCell ? labelCellLines(lines, cell) : lines) console.log(line);
       failures += 1;
     }
   }
-  finalizeE2eDispositions(dispositions, process.env[ENV.smokeStrictSkips] === "1");
+  finalizeE2eDispositions(cells, process.env[ENV.smokeStrictSkips] === "1");
   return failures === 0 ? 0 : 1;
 }
 

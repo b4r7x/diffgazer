@@ -241,17 +241,14 @@ describe("runRemoveWorkflow", () => {
       name: "test-component",
       files: [{ absolutePath: filePath }],
     };
-    const getAllItems = vi.fn((invocation: RemoveInvocation<typeof config>) => {
-      expect(invocation).toEqual({ cwd: tempDir, config });
-      return [item];
-    });
-    const getItemOrThrow = vi.fn((_name: string, invocation: RemoveInvocation<typeof config>) => {
-      expect(invocation).toEqual({ cwd: tempDir, config });
-      return item;
-    });
-    const validateNames = vi.fn((_names: string[], invocation: RemoveInvocation<typeof config>) => {
-      expect(invocation).toEqual({ cwd: tempDir, config });
-    });
+    const requireConfig = vi.fn((_cwd: string) => config);
+    const getAllItems = vi.fn((_invocation: RemoveInvocation<typeof config>) => [item]);
+    const getItemOrThrow = vi.fn(
+      (_name: string, _invocation: RemoveInvocation<typeof config>) => item,
+    );
+    const validateNames = vi.fn(
+      (_names: string[], _invocation: RemoveInvocation<typeof config>) => {},
+    );
     const updateManifest = vi.fn();
     const metadata = { retainedHash: "abc123" };
     const onAfterRemove = vi.fn(
@@ -269,10 +266,7 @@ describe("runRemoveWorkflow", () => {
       dryRun: false,
       force: false,
       itemPlural: "items",
-      requireConfig: (cwd) => {
-        expect(cwd).toBe(tempDir);
-        return config;
-      },
+      requireConfig,
       validateNames,
       getAllItems,
       getItemOrThrow,
@@ -284,6 +278,11 @@ describe("runRemoveWorkflow", () => {
       onAfterRemove,
     });
 
+    const invocation = { cwd: tempDir, config };
+    expect(requireConfig).toHaveBeenCalledWith(tempDir);
+    expect(validateNames).toHaveBeenCalledWith([item.name], invocation);
+    expect(getAllItems).toHaveBeenCalledWith(invocation);
+    expect(getItemOrThrow).toHaveBeenCalledWith(item.name, invocation);
     expect(onAfterRemove).toHaveBeenCalledWith({
       cwd: tempDir,
       config,

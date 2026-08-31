@@ -83,6 +83,7 @@ export function HistoryInsightsPane({
     isCleanRun({
       issueCount: metadata.issueCount,
       failedLensCount: metadata.failedLensCount,
+      salvagedLensCount: metadata.salvagedLensCount,
       terminalOutcome: metadata.terminalOutcome,
     })
       ? metadata

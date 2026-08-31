@@ -62,6 +62,39 @@ describe("useProviderManagement single flight", () => {
     });
   });
 
+  it("carries the billing pool chosen with the model into the select call", async () => {
+    const selectConfiguration = vi
+      .fn<BoundApi["selectConfiguration"]>()
+      .mockResolvedValue({ action: "select", status: "succeeded" } as Awaited<
+        ReturnType<BoundApi["selectConfiguration"]>
+      >);
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      selectConfiguration,
+    } satisfies BoundApi;
+    const { geminiRowId, hook } = renderManagement(api);
+    const owner = {
+      kind: "model",
+      id: 1,
+      rowId: geminiRowId,
+      configurationId: GEMINI_CONFIGURATION.configurationId,
+    } as const;
+
+    await act(async () => {
+      await hook.result.current.handleSelectModel(
+        owner,
+        "gemini-2.5-flash",
+        GEMINI_CONFIGURATION.endpoint,
+      );
+    });
+
+    expect(selectConfiguration).toHaveBeenCalledWith(
+      GEMINI_CONFIGURATION.configurationId,
+      "gemini-2.5-flash",
+      GEMINI_CONFIGURATION.endpoint,
+    );
+  });
+
   it("propagates a rejected model selection to the overlay", async () => {
     const selectConfiguration = vi
       .fn<BoundApi["selectConfiguration"]>()

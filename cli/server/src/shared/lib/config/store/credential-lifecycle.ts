@@ -8,12 +8,14 @@ import type {
 import { log } from "../../log.js";
 import type { DecodedSecretBinding } from "../persistence/secrets.js";
 import {
-  bindWriteOnlySecret,
   createEnvironmentSecretBinding,
   createNoneSecretBinding,
-  deleteSecretBinding,
   markSecretBindingRemoved,
   type SecretBinding,
+} from "../secret-binding-model.js";
+import {
+  bindWriteOnlySecret,
+  deleteSecretBinding,
   type SecretBindingIO,
 } from "../secret-bindings.js";
 import { type ConfigurationActionError, configurationActionFailure } from "../types.js";

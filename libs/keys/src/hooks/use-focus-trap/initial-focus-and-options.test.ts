@@ -2,8 +2,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { type RefObject, useRef } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { queryTestElement } from "../../testing/internal/assertions.js";
+import { createContainer, fireTab, renderTrap } from "../../testing/internal/focus-trap-harness.js";
 import { useFocusTrap } from "../use-focus-trap.js";
-import { createContainer, fireTab, renderTrap } from "./trap-harness.js";
 
 // File convention: this suite asserts focus-trap focus movement to specific
 // elements identified by `#id`. The buttons are intentionally labelled "A"/"B"/"C"

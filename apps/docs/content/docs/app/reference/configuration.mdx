@@ -41,7 +41,7 @@ The local API exposes six generic actions on `POST /api/config/actions`:
 | --- | --- |
 | `create` | Start a new configuration for a selectable product. |
 | `inspect` | Read the current safe summary and readiness state. |
-| `select` | Choose an exact admitted model. |
+| `select` | Choose an exact admitted model, and optionally the product endpoint that model bills against. |
 | `test` | Run the optional readiness and conformance probe for the configured tuple (**Verify** in the UI). |
 | `update` | Change endpoint, credential reference, or notice acknowledgement. |
 | `delete` | Remove the configuration after active review leases drain. |

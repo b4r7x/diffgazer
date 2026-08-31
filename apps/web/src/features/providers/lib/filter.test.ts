@@ -18,6 +18,7 @@ import {
   READINESS_PRESENTATION,
   ReadinessSchema,
 } from "@diffgazer/core/schemas/config";
+import { OPENCODE_GO_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
 import { describe, expect, it } from "vitest";
 import {
   filterProviders,
@@ -184,6 +185,17 @@ describe("filterProviders", () => {
   it("matches search query against product name and id", () => {
     expect(rowIds(filterProviders(ALL_ROWS, "all", "google"))).toEqual(["gemini-primary"]);
     expect(rowIds(filterProviders(ALL_ROWS, "all", "zai"))).toEqual(["zai"]);
+  });
+
+  // The row renders as its pool, so the name a user can read is the name they
+  // can type; the product name keeps working because unconfigured rows show it.
+  it("matches search against the pool name a configured dual-pool row displays", () => {
+    const rows = mapProviderList([
+      configurationStatus(OPENCODE_GO_CONFIGURATION, "conformance-pending"),
+    ]);
+
+    expect(rowIds(filterProviders(rows, "all", "opencode go"))).toEqual(["opencode-go"]);
+    expect(rowIds(filterProviders(rows, "all", "opencode zen"))).toEqual(["opencode-go"]);
   });
 
   it("combines filter and search", () => {

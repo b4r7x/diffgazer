@@ -1,9 +1,14 @@
 import { isDeepStrictEqual } from "node:util";
 import { scanJsonRejectingDuplicateKeys } from "@diffgazer/core/json";
 import { z } from "zod";
-import { type SecretBinding, SecretBindingSchema } from "../secret-bindings.js";
+import { type SecretBinding, SecretBindingSchema } from "../secret-binding-model.js";
 import { type SecretsState, V1_MIGRATION_FAILED_MESSAGE } from "../types.js";
-import { scanJsonObjectProperties, splitJsonArrayElements } from "./json-slices.js";
+import {
+  byteArraysEqual,
+  copyBytes,
+  scanJsonObjectProperties,
+  splitJsonArrayElements,
+} from "./json-slices.js";
 
 export const SECRETS_SCHEMA_VERSION_V2 = 2 as const;
 
@@ -77,8 +82,6 @@ const LEGACY_PROVIDER_ENV_VARS = {
 } as const;
 type AIProvider = keyof typeof LEGACY_PROVIDER_ENV_VARS;
 
-const copyBytes = (bytes: Uint8Array): Uint8Array => new Uint8Array(bytes);
-
 const decodeText = (bytes: Uint8Array): string => {
   try {
     return textDecoder.decode(bytes);
@@ -149,9 +152,6 @@ const attachSnapshot = (document: SecretsDocumentV2): SecretsDocumentV2 => {
   });
   return document;
 };
-
-const byteArraysEqual = (left: Uint8Array, right: Uint8Array): boolean =>
-  left.byteLength === right.byteLength && left.every((value, index) => value === right[index]);
 
 const matchesSnapshot = (document: SecretsDocumentWithSnapshot): boolean => {
   const snapshot = document[V2_SECRETS_SNAPSHOT];

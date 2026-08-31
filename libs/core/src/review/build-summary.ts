@@ -57,6 +57,7 @@ export interface LensSummaryRow {
   issueCount: number;
   status: "success" | "failed";
   errorCode?: string;
+  droppedCandidateCount?: number;
 }
 
 export function buildLensSummaryRows(lensStats: LensStat[] | undefined): LensSummaryRow[] {
@@ -67,6 +68,9 @@ export function buildLensSummaryRows(lensStats: LensStat[] | undefined): LensSum
     issueCount: stat.issueCount,
     status: stat.status,
     errorCode: stat.errorCode,
+    ...(stat.droppedCandidateCount !== undefined
+      ? { droppedCandidateCount: stat.droppedCandidateCount }
+      : {}),
   }));
 }
 

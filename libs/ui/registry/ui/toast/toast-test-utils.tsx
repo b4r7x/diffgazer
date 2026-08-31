@@ -110,6 +110,7 @@ export function installPopoverStub(): PopoverStub {
       if (hideDesc) Object.defineProperty(Proto, "hidePopover", hideDesc);
       else Reflect.deleteProperty(Proto, "hidePopover");
       if (matchesDesc) Object.defineProperty(Proto, "matches", matchesDesc);
+      else Reflect.deleteProperty(Proto, "matches");
     },
   };
 }

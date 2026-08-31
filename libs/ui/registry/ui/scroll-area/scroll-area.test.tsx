@@ -285,6 +285,34 @@ describe("ScrollArea", () => {
       expect(thumb.style.transform).not.toBe(restingTransform);
     });
 
+    it("shows the thumb again after overlay is toggled off and back on", () => {
+      const { rerender } = render(
+        <ScrollArea aria-label="Content" overlay>
+          content
+        </ScrollArea>,
+      );
+      const el = screen.getByRole("region", { name: "Content" });
+      defineScrollMetrics(el, { clientHeight: 200, scrollHeight: 800 });
+      // fireEvent retained: jsdom does not calculate layout or emit scroll after scrollTop changes.
+      fireEvent.scroll(el);
+      expect(getThumb().style.display).toBe("block");
+
+      rerender(
+        <ScrollArea aria-label="Content" overlay={false}>
+          content
+        </ScrollArea>,
+      );
+      rerender(
+        <ScrollArea aria-label="Content" overlay>
+          content
+        </ScrollArea>,
+      );
+
+      // The geometry is unchanged, so nothing but the remount tells the thumb to
+      // paint; a cache surviving the old node would leave it hidden.
+      expect(getThumb().style.display).toBe("block");
+    });
+
     it("renders no overlay rail by default", () => {
       renderScrollArea();
       expect(document.querySelector('[data-slot="scroll-area-overlay"]')).not.toBeInTheDocument();

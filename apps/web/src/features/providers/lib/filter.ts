@@ -5,6 +5,7 @@ import {
   UNRECOGNIZED_CONFIGURATION_COPY,
 } from "@diffgazer/core/providers";
 import type { UnrecognizedConfiguration } from "@diffgazer/core/schemas/config";
+import { getProviderRowDisplayName } from "./display-name";
 
 export const PROVIDER_FILTERS = ["all", "configured", "needs-key", "free", "paid"] as const;
 export type ProviderFilter = (typeof PROVIDER_FILTERS)[number];
@@ -39,10 +40,14 @@ function hasOnlyFreeModels(row: ProviderListRow): boolean {
   return getBillingTier(row.product.productId) === "free";
 }
 
+// A configured dual-pool row renders as its pool ("OpenCode Go"), so the
+// displayed name has to be searchable alongside the product name a row that is
+// not configured still shows.
 function matchesSearch(row: ProviderListRow, query: string): boolean {
   const name = row.product.name.toLowerCase();
   const productId = row.product.productId.toLowerCase();
-  return name.includes(query) || productId.includes(query);
+  const displayName = getProviderRowDisplayName(row).toLowerCase();
+  return name.includes(query) || productId.includes(query) || displayName.includes(query);
 }
 
 export function filterProviders(

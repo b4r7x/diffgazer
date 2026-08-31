@@ -17,7 +17,7 @@ import {
 import { useDialogScope } from "@/hooks/use-dialog-scope";
 import type { ApiKeyFocusTarget } from "@/types/api-key-focus-target";
 
-type FocusZone = "close" | "radios" | "input" | "acknowledgement" | "footer";
+type FocusZone = "endpoint" | "close" | "radios" | "input" | "acknowledgement" | "footer";
 
 type StoredFocusTarget = Exclude<ApiKeyFocusTarget, "cancel" | "confirm">;
 
@@ -25,6 +25,8 @@ interface ApiKeyDialogKeyboardOptions {
   open: boolean;
   /** Whether the dialog renders an acceptance control between the credential controls and the footer. */
   hasAcknowledgement: boolean;
+  /** Whether the dialog renders an endpoint group above the credential controls. */
+  hasEndpointChoice: boolean;
   method: InputMethod;
   setMethod: (method: InputMethod) => void;
   canSubmit: boolean;
@@ -46,7 +48,8 @@ interface AcknowledgementFocusProps {
 }
 
 interface ApiKeyDialogKeyboardReturn {
-  focused: ApiKeyFocusTarget;
+  /** The focused credential/footer control, or null while the endpoint group owns focus. */
+  focused: ApiKeyFocusTarget | null;
   setFocused: (element: ApiKeyFocusTarget) => void;
   getMethodOptionProps: (method: InputMethod) => {
     ref: RefCallback<HTMLDivElement>;
@@ -61,6 +64,10 @@ interface ApiKeyDialogKeyboardReturn {
   cancelHighlighted: boolean;
   confirmHighlighted: boolean;
   acknowledgementHighlighted: boolean;
+  /** True while the endpoint group owns focus and its own arrow navigation. */
+  isEndpointZone: boolean;
+  /** Hands the arrow cycle back on the endpoint group's first and last item. */
+  handleEndpointBoundary: (direction: "up" | "down") => void;
   handleMethodKeyDown: (event: ReactKeyboardEvent, method: InputMethod) => void;
   handleMethodCommit: (method: InputMethod) => void;
 }
@@ -72,15 +79,20 @@ function getZoneForElement(element: StoredFocusTarget): FocusZone {
   return "acknowledgement";
 }
 
-function getZones(hasAcknowledgement: boolean): readonly [FocusZone, ...FocusZone[]] {
-  return hasAcknowledgement
-    ? ["radios", "input", "acknowledgement", "footer", "close"]
-    : ["radios", "input", "footer", "close"];
+function getZones(
+  hasAcknowledgement: boolean,
+  hasEndpointChoice: boolean,
+): readonly [FocusZone, ...FocusZone[]] {
+  const credentialZones = hasAcknowledgement
+    ? (["radios", "input", "acknowledgement", "footer", "close"] as const)
+    : (["radios", "input", "footer", "close"] as const);
+  return hasEndpointChoice ? ["endpoint", ...credentialZones] : credentialZones;
 }
 
 export function useApiKeyDialogKeyboard({
   open,
   hasAcknowledgement,
+  hasEndpointChoice,
   method,
   setMethod,
   canSubmit,
@@ -92,7 +104,7 @@ export function useApiKeyDialogKeyboard({
 }: ApiKeyDialogKeyboardOptions): ApiKeyDialogKeyboardReturn {
   const methodOptionRefs = useRef(new Map<InputMethod, HTMLDivElement>());
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const zones = getZones(hasAcknowledgement);
+  const zones = getZones(hasAcknowledgement, hasEndpointChoice);
   const [focused, setFocusedInternal] = useState<StoredFocusTarget>("paste");
 
   useDialogScope("api-key-dialog", { enabled: open });
@@ -153,6 +165,27 @@ export function useApiKeyDialogKeyboard({
     closeButtonRef.current?.focus();
   };
 
+  /**
+   * The topmost control of the dialog body, whichever one this row renders. The
+   * endpoint group focuses itself once its zone becomes active, so entering it
+   * is a zone move rather than a focus call.
+   */
+  const focusFirstBodyControl = () => {
+    if (hasEndpointChoice) setZone("endpoint");
+    else focusMethodOption("paste");
+  };
+
+  /** Same zone move as {@link focusFirstBodyControl} when the endpoint group is above. */
+  const focusAbovePasteOption = () => {
+    if (hasEndpointChoice) setZone("endpoint");
+    else focusCloseButton();
+  };
+
+  const handleEndpointBoundary = (direction: "up" | "down") => {
+    if (direction === "up") focusCloseButton();
+    else focusMethodOption("paste");
+  };
+
   const focusAboveFooter = () => {
     if (hasAcknowledgement) focusAcknowledgement();
     else focusMethodOption("env");
@@ -201,12 +234,12 @@ export function useApiKeyDialogKeyboard({
 
     if (direction === "up" && focusedMethod === "paste") {
       event.preventDefault();
-      focusCloseButton();
+      focusAbovePasteOption();
     }
   };
 
   const resetDialogFocus = useEffectEvent(() => {
-    focusMethodOption("paste");
+    focusFirstBodyControl();
   });
 
   useEffect(() => {
@@ -215,9 +248,16 @@ export function useApiKeyDialogKeyboard({
   }, [open]);
 
   const inFooter = isZone("footer");
+  const inEndpointZone = isZone("endpoint");
   const footerFocused: ApiKeyFocusTarget =
     footerActionRow.focusedIndex === 1 && canSubmit ? "confirm" : "cancel";
-  const effectiveFocused = inFooter ? footerFocused : focused;
+  const resolveFocused = (): ApiKeyFocusTarget | null => {
+    // The endpoint group owns its own highlight, so no credential control is focused.
+    if (inEndpointZone) return null;
+    if (inFooter) return footerFocused;
+    return focused;
+  };
+  const effectiveFocused = resolveFocused();
 
   // The [x] tops the arrow cycle like the model dialog's close zone: ArrowUp
   // from the first control reaches it, ArrowDown returns below.
@@ -225,7 +265,7 @@ export function useApiKeyDialogKeyboard({
     "ArrowUp",
     () => {
       if (effectiveFocused === "env") focusMethodOption("paste");
-      else if (effectiveFocused === "paste") focusCloseButton();
+      else if (effectiveFocused === "paste") focusAbovePasteOption();
       else if (effectiveFocused === "acknowledgement") focusMethodOption("env");
     },
     { enabled: open && (isZone("radios") || isZone("acknowledgement")) },
@@ -234,7 +274,7 @@ export function useApiKeyDialogKeyboard({
   useKey(
     "ArrowDown",
     () => {
-      focusMethodOption("paste");
+      focusFirstBodyControl();
     },
     { enabled: open && isZone("close") },
   );
@@ -319,6 +359,8 @@ export function useApiKeyDialogKeyboard({
     cancelHighlighted,
     confirmHighlighted,
     acknowledgementHighlighted,
+    isEndpointZone: inEndpointZone,
+    handleEndpointBoundary,
     handleMethodKeyDown,
     handleMethodCommit,
   };

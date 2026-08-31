@@ -15,6 +15,7 @@ export function assertCatalogProviders(catalog, providers, resolve, source) {
   });
 }
 
+/** The frozen probe-reason vocabulary; `formatProviderProbeLine` rejects anything outside it. */
 export const PROVIDER_PROBE_REASONS = [
   "none",
   "network-disabled",
@@ -33,9 +34,9 @@ export const PROVIDER_PROBE_REASONS = [
  *   opt-in env is unset). Emitting `skipped` is the truthful record and is not
  *   a strict failure; the offline release smoke is expected to report it.
  * - `unavailable` — live probing WAS requested but a prerequisite is absent (a
- *   credential, a model the provider would name, or a probe runner that was
- *   never built). Strict mode fails on these: the operator asked for evidence
- *   and got none.
+ *   credential, a model the provider would name, or a probe runner the dev
+ *   toolchain cannot load). Strict mode fails on these: the operator asked for
+ *   evidence and got none.
  */
 const NOT_REQUESTED_REASONS = new Set(["network-disabled", "live-opt-in-missing"]);
 
@@ -66,7 +67,14 @@ export function buildHostedProbeTuples(productRegistry, credentialEnvVars) {
     });
 }
 
+const KNOWN_PROBE_REASONS = new Set(PROVIDER_PROBE_REASONS);
+
 export function formatProviderProbeLine({ providerId, modelId, status, reason, checkedAt }) {
+  if (!KNOWN_PROBE_REASONS.has(reason)) {
+    throw new Error(
+      `provider probe reason '${reason}' is not in PROVIDER_PROBE_REASONS (${PROVIDER_PROBE_REASONS.join(", ")})`,
+    );
+  }
   return (
     `{"type":"provider-probe","providerId":${JSON.stringify(providerId)},` +
     `"modelId":${JSON.stringify(modelId)},` +

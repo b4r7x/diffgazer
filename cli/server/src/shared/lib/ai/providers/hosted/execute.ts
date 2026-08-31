@@ -30,6 +30,7 @@ import {
   reportTruncatedOutput,
   zodIssuePaths,
 } from "./output-correction.js";
+import { describePoolFailure } from "./pool-context.js";
 import { validateHostedRequest } from "./preflight.js";
 import { HTTP_DIAGNOSTIC_MAX_BYTES } from "./profiles.js";
 import {
@@ -192,6 +193,15 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
     return failed("timed-out");
   };
 
+  // The pool a failure belongs to is the endpoint this dispatch is bound to,
+  // never anything read back out of the response body.
+  const poolFailure = {
+    productId: hostedProductId,
+    configurationId: request.configurationId,
+    endpoint,
+    modelId: evidenceKey.modelId,
+  };
+
   let correction: OutputCorrection | null = null;
   let timeoutRetryUsed = false;
 
@@ -298,7 +308,11 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
           // before mapping the abort, or the rate limit leaves no trace.
           request.reportDiagnostic?.(
             serializeFailureDiagnostic({
-              ...describeHttpFailure(hostedProductId, 429),
+              ...describeHttpFailure(
+                hostedProductId,
+                429,
+                describePoolFailure({ ...poolFailure, status: 429 }) ?? undefined,
+              ),
               capture: { channel: "response", text: capturedText },
               sensitive: { literalSecrets: [credential] },
             }),
@@ -322,8 +336,15 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         if (!captured) cancelResponseBody(response);
         const diagnostic = serializeFailureDiagnostic({
           ...(rateLimitCapture === null
-            ? describeHttpFailure(hostedProductId, response.status)
-            : describeExhaustedRateLimit(hostedProductId)),
+            ? describeHttpFailure(
+                hostedProductId,
+                response.status,
+                describePoolFailure({ ...poolFailure, status: response.status }) ?? undefined,
+              )
+            : describeExhaustedRateLimit(
+                hostedProductId,
+                describePoolFailure({ ...poolFailure, status: 429 }) ?? undefined,
+              )),
           ...(captured
             ? { capture: { channel: "response", text: captured.ok ? captured.value : "" } }
             : {}),

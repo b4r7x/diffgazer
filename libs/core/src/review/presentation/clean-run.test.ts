@@ -25,7 +25,7 @@ describe("isCleanRun", () => {
     );
   });
 
-  it("treats a missing terminal outcome as a completed run", () => {
+  it("treats a missing terminal outcome, and an old record without the incomplete-answer fields, as a completed clean run", () => {
     expect(isCleanRun({ issueCount: 0, lensStats: succeeded })).toBe(true);
     expect(isCleanRun({ issueCount: 0 })).toBe(true);
   });
@@ -37,6 +37,15 @@ describe("isCleanRun", () => {
   it("is not clean when a lens failed, even with zero issues", () => {
     expect(isCleanRun({ issueCount: 0, lensStats: oneFailed })).toBe(false);
     expect(isCleanRun({ issueCount: 0, failedLensCount: 1 })).toBe(false);
+  });
+
+  it("is not clean when a lens answered incompletely, even with zero issues", () => {
+    const oneSalvaged: LensStat[] = [
+      { lensId: "correctness", issueCount: 0, status: "success" },
+      { lensId: "security", issueCount: 0, status: "success", droppedCandidateCount: 2 },
+    ];
+    expect(isCleanRun({ issueCount: 0, lensStats: oneSalvaged })).toBe(false);
+    expect(isCleanRun({ issueCount: 0, salvagedLensCount: 1 })).toBe(false);
   });
 
   it("is not clean when the run ended on a failed terminal outcome", () => {
@@ -103,6 +112,16 @@ describe("buildScopeValue", () => {
 describe("buildModelValue", () => {
   it("names the model against the product that ran it", () => {
     expect(buildModelValue("deepseek", "deepseek-chat")).toBe("DeepSeek / deepseek-chat");
+  });
+
+  it("keeps naming the product on a dual-pool run, so history is never retro-relabelled", () => {
+    // A Go run's receipt stores the Go endpoint, but a record is a record: the
+    // design declined retro-relabelling history, so every opencode-zen run —
+    // past or new, whichever pool billed it — reads as the product here. Only
+    // the live surfaces name the pool.
+    expect(buildModelValue("opencode-zen", "deepseek-v4-flash")).toBe(
+      "OpenCode Zen / DeepSeek V4 Flash",
+    );
   });
 
   it("falls back to the bare id when no product names it, and omits an unknown model", () => {

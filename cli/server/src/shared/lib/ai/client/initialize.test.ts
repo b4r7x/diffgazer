@@ -11,7 +11,7 @@ import {
 } from "../../config/admission-evidence.js";
 import { executionLimitsFromBudget } from "../../config/budget-ceiling.js";
 import type { SupportedProviderConfigurationRecord } from "../../config/provider-config.js";
-import { createEnvironmentSecretBinding } from "../../config/secret-bindings.js";
+import { createEnvironmentSecretBinding } from "../../config/secret-binding-model.js";
 import { clientTestExecutionResult } from "../../testing/ai-client-fixtures.js";
 import { assertTempHome } from "../../testing/temp-home.js";
 import { ExecutionLeaseRegistry } from "../admission/lease-registry.js";
@@ -223,6 +223,41 @@ describe("toInitializedAIClient", () => {
     });
     expect(client.terminalExecutions).toEqual([execution]);
     expect(client.terminalDiagnostics).toEqual([generateResult.error.diagnostic]);
+  });
+
+  it("carries the output-salvaged warning on the ok value and keeps terminalDiagnostics empty", async () => {
+    const dependencies = createDependencies(readySnapshot());
+    const { toInitializedAIClient } = await loadInitialize();
+    const authorizationResult = await authorizeReviewExecution("gemini-primary", dependencies);
+
+    expect(authorizationResult.ok).toBe(true);
+    if (!authorizationResult.ok) return;
+
+    const authorization = authorizationResult.value;
+    const client = toInitializedAIClient(authorization);
+    const completed = clientTestExecutionResult(authorization.plan, "completed");
+    executeReviewGenerationMock.mockResolvedValueOnce({
+      execution: completed,
+      diagnostic: {
+        code: "output-salvaged",
+        safeMessage: "Recovered 6 findings; 4 candidates were dropped.",
+        retryable: false,
+        remediation: "Rerun the review for a whole answer.",
+        correlationId: "diag-salvaged-1",
+        salvage: { keptFindingCount: 6, droppedCandidateCount: 4 },
+      },
+    });
+
+    const result = await client.generate(
+      "review prompt",
+      z.object({ issues: z.array(z.unknown()) }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.data).toEqual(completed.result);
+    expect(result.value.warning).toEqual({ droppedCandidateCount: 4 });
+    expect(client.terminalDiagnostics).toHaveLength(0);
   });
 
   it("reports the first structured success once, and only after the lens schema accepts it", async () => {

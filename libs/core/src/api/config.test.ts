@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
+import { getEndpointPoolContext, getModelBillingPool } from "../providers/endpoint-pools.js";
+import { ConfigurationModelsResponseSchema } from "../schemas/config/models.js";
 import {
   READINESS_PRESENTATION,
   type ReadinessAcknowledgement,
@@ -182,6 +185,23 @@ describe("config API functions", () => {
       configurationId: "zai-primary",
       revision: 7,
     });
+  });
+
+  it("posts the billing pool alongside the model when select carries an endpoint", async () => {
+    mockConfigurationActionPost(client, { action: "select", status: "succeeded", configuration });
+
+    await selectConfiguration(client, "zai-primary", "glm-4.7", "https://opencode.ai/zen/go/v1");
+
+    expect(client.post).toHaveBeenCalledWith(
+      "/api/config/actions",
+      {
+        action: "select",
+        configurationId: "zai-primary",
+        modelId: "glm-4.7",
+        endpoint: "https://opencode.ai/zen/go/v1",
+      },
+      { schema: expect.any(Function) },
+    );
   });
 
   it("rejects a response for a different action", async () => {
@@ -375,6 +395,114 @@ describe("config API functions", () => {
       "selectConfiguration",
       "testConfiguration",
       "updateConfiguration",
+    ]);
+  });
+});
+
+/**
+ * Pinned copies of the pre-pool row and envelope shapes, declared here from
+ * HEAD's source so a client built before endpoint-profile membership existed can
+ * be replayed against a new server's payload.
+ */
+const PinnedPrePoolModelInfoSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  tier: z.enum(["free", "paid", "unknown"]),
+  recommended: z.boolean().optional(),
+  releaseDate: z.string().optional(),
+});
+
+const PinnedPrePoolPassedModelsSchema = z.strictObject({
+  status: z.literal("passed"),
+  configurationId: z
+    .string()
+    .min(1)
+    .max(128)
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/),
+  productId: z.enum([
+    "gemini",
+    "zai",
+    "openrouter",
+    "deepseek",
+    "qwen",
+    "moonshot",
+    "minimax",
+    "ollama-cloud",
+    "opencode-zen",
+  ]),
+  transportFamily: z.literal("hosted-api"),
+  checkedAt: z.iso.datetime(),
+  models: z.array(PinnedPrePoolModelInfoSchema),
+  source: z.literal("provider-live"),
+  cached: z.literal(false),
+});
+
+const newServerModelsResponse = {
+  status: "passed",
+  configurationId: "opencode-primary",
+  productId: "opencode-zen",
+  transportFamily: "hosted-api",
+  models: [
+    {
+      id: "deepseek-v4-flash",
+      name: "DeepSeek V4 Flash",
+      description: "128K context",
+      tier: "paid",
+      endpointProfileIds: ["zen", "go"],
+    },
+  ],
+  checkedAt,
+  source: "provider-live",
+  cached: false,
+} as const;
+
+/** The live `passed` envelope variant for one `source`, so its key set can be compared to the pinned copy. */
+function liveModelsEnvelopeKeys(source: string): string[] {
+  const option = ConfigurationModelsResponseSchema.options[0].options.find(
+    (candidate) => candidate.shape.source.value === source,
+  );
+  if (!option) throw new Error(`No configuration models envelope for source ${source}`);
+  return Object.keys(option.shape).sort();
+}
+
+describe("configuration models wire compatibility", () => {
+  it("lets a pre-pool client parse a pool-labeled models response, dropping the unknown field", () => {
+    // The fixture has to be a payload today's server can actually emit, and the
+    // pinned envelope has to still name every key that envelope carries: an
+    // optional key added upstream is invisible to a fixture-only parse yet
+    // rejected by the strictObject a pre-pool client ships.
+    expect(() => ConfigurationModelsResponseSchema.parse(newServerModelsResponse)).not.toThrow();
+    expect(liveModelsEnvelopeKeys("provider-live")).toEqual(
+      Object.keys(PinnedPrePoolPassedModelsSchema.shape).sort(),
+    );
+
+    const parsed = PinnedPrePoolPassedModelsSchema.parse(newServerModelsResponse);
+
+    expect(parsed.models).toEqual([
+      {
+        id: "deepseek-v4-flash",
+        name: "DeepSeek V4 Flash",
+        description: "128K context",
+        tier: "paid",
+      },
+    ]);
+  });
+
+  it("parses a pre-pool models response and bills its rows to the bound pool", async () => {
+    const client = createMockClient();
+    const oldServerModels = newServerModelsResponse.models.map(
+      ({ endpointProfileIds: _membership, ...row }) => row,
+    );
+    mockConfigurationModelsGet(client, { ...newServerModelsResponse, models: oldServerModels });
+
+    const response = await getConfigurationModels(client, "opencode-primary");
+
+    expect(response.models).toEqual(oldServerModels);
+    const poolContext = getEndpointPoolContext("opencode-zen", "https://opencode.ai/zen/v1");
+    if (!poolContext) throw new Error("Expected an opencode-zen pool context");
+    expect(response.models.map((model) => getModelBillingPool(poolContext, model)?.id)).toEqual([
+      "zen",
     ]);
   });
 });

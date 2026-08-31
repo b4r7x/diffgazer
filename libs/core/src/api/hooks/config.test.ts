@@ -292,7 +292,7 @@ describe("V2 configuration mutations", () => {
     expectPerConfigurationInvalidated(harness, supportedConfiguration);
   });
 
-  it("useSelectConfiguration dispatches select and invalidates the bound inspect and model caches", async () => {
+  it("useSelectConfiguration dispatches select with its billing pool and invalidates the bound inspect and model caches", async () => {
     const selectConfiguration = vi
       .fn<BoundApi["selectConfiguration"]>()
       .mockImplementation(async (configurationId, modelId) =>
@@ -307,10 +307,15 @@ describe("V2 configuration mutations", () => {
       await result.current.mutateAsync({
         configurationId: "gemini-primary",
         modelId: "gemini-2.5-flash",
+        endpoint: "https://generativelanguage.googleapis.com/v1beta",
       });
     });
 
-    expect(selectConfiguration).toHaveBeenCalledWith("gemini-primary", "gemini-2.5-flash");
+    expect(selectConfiguration).toHaveBeenCalledWith(
+      "gemini-primary",
+      "gemini-2.5-flash",
+      "https://generativelanguage.googleapis.com/v1beta",
+    );
     expectSummariesInvalidated(harness);
     expectPerConfigurationInvalidated(harness, supportedConfiguration);
   });

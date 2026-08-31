@@ -140,4 +140,16 @@ describe("buildLensSummaryRows", () => {
       },
     ]);
   });
+
+  it("carries the dropped-candidate count only for lenses that answered incompletely", () => {
+    const stats: LensStat[] = [
+      { lensId: "correctness", issueCount: 3, status: "success", droppedCandidateCount: 4 },
+      { lensId: "security", issueCount: 1, status: "success" },
+    ];
+
+    const [salvaged, whole] = buildLensSummaryRows(stats);
+
+    expect(salvaged).toMatchObject({ lensId: "correctness", droppedCandidateCount: 4 });
+    expect(whole).not.toHaveProperty("droppedCandidateCount");
+  });
 });

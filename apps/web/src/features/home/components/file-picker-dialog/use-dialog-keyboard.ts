@@ -95,7 +95,9 @@ export function useFilePickerKeyboard({
     actionCount: 2,
     containerRef: footerRef,
     defaultIndex: 1,
-    disabledActions: [isStarting, !canStart],
+    // Cancel is always live while the row is: the row itself stands down while a
+    // start is in flight, and canStart already carries that same condition.
+    disabledActions: [false, !canStart],
     onAction: (index) => {
       if (index === 0) onCancel();
       else onStart();

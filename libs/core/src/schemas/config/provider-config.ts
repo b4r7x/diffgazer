@@ -80,10 +80,17 @@ const InspectConfigurationActionSchema = z.strictObject({
   configurationId: ConfigurationIdSchema,
 });
 
+// endpoint is the billing pool the chosen model bills, and it travels with the
+// model: omitting it keeps the pool the configuration is already bound to, so
+// every payload written before pool switching stays valid unchanged. The server
+// re-checks it against the bound pool context — only a pool sharing the
+// configuration's credential passes; a tuple endpoint that is a separate
+// account (moonshot's other region) is rejected.
 const SelectConfigurationActionSchema = z.strictObject({
   action: z.literal("select"),
   configurationId: ConfigurationIdSchema,
   modelId: ExactModelIdSchema,
+  endpoint: HostedApiEndpointSchema.optional(),
 });
 
 const TestConfigurationActionSchema = z.strictObject({

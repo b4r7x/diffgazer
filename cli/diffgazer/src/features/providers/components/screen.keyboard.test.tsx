@@ -13,6 +13,7 @@ import {
   makeConfigurationInitResponse,
   makeConfigurationListResponse,
   makeReadiness,
+  OPENCODE_ZEN_CONFIGURATION,
   OPENROUTER_CONFIGURATION,
   ZAI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
@@ -91,6 +92,27 @@ afterEach(() => {
   cleanup();
   cleanupRootFrames();
 });
+
+// One row both Zen and Go serve: the only case where the armed pool changes
+// what gets saved.
+const SHARED_POOL_MODELS_RESPONSE: ConfigurationModelsResponse = {
+  status: "passed",
+  configurationId: OPENCODE_ZEN_CONFIGURATION.configurationId,
+  productId: OPENCODE_ZEN_CONFIGURATION.productId,
+  transportFamily: OPENCODE_ZEN_CONFIGURATION.transportFamily,
+  models: [
+    {
+      id: "deepseek-v4-flash",
+      name: "deepseek-v4-flash",
+      description: "shared route",
+      tier: "paid",
+      endpointProfileIds: ["zen", "go"],
+    },
+  ],
+  checkedAt: "2026-07-31T12:00:00.000Z",
+  source: "snapshot",
+  cached: false,
+};
 
 describe("ProvidersScreen keyboard zones", () => {
   test("moves the details pane with the highlight, without pressing Enter", async () => {
@@ -413,6 +435,58 @@ describe("ProvidersScreen keyboard zones", () => {
     expect(selectConfiguration).toHaveBeenCalledWith(
       "gemini-primary",
       readyStatus.configuration.selectedModelId,
+      undefined,
+    );
+  });
+
+  // The overlay emits the endpoint; the screen is the only production call site
+  // that can drop it, so the mutation is asserted end to end from `m` + `p`.
+  test("carries the pool armed in the model overlay into the select mutation", async () => {
+    // Bound to Zen with the shared model already saved: confirming it again on
+    // the armed Go pool is the wallet switch, and nothing else changes.
+    const zenStatus = configurationStatus(
+      { ...OPENCODE_ZEN_CONFIGURATION, selectedModelId: "deepseek-v4-flash" },
+      "ready",
+    );
+    const selectConfiguration = vi.fn<BoundApi["selectConfiguration"]>().mockResolvedValue({
+      action: "select",
+      status: "succeeded",
+      configuration: zenStatus.configuration,
+      readiness: zenStatus.readiness,
+    });
+    const listConfigurations = vi
+      .fn<BoundApi["listConfigurations"]>()
+      .mockResolvedValue(makeConfigurationListResponse(makeConfigurationInitResponse([zenStatus])));
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(SHARED_POOL_MODELS_RESPONSE);
+    const api = {
+      ...makeApi(),
+      selectConfiguration,
+      listConfigurations,
+      getConfigurationModels,
+    } satisfies BoundApi;
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("OpenCode Zen") ?? false);
+    // The configured row is last; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
+    await flushUntil(() => lastFrame()?.includes("Product       : opencode-zen") ?? false);
+    stdin.write("m");
+    await flushUntil(() => lastFrame()?.includes("deepseek-v4-flash") ?? false);
+    stdin.write("p");
+    await flush();
+    stdin.write(ENTER);
+    await flushUntil(() => selectConfiguration.mock.calls.length === 1);
+
+    expect(selectConfiguration).toHaveBeenCalledWith(
+      "opencode-zen-primary",
+      "deepseek-v4-flash",
+      "https://opencode.ai/zen/go/v1",
     );
   });
 
@@ -459,13 +533,13 @@ describe("ProvidersScreen keyboard zones", () => {
   }) => {
     const view = renderRootFrame(80, 24, <ProvidersApiBoundary api={makeApi()} />);
 
-    await flushUntilRoot(view, () => view.lastFrame()?.includes("Google Gemini") ?? false);
+    await flushUntilRoot(() => view.lastFrame()?.includes("Google Gemini") ?? false);
     await pressRoot(view, ENTER);
-    await flushUntilRoot(view, () => view.lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    await flushUntilRoot(() => view.lastFrame()?.includes("gemini-2.5-flash") ?? false);
     for (const key of keys) {
       await pressRoot(view, key);
     }
-    await flushUntilRoot(view, () => view.lastFrame()?.includes(title) ?? false);
+    await flushUntilRoot(() => view.lastFrame()?.includes(title) ?? false);
     const frame = stripAnsi(view.lastFrame() ?? "");
     expect(frame).toContain(title);
     expect(frame.split("\n")).toHaveLength(24);

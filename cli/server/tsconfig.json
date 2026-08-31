@@ -10,7 +10,8 @@
     "**/*.test-support.ts",
     "src/features/review/testing",
     "src/shared/lib/testing",
-    "src/shared/lib/ai/providers/hosted/fixtures.ts",
+    "src/shared/lib/ai/providers/hosted/conformance-cases.ts",
+    "src/shared/lib/ai/providers/hosted/live-probe.ts",
     "node_modules",
     "dist"
   ]

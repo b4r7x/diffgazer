@@ -121,7 +121,7 @@ function updateRunnableDraft(
 
   return {
     ...next,
-    ...(configurationChanged ? { selectedModelId: null } : {}),
+    ...(configurationChanged ? { selectedModelId: null, selectedModelEndpoint: null } : {}),
     acknowledgement: { status: "required" },
   };
 }

@@ -5,6 +5,11 @@ import {
   type ReviewSizeWarning,
 } from "@diffgazer/core/schemas/review";
 import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
+import {
+  configurationStatus,
+  makeConfigurationInitResponse,
+  OPENCODE_GO_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { cleanup } from "ink-testing-library";
 import { act, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -288,6 +293,29 @@ describe("ReviewContainer", () => {
     expect(lastFrame() ?? "").toContain("Review issues failed");
     expect(lastFrame() ?? "").not.toContain("Cancel");
     expect(cancel).not.toHaveBeenCalled();
+  });
+
+  test("names the bound billing pool on a Go configuration's gate, never the product", async () => {
+    apiMocks.useConfigurationInit.mockReturnValue({
+      data: makeConfigurationInitResponse([
+        configurationStatus(OPENCODE_GO_CONFIGURATION, "conformance-failed"),
+      ]),
+      isLoading: false,
+    });
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({ gate: "unconfigured" }),
+    );
+
+    const { lastFrame } = renderContainer();
+
+    await waitUntil(() => frameText(lastFrame()).includes("Configuration Not Ready"));
+
+    // The shell header already reads "OpenCode Go" for this configuration; the
+    // review screen is live too, so it must not name the other wallet.
+    const frame = frameText(lastFrame());
+    expect(frame).toContain("Configuration Not Ready (OpenCode Go)");
+    expect(frame).toContain("OpenCode Go / DeepSeek V4 Flash");
+    expect(frame).not.toContain("OpenCode Zen");
   });
 
   test("review gates replace stale home footer shortcuts", async () => {

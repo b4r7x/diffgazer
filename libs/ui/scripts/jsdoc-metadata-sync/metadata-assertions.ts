@@ -52,15 +52,17 @@ function descriptionTokens(description: string): Set<string> {
   );
 }
 
-const CONTRADICTORY_TERMS = [
+// A hand-picked list, not a semantic model: it catches the drift shapes this
+// registry has actually produced, and nothing else.
+const KNOWN_ANTONYM_PAIRS = [
   ["disable", "enable"],
   ["set", "clear"],
   ["stop", "call"],
   ["accessible", "remove"],
 ] as const;
 
-function hasContradictoryTerms(source: Set<string>, metadata: Set<string>): boolean {
-  return CONTRADICTORY_TERMS.some(([left, right]) => {
+function hasKnownAntonymPair(source: Set<string>, metadata: Set<string>): boolean {
+  return KNOWN_ANTONYM_PAIRS.some(([left, right]) => {
     const sourceLeft = source.has(left);
     const sourceRight = source.has(right);
     const metadataLeft = metadata.has(left);
@@ -81,7 +83,7 @@ export function descriptionsAlign(source: string, metadata: string): boolean {
   const sourceTokens = descriptionTokens(source);
   const metadataTokens = descriptionTokens(metadata);
   if (sourceTokens.size === 0 || metadataTokens.size === 0) return false;
-  if (hasContradictoryTerms(sourceTokens, metadataTokens)) return false;
+  if (hasKnownAntonymPair(sourceTokens, metadataTokens)) return false;
   const shared = [...sourceTokens].filter((token) => metadataTokens.has(token)).length;
   const shorter = Math.min(sourceTokens.size, metadataTokens.size);
   if (sourceTokens.size <= 2) return shared >= 1;

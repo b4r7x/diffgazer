@@ -36,6 +36,7 @@ function Subject({
   } = useApiKeyDialogKeyboard({
     open: true,
     hasAcknowledgement,
+    hasEndpointChoice: false,
     method,
     setMethod,
     canSubmit,

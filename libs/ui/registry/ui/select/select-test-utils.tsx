@@ -84,6 +84,7 @@ export function renderSelect({
   defaultOpen,
   disabled,
   highlighted,
+  onHighlightChange,
   items = ["Apple", "Banana", "Cherry"],
   withSearch = false,
   variant = "card",
@@ -104,6 +105,7 @@ export function renderSelect({
     defaultOpen,
     disabled,
     highlighted,
+    onHighlightChange,
   });
 
   return render(
@@ -137,8 +139,12 @@ export function renderSelectInline({
   multiple,
   variant = "card",
   defaultValue,
+  value,
   onChange,
+  open,
+  onOpenChange,
   defaultOpen,
+  disabled,
   highlighted,
   onHighlightChange,
 }: InlineRenderProps): RenderResult {
@@ -146,8 +152,12 @@ export function renderSelectInline({
     multiple,
     variant,
     defaultValue,
+    value,
     onChange,
+    open,
+    onOpenChange,
     defaultOpen,
+    disabled,
     highlighted,
     onHighlightChange,
   });

@@ -23,11 +23,8 @@ import type {
   ProviderConfigurationRecord,
   SupportedProviderConfigurationRecord,
 } from "./provider-config.js";
-import {
-  bindingCredentialAvailable,
-  type SecretBinding,
-  SecretBindingSchema,
-} from "./secret-bindings.js";
+import { type SecretBinding, SecretBindingSchema } from "./secret-binding-model.js";
+import { bindingCredentialAvailable } from "./secret-bindings.js";
 
 /**
  * Values needed to recompute readiness are all server-owned.  Readiness derives

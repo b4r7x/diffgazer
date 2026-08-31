@@ -78,6 +78,7 @@ export const discoverConfigurationModels = async (
   const discovery = await discoverConfigurationCatalog({
     configurationId: configuration.configurationId,
     productId: configuration.productId,
+    endpoint: configuration.endpoint,
   });
   const base = {
     configurationId: configuration.configurationId,

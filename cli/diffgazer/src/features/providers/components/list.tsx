@@ -1,5 +1,6 @@
 import {
   getCatalogModelName,
+  getProviderDisplay,
   getProviderDisplayStatus,
   getProviderRowId,
   type ProviderListRow,
@@ -59,11 +60,15 @@ function canShowListSubtitle(
  * when the whole row fits: truncating the pair would eat the name, which is the
  * half a reader can act on. The details pane always carries both.
  */
-function getModelSubtitle(row: ProviderListRow, contentWidth: number): string | undefined {
+function getModelSubtitle(
+  row: ProviderListRow,
+  providerName: string,
+  contentWidth: number,
+): string | undefined {
   const modelId = row.configuration?.selectedModelId;
   if (modelId) {
     const label = formatModelLabel(row.product.productId, modelId);
-    if (fitsListRow(row.product.name, label, contentWidth)) return label;
+    if (fitsListRow(providerName, label, contentWidth)) return label;
     return getCatalogModelName(row.product.productId, modelId);
   }
   return row.readiness.remediation.message;
@@ -118,8 +123,14 @@ export function ProviderList({
     >
       {providers.map((row) => {
         const rowId = getProviderRowId(row);
-        const subtitle = getModelSubtitle(row, contentWidth);
-        const showSubtitle = canShowListSubtitle(row.product.name, subtitle, contentWidth);
+        // A configured dual-pool product reads as the pool its runs will bill.
+        const providerName = getProviderDisplay(
+          row.product.productId,
+          undefined,
+          row.configuration?.endpoint,
+        );
+        const subtitle = getModelSubtitle(row, providerName, contentWidth);
+        const showSubtitle = canShowListSubtitle(providerName, subtitle, contentWidth);
 
         return (
           <NavigationList.Item key={rowId} id={rowId}>
@@ -138,7 +149,7 @@ export function ProviderList({
                 </Box>
                 <Box flexShrink={0} overflow="hidden">
                   <Text color={tone.primary} bold wrap="truncate-end">
-                    {row.product.name}
+                    {providerName}
                   </Text>
                 </Box>
                 {showSubtitle ? (

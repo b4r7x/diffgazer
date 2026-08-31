@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { ConfigurationStatus } from "../schemas/config/configuration-status.js";
 import { ClientConfigurationInputSchema } from "../schemas/config/provider-config.js";
 import {
-  READINESS_PRESENTATION,
-  type Readiness,
-  ReadinessSchema,
-} from "../schemas/config/readiness.js";
-import { makeClientNotice } from "../testing/provider-fixtures.js";
-import { mapProviderList, type ProviderListRow } from "./list.js";
+  configuredRow,
+  OPENCODE_ZEN_CONFIGURATION,
+  unconfiguredRow,
+  ZAI_CONFIGURATION,
+} from "../testing/provider-fixtures.js";
 import { PRODUCT_REGISTRY } from "./product-registry.js";
 import {
   buildSetupAcknowledgement,
@@ -15,34 +13,6 @@ import {
   getSetupLayoutCopy,
   toSetupCredential,
 } from "./setup-input.js";
-
-const CONFIGURED_ACTIONS = ["inspect", "select", "test", "update", "delete"] as const;
-
-function readiness(status: "unconfigured" | "credential-invalid"): Readiness {
-  return ReadinessSchema.parse({
-    status,
-    ready: false,
-    evidenceStatus: status === "credential-invalid" ? "failed" : "not-checked",
-    checkedAt: status === "credential-invalid" ? "2026-07-31T10:00:00.000Z" : null,
-    acknowledgement: { status: "not-applicable" },
-    ...READINESS_PRESENTATION[status],
-  });
-}
-
-function unconfiguredRow(productId: string): ProviderListRow {
-  const row = mapProviderList([]).find((candidate) => candidate.product.productId === productId);
-  if (!row) throw new Error(`Missing unconfigured row for ${productId}`);
-  return row;
-}
-
-function configuredRow(status: ConfigurationStatus): ProviderListRow {
-  const row = mapProviderList([status]).find(
-    (candidate) =>
-      candidate.configuration?.configurationId === status.configuration.configurationId,
-  );
-  if (!row) throw new Error("Missing configured row");
-  return row;
-}
 
 /** Hosted products must carry a real endpoint tuple. */
 const ENDPOINT_BEARING_PRODUCTS = ["gemini", "opencode-zen"] as const;
@@ -71,6 +41,24 @@ describe("buildSetupInput", () => {
     expect(input.endpoint).toBe("https://api.moonshot.ai/v1");
   });
 
+  it("binds the endpoint the surface chose when creating a multi-endpoint product", () => {
+    const input = buildSetupInput(
+      unconfiguredRow("opencode-zen"),
+      toSetupCredential("paste", "secret-key"),
+      { endpoint: "https://opencode.ai/zen/go/v1" },
+    );
+
+    expect(input.endpoint).toBe("https://opencode.ai/zen/go/v1");
+  });
+
+  it("builds the same payload as today when no endpoint is chosen for a single-endpoint product", () => {
+    const withOptions = buildSetupInput(unconfiguredRow("gemini"), undefined, {});
+    const withoutOptions = buildSetupInput(unconfiguredRow("gemini"));
+
+    expect(withOptions).toEqual(withoutOptions);
+    expect(withOptions.endpoint).toBe(PRODUCT_REGISTRY.gemini.configuration.endpoints[0]?.endpoint);
+  });
+
   it("omits the credential when the surface passes none", () => {
     expect(buildSetupInput(unconfiguredRow("gemini"))).not.toHaveProperty("credential");
   });
@@ -83,20 +71,7 @@ describe("buildSetupInput", () => {
   });
 
   it("reuses the stored endpoint when updating a configured hosted product", () => {
-    const row = configuredRow({
-      configuration: {
-        configurationId: "zai-1",
-        revision: 2,
-        status: "supported",
-        transportFamily: "hosted-api",
-        productId: "zai",
-        endpoint: "https://api.z.ai/api/paas/v4",
-        selectedModelId: "glm-4.7",
-        notices: [makeClientNotice("zai")],
-        availableActions: [...CONFIGURED_ACTIONS],
-      },
-      readiness: readiness("credential-invalid"),
-    });
+    const row = configuredRow(ZAI_CONFIGURATION, "credential-invalid");
 
     const input = buildSetupInput(row, toSetupCredential("env", "ignored"));
 
@@ -107,6 +82,16 @@ describe("buildSetupInput", () => {
       credential: { kind: "environment" },
     });
     expect(() => ClientConfigurationInputSchema.parse(input)).not.toThrow();
+  });
+
+  it("keeps the stored endpoint on update even when the surface passes an endpoint option", () => {
+    const row = configuredRow(OPENCODE_ZEN_CONFIGURATION, "credential-invalid");
+
+    const input = buildSetupInput(row, toSetupCredential("paste", "secret-key"), {
+      endpoint: "https://opencode.ai/zen/go/v1",
+    });
+
+    expect(input.endpoint).toBe("https://opencode.ai/zen/v1");
   });
 });
 

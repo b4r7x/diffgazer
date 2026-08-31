@@ -197,6 +197,7 @@ const AgentCompleteEventSchema = z.object({
 export const LensStatSchema = z.object({
   lensId: LensIdSchema,
   issueCount: CountSchema,
+  droppedCandidateCount: CountSchema.optional(),
   status: z.enum(["success", "failed"]),
   errorCode: z.string().optional(),
   errorMessage: z.string().optional(),

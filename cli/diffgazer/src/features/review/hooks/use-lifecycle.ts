@@ -8,7 +8,7 @@ import {
   useReviewSessionCache,
 } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { getProviderDisplay, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { getProviderDisplay } from "@diffgazer/core/providers";
 import type {
   FileProgress,
   OrchestratorStats,
@@ -164,13 +164,21 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
 
   const selectedStatus = resolveSelectedConfiguration(initData);
   const readiness = selectedStatus?.readiness ?? unconfiguredReadiness();
+  // The review screen is live, not a record: it names the same configuration
+  // the shell header does, pool and all, so one session never shows two names
+  // for the wallet that pays.
   const productLabel = selectedStatus
-    ? PRODUCT_REGISTRY[selectedStatus.configuration.productId].presentation.name
+    ? getProviderDisplay(
+        selectedStatus.configuration.productId,
+        undefined,
+        selectedStatus.configuration.endpoint,
+      )
     : null;
   const configurationDisplay = selectedStatus
     ? getProviderDisplay(
         selectedStatus.configuration.productId,
         selectedStatus.configuration.selectedModelId ?? undefined,
+        selectedStatus.configuration.endpoint,
       )
     : null;
   const transportFamily = selectedStatus?.configuration.transportFamily ?? null;
@@ -265,7 +273,6 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
       options.allowResumeWithoutSetup &&
       selectedMode === mode
     ) {
-      setMode(selectedMode);
       setStartError(null);
       setStartedReviewId(undefined);
       lifecycle.reset();

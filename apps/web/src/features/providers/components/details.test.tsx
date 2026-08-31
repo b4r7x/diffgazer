@@ -4,7 +4,12 @@ import {
   getUnrecognizedConfigurationActionLayout,
 } from "@diffgazer/core/providers";
 import { buildProviderSettingsRows } from "@diffgazer/core/schemas/config";
-import { buildProviderRows } from "@diffgazer/core/testing/provider-fixtures";
+import {
+  buildProviderRows,
+  configuredRow,
+  OPENCODE_GO_CONFIGURATION,
+  unconfiguredRow,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { FOCUS_OUTLINE_INSET } from "@diffgazer/ui/lib/focus-outline";
 import { render, screen, within } from "@testing-library/react";
@@ -169,6 +174,23 @@ describe("ProviderDetails", () => {
     for (const { label } of rendered) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
+  });
+
+  it("states a bound pool's endpoint once, leaving its label to the pane name", () => {
+    renderDetails(configuredRow(OPENCODE_GO_CONFIGURATION));
+
+    const term = screen.getByText("Endpoint");
+    const value = screen.getByText("https://opencode.ai/zen/go/v1", { selector: "dd" });
+    expect(term.nextElementSibling).toBe(value);
+    // The chip above the pane already reads "OpenCode Go"; the endpoint row
+    // does not repeat that label as its value and its description too.
+    expect(screen.queryByText("OpenCode Go")).not.toBeInTheDocument();
+  });
+
+  it("states no endpoint for a product that has no configuration yet", () => {
+    renderDetails(unconfiguredRow("opencode-zen"));
+
+    expect(screen.queryByText("Endpoint")).not.toBeInTheDocument();
   });
 
   it("pairs each fact term with the definition that answers it", () => {

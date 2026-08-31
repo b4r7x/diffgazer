@@ -36,6 +36,13 @@ export const PROVIDER_REJECTED_DIAGNOSTIC_CODE = "provider-rejected";
 export const MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE =
   "malformed-review-output-after-correction";
 
+/**
+ * Diagnostic code for a partial salvage: the answer was incomplete, but the
+ * findings that parsed were kept. The dispatch still completes — the code
+ * qualifies it instead of failing it.
+ */
+export const OUTPUT_SALVAGED_DIAGNOSTIC_CODE = "output-salvaged";
+
 const CLI_ACCOUNT_ID_PATTERN = /\b(?:acct_[A-Za-z0-9_-]{6,}|account[-_][A-Za-z0-9_-]{6,})\b/gi;
 const PROMPT_PATTERN =
   /\b(?:prompt|user[-_ ]?message|system[-_ ]?prompt)\s*[:=]\s*["'`]?[^\n"'`]{1,}/gi;
@@ -62,6 +69,11 @@ export type BoundedDiagnostic = Readonly<{
   remediation: string;
   correlationId: string;
   truncatedDetails?: string;
+  /**
+   * Carried only by code "output-salvaged": what survived vs. what was dropped.
+   * Both counts travel together so a salvage can never be reported half-counted.
+   */
+  salvage?: Readonly<{ keptFindingCount: number; droppedCandidateCount: number }>;
 }>;
 
 export type DiagnosticSensitiveContext = Readonly<{

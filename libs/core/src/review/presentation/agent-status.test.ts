@@ -5,6 +5,7 @@ import {
   AGENT_STATUS_META,
   buildCompletionHeadline,
   buildDroppedFindingsNotice,
+  buildIncompleteAnswerNotice,
   buildLensFailureNotice,
   buildMissingLensIssuesNotice,
   buildTerminalCoverageLine,
@@ -175,6 +176,45 @@ describe("buildCompletionHeadline", () => {
       buildCompletionHeadline([{ lensId: "security", issueCount: 2, status: "success" }]),
     ).toBe("Review Complete");
     expect(buildCompletionHeadline(undefined)).toBe("Review Complete");
+  });
+
+  it("headlines a run with an incompletely-answered lens as partially complete", () => {
+    expect(
+      buildCompletionHeadline([
+        { lensId: "correctness", issueCount: 4, status: "success" },
+        { lensId: "security", issueCount: 3, status: "success", droppedCandidateCount: 4 },
+      ]),
+    ).toBe("Review Partially Complete");
+  });
+});
+
+describe("buildIncompleteAnswerNotice", () => {
+  it("counts the dropped candidates and the incomplete answers they came from", () => {
+    expect(
+      buildIncompleteAnswerNotice([
+        { lensId: "correctness", issueCount: 4, status: "success" },
+        { lensId: "security", issueCount: 3, status: "success", droppedCandidateCount: 4 },
+      ]),
+    ).toBe("4 candidate findings dropped from 1 incomplete lens answer — rerun for a whole answer");
+  });
+
+  it("sums the drops across every incomplete answer", () => {
+    expect(
+      buildIncompleteAnswerNotice([
+        { lensId: "correctness", issueCount: 1, status: "success", droppedCandidateCount: 4 },
+        { lensId: "security", issueCount: 3, status: "success", droppedCandidateCount: 2 },
+        { lensId: "tests", issueCount: 2, status: "success" },
+      ]),
+    ).toBe(
+      "6 candidate findings dropped from 2 incomplete lens answers — rerun for a whole answer",
+    );
+  });
+
+  it("says nothing when every lens answered in full", () => {
+    expect(
+      buildIncompleteAnswerNotice([{ lensId: "security", issueCount: 2, status: "success" }]),
+    ).toBeNull();
+    expect(buildIncompleteAnswerNotice(undefined)).toBeNull();
   });
 });
 

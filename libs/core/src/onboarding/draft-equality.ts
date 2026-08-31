@@ -25,6 +25,7 @@ function isSameConfigurationGeneration(left: OnboardingDraft, right: OnboardingD
   return (
     left.plan.productId === right.plan.productId &&
     left.selectedModelId === right.selectedModelId &&
+    left.selectedModelEndpoint === right.selectedModelEndpoint &&
     areConfigurationInputsEqual(left.configurationInput, right.configurationInput)
   );
 }

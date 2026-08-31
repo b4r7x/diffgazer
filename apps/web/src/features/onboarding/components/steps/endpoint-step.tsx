@@ -1,9 +1,7 @@
 import type { OnboardingConfigurationDraft } from "@diffgazer/core/onboarding";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { RunnableProductId } from "@diffgazer/core/schemas/config";
-import { toVerticalBoundaryDirection } from "@diffgazer/keys";
-import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { useState } from "react";
+import { EndpointProfileRadioGroup } from "@/components/shared/endpoint-profile-radio-group";
 
 interface EndpointStepProps {
   productId: RunnableProductId;
@@ -22,7 +20,6 @@ export function EndpointStep({
   enabled = true,
   onBoundaryReached,
 }: EndpointStepProps) {
-  const [highlightedEndpoint, setHighlightedEndpoint] = useState<string | null>(null);
   const product = PRODUCT_REGISTRY[productId];
 
   return (
@@ -30,36 +27,14 @@ export function EndpointStep({
       <p className="text-sm text-muted-foreground font-mono">
         Choose the endpoint tuple for {product.presentation.name}.
       </p>
-      <RadioGroup
-        aria-label="Endpoint profile"
+      <EndpointProfileRadioGroup
+        profiles={product.configuration.endpoints}
         value={configurationInput.endpoint}
-        onChange={(endpoint) => {
-          setHighlightedEndpoint(endpoint);
-          onChange({ ...configurationInput, endpoint });
-        }}
-        highlighted={enabled ? highlightedEndpoint : null}
-        onHighlightChange={setHighlightedEndpoint}
+        onChange={(endpoint) => onChange({ ...configurationInput, endpoint })}
+        active={enabled}
         onEnter={() => onCommit?.()}
-        autoFocus={enabled}
-        keyboardNavigation={enabled}
-        onNavigationBoundaryReached={(direction, event) => {
-          const verticalDirection = toVerticalBoundaryDirection(direction, event.key);
-          if (verticalDirection === null) return;
-          onBoundaryReached?.(verticalDirection);
-        }}
-        wrap={false}
-        className="space-y-1"
-      >
-        {product.configuration.endpoints.map((endpoint) => (
-          <RadioGroupItem
-            key={endpoint.id}
-            value={endpoint.endpoint}
-            label={endpoint.label}
-            description={endpoint.endpoint}
-            onFocus={() => setHighlightedEndpoint(endpoint.endpoint)}
-          />
-        ))}
-      </RadioGroup>
+        onBoundaryReached={onBoundaryReached}
+      />
     </div>
   );
 }

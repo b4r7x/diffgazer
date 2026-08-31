@@ -2,8 +2,8 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { expect } from "vitest";
-import type { UseNavigationOptions } from "../use-navigation.js";
-import { useNavigation } from "../use-navigation.js";
+import type { UseNavigationOptions } from "../../hooks/use-navigation.js";
+import { useNavigation } from "../../hooks/use-navigation.js";
 
 export function itemId(value: string) {
   return value === "" ? "item-empty" : `item-${value}`;

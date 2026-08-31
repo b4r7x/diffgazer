@@ -271,7 +271,7 @@ describe("RunsList", () => {
           emptyMessage="No runs"
           height={5}
           width={38}
-          salvagedRunIds={new Set([runs[0]?.id ?? ""])}
+          droppedIssueRunIds={new Set([runs[0]?.id ?? ""])}
         />
       </CliThemeProvider>,
     );
@@ -279,7 +279,7 @@ describe("RunsList", () => {
     const lines = (lastFrame() ?? "").split("\n").filter(Boolean);
     expect(lines).toHaveLength(4);
     expect(lines.every((line) => line.length <= 38)).toBe(true);
-    expect(lines.join("\n")).toContain("[Salvaged]");
+    expect(lines.join("\n")).toContain("[Omitted]");
     expect(lines.join("\n")).toContain(runs[0]?.displayId ?? "");
     expect(lines.join("\n")).toContain(runs[1]?.displayId ?? "");
     expect(lines.join("\n")).not.toContain("…");
@@ -304,14 +304,14 @@ describe("RunsList", () => {
           emptyMessage="No runs"
           height={3}
           width={38}
-          salvagedRunIds={new Set([visibleId])}
+          droppedIssueRunIds={new Set([visibleId])}
         />
       </CliThemeProvider>,
     );
 
     const frame = lastFrame() ?? "";
     expect(frame).toContain(run.displayId);
-    expect(frame).toContain("[Salvaged]");
+    expect(frame).toContain("[Omitted]");
     expect(frame).not.toContain("…");
   });
 

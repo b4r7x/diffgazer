@@ -325,7 +325,7 @@ describe("HistoryScreen review details", () => {
       const detailRemediation = "Press w or Esc to hide IDs.";
       expect(frame).toContain(detailRemediation);
       expect(frame).toContain("Search ID, branch, path, staged");
-      expect(frame).toContain("[Salvaged]");
+      expect(frame).toContain("[Omitted]");
       expect(frame).toContain("Scroll IDs");
       expect(frame).toContain("Hide IDs");
       expect(frame).toContain("Close IDs");
@@ -337,7 +337,7 @@ describe("HistoryScreen review details", () => {
     expect(collapsedFrame).toContain(MIXED_VISIBLE_SALVAGED_ID);
     expect(collapsedFrame).toContain("Re-run the affected reviews for complete results.");
     expect(collapsedFrame).toContain("Press w to view all affected run IDs.");
-    expect(collapsedFrame).toContain("[Salvaged]");
+    expect(collapsedFrame).toContain("[Omitted]");
     expect(collapsedFrame).toContain("Open Review");
     expect(collapsedFrame).toContain("Search");
     expect(collapsedFrame.split("\n")).toHaveLength(24);
@@ -348,7 +348,7 @@ describe("HistoryScreen review details", () => {
       line.includes("Search ID, branch, path, staged"),
     );
     const runsLine = collapsedLines.findIndex((line) => line.includes("RUNS"));
-    const salvageLine = collapsedLines.findIndex((line) => line.includes("[Salvaged]"));
+    const salvageLine = collapsedLines.findIndex((line) => line.includes("[Omitted]"));
     expect(warningLine).toBeGreaterThanOrEqual(0);
     expect(searchLine).toBeGreaterThan(warningLine);
     expect(runsLine).toBeGreaterThan(searchLine);
@@ -373,7 +373,7 @@ describe("HistoryScreen review details", () => {
       line.includes("Search ID, branch, path, staged"),
     );
     const detailRunsLine = detailLines.findIndex((line) => line.includes("RUNS"));
-    const detailSalvageLine = detailLines.findIndex((line) => line.includes("[Salvaged]"));
+    const detailSalvageLine = detailLines.findIndex((line) => line.includes("[Omitted]"));
     expect(detailSearchLine).toBeGreaterThan(detailTitleLine);
     expect(detailRunsLine).toBeGreaterThan(detailSearchLine);
     expect(detailSalvageLine).toBeGreaterThan(detailRunsLine);

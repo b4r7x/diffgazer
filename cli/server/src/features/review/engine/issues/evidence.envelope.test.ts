@@ -62,12 +62,14 @@ function serializedEvidenceExcerptBytes(issues: ReviewIssue[]): number {
 }
 
 describe("synthesized issue evidence envelope", () => {
-  it("caps one lens and the closed five-lens final result without dropping aggregate findings", () => {
+  it("caps one lens and the closed-lens final result without dropping aggregate findings", () => {
     const issue = makeIssue();
     const lensIssues = Array.from({ length: MAX_REVIEW_ISSUES_PER_LENS }, () => issue);
     const finalIssues = Array.from({ length: MAX_REVIEW_ISSUES }, () => issue);
 
-    expect(MAX_REVIEW_ISSUES).toBe(LENS_IDS.length * MAX_REVIEW_ISSUES_PER_LENS);
+    expect(LENS_IDS).toHaveLength(6);
+    expect(MAX_REVIEW_ISSUES_PER_LENS).toBe(256);
+    expect(MAX_REVIEW_ISSUES).toBe(1536);
     expect(LensReviewResultSchema.safeParse({ issues: lensIssues }).success).toBe(true);
     expect(LensReviewResultSchema.safeParse({ issues: [...lensIssues, issue] }).success).toBe(
       false,

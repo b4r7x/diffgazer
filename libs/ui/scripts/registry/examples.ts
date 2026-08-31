@@ -3,7 +3,11 @@ import { relative } from "node:path";
 import { extractImportSpecifiers } from "@diffgazer/registry";
 import { hasUseClientDirective } from "@diffgazer/registry/build-checks";
 import { extractLocalImports, normalizeRegistryPath, resolveImportToRegistryPath } from "./fs.js";
-import { shippedSourceFiles, sourceFilesUnder } from "./shipped-source.js";
+import {
+  shippedSourceFiles,
+  sourceFilesUnder,
+  stripLiteralsAndComments,
+} from "./shipped-source.js";
 import type { RegistryItem } from "./types.js";
 
 const KEYS_PEER_NAME = "@diffgazer/keys";
@@ -29,37 +33,6 @@ export function validateExamplesAvoidKeysPackage(root: string): string[] {
   }
 
   return errors;
-}
-
-// Comments and quoted-literal bodies are dropped so component source shipped as text
-// (code-block examples embed a JSX sample string) never reads as real JSX below.
-function stripLiteralsAndComments(source: string): string {
-  let code = "";
-  let index = 0;
-
-  while (index < source.length) {
-    const char = source[index];
-    const pair = source.slice(index, index + 2);
-
-    if (pair === "//") {
-      const end = source.indexOf("\n", index);
-      index = end === -1 ? source.length : end;
-    } else if (pair === "/*") {
-      const end = source.indexOf("*/", index + 2);
-      index = end === -1 ? source.length : end + 2;
-    } else if (char === '"' || char === "'" || char === "`") {
-      index += 1;
-      while (index < source.length && source[index] !== char) {
-        index += source[index] === "\\" ? 2 : 1;
-      }
-      index += 1;
-    } else {
-      code += char;
-      index += 1;
-    }
-  }
-
-  return code;
 }
 
 // Examples are pasted into consumer apps, including RSC frameworks where a module is a

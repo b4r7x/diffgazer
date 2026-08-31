@@ -8,6 +8,7 @@ import type {
   SettingsConfig,
 } from "../../schemas/config/index.js";
 import type { ReadinessAcknowledgement } from "../../schemas/config/readiness.js";
+import type { HostedApiEndpoint } from "../../schemas/config/transports.js";
 import type { BoundApi } from "../bound.js";
 import { useApi } from "./context.js";
 import { configQueries } from "./queries/config.js";
@@ -106,10 +107,12 @@ export function useSelectConfiguration() {
     mutationFn: ({
       configurationId,
       modelId,
+      endpoint,
     }: {
       configurationId: ConfigurationId;
       modelId: ExactModelId;
-    }) => api.selectConfiguration(configurationId, modelId),
+      endpoint?: HostedApiEndpoint;
+    }) => api.selectConfiguration(configurationId, modelId, endpoint),
     onSuccess: (_response, { configurationId }) =>
       invalidateConfigurationCaches(qc, api, configurationId),
   });

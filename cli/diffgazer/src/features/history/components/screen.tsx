@@ -194,13 +194,13 @@ export function HistoryScreen(): ReactElement {
         );
         break;
       default: {
-        const exhaustive: never = screen.retainedError;
-        return exhaustive;
+        const unhandled: never = screen.retainedError;
+        throw new Error(`Unhandled retained history error: ${JSON.stringify(unhandled)}`);
       }
     }
   }
 
-  const salvagedRunIds = new Set(warningSummary.droppedIssueReviewIds);
+  const droppedIssueRunIds = new Set(warningSummary.droppedIssueReviewIds);
   const warningMessages = buildHistoryWarningMessages(warningSummary, screen.runIdLookup, {
     maxTargetIds: HISTORY_WARNING_TARGET_SAMPLE_SIZE,
   });
@@ -212,8 +212,8 @@ export function HistoryScreen(): ReactElement {
   const fullCollapsedWarningMessages = warningTargetHint
     ? [...warningMessages, warningTargetHint]
     : warningMessages;
-  const hasVisibleSalvagedRun = screen.mappedRuns.some((run) => salvagedRunIds.has(run.id));
-  const requiredRunsRows = hasVisibleSalvagedRun && warningTargetIds.length > 0 ? 2 : 0;
+  const hasVisibleOmittedRun = screen.mappedRuns.some((run) => droppedIssueRunIds.has(run.id));
+  const requiredRunsRows = hasVisibleOmittedRun && warningTargetIds.length > 0 ? 2 : 0;
   const retainedErrorRows = retainedErrorMessage
     ? getHistoryWarningBlockRows([retainedErrorMessage], columns)
     : 0;
@@ -234,9 +234,15 @@ export function HistoryScreen(): ReactElement {
   } else if (compactWarnings) {
     renderedWarningMessages = compactWarningMessages;
   }
-  const warningBlockRows = showWarningTargets
-    ? Math.min(fullCollapsedWarningRows, warningBudget)
-    : getHistoryWarningBlockRows(renderedWarningMessages, columns);
+  // The budget is what keeps the runs/sections/insights panes alive, so it caps
+  // the block whether the targets are expanded or not: warnings that carry no
+  // target ids cannot compact, and uncapped they would starve every pane.
+  const warningBlockRows = Math.min(
+    showWarningTargets
+      ? fullCollapsedWarningRows
+      : getHistoryWarningBlockRows(renderedWarningMessages, columns),
+    warningBudget,
+  );
   const warningDetailRows = Math.max(warningBlockRows - 1, 1);
   const {
     sectionsWidth,
@@ -350,7 +356,7 @@ export function HistoryScreen(): ReactElement {
             </Box>
             <RunsList
               runs={screen.mappedRuns}
-              salvagedRunIds={salvagedRunIds}
+              droppedIssueRunIds={droppedIssueRunIds}
               selectedId={screen.selectedRunId}
               onSelect={screen.handleRunActivate}
               onHighlightChange={screen.setSelectedRunId}

@@ -21,6 +21,15 @@ const ModelInfoSchema = z.object({
   recommended: z.boolean().optional(),
   /** Catalog release date (YYYY-MM-DD); absent when the source publishes none. */
   releaseDate: z.string().optional(),
+  /**
+   * Endpoint profile ids (EndpointProfile.id) KNOWN to serve this model, for
+   * products whose endpoint profiles are separate billing pools. Absent =
+   * membership unknown (non-pool products, or no membership data). A profile
+   * missing from a present list was not observed serving the model by ANY
+   * source the server consulted (live list or catalog snapshot) — an absence
+   * claim, only as fresh as the freshest of those sources.
+   */
+  endpointProfileIds: z.array(z.string().min(1)).min(1).optional(),
 });
 export type ModelInfo = z.infer<typeof ModelInfoSchema>;
 
@@ -35,6 +44,11 @@ const ProviderModelsBaseSchema = z.object({
  * product's own model-list endpoint supplied the id set (fetched now, or from
  * the five-minute list cache) and models.dev only supplied metadata for the ids
  * it also knows.
+ *
+ * On a product whose endpoints are billing pools, a `provider-*` source
+ * describes the bound pool only: the response is the union of both pools, so
+ * rows only the sibling pool serves come from the models.dev catalog under that
+ * same label, and `fetchedAt` is the bound pool's list.
  *
  * `cached` is the freshness flag discovery wire contracts expose. It is not
  * independent state: it is exactly `source === "cache" || source === "provider-cache"`.

@@ -19,6 +19,7 @@ import {
 import type {
   ClientConfigurationInput,
   ExactModelId,
+  HostedApiEndpoint,
   ReadinessAcknowledgement,
 } from "@diffgazer/core/schemas/config";
 import { useState } from "react";
@@ -73,8 +74,8 @@ export function useProviderManagement(providers: ProviderListRow[]) {
     deleteConfiguration: (request) => deleteConfiguration.mutateAsync(request),
     inspectConfiguration: (configurationId) => inspectConfiguration.mutateAsync(configurationId),
     testConfiguration: (configurationId) => testConfiguration.mutateAsync(configurationId),
-    selectConfiguration: (configurationId, modelId) =>
-      selectConfiguration.mutateAsync({ configurationId, modelId }),
+    selectConfiguration: (configurationId, modelId, endpoint) =>
+      selectConfiguration.mutateAsync({ configurationId, modelId, endpoint }),
   };
 
   const management = useProviderManagementMachine({
@@ -112,8 +113,12 @@ export function useProviderManagement(providers: ProviderListRow[]) {
     );
   };
 
-  const handleSelectModel = async (owner: ModelDialogOwner, modelId: ExactModelId) => {
-    raiseFailure(await management.handleSelectModel(owner, modelId));
+  const handleSelectModel = async (
+    owner: ModelDialogOwner,
+    modelId: ExactModelId,
+    endpoint?: HostedApiEndpoint,
+  ) => {
+    raiseFailure(await management.handleSelectModel(owner, modelId, endpoint));
   };
 
   return {

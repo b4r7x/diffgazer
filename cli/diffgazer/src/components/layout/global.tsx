@@ -47,6 +47,7 @@ function toShellProviderState(
     readiness: selected.readiness,
     productId: selected.configuration.productId,
     modelId: selected.configuration.selectedModelId,
+    endpoint: selected.configuration.endpoint,
   };
 }
 

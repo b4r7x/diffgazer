@@ -1,4 +1,12 @@
-import { getModelTierBadge, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import {
+  type EndpointPoolContext,
+  getEndpointPoolContext,
+  getModelBillingPool,
+  getModelTierBadge,
+  PRODUCT_REGISTRY,
+  poolBadgeLabel,
+  resolveSelectEndpoint,
+} from "@diffgazer/core/providers";
 import { useModelSource } from "@diffgazer/core/providers/hooks";
 import type { ClientConfigurationSummary, ModelInfo } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection, useKey } from "@diffgazer/keys";
@@ -16,8 +24,9 @@ interface ModelStepProps {
   isPreparing: boolean;
   onRetry: () => void;
   value: string | null;
-  onChange: (model: string) => void;
-  onCommit?: (model: string) => void;
+  /** `poolEndpoint` is the billing pool the row runs on, null when it is the bound one. */
+  onChange: (model: string, poolEndpoint: string | null) => void;
+  onCommit?: (model: string, poolEndpoint: string | null) => void;
   enabled?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
@@ -25,6 +34,8 @@ interface ModelStepProps {
 function ModelInfoList({
   subtitle,
   models,
+  poolContext,
+  boundEndpoint,
   value,
   onChange,
   onCommit,
@@ -33,9 +44,12 @@ function ModelInfoList({
 }: {
   subtitle: string;
   models: ModelInfo[];
+  /** The product's billing pools, for the per-row billing-pool badge. */
+  poolContext: EndpointPoolContext | null;
+  boundEndpoint: string;
   value: string | null;
-  onChange: (model: string) => void;
-  onCommit?: (model: string) => void;
+  onChange: (model: string, poolEndpoint: string | null) => void;
+  onCommit?: (model: string, poolEndpoint: string | null) => void;
   enabled?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
 }) {
@@ -46,6 +60,15 @@ function ModelInfoList({
     value,
   );
 
+  // The pool travels with the model here too: the badge names the wallet, so
+  // the save must carry it or a sibling-only row would be written against a
+  // pool that cannot serve it.
+  const resolvePoolEndpoint = (modelId: string) => {
+    const model = models.find((candidate) => candidate.id === modelId);
+    if (!model) return null;
+    return resolveSelectEndpoint({ context: poolContext, model, boundEndpoint }) ?? null;
+  };
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground font-mono">{subtitle}</p>
@@ -54,11 +77,11 @@ function ModelInfoList({
         value={value ?? undefined}
         onChange={(nextValue) => {
           setHighlighted(nextValue);
-          onChange(nextValue);
+          onChange(nextValue, resolvePoolEndpoint(nextValue));
         }}
         highlighted={enabled ? effectiveHighlighted : null}
         onHighlightChange={setHighlighted}
-        onEnter={(nextValue) => onCommit?.(nextValue)}
+        onEnter={(nextValue) => onCommit?.(nextValue, resolvePoolEndpoint(nextValue))}
         onNavigationBoundaryReached={(direction, event) => {
           const verticalDirection = toVerticalBoundaryDirection(direction, event.key);
           if (verticalDirection !== null) onBoundaryReached?.(verticalDirection);
@@ -71,6 +94,11 @@ function ModelInfoList({
       >
         {models.map((model) => {
           const tierBadge = getModelTierBadge(model.tier);
+          // No pool selector here: the create dialog's endpoint choice a step
+          // earlier is the wallet control, so a row bills its own pool or the
+          // bound one. The badge still makes a sibling-only model reachable.
+          const billingPool = getModelBillingPool(poolContext, model);
+          const poolBadge = poolBadgeLabel(billingPool);
 
           return (
             <RadioGroupItem
@@ -92,6 +120,11 @@ function ModelInfoList({
                   {tierBadge ? (
                     <Badge variant={tierBadge.variant} size="sm" className="text-3xs">
                       {tierBadge.label}
+                    </Badge>
+                  ) : null}
+                  {poolBadge ? (
+                    <Badge variant="neutral" appearance="outline" size="sm" className="text-3xs">
+                      {poolBadge}
                     </Badge>
                   ) : null}
                 </span>
@@ -120,6 +153,7 @@ function DiscoveredModels({
   const wasLoadingRef = useRef(false);
   const canFocusRecoveryRef = useRef(false);
   const product = PRODUCT_REGISTRY[configuration.productId];
+  const poolContext = getEndpointPoolContext(configuration.productId, configuration.endpoint);
   const discovery = useModelSource(true, configuration);
   const isRecovery =
     discovery.status === "error" ||
@@ -218,6 +252,8 @@ function DiscoveredModels({
     <ModelInfoList
       subtitle={`Select an exact model for ${product.presentation.name}.`}
       models={discovery.models}
+      poolContext={poolContext}
+      boundEndpoint={configuration.endpoint}
       value={value}
       onChange={onChange}
       onCommit={onCommit}

@@ -38,13 +38,23 @@ export type GenerateOptions = Readonly<{
   onProgress?: (progress: DispatchProgress) => void;
 }>;
 
+/** A completed dispatch whose answer was incomplete: findings were recovered, candidates were dropped. */
+export type GenerateWarning = Readonly<{
+  droppedCandidateCount: number;
+}>;
+
+export type GenerateSuccess<T extends z.ZodType> = Readonly<{
+  data: z.infer<T>;
+  warning?: GenerateWarning;
+}>;
+
 export interface AIClient {
   readonly provider: RunnableProductId;
   generate<T extends z.ZodType>(
     prompt: string,
     schema: T,
     options?: GenerateOptions,
-  ): Promise<Result<z.infer<T>, AIError>>;
+  ): Promise<Result<GenerateSuccess<T>, AIError>>;
 }
 
 /**

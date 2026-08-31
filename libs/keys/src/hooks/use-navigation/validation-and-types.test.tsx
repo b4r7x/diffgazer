@@ -2,12 +2,12 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { itemId } from "../../testing/internal/navigation-test-list.js";
 import {
   type UseNavigationOptions,
   type UseNavigationReturn,
   useNavigation,
 } from "../use-navigation.js";
-import { itemId } from "./test-list.js";
 
 describe("useNavigation", () => {
   describe("validation and types", () => {

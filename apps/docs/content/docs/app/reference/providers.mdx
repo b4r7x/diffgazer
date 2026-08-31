@@ -78,9 +78,9 @@ Each saved provider setup is a versioned **configuration** identified by `config
 | --- | --- |
 | `create` | Start a new configuration for a selectable product. |
 | `inspect` | Read the current safe summary, readiness, notices, and available actions. |
-| `select` | Choose an exact admitted model for the configuration. |
+| `select` | Choose an exact admitted model for the configuration, and — when the request carries one — the product endpoint that model bills against. |
 | `test` | Run the readiness/conformance probe for the exact configured tuple. |
-| `update` | Change endpoint, credential reference, notice acknowledgement, or other allowed fields. |
+| `update` | Change credential reference, notice acknowledgement, endpoint, or other allowed fields at a new revision. |
 | `delete` | Remove the configuration after active review leases drain. |
 
 Client-safe responses never include literal secrets, environment values, auth paths, or raw diagnostics. See [Configuration](/app/reference/configuration) and [Local API reference](/app/reference/api).

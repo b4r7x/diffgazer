@@ -19,6 +19,7 @@ import {
   GEMINI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeReadyInitResponse,
+  OPENCODE_GO_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -473,6 +474,22 @@ describe("ReviewContainer configuration gates", () => {
     expect(screen.getByText("Google Gemini / Gemini 2.5 Flash")).toBeInTheDocument();
     expect(screen.getByText(/missing or was rejected/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Enter API Key" })).toBeInTheDocument();
+  });
+
+  it("names the bound billing pool on a Go configuration's gate, never the product", async () => {
+    mockLoadConfigurationInit.mockResolvedValue(
+      makeConfigurationInitResponse([
+        configurationStatus(OPENCODE_GO_CONFIGURATION, "conformance-failed"),
+      ]),
+    );
+
+    renderReviewContainer();
+
+    // The shell header already reads "OpenCode Go" for this configuration; the
+    // review screen is live too, so it must not name the other wallet.
+    expect(await screen.findByText(/Configuration Not Ready \(OpenCode Go\)/)).toBeInTheDocument();
+    expect(screen.getByText("OpenCode Go / DeepSeek V4 Flash")).toBeInTheDocument();
+    expect(screen.queryByText(/OpenCode Zen/)).not.toBeInTheDocument();
   });
 
   it("deep-links Enter API Key to the affected product on the providers screen", async () => {

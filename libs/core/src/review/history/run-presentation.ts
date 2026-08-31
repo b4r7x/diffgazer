@@ -13,8 +13,10 @@ export interface SeverityPart {
 
 export interface RunSummaryParts {
   passed: boolean;
+  /** Not a full analysis: a lens failed or answered incompletely, so rows render the qualified sentence. */
   partial: boolean;
   failedLensCount: number;
+  salvagedLensCount: number;
   parts: SeverityPart[];
   issueCount: number;
 }
@@ -28,7 +30,8 @@ export function getRunBranchLabel(metadata: ReviewMetadata): string {
 export function getRunSummaryParts(metadata: ReviewMetadata): RunSummaryParts {
   const { blockerCount, highCount, mediumCount, lowCount, nitCount, issueCount } = metadata;
   const failedLensCount = metadata.failedLensCount ?? 0;
-  const partial = failedLensCount > 0;
+  const salvagedLensCount = metadata.salvagedLensCount ?? 0;
+  const partial = failedLensCount > 0 || salvagedLensCount > 0;
   const terminalOutcome = metadata.terminalOutcome ?? "completed";
 
   const parts: SeverityPart[] = [];
@@ -41,9 +44,10 @@ export function getRunSummaryParts(metadata: ReviewMetadata): RunSummaryParts {
   return {
     // The row's verdict is the screen's verdict: one predicate decides both, so
     // "Passed with no issues." can never open something that disagrees.
-    passed: isCleanRun({ issueCount, failedLensCount, terminalOutcome }),
+    passed: isCleanRun({ issueCount, failedLensCount, salvagedLensCount, terminalOutcome }),
     partial,
     failedLensCount,
+    salvagedLensCount,
     parts,
     issueCount,
   };
@@ -61,7 +65,7 @@ export function getRunSummaryText(metadata: ReviewMetadata): string {
       completed: metadata.lenses.length - summary.failedLensCount,
       total: metadata.lenses.length,
     };
-    if (summary.partial && coverage.completed > 0) {
+    if (summary.failedLensCount > 0 && coverage.completed > 0) {
       const outcome = describeTerminalOutcome(terminalOutcome).title;
       const coverageLine = buildTerminalCoverageLine({
         coverage,
@@ -71,12 +75,19 @@ export function getRunSummaryText(metadata: ReviewMetadata): string {
     }
     return `Review ended with outcome ${terminalOutcome}.`;
   }
-  if (summary.partial) {
+  if (summary.failedLensCount > 0) {
     const findings =
       summary.issueCount === 0
         ? "no issues found"
         : `${pluralize(summary.issueCount, "issue")} found`;
     return `Partial analysis: ${pluralize(summary.failedLensCount, "lens", "lenses")} failed; ${findings}.`;
+  }
+  if (summary.salvagedLensCount > 0) {
+    const findings =
+      summary.issueCount === 0
+        ? "no issues found"
+        : `${pluralize(summary.issueCount, "issue")} found`;
+    return `Partial answers: ${pluralize(summary.salvagedLensCount, "lens", "lenses")} answered incompletely; ${findings}.`;
   }
   if (summary.passed) return "Passed with no issues.";
   if (summary.parts.length === 0) {

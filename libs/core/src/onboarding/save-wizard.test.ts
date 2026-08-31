@@ -140,6 +140,38 @@ describe("wizard payloads", () => {
     });
   });
 
+  it("carries the pool a sibling-only model bills through select and the update behind it", () => {
+    // The wizard lists the union of both pools and badges each row, so a
+    // first-run user can pick a Go-only model against a Zen-bound draft. The
+    // create still binds the endpoint the key was entered against; select moves
+    // the record to the pool that serves the model, and the update behind it
+    // must not put the record back.
+    const data: OnboardingDraft = {
+      ...readyDraft(
+        "opencode-zen",
+        {
+          transportFamily: "hosted-api",
+          productId: "opencode-zen",
+          endpoint: "https://opencode.ai/zen/v1",
+          credential: { kind: "literal", value: "write-only-credential" },
+        },
+        "glm-5.3",
+      ),
+      selectedModelEndpoint: "https://opencode.ai/zen/go/v1",
+    };
+
+    expect(buildConfigPayload(data).input.endpoint).toBe("https://opencode.ai/zen/v1");
+    expect(buildSelectPayload(data, "configuration-1")).toEqual({
+      action: "select",
+      configurationId: "configuration-1",
+      modelId: "glm-5.3",
+      endpoint: "https://opencode.ai/zen/go/v1",
+    });
+    expect(buildUpdatePayload(data, "configuration-1", 3).input).toMatchObject({
+      endpoint: "https://opencode.ai/zen/go/v1",
+    });
+  });
+
   it("serializes review preferences and the provider consent the notice step recorded", () => {
     const data = {
       ...zaiDraft(),
@@ -253,6 +285,26 @@ describe("saveWizard", () => {
     ).resolves.toMatchObject({
       status: "partial",
       completedSteps: [],
+    });
+    expect(runConfigurationAction).not.toHaveBeenCalled();
+  });
+
+  it("reports the settings it already wrote when the draft fails validation", async () => {
+    const base = zaiDraft();
+    const data: OnboardingDraft = {
+      ...base,
+      configurationInput: {
+        ...base.configurationInput,
+        endpoint: "https://api.deepseek.com",
+      },
+    };
+    const runConfigurationAction = vi.fn();
+
+    await expect(
+      saveWizard(data, { saveSettings: vi.fn(async () => {}), runConfigurationAction }),
+    ).resolves.toMatchObject({
+      status: "partial",
+      completedSteps: ["settings"],
     });
     expect(runConfigurationAction).not.toHaveBeenCalled();
   });

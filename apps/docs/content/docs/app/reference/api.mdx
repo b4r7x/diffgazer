@@ -24,7 +24,7 @@ Health responses are lightweight and do not require repository trust.
 | --- | --- |
 | `create` | Create a new configuration for a selectable product. |
 | `inspect` | Read the current safe summary and readiness evidence. |
-| `select` | Pin an exact admitted model and make that configuration the selected one. |
+| `select` | Pin an exact admitted model, optionally with the product endpoint that model bills against, and make that configuration the selected one. |
 | `test` | Run the readiness and conformance probe for the configured tuple, which is also how models are discovered. |
 | `update` | Update endpoint, credential reference, or notice acknowledgement. |
 | `delete` | Delete the configuration after active review leases drain. |
@@ -80,7 +80,9 @@ The only other config routes are reads:
 
 A passed models response carries `source` and `cached` describing where the list came from: `live`, `cache`, or `snapshot` mean the models.dev catalog (a fresh fetch, the hourly disk cache, or the bundled snapshot); `provider-live` or `provider-cache` mean the product's own model list supplied the ids — OpenRouter's and Ollama Cloud's public lists, or `{endpoint}/models` asked with the configuration's own credential for Z.AI, DeepSeek, Qwen International, Moonshot Open Platform, MiniMax International, and OpenCode Zen, and `{endpoint}/openai/models` for Google Gemini — with models.dev supplying names and prices for the ids it also knows; an id it does not know yet keeps `tier: "unknown"` and a description reading "Pricing unknown". `cached` is `true` exactly for `cache` and `provider-cache`. See [Privacy](/app/concepts/privacy) for what each request carries.
 
-There is no per-provider activate or delete route. `GET …/models` is the picker read path; `test` also discovers models as part of readiness probing. `select` both pins the exact model and makes that configuration the globally selected one.
+For a product whose endpoints are billing pools — OpenCode Zen and OpenCode Go — the response is the union of both pools, so a `provider-*` source describes the bound pool's list only: rows that just the other pool serves come from the models.dev catalog and carry the bound pool's `fetchedAt` alongside it. Each row's `endpointProfileIds` names the endpoint profiles observed to serve it: a row served by one pool bills that pool, while a row both pools serve bills whichever pool is armed in the picker's Zen/Go selector — that is the pool `select` carries when the model is confirmed.
+
+There is no per-provider activate or delete route. `GET …/models` is the picker read path; `test` also discovers models as part of readiness probing. `select` both pins the exact model and makes that configuration the globally selected one. Its optional `endpoint` moves the configuration to the other billing pool of the same product — the pool the chosen model runs on — and is accepted only when it is the bound or sibling endpoint of that configuration's own pool, which today means OpenCode Zen and OpenCode Go. Every other endpoint is rejected with `INVALID_ACTION`, including the second endpoint of a product whose endpoints are separate accounts rather than pools, such as Moonshot Open Platform's other region. Omitting it leaves the endpoint alone. Either way `select` keeps the revision, so the credential binding survives; the conformance evidence is cleared as it already is on every model change.
 
 ## Settings and trust
 

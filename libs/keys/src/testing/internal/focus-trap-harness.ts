@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import { useRef } from "react";
 import { getDeepActiveElement } from "../../dom/element-guards.js";
-import { useFocusTrap } from "../use-focus-trap.js";
+import { useFocusTrap } from "../../hooks/use-focus-trap.js";
 
 export function createContainerIn(ownerDocument: Document, ...focusableHTML: string[]) {
   const container = ownerDocument.createElement("div");

@@ -70,9 +70,23 @@ function isRealPathWithinDir(targetPath: string, baseDir: string): boolean {
   return isWithinDir(realTarget, realBase);
 }
 
+const SYMLINK_TRAVERSAL_CODE = "ERR_PATH_TRAVERSAL_SYMLINK";
+
+/**
+ * True for the `ensureWithinDir` failure that means the path is lexically inside
+ * the base directory but escapes it through a symlink. Callers that rewrite a
+ * plain containment failure into a usage hint must re-throw this one instead.
+ */
+export function isSymlinkTraversalError(error: unknown): boolean {
+  return hasErrorCode(error, SYMLINK_TRAVERSAL_CODE);
+}
+
 function ensureRealPathWithinDir(targetPath: string, baseDir: string): void {
   if (isRealPathWithinDir(targetPath, baseDir)) return;
-  throw new Error(
-    `Path traversal detected: "${targetPath}" escapes "${baseDir}" through a symlink or realpath.`,
+  throw Object.assign(
+    new Error(
+      `Path traversal detected: "${targetPath}" escapes "${baseDir}" through a symlink or realpath.`,
+    ),
+    { code: SYMLINK_TRAVERSAL_CODE },
   );
 }

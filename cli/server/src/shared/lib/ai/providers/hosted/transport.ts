@@ -37,10 +37,7 @@ function resolveOpenrouterDispatchOverrides(
   request: AdapterExecuteRequest,
 ): Pick<HostedExecutionContext, "structuredOutputMode" | "boundReasoning"> {
   if (request.evidenceKey.productId !== "openrouter") return {};
-  const list = readCachedLiveModelList({
-    configurationId: request.configurationId,
-    productId: "openrouter",
-  });
+  const list = readCachedLiveModelList({ kind: "public", productId: "openrouter" });
   const model = list?.models.find((candidate) => candidate.id === request.evidenceKey.modelId);
   return {
     ...(model?.structuredOutput === true

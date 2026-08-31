@@ -1,3 +1,4 @@
+import { lensAnsweredIncompletely } from "@diffgazer/core/review";
 import type { ReviewMetadata, SavedReview } from "@diffgazer/core/schemas/review";
 import {
   calculateSeverityCounts,
@@ -10,6 +11,10 @@ import { reviewStore } from "./store.js";
 
 export function countFailedLenses(lensStats: SavedReview["lensStats"]): number {
   return lensStats?.filter((lens) => lens.status === "failed").length ?? 0;
+}
+
+export function countSalvagedLenses(lensStats: SavedReview["lensStats"]): number {
+  return lensStats?.filter(lensAnsweredIncompletely).length ?? 0;
 }
 
 export function presentDurableReviewRead(review: SavedReview): SavedReview {

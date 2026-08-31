@@ -13,7 +13,7 @@ const model: ModelInfo = {
   tier: "paid",
 };
 
-function renderRow(overrides: Partial<ModelInfo> = {}, maxWidth = 100) {
+function renderRow(overrides: Partial<ModelInfo> = {}, maxWidth = 100, poolBadgeLabel?: string) {
   return render(
     <CliThemeProvider initialTheme="dark">
       <ModelListItem
@@ -21,6 +21,7 @@ function renderRow(overrides: Partial<ModelInfo> = {}, maxWidth = 100) {
         isHighlighted={false}
         isSelected={false}
         maxWidth={maxWidth}
+        poolBadgeLabel={poolBadgeLabel}
       />
     </CliThemeProvider>,
   );
@@ -78,5 +79,21 @@ describe("ModelListItem", () => {
       ).lastFrame() ?? "";
 
     expect(frame).toContain("Pricing unknown");
+  });
+
+  // The badge names the pool the row will bill, beside its tier, so the row the
+  // user is about to confirm says which wallet drains.
+  test("tags a row with the pool it will bill", () => {
+    const frame = renderRow({}, 100, "Go").lastFrame() ?? "";
+
+    expect(frame).toContain("[Go]");
+    expect(frame).toContain("[PAID]");
+  });
+
+  test("wears no pool tag off a billing-pool product", () => {
+    const frame = renderRow().lastFrame() ?? "";
+
+    expect(frame).not.toContain("[Go]");
+    expect(frame).not.toContain("[Zen]");
   });
 });

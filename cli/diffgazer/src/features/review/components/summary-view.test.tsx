@@ -88,6 +88,25 @@ describe("ReviewSummaryView (TUI)", () => {
     expect(frame).toContain("failed (CANCELLED)");
   });
 
+  test("shows the dropped count on a lens that answered incompletely, leaving whole and failed rows alone", () => {
+    const { lastFrame } = renderSummary({
+      lensStats: [
+        { lensId: "correctness", issueCount: 3, status: "success", droppedCandidateCount: 4 },
+        { lensId: "security", issueCount: 3, status: "success" },
+        { lensId: "tests", issueCount: 0, status: "failed", errorCode: "CANCELLED" },
+      ],
+    });
+    const frame = lastFrame() ?? "";
+    const lensSection = frame.slice(frame.search(/issues by lens/i));
+    const lines = lensSection.split("\n");
+
+    expect(lines.find((line) => line.includes("Correctness"))).toContain("3 issues · 4 dropped");
+    const wholeRow = lines.find((line) => line.includes("Security"));
+    expect(wholeRow).toContain("3 issues");
+    expect(wholeRow).not.toContain("dropped");
+    expect(lines.find((line) => line.includes("Tests"))).toContain("failed (CANCELLED)");
+  });
+
   test("headlines a partial run honestly when a lens failed but the run completed", () => {
     const { lastFrame } = renderSummary({
       lensStats: [
@@ -276,6 +295,22 @@ describe("ReviewSummaryView clean run (TUI)", () => {
     expect(frame).toContain("✔ No issues at or above medium");
     expect(frame).not.toContain("Passed — no issues found");
     expect(frame).toContain("4 below-threshold issues hidden (threshold: medium)");
+  });
+
+  test("keeps a zero-issue run with an incompletely-answered lens off the clean screen and names the drops", () => {
+    const frame =
+      renderClean({
+        lensStats: [
+          { lensId: "correctness", issueCount: 0, status: "success", droppedCandidateCount: 4 },
+          { lensId: "security", issueCount: 0, status: "success" },
+        ],
+      }).lastFrame() ?? "";
+
+    expect(frame).toMatch(/review partially complete/i);
+    expect(frame).toContain(
+      "4 candidate findings dropped from 1 incomplete lens answer — rerun for a whole answer",
+    );
+    expect(frame).not.toContain("Passed — no issues found");
   });
 
   test("keeps a zero-issue run with a failed lens on the partial summary, without results entry", async () => {

@@ -51,6 +51,8 @@ function buildRunValue({ runLabel, createdAt }: ReviewRunReceipt): string {
 export function RunReceiptLedger({ receipt }: { receipt: ReviewRunReceipt }): ReactElement {
   const { tokens } = useTheme();
   const scope = buildScopeValue(receipt);
+  // Product-named on purpose: a receipt is a record, and history is not
+  // retro-relabelled by pool. The live review header beside it names the pool.
   const model = buildModelValue(receipt.productId, receipt.modelId);
   const lenses = receipt.lenses ?? [];
 

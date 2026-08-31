@@ -215,14 +215,24 @@ function ReviewStreamContainer({
     return (
       <ApiKeyMissingView
         readiness={readiness}
+        // The review screen is live, not a record: it names the same
+        // configuration the shell header does, pool and all, so one session
+        // never shows two names for the wallet that pays.
         productLabel={
-          selectedConfiguration ? getProviderDisplay(selectedConfiguration.productId) : undefined
+          selectedConfiguration
+            ? getProviderDisplay(
+                selectedConfiguration.productId,
+                undefined,
+                selectedConfiguration.endpoint,
+              )
+            : undefined
         }
         meta={
           selectedConfiguration
             ? getProviderDisplay(
                 selectedConfiguration.productId,
                 selectedConfiguration.selectedModelId ?? undefined,
+                selectedConfiguration.endpoint,
               )
             : undefined
         }

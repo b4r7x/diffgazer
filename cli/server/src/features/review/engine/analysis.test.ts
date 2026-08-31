@@ -7,7 +7,7 @@ import { requireValue } from "@diffgazer/core/testing/assertions";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
+import type { AIClient, AIError, GenerateWarning } from "../../../shared/lib/ai/types.js";
 import { makeFileDiff, makeParsedDiff } from "../testing/factories.js";
 import { runLensAnalysis, runSynthesisAnalysis } from "./analysis.js";
 import type { ParsedDiff } from "./diff/types.js";
@@ -72,7 +72,9 @@ function makeLensIssue(
   });
 }
 
-function makeSequencedAIClient(results: Array<Awaited<ReturnType<AIClient["generate"]>>>): {
+type MockGenerateResult = Result<{ issues: ReviewIssue[]; warning?: GenerateWarning }, AIError>;
+
+function makeSequencedAIClient(results: MockGenerateResult[]): {
   client: AIClient;
   calls: () => number;
 } {
@@ -84,7 +86,8 @@ function makeSequencedAIClient(results: Array<Awaited<ReturnType<AIClient["gener
       callCount += 1;
       if (result === undefined) throw new Error("unexpected extra batch dispatch");
       if (!result.ok) return result;
-      return ok(schema.parse(result.value));
+      const { warning, ...payload } = result.value;
+      return ok({ data: schema.parse(payload), ...(warning && { warning }) });
     },
   };
   return { client, calls: () => callCount };
@@ -110,14 +113,15 @@ function runSingleBatchLens(
   });
 }
 
-function makeMockAIClient(result: Awaited<ReturnType<AIClient["generate"]>>): AIClient {
+function makeMockAIClient(result: MockGenerateResult): AIClient {
   return {
     provider: "openrouter",
     // The production bridge parses every adapter response through the caller's
     // schema, so the double must too — analysis never sees raw provider output.
     async generate(_prompt, schema) {
       if (!result.ok) return result;
-      return ok(schema.parse(result.value));
+      const { warning, ...payload } = result.value;
+      return ok({ data: schema.parse(payload), ...(warning && { warning }) });
     },
   };
 }
@@ -140,7 +144,7 @@ describe("runLensAnalysis", () => {
       async generate(_prompt, schema) {
         const result = await response.promise;
         if (!result.ok) return result;
-        return ok(schema.parse(result.value));
+        return ok({ data: schema.parse(result.value) });
       },
     };
     const events: Array<AgentStreamEvent | StepEvent> = [];
@@ -620,6 +624,47 @@ describe("runLensAnalysis", () => {
     );
   });
 
+  it("sums droppedCandidateCount across salvaged batches", async () => {
+    const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
+    const client = makeSequencedAIClient([
+      ok({
+        issues: [makeLensIssue("kept", "file-1")],
+        warning: { droppedCandidateCount: 3 },
+      }),
+      ok({
+        issues: [],
+        warning: { droppedCandidateCount: 4 },
+      }),
+    ]);
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.droppedCandidateCount).toBe(7);
+    expect(result.value.issues).toHaveLength(1);
+  });
+
+  it("reports droppedCandidateCount 0 when every answer arrives whole", async () => {
+    const client = makeMockAIClient(ok({ issues: [makeLensIssue("whole", "file-1")] }));
+
+    const promise = runSingleBatchLens(client, makeAnalysisDiff(1));
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.droppedCandidateCount).toBe(0);
+  });
+
   it("records one dispatch entry per batch with completed outcomes", async () => {
     const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
     const client = makeSequencedAIClient([ok({ issues: [] }), ok({ issues: [] })]);
@@ -776,7 +821,7 @@ describe("runLensAnalysis", () => {
         (event) => events.push(event),
         async (_prompt, schema) => {
           const result = await response.promise;
-          return result.ok ? ok(schema.parse(result.value)) : result;
+          return result.ok ? ok({ data: schema.parse(result.value) }) : result;
         },
       );
 
@@ -795,7 +840,7 @@ describe("runLensAnalysis", () => {
         async (_prompt, schema, options) => {
           options?.onProgress?.({ message: "Rate-limited, retrying in 8s", holdsForMs: 8000 });
           const result = await response.promise;
-          return result.ok ? ok(schema.parse(result.value)) : result;
+          return result.ok ? ok({ data: schema.parse(result.value) }) : result;
         },
       );
 

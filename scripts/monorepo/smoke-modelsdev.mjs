@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { ENV } from "./lib/env.mjs";
 import { errorMessage } from "./lib/error-message.mjs";
 import {
@@ -23,12 +23,18 @@ const MAX_LIVE_CATALOG_BYTES = 4 * 1024 * 1024;
 
 async function loadHostedLiveProbeRunner() {
   try {
-    const hostedFixtures = await import(
-      resolve(root, "cli/server/dist/shared/lib/ai/providers/hosted/fixtures.js")
+    // live-probe.ts is deliberately excluded from cli/server's production
+    // program (tsconfig-boundary.test.ts pins the exclusion), so no build ever
+    // emits it to dist; the opt-in probe loads straight from source via tsx.
+    const { tsImport } = await import("tsx/esm/api");
+    const liveProbe = await tsImport(
+      pathToFileURL(resolve(root, "cli/server/src/shared/lib/ai/providers/hosted/live-probe.ts"))
+        .href,
+      import.meta.url,
     );
-    return hostedFixtures.runHostedLiveProbe;
-  } catch {
-    return null;
+    return { runner: liveProbe.runHostedLiveProbe, error: null };
+  } catch (error) {
+    return { runner: null, error: errorMessage(error) };
   }
 }
 
@@ -50,7 +56,15 @@ function assertSnapshotInlinedInBundle(evidence, assertEvidence) {
     return;
   }
 
-  const readBundle = (path) => readFileSync(path, "utf8");
+  const sources = new Map();
+  const readBundle = (path) => {
+    let source = sources.get(path);
+    if (source === undefined) {
+      source = readFileSync(path, "utf8");
+      sources.set(path, source);
+    }
+    return source;
+  };
   const bundleFiles = collectReachableBundleFiles(
     DIFFGAZER_ENTRY,
     readBundle,
@@ -61,10 +75,13 @@ function assertSnapshotInlinedInBundle(evidence, assertEvidence) {
   );
   assertEvidence(bundleFiles.map(readBundle).join("\n"), evidence);
 
+  // The assertion above already proved the markers are inlined somewhere in the
+  // emitted graph; a single chunk holding all of them is the common case, not a
+  // requirement, so a null locate reports honestly instead of naming a chunk.
   const match = findSnapshotInBundle(bundleFiles, readBundle, evidence);
-  const location = match ?? "across emitted chunks";
+  const location = match ? `in ${match}` : `spread across ${bundleFiles.length} emitted chunks`;
   console.log(
-    `OK: CATALOG_SNAPSHOT inlined in diffgazer bundle (${evidence.join(" + ")} in ${location})`,
+    `OK: CATALOG_SNAPSHOT inlined in diffgazer bundle (${evidence.join(" + ")} ${location})`,
   );
 }
 
@@ -97,10 +114,16 @@ async function run() {
   const enabledProviders = Object.keys(PROVIDER_OVERLAY);
   const probeTuples = buildHostedProbeTuples(PRODUCT_REGISTRY, CREDENTIAL_ENV_VARS);
   const strictSkips = process.env[ENV.smokeStrictSkips] === "1";
-  const runHostedLiveProbe =
+  const { runner: runHostedLiveProbe, error: probeRunnerError } =
     networkAllowed() && process.env[LIVE_PROBE_OPT_IN_ENV] === "1"
       ? await loadHostedLiveProbeRunner()
-      : null;
+      : { runner: null, error: null };
+  if (probeRunnerError) {
+    console.log(
+      `NOTE: hosted probe runner not importable (${probeRunnerError}); ` +
+        "ensure workspace devDependencies are installed (`pnpm install`)",
+    );
+  }
 
   // The bundled snapshot is the always-available offline guarantee: the picker
   // must never be blank on first run/offline. Validate it on every run so a bad
@@ -125,8 +148,9 @@ async function run() {
     emit: (line) => console.log(line),
     runProbe: async (tuple) => {
       if (!runHostedLiveProbe) {
-        // The probe runner lives in the cli/server build; an unbuilt dist is an
-        // absent prerequisite, not a provider that failed its probe.
+        // The probe runner loads from cli/server source via tsx; a missing dev
+        // toolchain is an absent prerequisite, not a provider that failed its
+        // probe.
         return { unavailable: "runner-unavailable" };
       }
       const descriptor = {

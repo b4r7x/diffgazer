@@ -707,9 +707,33 @@ describe("ReviewSummaryView clean run", () => {
     );
     expect(screen.queryByText("Passed — no issues found")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /view results/i })).not.toBeInTheDocument();
+    // Nothing to open still leaves somewhere to go: the route's exits carry the
+    // screen, and the row they form is the mount focus target.
+    expect(screen.getByRole("button", { name: "Run Again" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back to Home" })).toBeInTheDocument();
 
     await user.keyboard("{Enter}");
     expect(onEnterReview).not.toHaveBeenCalled();
+  });
+
+  it("keeps a zero-issue run with an incompletely-answered lens off the clean-run screen and names the dropped findings", () => {
+    renderSummary({
+      ...CLEAN_RUN,
+      lensStats: [
+        { lensId: "correctness", issueCount: 0, status: "success", droppedCandidateCount: 4 },
+        { lensId: "security", issueCount: 0, status: "success" },
+      ],
+      cleanRunActions: cleanActions(),
+    });
+
+    expect(screen.queryByText("Passed — no issues found")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "4 candidate findings dropped from 1 incomplete lens answer — rerun for a whole answer",
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Run Again" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back to Home" })).toBeInTheDocument();
   });
 });
 

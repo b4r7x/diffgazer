@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   findSourceType,
   getInterfaceMemberDocs,
@@ -9,6 +9,7 @@ import {
   sourceTypeHasMember,
   sourceTypeHasShape,
   sourceTypeMemberFallbacks,
+  warmSourceTypeProgram,
 } from "./jsdoc-source.js";
 import {
   descriptionsAlign,
@@ -587,6 +588,11 @@ function metadataFor(item: ComponentJsDocCase): Map<string, string> {
 }
 
 describe("component metadata JSDoc sync", () => {
+  // sourceTypeHasMember binds a TypeScript program over the whole registry, which
+  // costs over a second. Paid here, on its own budget, so the member-reconciliation
+  // test below measures only its 165 component comparisons.
+  beforeAll(warmSourceTypeProgram, 60_000);
+
   it("keeps the authored and committed public UI inventories aligned", () => {
     expect(publishedComponentNames(publicRegistryItems)).toEqual(
       publishedComponentNames(authoredRegistryItems),

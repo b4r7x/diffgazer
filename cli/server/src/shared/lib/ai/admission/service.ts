@@ -13,11 +13,8 @@ import {
 } from "../../config/admission-evidence.js";
 import type { SupportedProviderConfigurationRecord } from "../../config/provider-config.js";
 import { computeProviderReadiness } from "../../config/readiness.js";
-import {
-  bindingCredentialAvailable,
-  resolveSecretBinding,
-  type SecretBinding,
-} from "../../config/secret-bindings.js";
+import type { SecretBinding } from "../../config/secret-binding-model.js";
+import { bindingCredentialAvailable, resolveSecretBinding } from "../../config/secret-bindings.js";
 import { secretIO } from "../../config/secret-io.js";
 import { estimateWorstCaseCostUsd } from "../budget/cost.js";
 import type { AttemptEstimate, BudgetLedger, BudgetReservation } from "../budget/ledger.js";
@@ -278,8 +275,10 @@ export async function authorizeReviewExecution(
   if (!reloaded.value) {
     return err(admissionFailure("configuration-not-found", "Configuration was not found", false));
   }
-  // The store bumps the revision on every configuration mutation, credential
-  // rebinds included, so the revision is the tuple's identity here.
+  // The store bumps the revision on every credential-bearing mutation, rebinds
+  // included, so the revision is the credential binding's identity here. A
+  // `select` write deliberately does not bump — the selected model and its
+  // endpoint reach admission through the evidence key instead.
   const reloadedConfiguration = reloaded.value.configuration;
   if (
     reloadedConfiguration.status !== "supported" ||

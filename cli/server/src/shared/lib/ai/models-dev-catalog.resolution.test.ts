@@ -36,7 +36,11 @@ import { assertTempHome } from "../testing/temp-home.js";
 import { LIVE_LIST_SHAPE_VERSION } from "./live-model-lists.js";
 import { ModelsDevCatalogCacheSchema } from "./models-dev-catalog/cache.js";
 import * as modelsDevCatalog from "./models-dev-catalog/index.js";
-import { catalogProviderModels, discoverConfigurationCatalog } from "./models-dev-catalog/index.js";
+import {
+  type CatalogDiscoveryTuple,
+  catalogProviderModels,
+  discoverConfigurationCatalog,
+} from "./models-dev-catalog/index.js";
 import { modelInfoFromBoundedObservation } from "./models-dev-catalog/models.js";
 
 const okResponse = (body: unknown, headers?: Record<string, string>): Response =>
@@ -62,6 +66,7 @@ const writeModelListCache = (key: string, models: unknown[]): void => {
     JSON.stringify({ models, fetchedAt: fresh(), shapeVersion: LIVE_LIST_SHAPE_VERSION }),
   );
 };
+
 // Every inline model declares structured output: the picker only offers models
 // that do, so a fixture without it would be filtered out before the assertion.
 const catalogWithGoogleModel = (modelId: string): unknown => ({
@@ -620,6 +625,16 @@ const ZEN_CATALOG = {
   "opencode-go": {
     id: "opencode-go",
     models: {
+      // Overlap: both pools serve it. The deduped observation keeps only the
+      // first source that named an id, so membership must be read per source.
+      "deepseek-v4-pro": {
+        id: "deepseek-v4-pro",
+        name: "DeepSeek V4 Pro",
+        cost: { input: 1.74, output: 3.84 },
+        limit: { context: 131072 },
+        structured_output: true,
+        release_date: "2025-12-01",
+      },
       "glm-5.3": {
         id: "glm-5.3",
         name: "GLM-5.3",
@@ -668,6 +683,7 @@ describe("live provider model lists", () => {
     const result = await discoverConfigurationCatalog({
       configurationId: "cfg-openrouter",
       productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
     });
 
     expect(spy).toHaveBeenCalledTimes(1);
@@ -747,6 +763,7 @@ describe("live provider model lists", () => {
     const discovery = discoverConfigurationCatalog({
       configurationId: "cfg-openrouter",
       productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
     });
     await vi.waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
     listResponse.resolve(okResponse(OPENROUTER_MODEL_LIST));
@@ -758,7 +775,11 @@ describe("live provider model lists", () => {
   it("serves the list from its five-minute cache without a second request", async () => {
     writeCache(OPENROUTER_CATALOG, fresh());
     const spy = listFetch("https://openrouter.ai/api/v1/models", OPENROUTER_MODEL_LIST);
-    const tuple = { configurationId: "cfg-openrouter", productId: "openrouter" } as const;
+    const tuple = {
+      configurationId: "cfg-openrouter",
+      productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
+    } as const;
 
     await discoverConfigurationCatalog(tuple);
     const second = await discoverConfigurationCatalog(tuple);
@@ -775,16 +796,18 @@ describe("live provider model lists", () => {
     writeCache(ZAI_CATALOG, fresh());
     // The configuration-keyed cache holds what the OpenAI-standard `{ data: [{ id, object, owned_by }] }`
     // list parses to (see live-model-lists.test.ts), so no credential is read here.
-    writeModelListCache("configuration-cfg-zai", [
+    writeModelListCache("configuration-cfg-zai-general-payg", [
       { id: "glm-5.2", tier: "unknown" },
       { id: "glm-5.3", tier: "unknown" },
     ]);
     const spy = vi.spyOn(globalThis, "fetch");
 
-    const result = await discoverConfigurationCatalog({
+    const tuple: CatalogDiscoveryTuple = {
       configurationId: "cfg-zai",
       productId: "zai",
-    });
+      endpoint: "https://api.z.ai/api/paas/v4",
+    };
+    const result = await discoverConfigurationCatalog(tuple);
 
     expect(spy).not.toHaveBeenCalled();
     expect(result.status).toBe("passed");
@@ -811,6 +834,7 @@ describe("live provider model lists", () => {
     const result = await discoverConfigurationCatalog({
       configurationId: "cfg-openrouter-withheld",
       productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
     });
 
     expect(result.status).toBe("passed");
@@ -832,6 +856,7 @@ describe("live provider model lists", () => {
     const result = await discoverConfigurationCatalog({
       configurationId: "cfg-ollama-cloud",
       productId: "ollama-cloud",
+      endpoint: "https://ollama.com/v1",
     });
 
     expect(result.status).toBe("passed");
@@ -851,6 +876,7 @@ describe("live provider model lists", () => {
     const result = await discoverConfigurationCatalog({
       configurationId: "cfg-openrouter",
       productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
     });
 
     expect(result.status).toBe("passed");
@@ -872,6 +898,7 @@ describe("live provider model lists", () => {
     const result = await discoverConfigurationCatalog({
       configurationId: "cfg-openrouter",
       productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
     });
 
     expect(result.status === "passed" && result.source).toBe("cache");
@@ -887,6 +914,7 @@ describe("live provider model lists", () => {
     const result = await discoverConfigurationCatalog({
       configurationId: "cfg-openrouter",
       productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
     });
 
     expect(result.status).toBe("passed");
@@ -908,6 +936,7 @@ describe("live provider model lists", () => {
     const result = await discoverConfigurationCatalog({
       configurationId: "cfg-openrouter",
       productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
     });
 
     expect(spy).not.toHaveBeenCalled();
@@ -921,17 +950,19 @@ describe("live provider model lists", () => {
     // key-bearing fetch, as in the Z.AI test above. A stealth route the catalog
     // has never seen stays an honest live-only row.
     writeCache(ZEN_CATALOG, fresh());
-    writeModelListCache("configuration-cfg-zen", [
+    writeModelListCache("configuration-cfg-zen-zen", [
       { id: "nemotron-3-ultra-free", tier: "unknown" },
       { id: "deepseek-v4-pro", tier: "unknown" },
       { id: "hy3-preview", tier: "unknown" },
     ]);
     const spy = vi.spyOn(globalThis, "fetch");
 
-    const result = await discoverConfigurationCatalog({
+    const tuple: CatalogDiscoveryTuple = {
       configurationId: "cfg-zen",
       productId: "opencode-zen",
-    });
+      endpoint: "https://opencode.ai/zen/v1",
+    };
+    const result = await discoverConfigurationCatalog(tuple);
 
     expect(spy).not.toHaveBeenCalled();
     expect(result.status).toBe("passed");
@@ -940,12 +971,14 @@ describe("live provider model lists", () => {
     expect(result.cached).toBe(true);
     expect(result.models).toEqual([
       // Known to the catalog: its row (dated, so it leads), with the real tier.
+      // Both catalog sources name it, so the row says both pools serve it.
       {
         id: "deepseek-v4-pro",
         name: "DeepSeek V4 Pro",
         description: "131K context",
         tier: "paid",
         releaseDate: "2025-12-01",
+        endpointProfileIds: ["zen", "go"],
       },
       // Zero-cost per the catalog: earns the FREE tier the bare list never could.
       {
@@ -953,38 +986,165 @@ describe("live provider model lists", () => {
         name: "Nemotron 3 Ultra (free)",
         description: "262K context",
         tier: "free",
+        endpointProfileIds: ["zen"],
       },
-      // Uncatalogued stealth route: live-only row, honest about the unknown price.
+      // Uncatalogued stealth route: live-only row, honest about the unknown
+      // price. The bound list offering it is pool membership on its own.
       {
         id: "hy3-preview",
         name: "hy3-preview",
         description: LIVE_ONLY_MODEL_DESCRIPTION,
         tier: "unknown",
+        endpointProfileIds: ["zen"],
+      },
+      // Only the Go source names it, and the bound list cannot: it is still
+      // offered, tagged with the pool that will serve and bill it.
+      {
+        id: "glm-5.3",
+        name: "GLM-5.3",
+        description: "200K context",
+        tier: "paid",
+        endpointProfileIds: ["go"],
       },
     ]);
   });
 
-  it("degrades OpenCode Zen to the catalog when no live list can be fetched", async () => {
-    // No cached list and no stored configuration credential: the live fetch
-    // cannot happen. The models.dev union (`opencode` + `opencode-go`) fills
-    // the picker instead of a skip — the zai idiom.
+  it("labels rows from the sibling pool's live list on top of its catalog source", async () => {
+    // Both pools' lists are cached, so the one key fetches nothing here. Go's
+    // live list names the free Nemotron route its catalog source never did, so
+    // that row gains Go membership a catalog-only read would miss.
+    writeCache(ZEN_CATALOG, fresh());
+    writeModelListCache("configuration-cfg-zen-zen", [
+      { id: "deepseek-v4-pro", tier: "unknown" },
+      { id: "nemotron-3-ultra-free", tier: "unknown" },
+    ]);
+    writeModelListCache("configuration-cfg-zen-go", [
+      { id: "nemotron-3-ultra-free", tier: "unknown" },
+      { id: "glm-5.3", tier: "unknown" },
+    ]);
+    const spy = vi.spyOn(globalThis, "fetch");
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-zen",
+      productId: "opencode-zen",
+      endpoint: "https://opencode.ai/zen/v1",
+    });
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.models.map(({ id, endpointProfileIds }) => [id, endpointProfileIds])).toEqual([
+      ["deepseek-v4-pro", ["zen", "go"]],
+      ["nemotron-3-ultra-free", ["zen", "go"]],
+      // Only Go's list serves it, so it joins the union tagged for Go alone.
+      ["glm-5.3", ["go"]],
+    ]);
+  });
+
+  it("drops the bound pool's label from a shared row its own live list no longer names", async () => {
+    // Both catalog sources name `deepseek-v4-pro`, but Zen's own list — the
+    // authority for the wallet the configuration is bound to — has stopped
+    // serving it. The row stays, because Go still serves it, and it says so:
+    // labelling it Zen would offer a route the bound wallet would 404.
+    writeCache(ZEN_CATALOG, fresh());
+    writeModelListCache("configuration-cfg-zen-zen", [
+      { id: "nemotron-3-ultra-free", tier: "unknown" },
+    ]);
+    const spy = vi.spyOn(globalThis, "fetch");
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-zen",
+      productId: "opencode-zen",
+      endpoint: "https://opencode.ai/zen/v1",
+    });
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.models.map(({ id, endpointProfileIds }) => [id, endpointProfileIds])).toEqual([
+      ["deepseek-v4-pro", ["go"]],
+      ["nemotron-3-ultra-free", ["zen"]],
+      ["glm-5.3", ["go"]],
+    ]);
+  });
+
+  it("keeps a Go-only catalog row in the fallback even when Go's live list has dropped it", async () => {
+    // The bound pool's list cannot be fetched, so the picker falls back to the
+    // catalog union — which carries Go's exclusives. Go's own live list is
+    // fresh and no longer names `glm-5.3`, but its catalog source still does,
+    // and that observation is what keeps the row in the picker, tagged Go, so
+    // confirming it moves the pool along with the model.
+    writeCache(ZEN_CATALOG, fresh());
+    writeModelListCache("configuration-cfg-zen-go", [
+      { id: "nemotron-3-ultra-free", tier: "unknown" },
+    ]);
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("zen down"));
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-zen",
+      productId: "opencode-zen",
+      endpoint: "https://opencode.ai/zen/v1",
+    });
+
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.models.map(({ id, endpointProfileIds }) => [id, endpointProfileIds])).toEqual([
+      ["deepseek-v4-pro", ["zen", "go"]],
+      ["glm-5.3", ["go"]],
+      ["nemotron-3-ultra-free", ["zen", "go"]],
+    ]);
+  });
+
+  it("degrades OpenCode Zen to the catalog when no live list can be fetched, still offering Go-only rows", async () => {
+    // No cached list and no stored configuration credential: neither pool's
+    // live fetch can happen. The models.dev sources fill the picker instead of
+    // a skip — the zai idiom — and because the catalog carries both sources the
+    // union survives offline; only the live refinement of the labels is lost.
     writeCache(ZEN_CATALOG, fresh());
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("zen down"));
 
     const result = await discoverConfigurationCatalog({
       configurationId: "cfg-zen",
       productId: "opencode-zen",
+      endpoint: "https://opencode.ai/zen/v1",
     });
 
     expect(result.status).toBe("passed");
     if (result.status !== "passed") return;
+    // The list-level provenance still reports where the rows came from, so the
+    // surface can qualify snapshot-derived membership.
     expect(result.source).toBe("cache");
-    // The dated row leads; the dateless union rows follow in catalog order,
-    // proving the Go source contributes to the fallback.
-    expect(result.models.map((model) => model.id)).toEqual([
-      "deepseek-v4-pro",
-      "glm-5.3",
-      "nemotron-3-ultra-free",
+    expect(result.models.map(({ id, endpointProfileIds }) => [id, endpointProfileIds])).toEqual([
+      ["deepseek-v4-pro", ["zen", "go"]],
+      ["glm-5.3", ["go"]],
+      ["nemotron-3-ultra-free", ["zen"]],
+    ]);
+  });
+
+  it("serves the sibling pool's rows when the bound pool's catalog source is empty", async () => {
+    // A Zen-bound configuration whose own source names nothing still has a
+    // usable picker: the Go rows are reachable by moving the pool with the
+    // model, so an empty bound source is no longer an empty discovery.
+    writeCache(
+      {
+        opencode: { id: "opencode", models: {} },
+        "opencode-go": ZEN_CATALOG["opencode-go"],
+      },
+      fresh(),
+    );
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("zen down"));
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-zen",
+      productId: "opencode-zen",
+      endpoint: "https://opencode.ai/zen/v1",
+    });
+
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.models.map(({ id, endpointProfileIds }) => [id, endpointProfileIds])).toEqual([
+      ["deepseek-v4-pro", ["go"]],
+      ["glm-5.3", ["go"]],
     ]);
   });
 
@@ -996,6 +1156,7 @@ describe("live provider model lists", () => {
     const result = await discoverConfigurationCatalog({
       configurationId: "cfg-zen",
       productId: "opencode-zen",
+      endpoint: "https://opencode.ai/zen/v1",
     });
 
     expect(spy).not.toHaveBeenCalled();
@@ -1008,16 +1169,18 @@ describe("live provider model lists", () => {
     // case-preserved (`MiniMax-M2.7`); a live-only id the catalog has never
     // seen stays an honest live-only row.
     writeCache(MINIMAX_CATALOG, fresh());
-    writeModelListCache("configuration-cfg-minimax", [
+    writeModelListCache("configuration-cfg-minimax-international", [
       { id: "MiniMax-M2.7", tier: "unknown" },
       { id: "MiniMax-M3", tier: "unknown" },
     ]);
     const spy = vi.spyOn(globalThis, "fetch");
 
-    const result = await discoverConfigurationCatalog({
+    const tuple: CatalogDiscoveryTuple = {
       configurationId: "cfg-minimax",
       productId: "minimax",
-    });
+      endpoint: "https://api.minimax.io/v1",
+    };
+    const result = await discoverConfigurationCatalog(tuple);
 
     expect(spy).not.toHaveBeenCalled();
     expect(result.status).toBe("passed");
@@ -1046,6 +1209,7 @@ describe("live provider model lists", () => {
     const result = await discoverConfigurationCatalog({
       configurationId: "cfg-minimax",
       productId: "minimax",
+      endpoint: "https://api.minimax.io/v1",
     });
 
     expect(result.status).toBe("passed");
@@ -1083,16 +1247,18 @@ describe("live provider model lists", () => {
       },
       fresh(),
     );
-    writeModelListCache("configuration-cfg-gemini", [
+    writeModelListCache("configuration-cfg-gemini-global", [
       { id: "gemini-2.5-flash", tier: "unknown" },
       { id: "text-embedding-004", tier: "unknown" },
     ]);
     const spy = vi.spyOn(globalThis, "fetch");
 
-    const result = await discoverConfigurationCatalog({
+    const tuple: CatalogDiscoveryTuple = {
       configurationId: "cfg-gemini",
       productId: "gemini",
-    });
+      endpoint: "https://generativelanguage.googleapis.com/v1beta",
+    };
+    const result = await discoverConfigurationCatalog(tuple);
 
     expect(spy).not.toHaveBeenCalled();
     expect(result.status).toBe("passed");
@@ -1117,6 +1283,7 @@ describe("live provider model lists", () => {
     const result = await discoverConfigurationCatalog({
       configurationId: "cfg-gemini",
       productId: "gemini",
+      endpoint: "https://generativelanguage.googleapis.com/v1beta",
     });
 
     expect(result.status).toBe("passed");
@@ -1189,6 +1356,7 @@ describe("configuration-bound catalog observations", () => {
     const live = await discoverConfigurationCatalog({
       configurationId: "cfg-gemini-live",
       productId: "gemini",
+      endpoint: "https://generativelanguage.googleapis.com/v1beta",
     });
     expect(live.status).toBe("passed");
     if (live.status === "passed") {
@@ -1204,6 +1372,7 @@ describe("configuration-bound catalog observations", () => {
     const cached = await discoverConfigurationCatalog({
       configurationId: "cfg-gemini-cache",
       productId: "gemini",
+      endpoint: "https://generativelanguage.googleapis.com/v1beta",
     });
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(cached.status).toBe("passed");
@@ -1219,6 +1388,7 @@ describe("configuration-bound catalog observations", () => {
     const snapshot = await discoverConfigurationCatalog({
       configurationId: "cfg-gemini-snapshot",
       productId: "gemini",
+      endpoint: "https://generativelanguage.googleapis.com/v1beta",
     });
     expect(snapshot.status).toBe("passed");
     if (snapshot.status === "passed") {
@@ -1239,6 +1409,7 @@ describe("configuration-bound catalog observations", () => {
     const result = await discoverConfigurationCatalog({
       configurationId: "cfg-gemini-empty",
       productId: "gemini",
+      endpoint: "https://generativelanguage.googleapis.com/v1beta",
     });
 
     expect(result).toMatchObject({
@@ -1340,6 +1511,7 @@ describe("configuration-bound catalog observations", () => {
     const result = await discoverConfigurationCatalog({
       configurationId: "cfg-gemini-poisoned-catalog",
       productId: "gemini",
+      endpoint: "https://generativelanguage.googleapis.com/v1beta",
     });
 
     expect(result.status).toBe("passed");

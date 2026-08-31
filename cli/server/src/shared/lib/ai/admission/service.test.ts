@@ -13,7 +13,7 @@ import type { SupportedProviderConfigurationRecord } from "../../config/provider
 import {
   createEnvironmentSecretBinding,
   type SecretBinding,
-} from "../../config/secret-bindings.js";
+} from "../../config/secret-binding-model.js";
 import { estimateWorstCaseCostUsd, PLANNING_OUTPUT_TOKENS } from "../budget/cost.js";
 import { type BudgetLedger, createBudgetLedger } from "../budget/ledger.js";
 import { ADAPTER_REGISTRY } from "../providers/registry.js";

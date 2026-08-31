@@ -182,6 +182,54 @@ const succeed = <T>(result: Result<T, unknown>): T => {
   return result.value;
 };
 
+const ZEN_ENDPOINT = "https://opencode.ai/zen/v1";
+const GO_ENDPOINT = "https://opencode.ai/zen/go/v1";
+const ZEN_MODEL = "glm-5.3";
+const MOONSHOT_INTERNATIONAL_ENDPOINT = "https://api.moonshot.ai/v1";
+const MOONSHOT_MAINLAND_ENDPOINT = "https://api.moonshot.cn/v1";
+
+const createZenAction = () =>
+  ({
+    action: "create",
+    input: {
+      transportFamily: "hosted-api",
+      productId: "opencode-zen",
+      endpoint: ZEN_ENDPOINT,
+      credential: { kind: "literal", value: "sk-zen-pool-secret-12345" },
+    },
+    acknowledgement: {
+      status: "accepted",
+      noticeId: "opencode-zen-hosted-api",
+      noticeVersion: 2,
+      acceptedAt: "2026-01-02T00:00:00.000Z",
+    },
+  }) as const;
+
+type PersistedRecord = {
+  revision: number;
+  selectedModelId: string | null;
+  input: { endpoint: string };
+  acknowledgement: { acceptedAt: string | null };
+  evidenceReference: string | null;
+};
+
+const persistedRecord = (): PersistedRecord => {
+  const [record] = readJson<{ configurations: PersistedRecord[] }>(configPath()).configurations;
+  if (!record) throw new Error("configuration not found in persisted config");
+  return record;
+};
+
+const persistedBindings = () => readJson<{ bindings: unknown[] }>(secretsPath()).bindings;
+
+const createZenConfiguration = async (
+  store: Awaited<ReturnType<typeof loadStore>>,
+): Promise<string> => {
+  const created = succeed(await store.runConfigurationAction(createZenAction()));
+  const configurationId = created.configuration?.configurationId;
+  if (!configurationId) throw new Error("create response requires a configuration");
+  return configurationId;
+};
+
 describe("config store actions", () => {
   it("creates a hosted-api configuration and its secret binding atomically", async () => {
     const store = await loadStore();
@@ -778,5 +826,157 @@ describe("config store actions", () => {
     expect(keyring.deleteKeyringSecret).not.toHaveBeenCalled();
     const inspected = await store.runConfigurationAction({ action: "inspect", configurationId });
     expect(inspected).toMatchObject({ ok: true, value: { status: "succeeded" } });
+  });
+});
+
+// The pool a configuration bills is `input.endpoint`, and it travels with the
+// model the picker confirms: a select may move it to a sibling endpoint of the
+// same product without touching the credential, the revision, or the notice.
+describe("select moves the billing pool", () => {
+  it("moves the pool to a sibling endpoint and keeps the credential binding at the same revision", async () => {
+    const store = await loadStore();
+    const configurationId = await createZenConfiguration(store);
+    const bindingsBeforeFlip = persistedBindings();
+
+    const flipped = succeed(
+      await store.runConfigurationAction({
+        action: "select",
+        configurationId,
+        modelId: ZEN_MODEL,
+        endpoint: GO_ENDPOINT,
+      }),
+    );
+
+    expect(flipped.configuration).toMatchObject({
+      endpoint: GO_ENDPOINT,
+      selectedModelId: ZEN_MODEL,
+      revision: 1,
+    });
+    expect(persistedRecord()).toMatchObject({ revision: 1, input: { endpoint: GO_ENDPOINT } });
+    // Bindings are keyed (configurationId, revision), so an unchanged revision is
+    // what keeps the credential bound without re-entry.
+    expect(persistedBindings()).toEqual(bindingsBeforeFlip);
+    expect(existsSync(literalSecretPathFor(configurationId, 1))).toBe(true);
+  });
+
+  it("rejects an endpoint that belongs to another product and leaves the pool bound", async () => {
+    const store = await loadStore();
+    const configurationId = await createZenConfiguration(store);
+
+    const rejected = await store.runConfigurationAction({
+      action: "select",
+      configurationId,
+      modelId: ZEN_MODEL,
+      endpoint: GEMINI_ENDPOINT,
+    });
+
+    expect(rejected).toMatchObject({ ok: false, error: { code: "INVALID_ACTION" } });
+    expect(persistedRecord()).toMatchObject({
+      input: { endpoint: ZEN_ENDPOINT },
+      selectedModelId: null,
+    });
+  });
+
+  it("rejects a sibling endpoint of a product whose endpoints are separate accounts", async () => {
+    const store = await loadStore();
+    const created = succeed(
+      await store.runConfigurationAction({
+        action: "create",
+        input: {
+          transportFamily: "hosted-api",
+          productId: "moonshot",
+          endpoint: MOONSHOT_INTERNATIONAL_ENDPOINT,
+          credential: { kind: "literal", value: "sk-moonshot-secret-12345" },
+        },
+      }),
+    );
+    const configurationId = created.configuration?.configurationId;
+    if (!configurationId) throw new Error("create response requires a configuration");
+
+    const rejected = await store.runConfigurationAction({
+      action: "select",
+      configurationId,
+      modelId: "kimi-k2",
+      endpoint: MOONSHOT_MAINLAND_ENDPOINT,
+    });
+
+    // Moonshot's two endpoints are regions with separate accounts and separate
+    // keys, not billing pools of one account: moving the endpoint would strand
+    // the credential bound to the region it was issued for.
+    expect(rejected).toMatchObject({ ok: false, error: { code: "INVALID_ACTION" } });
+    expect(persistedRecord()).toMatchObject({
+      input: { endpoint: MOONSHOT_INTERNATIONAL_ENDPOINT },
+      selectedModelId: null,
+    });
+  });
+
+  it("keeps the bound pool when the select carries no endpoint", async () => {
+    const store = await loadStore();
+    const configurationId = await createZenConfiguration(store);
+
+    const selected = succeed(
+      await store.runConfigurationAction({ action: "select", configurationId, modelId: ZEN_MODEL }),
+    );
+
+    expect(selected.configuration).toMatchObject({
+      endpoint: ZEN_ENDPOINT,
+      selectedModelId: ZEN_MODEL,
+      revision: 1,
+    });
+    expect(persistedRecord()).toMatchObject({ revision: 1, input: { endpoint: ZEN_ENDPOINT } });
+  });
+
+  it("drops proven evidence so the new pool has to prove itself", async () => {
+    const store = await loadStore();
+    const configurationId = await createZenConfiguration(store);
+    succeed(
+      await store.runConfigurationAction({ action: "select", configurationId, modelId: ZEN_MODEL }),
+    );
+    await store.recordConfigurationEvidence(
+      configurationId,
+      createAdmissionEvidence({
+        evidenceKey: evidenceKeyForPersisted(configurationId),
+        checkedAt: "2026-01-02T00:00:00.000Z",
+        status: "passed",
+      }),
+    );
+    const proven = succeed(
+      await store.runConfigurationAction({ action: "inspect", configurationId }),
+    );
+    expect(proven.readiness).toMatchObject({ status: "ready", ready: true });
+
+    const flipped = succeed(
+      await store.runConfigurationAction({
+        action: "select",
+        configurationId,
+        modelId: ZEN_MODEL,
+        endpoint: GO_ENDPOINT,
+      }),
+    );
+
+    expect(flipped.readiness).toMatchObject({ status: "conformance-pending", ready: false });
+    expect(persistedRecord().evidenceReference).toBeNull();
+    const reinspected = succeed(
+      await store.runConfigurationAction({ action: "inspect", configurationId }),
+    );
+    expect(reinspected.readiness).toMatchObject({ status: "conformance-pending" });
+  });
+
+  it("does not restamp the notice acknowledgement", async () => {
+    const store = await loadStore();
+    const configurationId = await createZenConfiguration(store);
+    const acceptedAt = persistedRecord().acknowledgement.acceptedAt;
+    expect(acceptedAt).not.toBeNull();
+
+    succeed(
+      await store.runConfigurationAction({
+        action: "select",
+        configurationId,
+        modelId: ZEN_MODEL,
+        endpoint: GO_ENDPOINT,
+      }),
+    );
+
+    expect(persistedRecord().acknowledgement.acceptedAt).toBe(acceptedAt);
   });
 });

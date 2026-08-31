@@ -1,9 +1,21 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import { getDateLabel } from "@diffgazer/core/format";
-import { getRetainedModelNotice } from "@diffgazer/core/providers";
+import {
+  getEndpointPoolContext,
+  getModelBillingPool,
+  getPoolBillingChangeNote,
+  getRetainedModelNotice,
+  nextArmedPoolId,
+  resolveSelectEndpoint,
+} from "@diffgazer/core/providers";
 import { useModelFilter, useModelSource } from "@diffgazer/core/providers/hooks";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
-import type { ClientConfigurationSummary, ExactModelId } from "@diffgazer/core/schemas/config";
+import type {
+  ClientConfigurationSummary,
+  ExactModelId,
+  HostedApiEndpoint,
+  ModelInfo,
+} from "@diffgazer/core/schemas/config";
 import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { pluralize } from "@diffgazer/core/strings";
 import { Box, Text, useInput } from "ink";
@@ -14,14 +26,15 @@ import { Button } from "../../../components/ui/button";
 import { Dialog, getDialogWidth } from "../../../components/ui/dialog";
 import { Spinner } from "../../../components/ui/spinner";
 import { useListNavigation } from "../../../hooks/use-list-navigation";
-import { getListWindow } from "../../../lib/list-window";
 import { wrappedRowCount } from "../../../lib/terminal-width";
 import { useTheme } from "../../../theme/provider";
-import { ModelListItem } from "./model-list-item";
+import { getModelViewportSize } from "../lib/model-viewport";
+import { ModelListBody } from "./model-list-body";
 import { ModelSearchInput } from "./model-search-input";
+import { PoolFilterTabs } from "./pool-filter-tabs";
 import { TierFilterTabs } from "./tier-filter-tabs";
 
-type FocusZone = "search" | "filters" | "retry" | "list";
+type FocusZone = "search" | "pool" | "filters" | "retry" | "list";
 type SelectionState =
   | { status: "idle" }
   | { status: "selecting" }
@@ -34,102 +47,15 @@ const MODEL_SELECT_SHORTCUTS: Shortcut[] = [
   { key: "Enter", label: "Select" },
 ];
 const MODEL_SELECT_RETRY_SHORTCUT: Shortcut = { key: "r", label: "Retry" };
+const MODEL_SELECT_POOL_SHORTCUT: Shortcut = { key: "p", label: "Pool" };
 const MODEL_SELECT_RIGHT_SHORTCUTS: Shortcut[] = [{ ...BACK_SHORTCUT, label: "Close" }];
-const MIN_MODEL_VIEWPORT_SIZE = 4;
-const MODEL_DIALOG_BASE_CHROME_ROWS = 12;
-
-function getModelViewportSize({
-  contentRows,
-  total,
-  conditionalRows,
-}: {
-  contentRows: number;
-  total: number;
-  conditionalRows: number;
-}): number {
-  const availableRows = Math.max(
-    MIN_MODEL_VIEWPORT_SIZE,
-    contentRows - MODEL_DIALOG_BASE_CHROME_ROWS - conditionalRows,
-  );
-  return Math.min(total, availableRows);
-}
-
-interface ModelListBodyProps {
-  loading: boolean;
-  sourceError: string | undefined;
-  reason: string | null;
-  models: ReturnType<typeof useModelSource>["models"];
-  filteredModels: ReturnType<typeof useModelFilter>["filteredModels"];
-  focusZone: FocusZone;
-  safeHighlightIndex: number;
-  selectedId: string | undefined;
-  contentWidth: number;
-  viewportSize: number;
-}
-
-function ModelListBody({
-  loading,
-  sourceError,
-  reason,
-  models,
-  filteredModels,
-  focusZone,
-  safeHighlightIndex,
-  selectedId,
-  contentWidth,
-  viewportSize,
-}: ModelListBodyProps): ReactElement {
-  const { tokens } = useTheme();
-
-  if (loading) {
-    return <Spinner label="Loading models…" />;
-  }
-  if (sourceError) {
-    return <Text color={tokens.error}>{sanitizeTerminalText(sourceError)}</Text>;
-  }
-  if (reason) {
-    return <Text color={tokens.warning}>{sanitizeTerminalText(reason)}</Text>;
-  }
-  if (filteredModels.length === 0) {
-    return (
-      <Text color={tokens.muted}>
-        {models.length === 0 ? "No models available" : "No models match your search"}
-      </Text>
-    );
-  }
-  const window = getListWindow({
-    total: filteredModels.length,
-    selectedIndex: safeHighlightIndex,
-    viewportRows: viewportSize,
-  });
-  const visibleModels = filteredModels.slice(window.start, window.end);
-
-  return (
-    <Box flexDirection="column" height={viewportSize} flexShrink={0}>
-      {window.canScrollUp ? <Text color={tokens.muted}>{"\u25B2"}</Text> : null}
-      {visibleModels.map((model, idx) => {
-        const absoluteIndex = window.start + idx;
-        return (
-          <ModelListItem
-            key={model.id}
-            model={model}
-            isHighlighted={focusZone === "list" && absoluteIndex === safeHighlightIndex}
-            isSelected={model.id === selectedId}
-            maxWidth={contentWidth}
-          />
-        );
-      })}
-      {window.canScrollDown ? <Text color={tokens.muted}>{"\u25BC"}</Text> : null}
-    </Box>
-  );
-}
-
 interface ModelSelectOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   configuration: ClientConfigurationSummary;
   selectedId?: string;
-  onSelect?: (id: ExactModelId) => unknown;
+  /** `endpoint` carries the row's billing pool; omitted when it is the bound one. */
+  onSelect?: (id: ExactModelId, endpoint?: HostedApiEndpoint) => unknown;
   isSaving?: boolean;
 }
 
@@ -144,6 +70,12 @@ export function ModelSelectOverlay({
   const { tokens } = useTheme();
   const { columns, contentRows } = useContentZone();
   const source = useModelSource(open, configuration);
+  const poolContext = getEndpointPoolContext(configuration.productId, configuration.endpoint);
+  const poolProfiles = poolContext ? [poolContext.bound, poolContext.sibling] : [];
+  // Selector, not filter: the armed pool decides which pool a row that both
+  // pools serve will bill, and never which rows the list shows.
+  const [selectedPoolId, setSelectedPoolId] = useState<string>();
+  const armedPoolId = selectedPoolId ?? poolContext?.bound.id;
 
   const {
     searchQuery,
@@ -164,9 +96,13 @@ export function ModelSelectOverlay({
   const sourceError = source.status === "error" ? source.error : undefined;
   const skippedReason = source.status === "skipped" ? source.reason : null;
   const retryVisible = Boolean(sourceError) || Boolean(skippedReason);
-  const zoneChain: FocusZone[] = retryVisible
-    ? ["search", "filters", "retry", "list"]
-    : ["search", "filters", "list"];
+  const zoneChain: FocusZone[] = [
+    "search",
+    ...(poolContext ? (["pool"] as const) : []),
+    "filters",
+    ...(retryVisible ? (["retry"] as const) : []),
+    "list",
+  ];
   const activeZone = zoneChain.includes(focusZone) ? focusZone : "list";
 
   const initialHighlightId =
@@ -190,6 +126,7 @@ export function ModelSelectOverlay({
 
   const resetOnOpen = useEffectEvent(() => {
     resetFilters();
+    setSelectedPoolId(undefined);
     setFocusZone("list");
     setHighlightedModelId(undefined);
     setSelection(IDLE_SELECTION);
@@ -209,13 +146,27 @@ export function ModelSelectOverlay({
     resetOnClose();
   }, [open, configuration.configurationId, configuration.revision]);
 
+  function cyclePool() {
+    if (!poolContext) return;
+    setSelectedPoolId(nextArmedPoolId(poolContext, armedPoolId));
+  }
+
   // The overlay stays open and pending until the selection mutation settles;
   // closing first would hide the only place its failure can be reported.
-  async function handleSelect(modelId: string) {
+  // The row's own badge is the authority: a model only one pool serves bills
+  // that pool whatever the selector says, so the endpoint comes from the
+  // confirmed row, not from the toggle.
+  async function handleSelect(model: ModelInfo) {
     if (saving) return;
     setSelection({ status: "selecting" });
+    const endpoint = resolveSelectEndpoint({
+      context: poolContext,
+      model,
+      armedProfileId: armedPoolId,
+      boundEndpoint: configuration.endpoint,
+    });
     try {
-      await onSelect?.(modelId);
+      await onSelect?.(model.id, endpoint);
       setSelection(IDLE_SELECTION);
       onOpenChange(false);
     } catch (error) {
@@ -246,6 +197,11 @@ export function ModelSelectOverlay({
 
       if (input === "f" && activeZone !== "search") {
         cycleTierFilter();
+        return;
+      }
+
+      if (input === "p" && activeZone !== "search") {
+        cyclePool();
       }
     },
     { isActive: open && !saving },
@@ -276,10 +232,11 @@ export function ModelSelectOverlay({
     { isActive: open && !saving && activeZone !== "search" && retryVisible },
   );
 
+  const poolShortcuts = poolContext
+    ? MODEL_SELECT_SHORTCUTS.toSpliced(2, 0, MODEL_SELECT_POOL_SHORTCUT)
+    : MODEL_SELECT_SHORTCUTS;
   usePageFooter({
-    shortcuts: retryVisible
-      ? [...MODEL_SELECT_SHORTCUTS, MODEL_SELECT_RETRY_SHORTCUT]
-      : MODEL_SELECT_SHORTCUTS,
+    shortcuts: retryVisible ? [...poolShortcuts, MODEL_SELECT_RETRY_SHORTCUT] : poolShortcuts,
     rightShortcuts: MODEL_SELECT_RIGHT_SHORTCUTS,
   });
 
@@ -303,7 +260,7 @@ export function ModelSelectOverlay({
       }
       if (key.return) {
         const model = filteredModels[safeHighlightIndex];
-        if (model) void handleSelect(model.id);
+        if (model) void handleSelect(model);
       }
     },
     { isActive: open && activeZone === "list" && !saving },
@@ -318,8 +275,23 @@ export function ModelSelectOverlay({
       ? "bundled catalog"
       : checkedAtLabel && `checked ${checkedAtLabel}`;
   const retainedModelNotice = saving ? null : getRetainedModelNotice(selectedId, source.models);
+  // The badge is the authority: the note names the pool the highlighted row
+  // will actually bill, so a single-pool row never promises a move.
+  const highlightedModel = filteredModels[safeHighlightIndex];
+  const highlightedBillingPool = highlightedModel
+    ? getModelBillingPool(poolContext, highlightedModel, armedPoolId)
+    : null;
+  const poolBillingChangeNote = getPoolBillingChangeNote(poolContext, highlightedBillingPool?.id);
+  // The note appears and disappears as the highlight crosses a pool badge, so
+  // its rows are reserved for as long as the pool row itself: sizing the
+  // viewport from the highlighted row would re-window the list under a
+  // stationary cursor on ordinary arrow navigation.
+  const reservedPoolNote = getPoolBillingChangeNote(poolContext, poolContext?.sibling.id);
+  const poolNoteRows = reservedPoolNote ? wrappedRowCount(reservedPoolNote, contentWidth) : 0;
   const conditionalRows = [
     freshnessLabel ? 1 : 0,
+    poolContext ? 1 : 0,
+    poolNoteRows,
     skippedReason ? wrappedRowCount(skippedReason, contentWidth) : 0,
     retryVisible ? 1 : 0,
     retainedModelNotice ? wrappedRowCount(retainedModelNotice, contentWidth) : 0,
@@ -353,6 +325,15 @@ export function ModelSelectOverlay({
               isActive={activeZone === "search" && !saving}
             />
 
+            {poolContext && armedPoolId ? (
+              <PoolFilterTabs
+                profiles={poolProfiles}
+                value={armedPoolId}
+                onChange={setSelectedPoolId}
+                isActive={activeZone === "pool" && !saving}
+              />
+            ) : null}
+
             <TierFilterTabs
               value={tierFilter}
               onChange={setTierFilter}
@@ -381,12 +362,25 @@ export function ModelSelectOverlay({
               reason={skippedReason}
               models={source.models}
               filteredModels={filteredModels}
-              focusZone={activeZone}
+              isListFocused={activeZone === "list"}
               safeHighlightIndex={safeHighlightIndex}
               selectedId={selectedId}
               contentWidth={contentWidth}
               viewportSize={modelViewportSize}
+              poolContext={poolContext}
+              armedPoolId={armedPoolId}
             />
+            {poolNoteRows > 0 ? (
+              // Confirming this row changes which wallet drains, so the
+              // consequence is stated where the eye already is before Enter.
+              // The box keeps its reserved height while the note is absent, so
+              // the list below never shifts as the highlight moves.
+              <Box height={poolNoteRows} flexShrink={0}>
+                {poolBillingChangeNote ? (
+                  <Text color={tokens.muted}>{poolBillingChangeNote}</Text>
+                ) : null}
+              </Box>
+            ) : null}
             {selectionError ? (
               <Text color={tokens.error}>{sanitizeTerminalText(selectionError)}</Text>
             ) : null}

@@ -30,6 +30,7 @@ import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { createToggleGroup } from "@diffgazer/ui/components/toggle-group";
 import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from "react";
+import { getProviderRowDisplayName } from "../lib/display-name";
 import { PROVIDER_FILTER_LABELS, PROVIDER_FILTERS, type ProviderFilter } from "../lib/filter";
 import { PROVIDER_STATUS_TONE } from "../lib/status-tone";
 
@@ -126,7 +127,8 @@ export function ProviderList({
 
     return (
       <NavigationListItem key={rowId} id={rowId}>
-        <NavigationListTitle>{row.product.name}</NavigationListTitle>
+        {/* A configured dual-pool product reads as the pool its runs will bill. */}
+        <NavigationListTitle>{getProviderRowDisplayName(row)}</NavigationListTitle>
         <NavigationListStatus
           role="img"
           aria-label={status.accessibleText}
@@ -144,8 +146,8 @@ export function ProviderList({
             </NavigationListMeta>
           ) : null}
           {subtitle ? (
-            // /85 lifts the slug over the AA floor on the selection fill, the
-            // same override history applies to its run summaries.
+            // /85 lifts the slug over the AA floor on the selection fill;
+            // History applies the same override to its run summaries.
             <NavigationListSubtitle className="min-w-0 truncate group-data-[highlighted]:text-primary-foreground/85">
               {subtitle}
               {modelId && modelId !== subtitle ? (

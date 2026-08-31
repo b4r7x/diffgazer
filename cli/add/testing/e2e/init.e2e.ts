@@ -428,17 +428,20 @@ describe("init command", () => {
     const packageJson = readFileSync(join(root, "package.json"), "utf-8");
     const outsideMarker = readFileSync(join(outside, "marker.txt"), "utf-8");
 
-    expect(() =>
-      runDgadd([
-        "init",
-        "--cwd",
-        root,
-        "--yes",
-        "--skip-install",
-        "--components-dir",
-        "src/escaped/components/ui",
-      ]),
-    ).toThrow(/must be inside detected source directory "src\/".*alias "@\/\*"/s);
+    expect(
+      () =>
+        runDgadd([
+          "init",
+          "--cwd",
+          root,
+          "--yes",
+          "--skip-install",
+          "--components-dir",
+          "src/escaped/components/ui",
+        ]),
+      // A symlink escape is reported as a traversal, not as a "put it under
+      // src/" usage hint whose suggested path would escape the same way.
+    ).toThrow(/escapes .* through a symlink or realpath/s);
 
     expect(readFileSync(join(root, "src/marker.ts"), "utf-8")).toBe(projectMarker);
     expect(readFileSync(join(root, "package.json"), "utf-8")).toBe(packageJson);

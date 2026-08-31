@@ -41,7 +41,8 @@ describe("ModelSelectOverlay selection (Enter -> onSelect -> close)", () => {
     stdin.write("\r");
     await flushUntil(() => onSelect.mock.calls.length > 0);
 
-    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash");
+    // No endpoint travels with a row off a billing-pool product.
+    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash", undefined);
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 

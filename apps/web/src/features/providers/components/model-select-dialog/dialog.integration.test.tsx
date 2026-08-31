@@ -6,11 +6,15 @@ import type {
   ConfigurationModelsResponse,
   ModelInfo,
 } from "@diffgazer/core/schemas/config";
-import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
+import {
+  GEMINI_CONFIGURATION,
+  OPENCODE_ZEN_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import axeCore from "axe-core";
 import { type ReactNode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ModelSelectDialog } from "./dialog";
@@ -57,13 +61,21 @@ function skippedModelsResponse(
 
 const GEMINI_CATALOG_MODELS = [catalogModel("gemini-2.5-flash"), catalogModel("gemini-2.5-pro")];
 
+// Discovery returns the union of both pools, each row labelled with the pools
+// that serve it, so a Go-only id reaches a zen-bound configuration's list.
+const OPENCODE_ZEN_MODELS: ModelInfo[] = [
+  { ...catalogModel("deepseek-v4-flash"), endpointProfileIds: ["zen", "go"] },
+  { ...catalogModel("claude-opus-5"), endpointProfileIds: ["zen"] },
+  { ...catalogModel("qwen3.7-max"), endpointProfileIds: ["go"] },
+];
+
 interface RenderOptions {
   configuration?: ClientConfigurationSummary;
   currentModel?: string | null;
   isSaving?: boolean;
   /** Flip isSaving to true when a selection is confirmed, like the page container does. */
   saveOnSelect?: boolean;
-  onSelect?: (modelId: string) => void;
+  onSelect?: (modelId: string, endpoint?: string) => void;
   onOpenChange?: (open: boolean) => void;
   getConfigurationModels?: BoundApi["getConfigurationModels"];
 }
@@ -96,9 +108,13 @@ function renderDialog(options: RenderOptions = {}) {
 
   let setSaving: ((saving: boolean) => void) | undefined;
   let setConfiguration: ((configuration: ClientConfigurationSummary) => void) | undefined;
+  // The harness keeps the dialog mounted across open toggles, unlike the page
+  // container, so reopening here exercises the dialog's own on-open resets.
+  let setDialogOpen: ((open: boolean) => void) | undefined;
 
   function DialogHarness() {
     const [open, setOpen] = useState(true);
+    setDialogOpen = setOpen;
     const [isSaving, setIsSaving] = useState(options.isSaving ?? false);
     const [liveConfiguration, setLiveConfiguration] = useState(configuration);
     setSaving = setIsSaving;
@@ -109,8 +125,8 @@ function renderDialog(options: RenderOptions = {}) {
       onOpenChange(nextOpen);
     };
 
-    const handleSelect = (modelId: string) => {
-      onSelect(modelId);
+    const handleSelect = (modelId: string, endpoint?: string) => {
+      onSelect(modelId, endpoint);
       if (options.saveOnSelect) setIsSaving(true);
     };
 
@@ -132,6 +148,12 @@ function renderDialog(options: RenderOptions = {}) {
     onSelect,
     onOpenChange,
     finishSave: () => setSaving?.(false),
+    // Two commits: batching close and open into one would hide the transition
+    // the dialog resets on.
+    reopen: () => {
+      act(() => setDialogOpen?.(false));
+      act(() => setDialogOpen?.(true));
+    },
     updateConfiguration: (next: ClientConfigurationSummary) => setConfiguration?.(next),
   };
 }
@@ -251,7 +273,7 @@ describe("ModelSelectDialog configuration-bound discovery", () => {
 
     await user.click(screen.getByRole("button", { name: /confirm/i }));
 
-    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash");
+    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash", undefined);
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
@@ -641,7 +663,7 @@ describe("ModelSelectDialog discovery states", () => {
     await waitFor(() => expect(confirm).toBeEnabled());
     await user.click(confirm);
 
-    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash");
+    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash", undefined);
     expect(onSelect).not.toHaveBeenCalledWith("stale-model-id");
   });
 
@@ -658,5 +680,264 @@ describe("ModelSelectDialog discovery states", () => {
 
     await screen.findByRole("radio", { name: /gemini-2\.5-flash/ });
     expect(screen.queryByText(/stays configured/)).not.toBeInTheDocument();
+  });
+});
+
+describe("ModelSelectDialog endpoint pools", () => {
+  const ZEN_ENDPOINT = "https://opencode.ai/zen/v1";
+  const GO_ENDPOINT = "https://opencode.ai/zen/go/v1";
+
+  function renderPoolDialog(options: RenderOptions = {}) {
+    return renderDialog({
+      configuration: OPENCODE_ZEN_CONFIGURATION,
+      currentModel: "deepseek-v4-flash",
+      getConfigurationModels: vi
+        .fn<BoundApi["getConfigurationModels"]>()
+        .mockResolvedValue(catalogModelsResponse(OPENCODE_ZEN_CONFIGURATION, OPENCODE_ZEN_MODELS)),
+      ...options,
+    });
+  }
+
+  // Scoped to the model list: the pool and tier rows are radiogroups too.
+  function listedModelIds() {
+    const list = screen.getByRole("radiogroup", { name: "Available models" });
+    return within(list)
+      .getAllByRole("radio")
+      .map((row) => row.getAttribute("data-value"));
+  }
+
+  it("drops the bound-pool token from the subtitle and offers the pool selector instead", async () => {
+    renderPoolDialog();
+
+    await screen.findByRole("radio", { name: /deepseek-v4-flash/ });
+    const heading = screen.getByRole("heading", { name: "Select Model" });
+    expect(heading.closest('[data-slot="dialog-header"]')).toHaveTextContent(
+      "opencode-zen · 3 models",
+    );
+    const poolGroup = screen.getByRole("radiogroup", { name: "Billing pool" });
+    expect(within(poolGroup).getByRole("radio", { name: "OpenCode Zen" })).toBeChecked();
+    expect(within(poolGroup).getByRole("radio", { name: "OpenCode Go" })).not.toBeChecked();
+  });
+
+  it("leaves a single-pool product without a pool selector or pool copy", async () => {
+    renderDialog();
+
+    await screen.findByRole("radio", { name: /gemini-2\.5-flash/ });
+    const heading = screen.getByRole("heading", { name: "Select Model" });
+    expect(heading.closest('[data-slot="dialog-header"]')).toHaveTextContent(
+      "gemini · 2 models · bundled catalog",
+    );
+    expect(screen.queryByRole("radiogroup", { name: "Billing pool" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Pool")).not.toBeInTheDocument();
+  });
+
+  it("badges every row with the pool that will bill it, Go-only rows included", async () => {
+    renderPoolDialog();
+
+    expect(await screen.findByRole("radio", { name: /deepseek-v4-flash/ })).toHaveTextContent(
+      "Zen",
+    );
+    expect(screen.getByRole("radio", { name: /claude-opus-5/ })).toHaveTextContent("Zen");
+    expect(screen.getByRole("radio", { name: /qwen3\.7-max/ })).toHaveTextContent("Go");
+  });
+
+  it("selects, never filters: arming Go keeps the list and the checked row intact", async () => {
+    const user = userEvent.setup();
+    renderPoolDialog();
+
+    await screen.findByRole("radio", { name: /deepseek-v4-flash/ });
+    const before = listedModelIds();
+
+    await user.keyboard("p");
+
+    expect(listedModelIds()).toEqual(before);
+    expect(screen.getByRole("radio", { name: /deepseek-v4-flash/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /deepseek-v4-flash/ })).toHaveTextContent("Go");
+    expect(screen.getByRole("radio", { name: /claude-opus-5/ })).toHaveTextContent("Zen");
+    expect(screen.getByText("Saving moves billing to OpenCode Go.")).toBeInTheDocument();
+  });
+
+  it("reopens armed on the bound pool after a discarded pool change", async () => {
+    const user = userEvent.setup();
+    const { reopen } = renderPoolDialog();
+
+    await screen.findByRole("radio", { name: /deepseek-v4-flash/ });
+    await user.keyboard("p");
+    reopen();
+
+    await screen.findByRole("radio", { name: /deepseek-v4-flash/ });
+    expect(
+      within(screen.getByRole("radiogroup", { name: "Billing pool" })).getByRole("radio", {
+        name: "OpenCode Zen",
+      }),
+    ).toBeChecked();
+    expect(screen.queryByText("Saving moves billing to OpenCode Go.")).not.toBeInTheDocument();
+  });
+
+  it("drops the billing note when the checked row is served by the bound pool alone", async () => {
+    const user = userEvent.setup();
+    renderPoolDialog();
+
+    await screen.findByRole("radio", { name: /deepseek-v4-flash/ });
+    await user.keyboard("p");
+    await user.click(screen.getByRole("radio", { name: /claude-opus-5/ }));
+
+    // The Zen-only badge wins over the armed pool, so nothing moves and the
+    // note must not promise otherwise.
+    expect(screen.getByRole("radio", { name: /claude-opus-5/ })).toHaveTextContent("Zen");
+    expect(screen.queryByText("Saving moves billing to OpenCode Go.")).not.toBeInTheDocument();
+  });
+
+  it("confirms a shared row on the armed pool and a single-pool row on its own", async () => {
+    const user = userEvent.setup();
+    const { onSelect } = renderPoolDialog();
+
+    await screen.findByRole("radio", { name: /deepseek-v4-flash/ });
+    await user.keyboard("p");
+    await user.click(screen.getByRole("button", { name: /confirm/i }));
+
+    expect(onSelect).toHaveBeenLastCalledWith("deepseek-v4-flash", GO_ENDPOINT);
+
+    await user.click(screen.getByRole("radio", { name: /claude-opus-5/ }));
+    await user.click(screen.getByRole("button", { name: /confirm/i }));
+
+    // Zen is the bound endpoint, so the row needs no pool move.
+    expect(onSelect).toHaveBeenLastCalledWith("claude-opus-5", undefined);
+  });
+
+  it("states the wallet move for the row Confirm posts, not merely the checked one", async () => {
+    const user = userEvent.setup();
+    const { onSelect } = renderPoolDialog();
+
+    // Searching filters the checked Zen row out from under the user, so Confirm
+    // falls through to the Go-only row. The note must follow the write.
+    await screen.findByRole("radio", { name: /deepseek-v4-flash/ });
+    await user.click(screen.getByRole("searchbox", { name: "Search models" }));
+    await user.keyboard("qwen3.7-max");
+
+    expect(await screen.findByText("Saving moves billing to OpenCode Go.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /confirm/i }));
+    expect(onSelect).toHaveBeenLastCalledWith("qwen3.7-max", GO_ENDPOINT);
+  });
+
+  it("notes the wallet move for the focused row Enter posts, before any Space", async () => {
+    const user = userEvent.setup();
+    const { onSelect } = renderPoolDialog();
+
+    const currentRow = await screen.findByRole("radio", { name: /deepseek-v4-flash/ });
+    await waitFor(() => expect(currentRow).toHaveFocus());
+
+    // Manual activation: arrows move focus only, so the checked row stays the
+    // saved Zen-billed one while Enter would post the focused Go-only row.
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+    expect(screen.getByRole("radio", { name: /qwen3\.7-max/ })).toHaveFocus();
+    expect(currentRow).toBeChecked();
+    expect(screen.getByText("Saving moves billing to OpenCode Go.")).toBeInTheDocument();
+
+    // Back on a Zen-billed row nothing moves, so the note stands down.
+    await user.keyboard("{ArrowUp}");
+    expect(screen.queryByText("Saving moves billing to OpenCode Go.")).not.toBeInTheDocument();
+
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard("{Enter}");
+    expect(onSelect).toHaveBeenLastCalledWith("qwen3.7-max", GO_ENDPOINT);
+  });
+
+  it("posts a Go-only row on Go even though the selector was never touched", async () => {
+    const user = userEvent.setup();
+    const { onSelect } = renderPoolDialog();
+
+    await screen.findByRole("radio", { name: /qwen3\.7-max/ });
+    await user.click(screen.getByRole("radio", { name: /qwen3\.7-max/ }));
+    await user.click(screen.getByRole("button", { name: /confirm/i }));
+
+    expect(onSelect).toHaveBeenLastCalledWith("qwen3.7-max", GO_ENDPOINT);
+  });
+
+  it("stands p down inside the search box so the letter can be typed", async () => {
+    const user = userEvent.setup();
+    renderPoolDialog();
+
+    await screen.findByRole("radio", { name: /deepseek-v4-flash/ });
+    const search = screen.getByRole("searchbox", { name: "Search models" });
+    await user.click(search);
+    await user.keyboard("p");
+
+    expect(search).toHaveValue("p");
+    expect(
+      within(screen.getByRole("radiogroup", { name: "Billing pool" })).getByRole("radio", {
+        name: "OpenCode Zen",
+      }),
+    ).toBeChecked();
+  });
+
+  it("walks the arrow keys through the pool row between search and the tier filters", async () => {
+    const user = userEvent.setup();
+    renderPoolDialog();
+
+    await screen.findByRole("radio", { name: /deepseek-v4-flash/ });
+    const poolGroup = screen.getByRole("radiogroup", { name: "Billing pool" });
+    const zenTab = within(poolGroup).getByRole("radio", { name: "OpenCode Zen" });
+    const search = screen.getByRole("searchbox", { name: "Search models" });
+
+    await user.click(search);
+    await user.keyboard("{ArrowDown}");
+    expect(zenTab).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(search).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+    expect(
+      within(screen.getByRole("radiogroup", { name: "Model tier filter" })).getByRole("radio", {
+        name: "all",
+      }),
+    ).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(zenTab).toHaveFocus();
+  });
+
+  it("keeps the endpoint bound when a single-pool product confirms a row", async () => {
+    const user = userEvent.setup();
+    const { onSelect } = renderDialog();
+
+    await screen.findByRole("radio", { name: /gemini-2\.5-pro/ });
+    await user.click(screen.getByRole("radio", { name: /gemini-2\.5-pro/ }));
+    await user.click(screen.getByRole("button", { name: /confirm/i }));
+
+    expect(onSelect).toHaveBeenLastCalledWith("gemini-2.5-pro", undefined);
+  });
+
+  it("keeps the pool row accessible alongside the tier row", async () => {
+    renderPoolDialog();
+
+    await screen.findByRole("radio", { name: /deepseek-v4-flash/ });
+    // Colour contrast is a token contract jsdom cannot compute.
+    const results = await axeCore.run(screen.getByRole("dialog"), {
+      rules: { "color-contrast": { enabled: false } },
+    });
+
+    expect(results.violations).toEqual([]);
+  });
+
+  it("bills the bound pool when the endpoint is Go and the row is shared", async () => {
+    const user = userEvent.setup();
+    const goConfiguration = { ...OPENCODE_ZEN_CONFIGURATION, endpoint: GO_ENDPOINT };
+    const { onSelect } = renderPoolDialog({
+      configuration: goConfiguration,
+      getConfigurationModels: vi
+        .fn<BoundApi["getConfigurationModels"]>()
+        .mockResolvedValue(catalogModelsResponse(goConfiguration, OPENCODE_ZEN_MODELS)),
+    });
+
+    await screen.findByRole("radio", { name: /deepseek-v4-flash/ });
+    expect(screen.getByRole("radio", { name: /deepseek-v4-flash/ })).toHaveTextContent("Go");
+
+    await user.keyboard("p");
+    await user.click(screen.getByRole("button", { name: /confirm/i }));
+
+    expect(onSelect).toHaveBeenLastCalledWith("deepseek-v4-flash", ZEN_ENDPOINT);
   });
 });

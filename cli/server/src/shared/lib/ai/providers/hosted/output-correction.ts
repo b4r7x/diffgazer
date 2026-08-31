@@ -3,6 +3,7 @@ import { log } from "../../../log.js";
 import {
   type BoundedDiagnostic,
   MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE,
+  OUTPUT_SALVAGED_DIAGNOSTIC_CODE,
   serializeFailureDiagnostic,
   truncateUtf8,
 } from "../../diagnostics.js";
@@ -127,9 +128,9 @@ export function reportSalvagedOutput(
     keptCount: counts.keptCount,
     droppedCount: counts.droppedCount,
   });
-  context.reportDiagnostic?.(
-    serializeFailureDiagnostic({
-      code: "output-salvaged",
+  context.reportDiagnostic?.({
+    ...serializeFailureDiagnostic({
+      code: OUTPUT_SALVAGED_DIAGNOSTIC_CODE,
       correlationId: context.correlationId,
       retryable: false,
       message: `The model's answer was incomplete (finish reason "${context.finishReason}"); ${counts.keptCount} finding(s) were salvaged and ${counts.droppedCount} candidate(s) were dropped.`,
@@ -137,5 +138,6 @@ export function reportSalvagedOutput(
         "Reduce the review scope, or pick a model or plan with a larger completion limit, then rerun for a whole answer.",
       sensitive: { literalSecrets: [context.credential] },
     }),
-  );
+    salvage: { keptFindingCount: counts.keptCount, droppedCandidateCount: counts.droppedCount },
+  });
 }

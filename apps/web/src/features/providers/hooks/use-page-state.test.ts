@@ -107,6 +107,7 @@ describe("useProvidersPageState", () => {
       expect(mockApi.selectConfiguration).toHaveBeenCalledWith(
         "gemini-primary",
         "gemini-2.5-flash",
+        undefined,
       );
     });
     expect(mockApi.inspectConfiguration).not.toHaveBeenCalled();
@@ -161,6 +162,7 @@ describe("useProvidersPageState", () => {
       expect(mockApi.selectConfiguration).toHaveBeenCalledWith(
         "gemini-primary",
         "gemini-2.5-flash",
+        undefined,
       );
     });
     expect(mockApi.testConfiguration).not.toHaveBeenCalled();

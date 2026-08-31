@@ -5,7 +5,10 @@ import type {
   ConfigurationModelsResponse,
   ModelInfo,
 } from "@diffgazer/core/schemas/config";
-import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
+import {
+  GEMINI_CONFIGURATION,
+  OPENCODE_ZEN_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
@@ -315,5 +318,65 @@ describe("ModelStep (TUI catalog)", () => {
     expect(frame).toContain("[FREE]");
     // The unpriced row wears no badge at all rather than guessing either one.
     expect(frame.match(/\[(PAID|FREE)]/g)).toHaveLength(2);
+  });
+
+  // The wizard binds the pool a step earlier, in the create dialog's endpoint
+  // choice, so this step only names the pool each row will bill.
+  test("names the pool each wizard row will bill", async () => {
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(
+        catalogModelsResponse(OPENCODE_ZEN_CONFIGURATION, [
+          catalogModel("deepseek-v4-flash", { endpointProfileIds: ["zen", "go"] }),
+          catalogModel("go-only-model", { endpointProfileIds: ["go"] }),
+        ]),
+      );
+
+    const { lastFrame } = render(
+      <Wrapper api={makeApi(getConfigurationModels)}>
+        <ModelStep
+          configuration={OPENCODE_ZEN_CONFIGURATION}
+          isPreparing={false}
+          onRetry={() => {}}
+          onChange={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("go-only-model") ?? false);
+    const frame = lastFrame() ?? "";
+    // The shared row bills the bound pool; the Go-only row bills its own. The
+    // step offers no pool control: the endpoint was chosen before it.
+    expect(frame).toContain("[Zen]");
+    expect(frame).toContain("[Go]");
+    // Badges only: the settings overlay's armed-pool row (" · Zen" / " · Go")
+    // and its [p] accelerator must not appear here, or the wallet would be
+    // choosable twice in one wizard.
+    expect(frame).not.toContain("· Zen");
+    expect(frame).not.toContain("· Go");
+    expect(frame).not.toContain("Pool");
+  });
+
+  test("tags no row for a single-endpoint product", async () => {
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(
+        catalogModelsResponse(DRAFT_CONFIGURATION, [catalogModel("gemini-2.5-flash")]),
+      );
+
+    const { lastFrame } = render(
+      <Wrapper api={makeApi(getConfigurationModels)}>
+        <ModelStep
+          configuration={DRAFT_CONFIGURATION}
+          isPreparing={false}
+          onRetry={() => {}}
+          onChange={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    expect(lastFrame() ?? "").not.toContain("[Zen]");
+    expect(lastFrame() ?? "").not.toContain("[Go]");
   });
 });

@@ -2,8 +2,14 @@ import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { CATALOG_EMPTY_MODELS_REASON } from "@diffgazer/core/providers";
-import type { ConfigurationModelsResponse } from "@diffgazer/core/schemas/config";
-import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
+import type {
+  ClientConfigurationSummary,
+  ConfigurationModelsResponse,
+} from "@diffgazer/core/schemas/config";
+import {
+  GEMINI_CONFIGURATION,
+  OPENCODE_ZEN_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -255,7 +261,8 @@ describe("ModelStep", () => {
     const selectedRadio = within(modelGroup).getByRole("radio", { name: /gemini-2\.5-flash/i });
     selectedRadio.focus();
     await user.keyboard("{Enter}");
-    expect(onCommit).toHaveBeenCalledWith("gemini-2.5-flash");
+    // Gemini has one endpoint, so the row carries no pool to move to.
+    expect(onCommit).toHaveBeenCalledWith("gemini-2.5-flash", null);
   });
 
   it("shows the skipped catalog reason without exposing fabricated models", async () => {
@@ -285,5 +292,96 @@ describe("ModelStep", () => {
 
     expect(await screen.findByText(CATALOG_EMPTY_MODELS_REASON)).toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+  });
+});
+
+describe("ModelStep endpoint pool badges", () => {
+  function poolModelsResponse(): ConfigurationModelsResponse {
+    return {
+      status: "passed",
+      configurationId: OPENCODE_ZEN_CONFIGURATION.configurationId,
+      productId: OPENCODE_ZEN_CONFIGURATION.productId,
+      transportFamily: OPENCODE_ZEN_CONFIGURATION.transportFamily,
+      models: [
+        {
+          id: "deepseek-v4-flash",
+          name: "deepseek-v4-flash",
+          description: "Served by both pools",
+          tier: "paid",
+          endpointProfileIds: ["zen", "go"],
+        },
+        {
+          id: "claude-opus-5",
+          name: "claude-opus-5",
+          description: "Zen only",
+          tier: "paid",
+          endpointProfileIds: ["zen"],
+        },
+        {
+          id: "glm-5.3",
+          name: "glm-5.3",
+          description: "Go only",
+          tier: "paid",
+          endpointProfileIds: ["go"],
+        },
+      ],
+      checkedAt: "2026-08-02T12:00:00.000Z",
+      source: "snapshot",
+      cached: false,
+    };
+  }
+
+  function renderStep(
+    configuration: ClientConfigurationSummary,
+    response: ConfigurationModelsResponse,
+    onChange: (model: string, poolEndpoint: string | null) => void = vi.fn(),
+  ) {
+    const api = apiWithModels(
+      vi.fn<BoundApi["getConfigurationModels"]>().mockResolvedValue(response),
+    );
+    render(
+      <ModelStep
+        configuration={configuration}
+        isPreparing={false}
+        onRetry={vi.fn()}
+        value={null}
+        onChange={onChange}
+        onCommit={vi.fn()}
+      />,
+      { wrapper: makeWrapper(api) },
+    );
+  }
+
+  it("badges every row with the pool that will bill it, sibling-only rows included", async () => {
+    renderStep(OPENCODE_ZEN_CONFIGURATION, poolModelsResponse());
+
+    // No pool selector here, so a shared row bills the bound pool and a row only
+    // the sibling serves still names its own.
+    expect(await screen.findByRole("radio", { name: /deepseek-v4-flash/ })).toHaveTextContent(
+      "Zen",
+    );
+    expect(screen.getByRole("radio", { name: /claude-opus-5/ })).toHaveTextContent("Zen");
+    expect(screen.getByRole("radio", { name: /glm-5\.3/ })).toHaveTextContent("Go");
+    expect(screen.queryByRole("radiogroup", { name: "Billing pool" })).not.toBeInTheDocument();
+  });
+
+  it("reports the badged pool so a sibling-only row is saved against the pool that serves it", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderStep(OPENCODE_ZEN_CONFIGURATION, poolModelsResponse(), onChange);
+
+    await user.click(await screen.findByRole("radio", { name: /glm-5\.3/ }));
+    expect(onChange).toHaveBeenCalledWith("glm-5.3", "https://opencode.ai/zen/go/v1");
+
+    // A row the bound pool already serves moves nothing.
+    await user.click(screen.getByRole("radio", { name: /deepseek-v4-flash/ }));
+    expect(onChange).toHaveBeenLastCalledWith("deepseek-v4-flash", null);
+  });
+
+  it("shows no pool badge for a product whose endpoints are not billing pools", async () => {
+    renderStep(GEMINI_CONFIGURATION, geminiModelsResponse());
+
+    await screen.findByRole("radio", { name: /gemini-2\.5-flash/ });
+    expect(screen.queryByText(/^(Zen|Go)$/)).not.toBeInTheDocument();
   });
 });

@@ -14,7 +14,7 @@ import {
   NonSecretTransportInputSchema,
   type SupportedProviderConfigurationRecord,
 } from "./provider-config.js";
-import type { SecretBinding } from "./secret-bindings.js";
+import type { SecretBinding } from "./secret-binding-model.js";
 import {
   type LegacySecretConfiguration,
   preflightV1SecretsMigration,

@@ -113,6 +113,32 @@ describe("ReviewCompleteSummary", () => {
     expect(screen.getByText(/^No issues found/)).not.toHaveClass("text-success-text");
   });
 
+  it("headlines a run with an incompletely-answered lens as partially complete in the warning frame", () => {
+    render(
+      <ReviewCompleteSummary
+        stats={{ totalIssues: 3, filesWithIssues: 2, blockerCount: 0 }}
+        severityCounts={{ blocker: 0, high: 0, medium: 3, low: 0, nit: 0 }}
+        categoryStats={[]}
+        topIssues={[]}
+        receiptRows={RECEIPT_ROWS}
+        receiptStub={RECEIPT_STUB}
+        lensStats={[
+          { lensId: "correctness", issueCount: 3, status: "success", droppedCandidateCount: 4 },
+          { lensId: "security", issueCount: 0, status: "success" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Review Partially Complete",
+    );
+    // The frame follows the headline: no failed lens, but no success-green either.
+    expect(screen.getByRole("region", { name: "Run status" })).toHaveAttribute(
+      "data-tone",
+      "warning",
+    );
+  });
+
   it("keeps the success frame for a fully reported run", () => {
     render(
       <ReviewCompleteSummary

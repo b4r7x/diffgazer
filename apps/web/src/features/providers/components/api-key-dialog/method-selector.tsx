@@ -22,7 +22,8 @@ interface ApiKeyMethodSelectorProps {
   envVarName?: string;
   providerName: string;
   inputRef: RefObject<HTMLInputElement | null>;
-  focused: ApiKeyFocusTarget;
+  /** Null while focus sits outside the credential controls, so no method is highlighted. */
+  focused: ApiKeyFocusTarget | null;
   onFocus: (element: ApiKeyFocusTarget) => void;
   onKeySubmit: () => void;
   onMethodCommit: (method: InputMethod) => void;

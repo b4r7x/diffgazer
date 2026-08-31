@@ -11,11 +11,10 @@ import {
   createFileSecretBinding,
   createKeyringSecretBinding,
   createNoneSecretBinding,
-  resolveSecretBinding,
   type SecretBinding,
   SecretBindingError,
-  writeSecretBinding,
-} from "./secret-bindings.js";
+} from "./secret-binding-model.js";
+import { resolveSecretBinding, writeSecretBinding } from "./secret-bindings.js";
 import { secretIO } from "./secret-io.js";
 import { getConfigurationSecretName } from "./secrets-store.js";
 import type {

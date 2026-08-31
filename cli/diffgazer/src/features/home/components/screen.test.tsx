@@ -1,4 +1,9 @@
-import { makeReadyInitResponse } from "@diffgazer/core/testing/provider-fixtures";
+import {
+  configurationStatus,
+  makeConfigurationInitResponse,
+  makeReadyInitResponse,
+  OPENCODE_GO_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { NavigationContext } from "../../../hooks/use-navigation";
@@ -123,6 +128,23 @@ describe("HomeScreen", () => {
 
     stdin.write("r");
     await vi.waitFor(() => expect(refetchInitMock).toHaveBeenCalledTimes(2));
+  });
+
+  test("names the bound billing pool in the Provider row", async () => {
+    const init = makeConfigurationInitResponse([
+      configurationStatus(OPENCODE_GO_CONFIGURATION, "ready"),
+    ]);
+    useConfigurationInitMock.mockReturnValue({
+      data: { ...init, project: { projectId: "project-1", path: "/tmp/repo", trust: TRUST } },
+      isLoading: false,
+      error: null,
+      refetch: refetchInitMock,
+    });
+
+    const { lastFrame } = renderRootFrame(100, 30, renderHome());
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("Provider: OpenCode Go"));
+    expect(lastFrame()).not.toContain("OpenCode Zen");
   });
 
   test("keeps the untrusted action inside an 80 by 24 root frame", async () => {

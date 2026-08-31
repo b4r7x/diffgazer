@@ -24,7 +24,7 @@ export {
 export type { FileOp } from "./file-write-rollback.js";
 export { copyGeneratedDir } from "./fs/directories.js";
 export { withFileLock, withProjectFileLock } from "./fs/file-lock.js";
-export { ensureWithinDir } from "./fs/path-safety.js";
+export { ensureWithinDir, isSymlinkTraversalError } from "./fs/path-safety.js";
 export { readTsConfigPaths } from "./fs/tsconfig-paths.js";
 export { atomicWriteFile, writeFileSafe } from "./fs/writes.js";
 export { createInstallChecker } from "./install-checker.js";

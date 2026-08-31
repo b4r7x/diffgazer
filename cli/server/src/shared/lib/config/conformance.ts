@@ -5,7 +5,7 @@ import { log } from "../log.js";
 import type { AdmissionEvidence } from "./admission-evidence.js";
 import type { SupportedProviderConfigurationRecord } from "./provider-config.js";
 import { getConfigSeams } from "./seams.js";
-import type { SecretBinding } from "./secret-bindings.js";
+import type { SecretBinding } from "./secret-binding-model.js";
 import type { ConfigurationActionError } from "./types.js";
 
 /**

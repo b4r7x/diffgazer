@@ -122,12 +122,36 @@ export function hasFailedLenses(lensStats: readonly LensStat[] | undefined): boo
 }
 
 /**
+ * Whether this lens kept findings from an answer that arrived incomplete.
+ * Structural on purpose: `LensStat`, `LensSummaryRow` and saved-review lens
+ * entries all carry the same optional count, and every surface must read the
+ * absent-key sentinel the same way.
+ */
+export function lensAnsweredIncompletely(stat: { droppedCandidateCount?: number }): boolean {
+  return (stat.droppedCandidateCount ?? 0) > 0;
+}
+
+/** Whether any lens kept findings from an answer that arrived incomplete. */
+export function hasDroppedCandidates(lensStats: readonly LensStat[] | undefined): boolean {
+  return (lensStats ?? []).some(lensAnsweredIncompletely);
+}
+
+/**
+ * Whether a completed run is partial: failed lenses or incompletely-answered
+ * ones. The headline and the web frame tone both read it, so "Partially
+ * Complete" and the warning frame can never drift apart.
+ */
+export function isPartiallyComplete(lensStats: readonly LensStat[] | undefined): boolean {
+  return hasFailedLenses(lensStats) || hasDroppedCandidates(lensStats);
+}
+
+/**
  * The summary headline for a run that reached its results: "Review Complete"
  * only when every tracked lens reported. A run that finished with failed
  * lenses must not headline as a pass — the partial coverage IS the headline.
  */
 export function buildCompletionHeadline(lensStats: readonly LensStat[] | undefined): string {
-  return hasFailedLenses(lensStats) ? "Review Partially Complete" : "Review Complete";
+  return isPartiallyComplete(lensStats) ? "Review Partially Complete" : "Review Complete";
 }
 
 /**
@@ -141,6 +165,20 @@ export function buildMissingLensIssuesNotice(lensStats: readonly LensStat[] | un
 
   const missing = formatList(failed.map((stat) => getLensAgentName(stat.lensId)));
   return `Issues from ${missing} are missing.`;
+}
+
+/**
+ * The run-level sentence for lenses that answered incompletely: how many
+ * candidate findings were dropped and from how many answers. Null when every
+ * lens answered in full, so surfaces can render it only when it says something.
+ */
+export function buildIncompleteAnswerNotice(
+  lensStats: readonly LensStat[] | undefined,
+): string | null {
+  const incomplete = (lensStats ?? []).filter(lensAnsweredIncompletely);
+  if (incomplete.length === 0) return null;
+  const dropped = incomplete.reduce((sum, stat) => sum + (stat.droppedCandidateCount ?? 0), 0);
+  return `${pluralize(dropped, "candidate finding")} dropped from ${pluralize(incomplete.length, "incomplete lens answer")} — rerun for a whole answer`;
 }
 
 /**

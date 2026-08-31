@@ -4,7 +4,7 @@ import type { ConfigurationId } from "@diffgazer/core/schemas/config";
 import type { ExecutionResult, TerminalOutcome } from "@diffgazer/core/schemas/review";
 import type { z } from "zod";
 import { findSecretBinding } from "../../config/persistence/secrets.js";
-import type { SecretBinding } from "../../config/secret-bindings.js";
+import type { SecretBinding } from "../../config/secret-binding-model.js";
 import { resolveSecretBinding } from "../../config/secret-bindings.js";
 import { secretIO } from "../../config/secret-io.js";
 import { credentialReferenceIdentityFor } from "../../config/store/credential-lifecycle.js";
@@ -26,6 +26,8 @@ import type {
   AIErrorCode,
   AIErrorDiagnostic,
   GenerateOptions,
+  GenerateSuccess,
+  GenerateWarning,
 } from "../types.js";
 import { executeReviewGeneration } from "./generate.js";
 
@@ -170,7 +172,7 @@ function createGenerateBridge(
     prompt: string,
     schema: T,
     options?: GenerateOptions,
-  ): Promise<Result<z.infer<T>, AIError>> => {
+  ): Promise<Result<GenerateSuccess<T>, AIError>> => {
     const { execution, diagnostic } = await executeReviewGeneration({
       authorization,
       prompt,
@@ -194,7 +196,12 @@ function createGenerateBridge(
     }
 
     onStructuredSuccess();
-    return ok(parsed.data);
+    // The salvage counts are the whole warning: they travel together on the
+    // diagnostic, so a salvaged answer can never be handed on as a whole one.
+    const warning: GenerateWarning | undefined = diagnostic?.salvage
+      ? { droppedCandidateCount: diagnostic.salvage.droppedCandidateCount }
+      : undefined;
+    return ok(warning ? { data: parsed.data, warning } : { data: parsed.data });
   };
 }
 

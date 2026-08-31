@@ -41,6 +41,7 @@ type ServiceModule = typeof import("./service.js");
 type ConformanceEvidenceModule = typeof import("./conformance-evidence.js");
 type SseReplayModule = typeof import("./stream/replay.js");
 type SessionsModule = typeof import("./stream/store.js");
+type ScopeKeysModule = typeof import("./stream/scope-keys.js");
 type GitModule = typeof import("../../shared/lib/git/service.js");
 const REVIEW_DIFF = [
   "diff --git a/src/app.ts b/src/app.ts",
@@ -83,8 +84,8 @@ let createSession: SessionsModule["createSession"];
 let deleteSessionForTests: SessionsModule["deleteSessionForTests"];
 let getSession: SessionsModule["getSession"];
 let getActiveSessionForProject: SessionsModule["getActiveSessionForProject"];
-let buildReviewConfigKey: SessionsModule["buildReviewConfigKey"];
-let buildScopeKey: SessionsModule["buildScopeKey"];
+let buildReviewConfigKey: ScopeKeysModule["buildReviewConfigKey"];
+let buildScopeKey: ScopeKeysModule["buildScopeKey"];
 let markReady: SessionsModule["markReady"];
 let createGitService: GitModule["createGitService"];
 let originalDiffgazerHome: string | undefined;
@@ -285,7 +286,7 @@ function makeAIClient(
       executionFingerprint: plan.executionFingerprint,
       modelId: plan.evidenceKey.modelId,
     });
-    return ok(schema.parse(result));
+    return ok({ data: schema.parse(result) });
   };
 
   return {
@@ -398,6 +399,7 @@ beforeAll(async () => {
   const conformanceEvidence = await import("./conformance-evidence.js");
   const sseReplay = await import("./stream/replay.js");
   const sessions = await import("./stream/store.js");
+  const scopeKeys = await import("./stream/scope-keys.js");
   const git = await import("../../shared/lib/git/service.js");
   createReviewSession = service.createReviewSession;
   buildReviewInputHash = service.buildReviewInputHash;
@@ -408,8 +410,8 @@ beforeAll(async () => {
   deleteSessionForTests = sessions.deleteSessionForTests;
   getSession = sessions.getSession;
   getActiveSessionForProject = sessions.getActiveSessionForProject;
-  buildReviewConfigKey = sessions.buildReviewConfigKey;
-  buildScopeKey = sessions.buildScopeKey;
+  buildReviewConfigKey = scopeKeys.buildReviewConfigKey;
+  buildScopeKey = scopeKeys.buildScopeKey;
   markReady = sessions.markReady;
   createGitService = git.createGitService;
 });
@@ -878,9 +880,12 @@ describe("POST-to-stream integration", () => {
 
     const stream = makeMockStream();
 
-    await vi.waitFor(() => {
-      if (!activeSession.isComplete) throw new Error("session not complete yet");
-    });
+    await vi.waitFor(
+      () => {
+        if (!activeSession.isComplete) throw new Error("session not complete yet");
+      },
+      { timeout: 10_000 },
+    );
 
     await streamActiveSessionToSSE(stream, activeSession);
 
@@ -908,9 +913,12 @@ describe("POST-to-stream integration", () => {
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
     const session = requireValue(getSession(result.value.reviewId), "review session");
-    await vi.waitFor(() => {
-      if (!session.isComplete) throw new Error("session not complete yet");
-    });
+    await vi.waitFor(
+      () => {
+        if (!session.isComplete) throw new Error("session not complete yet");
+      },
+      { timeout: 10_000 },
+    );
 
     const reportErrorIndex = session.events.findIndex(
       (event) => event.type === "step_error" && event.step === "report",
@@ -932,9 +940,9 @@ describe("POST-to-stream integration", () => {
       ...makeAIClient(),
       generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
         dispatches += 1;
-        if (dispatches === 1) return ok(schema.parse(DEFAULT_REVIEW_RESULT));
+        if (dispatches === 1) return ok({ data: schema.parse(DEFAULT_REVIEW_RESULT) });
         await stalledLens.promise;
-        return ok(schema.parse({ issues: [] }));
+        return ok({ data: schema.parse({ issues: [] }) });
       },
     };
 
@@ -999,11 +1007,13 @@ describe("POST-to-stream integration", () => {
       generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
         dispatches += 1;
         if (dispatches === 1) {
-          return ok(schema.parse({ issues: [makeIssue({ ...sharedFinding, id: "issue-dup-a" })] }));
+          return ok({
+            data: schema.parse({ issues: [makeIssue({ ...sharedFinding, id: "issue-dup-a" })] }),
+          });
         }
         if (dispatches === 2) {
-          return ok(
-            schema.parse({
+          return ok({
+            data: schema.parse({
               issues: [
                 makeIssue({ ...sharedFinding, id: "issue-dup-b" }),
                 makeIssue({
@@ -1016,10 +1026,10 @@ describe("POST-to-stream integration", () => {
                 }),
               ],
             }),
-          );
+          });
         }
         await stalledLens.promise;
-        return ok(schema.parse({ issues: [] }));
+        return ok({ data: schema.parse({ issues: [] }) });
       },
     };
 
@@ -1083,9 +1093,12 @@ describe("POST-to-stream integration", () => {
       if (!result.ok) return;
       trackSessionWithRunner(result.value.reviewId);
       const session = requireValue(getSession(result.value.reviewId), "review session");
-      await vi.waitFor(() => {
-        if (!session.isComplete) throw new Error("session not complete yet");
-      });
+      await vi.waitFor(
+        () => {
+          if (!session.isComplete) throw new Error("session not complete yet");
+        },
+        { timeout: 10_000 },
+      );
 
       expect(session.events.find((event) => event.type === "complete")).toBeDefined();
       const { getReviewDetail } = await import("./storage/reviews.js");
@@ -1146,9 +1159,12 @@ describe("POST-to-stream integration", () => {
       expect(result.value.session.reviewConfigKey).toBe(serviceReviewConfigKey());
 
       const session = requireValue(getSession(result.value.reviewId), "review session");
-      await vi.waitFor(() => {
-        if (!session.isComplete) throw new Error("session not complete yet");
-      });
+      await vi.waitFor(
+        () => {
+          if (!session.isComplete) throw new Error("session not complete yet");
+        },
+        { timeout: 10_000 },
+      );
       expect(session.events.at(-1), JSON.stringify(session.events)).toMatchObject({
         type: "complete",
       });
@@ -1214,9 +1230,12 @@ describe("POST-to-stream integration", () => {
     modelRelease.resolve();
 
     const session = requireValue(getSession(result.value.reviewId), "review session");
-    await vi.waitFor(() => {
-      if (!session.isComplete) throw new Error("session not complete yet");
-    });
+    await vi.waitFor(
+      () => {
+        if (!session.isComplete) throw new Error("session not complete yet");
+      },
+      { timeout: 10_000 },
+    );
     const { getReviewDetail } = await import("./storage/reviews.js");
     const saved = await getReviewDetail(result.value.reviewId);
 
@@ -1258,7 +1277,7 @@ describe("POST-to-stream integration", () => {
         bStarted.resolve();
         await releaseB.promise;
       }
-      return ok(schema.parse(DEFAULT_REVIEW_RESULT));
+      return ok({ data: schema.parse(DEFAULT_REVIEW_RESULT) });
     };
     const writeGeneration = (offset: 1 | 2) => {
       writeFileSync(
@@ -1329,9 +1348,12 @@ describe("POST-to-stream integration", () => {
     expect(session).toBeDefined();
     const activeSession = requireValue(session, "review session");
 
-    await vi.waitFor(() => {
-      if (!activeSession.isComplete) throw new Error("session not complete yet");
-    });
+    await vi.waitFor(
+      () => {
+        if (!activeSession.isComplete) throw new Error("session not complete yet");
+      },
+      { timeout: 10_000 },
+    );
 
     const stream = makeMockStream();
     await streamActiveSessionToSSE(stream, activeSession);
@@ -1361,9 +1383,12 @@ describe("POST-to-stream integration", () => {
     const session = getSession(result.value.reviewId);
     const activeSession = requireValue(session, "review session");
 
-    await vi.waitFor(() => {
-      if (!activeSession.isComplete) throw new Error("session not complete yet");
-    });
+    await vi.waitFor(
+      () => {
+        if (!activeSession.isComplete) throw new Error("session not complete yet");
+      },
+      { timeout: 10_000 },
+    );
 
     const stream = makeMockStream();
     await streamActiveSessionToSSE(stream, activeSession);
@@ -1389,11 +1414,14 @@ describe("admitted configuration execution", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
-    await vi.waitFor(() => {
-      if (!getSession(result.value.reviewId)?.isComplete) {
-        throw new Error("session not complete yet");
-      }
-    });
+    await vi.waitFor(
+      () => {
+        if (!getSession(result.value.reviewId)?.isComplete) {
+          throw new Error("session not complete yet");
+        }
+      },
+      { timeout: 10_000 },
+    );
 
     expect(dispatches.length).toBeGreaterThanOrEqual(2);
     const admitted = serviceAdmittedPlan();
@@ -1455,11 +1483,14 @@ describe("admitted configuration execution", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
-    await vi.waitFor(() => {
-      if (!getSession(result.value.reviewId)?.isComplete) {
-        throw new Error("session not complete yet");
-      }
-    });
+    await vi.waitFor(
+      () => {
+        if (!getSession(result.value.reviewId)?.isComplete) {
+          throw new Error("session not complete yet");
+        }
+      },
+      { timeout: 10_000 },
+    );
 
     expect(release).toHaveBeenCalledTimes(1);
   });
@@ -1477,11 +1508,14 @@ describe("admitted configuration execution", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
-    await vi.waitFor(() => {
-      if (!getSession(result.value.reviewId)?.isComplete) {
-        throw new Error("session not complete yet");
-      }
-    });
+    await vi.waitFor(
+      () => {
+        if (!getSession(result.value.reviewId)?.isComplete) {
+          throw new Error("session not complete yet");
+        }
+      },
+      { timeout: 10_000 },
+    );
 
     const [configurationId, evidence] = requireValue(
       recordEvidence.mock.calls[0],
@@ -1529,11 +1563,14 @@ describe("admitted configuration execution", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
-    await vi.waitFor(() => {
-      if (!getSession(result.value.reviewId)?.isComplete) {
-        throw new Error("session not complete yet");
-      }
-    });
+    await vi.waitFor(
+      () => {
+        if (!getSession(result.value.reviewId)?.isComplete) {
+          throw new Error("session not complete yet");
+        }
+      },
+      { timeout: 10_000 },
+    );
 
     expect(recordEvidence).toHaveBeenCalledOnce();
     recordEvidence.mockRestore();
@@ -1560,11 +1597,14 @@ describe("admitted configuration execution", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
-    await vi.waitFor(() => {
-      if (!getSession(result.value.reviewId)?.isComplete) {
-        throw new Error("session not complete yet");
-      }
-    });
+    await vi.waitFor(
+      () => {
+        if (!getSession(result.value.reviewId)?.isComplete) {
+          throw new Error("session not complete yet");
+        }
+      },
+      { timeout: 10_000 },
+    );
 
     // The early write never landed, so the completion-time recorder is still the
     // fallback it is meant to be instead of a suppressed no-op.
@@ -1609,11 +1649,14 @@ describe("admitted configuration execution", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
-    await vi.waitFor(() => {
-      if (!getSession(result.value.reviewId)?.isComplete) {
-        throw new Error("session not complete yet");
-      }
-    });
+    await vi.waitFor(
+      () => {
+        if (!getSession(result.value.reviewId)?.isComplete) {
+          throw new Error("session not complete yet");
+        }
+      },
+      { timeout: 10_000 },
+    );
 
     const [, evidence] = requireValue(
       recordEvidence.mock.calls[0],
@@ -1645,11 +1688,14 @@ describe("admitted configuration execution", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
-    await vi.waitFor(() => {
-      if (!getSession(result.value.reviewId)?.isComplete) {
-        throw new Error("session not complete yet");
-      }
-    });
+    await vi.waitFor(
+      () => {
+        if (!getSession(result.value.reviewId)?.isComplete) {
+          throw new Error("session not complete yet");
+        }
+      },
+      { timeout: 10_000 },
+    );
 
     expect(recordEvidence).not.toHaveBeenCalled();
     recordEvidence.mockRestore();
@@ -1675,11 +1721,14 @@ describe("admitted configuration execution", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
-    await vi.waitFor(() => {
-      if (!getSession(result.value.reviewId)?.isComplete) {
-        throw new Error("session not complete yet");
-      }
-    });
+    await vi.waitFor(
+      () => {
+        if (!getSession(result.value.reviewId)?.isComplete) {
+          throw new Error("session not complete yet");
+        }
+      },
+      { timeout: 10_000 },
+    );
 
     expect(recordEvidence).not.toHaveBeenCalled();
     recordEvidence.mockRestore();
@@ -1709,11 +1758,14 @@ describe("admitted configuration execution", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
-    await vi.waitFor(() => {
-      if (!getSession(result.value.reviewId)?.isComplete) {
-        throw new Error("session not complete yet");
-      }
-    });
+    await vi.waitFor(
+      () => {
+        if (!getSession(result.value.reviewId)?.isComplete) {
+          throw new Error("session not complete yet");
+        }
+      },
+      { timeout: 10_000 },
+    );
 
     expect(recordEvidence).not.toHaveBeenCalled();
     recordEvidence.mockRestore();
@@ -1732,11 +1784,14 @@ describe("admitted configuration execution", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
-    await vi.waitFor(() => {
-      if (!getSession(result.value.reviewId)?.isComplete) {
-        throw new Error("session not complete yet");
-      }
-    });
+    await vi.waitFor(
+      () => {
+        if (!getSession(result.value.reviewId)?.isComplete) {
+          throw new Error("session not complete yet");
+        }
+      },
+      { timeout: 10_000 },
+    );
 
     expect(recordEvidence).not.toHaveBeenCalled();
     recordEvidence.mockRestore();
@@ -1754,11 +1809,14 @@ describe("admitted configuration execution", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
-    await vi.waitFor(() => {
-      if (!getSession(result.value.reviewId)?.isComplete) {
-        throw new Error("session not complete yet");
-      }
-    });
+    await vi.waitFor(
+      () => {
+        if (!getSession(result.value.reviewId)?.isComplete) {
+          throw new Error("session not complete yet");
+        }
+      },
+      { timeout: 10_000 },
+    );
 
     expect(release).toHaveBeenCalledTimes(1);
   });

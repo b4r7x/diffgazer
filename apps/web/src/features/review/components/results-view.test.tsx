@@ -906,14 +906,17 @@ describe("ReviewResultsView keyboard regression", () => {
     );
   });
 
-  it("no longer carries the passed-review empty copy, which the clean-run screen owns", () => {
+  it("shows no rows and the filter-empty copy for an empty list, never a passed-review state", () => {
     renderView([]);
 
-    // A run that found nothing never reaches this screen; the clean-run screen
-    // owns that copy.
-    expect(screen.queryByText("No issues found")).not.toBeInTheDocument();
-    expect(screen.queryByText("No issues in this review")).not.toBeInTheDocument();
-    expect(screen.queryByText("This analysis passed without issues.")).not.toBeInTheDocument();
+    // A run that found nothing never reaches this screen, so it owns no
+    // "passed review" state: the only emptiness it can express is the filter
+    // one. Asserting the copy it DOES show is what pins that ownership —
+    // absence assertions on other wordings pass for any wording at all.
+    expect(screen.queryAllByRole("option")).toHaveLength(0);
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    expect(screen.getByText("No issues match this filter")).toBeInTheDocument();
+    expect(screen.getByText("Choose another severity to continue.")).toBeInTheDocument();
   });
 
   it("names the filter as the reason the details pane is empty", async () => {
@@ -1050,16 +1053,44 @@ describe("ReviewResultsView keyboard regression", () => {
 });
 
 describe("ReviewResultsView mobile pane-swap", () => {
-  function reviewRow(container: HTMLElement): HTMLElement {
+  /**
+   * The pane a phone-width viewport actually shows. jsdom computes no Tailwind,
+   * so this reads the hiding mechanism itself rather than the row's
+   * `data-mobile-pane` bookkeeping: below md exactly one pane carries the
+   * `hidden md:flex` escape and the other is the one on screen. Reading the
+   * attribute alone would stay green with the hiding deleted.
+   */
+  function visibleMobilePane(container: HTMLElement): "list" | "details" {
     const row = container.querySelector<HTMLElement>('[data-row="review"]');
     if (!row) throw new Error("Missing review pane row");
-    return row;
+
+    const isHiddenBelowMd = (pane: "list" | "details") => {
+      const element = row.querySelector<HTMLElement>(`[data-pane="${pane}"]`);
+      if (!element) throw new Error(`Missing ${pane} pane`);
+      if (!element.classList.contains("hidden")) return false;
+      // Hidden below md must mean shown from md up, or the desktop side-by-side
+      // layout loses the pane entirely.
+      expect(element).toHaveClass("md:flex");
+      return true;
+    };
+
+    const listHidden = isHiddenBelowMd("list");
+    const detailsHidden = isHiddenBelowMd("details");
+    if (listHidden === detailsHidden) {
+      throw new Error(
+        `Below md exactly one pane must be hidden (list hidden: ${listHidden}, details hidden: ${detailsHidden})`,
+      );
+    }
+
+    const visible = listHidden ? "details" : "list";
+    expect(row).toHaveAttribute("data-mobile-pane", visible);
+    return visible;
   }
 
   it("shows the issue list first on mobile by default", () => {
     const { container } = renderView();
 
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "list");
+    expect(visibleMobilePane(container)).toBe("list");
   });
 
   it("opens the details pane first on mobile when initialIssueId targets an issue", () => {
@@ -1079,7 +1110,7 @@ describe("ReviewResultsView mobile pane-swap", () => {
       </KeyboardProvider>,
     );
 
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "details");
+    expect(visibleMobilePane(container)).toBe("details");
     expect(screen.getByRole("region", { name: "Issue details" })).toHaveTextContent("Issue two");
   });
 
@@ -1103,7 +1134,7 @@ describe("ReviewResultsView mobile pane-swap", () => {
 
     // A deep link hides the list pane below md, so mount focus must land on
     // the details region — the only visible pane — not on the hidden list.
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "details");
+    expect(visibleMobilePane(container)).toBe("details");
     const details = screen.getByRole("region", { name: "Issue details" });
     await waitFor(() => expect(details).toHaveFocus());
     expectSingleReticle(container);
@@ -1112,7 +1143,7 @@ describe("ReviewResultsView mobile pane-swap", () => {
     // reveals the list pane.
     await user.keyboard("{ArrowLeft}");
     await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "list");
+    expect(visibleMobilePane(container)).toBe("list");
   });
 
   it("shows the details pane first on mobile for a clean run", () => {
@@ -1121,29 +1152,29 @@ describe("ReviewResultsView mobile pane-swap", () => {
     // The clean run mounts in the details zone (see the focus test above), and
     // the visible mobile pane must follow the zone or the focused target would
     // be display:none below md.
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "details");
+    expect(visibleMobilePane(container)).toBe("details");
   });
 
   it("swaps to details on selection and back to the list via the mobile back control", async () => {
     const user = userEvent.setup();
     const { container } = renderView();
 
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "list");
+    expect(visibleMobilePane(container)).toBe("list");
 
     await user.click(screen.getByRole("option", { name: /issue two/i }));
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "details");
+    expect(visibleMobilePane(container)).toBe("details");
 
     // The back control's accessible name is exactly "Issues" (the arrow is aria-hidden);
     // the severity chips read "… issues" so an /issues/i match would be ambiguous here.
     await user.click(screen.getByRole("button", { name: "Issues" }));
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "list");
+    expect(visibleMobilePane(container)).toBe("list");
   });
 
   it("reveals the details pane when ArrowRight moves keyboard focus into details", async () => {
     const user = userEvent.setup();
     const { container } = renderView();
 
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "list");
+    expect(visibleMobilePane(container)).toBe("list");
 
     screen.getByRole("listbox").focus();
     await user.keyboard("{ArrowRight}");
@@ -1153,7 +1184,7 @@ describe("ReviewResultsView mobile pane-swap", () => {
 
     // A hardware-keyboard zone move must flip the visible pane, not leave focus
     // on the display:none details pane.
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "details");
+    expect(visibleMobilePane(container)).toBe("details");
   });
 
   it("reveals the details pane when Tab cycles keyboard focus into details", async () => {
@@ -1161,14 +1192,14 @@ describe("ReviewResultsView mobile pane-swap", () => {
     const { container } = renderView();
 
     await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "list");
+    expect(visibleMobilePane(container)).toBe("list");
 
     await user.keyboard("{Tab}");
     await waitFor(() =>
       expect(screen.getByRole("region", { name: "Issue details" })).toHaveFocus(),
     );
 
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "details");
+    expect(visibleMobilePane(container)).toBe("details");
   });
 
   it("restores the list pane when the keyboard leaves the details zone", async () => {
@@ -1178,12 +1209,12 @@ describe("ReviewResultsView mobile pane-swap", () => {
     const detailsTab = screen.getByRole("tab", { name: "Details" });
     await user.click(detailsTab);
     await waitFor(() => expect(detailsTab).toHaveFocus());
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "details");
+    expect(visibleMobilePane(container)).toBe("details");
 
     // ArrowLeft at the leftmost tab returns to the list zone; the visible pane follows.
     await user.keyboard("{ArrowLeft}");
     await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
-    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "list");
+    expect(visibleMobilePane(container)).toBe("list");
   });
 });
 

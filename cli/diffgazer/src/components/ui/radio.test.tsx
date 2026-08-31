@@ -36,6 +36,20 @@ describe("RadioGroup navigation", () => {
     expect(onChange).toHaveBeenLastCalledWith("a");
   });
 
+  test("return leaves the highlight uncommitted when activateOnReturn is off, Space still selects", async () => {
+    const onChange = vi.fn();
+    const { stdin } = renderGroup({ activateOnReturn: false, onChange });
+    await flush();
+
+    stdin.write(RETURN);
+    await flush();
+    expect(onChange).not.toHaveBeenCalled();
+
+    stdin.write(" ");
+    await flush();
+    expect(onChange).toHaveBeenLastCalledWith("a");
+  });
+
   test("arrow down skips disabled items and return selects the next selectable", async () => {
     const onChange = vi.fn();
     const onHighlightChange = vi.fn();

@@ -14,7 +14,7 @@ import { literalCredentialFilePath } from "../persistence/credential-file-path.j
 import type { DecodedSecretBinding } from "../persistence/secrets.js";
 import type { SupportedProviderConfigurationRecord } from "../provider-config.js";
 import { computeProviderReadinessResult, type ProviderReadinessInput } from "../readiness.js";
-import type { SecretBinding } from "../secret-bindings.js";
+import type { SecretBinding } from "../secret-binding-model.js";
 import { secretIO } from "../secret-io.js";
 import { getConfigurationSecretName } from "../secrets-store.js";
 import { type ConfigurationActionError, configurationActionFailure } from "../types.js";

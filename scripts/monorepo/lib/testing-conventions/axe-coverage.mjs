@@ -1,17 +1,13 @@
-// The TypeScript-AST scanners behind the `test:scripts` testing-convention gates:
-// retained `fireEvent` calls must carry an inline rationale, and every UI component
-// suite must run axe or declare an exemption. Asserted by
-// ../testing-conventions.test.mjs; kept here so the gate logic reads on its own.
+// The `test:scripts` gate for UI component axe coverage: every
+// libs/ui/registry/ui suite must reach a live `expect(await axe(...))
+// .toHaveNoViolations()` — resolved to the approved helper import, inside a test
+// callback that actually registers and runs — or declare an exemption below.
+// Asserted by ../../testing-conventions.test.mjs.
 
-import { readFileSync } from "node:fs";
 import ts from "typescript";
-import { listRepoFiles } from "./files.mjs";
+import { listRepoFiles } from "../files.mjs";
+import { createFixtureSourceFile, describeCall, listTestFiles } from "./ts-program.mjs";
 
-const TEST_FILE_RE = /\.(?:test|spec)\.[cm]?[tj]sx?$/;
-export const FIRE_EVENT_MODULE = "@testing-library/react";
-const FIRE_EVENT_SOURCE_MODULES = new Set([FIRE_EVENT_MODULE, "@testing-library/dom"]);
-const FIRE_EVENT_RETAINED_TEXT = "fireEvent retained:";
-const FIRE_EVENT_COMMENT_LOOKBACK_LINES = 2;
 const UI_COMPONENT_FILE_RE = /^libs\/ui\/registry\/ui\/([^/]+)\//;
 const UI_COMPONENT_TEST_RE = /^libs\/ui\/registry\/ui\/.+\.test\.tsx$/;
 const UI_COMPONENT_DIRECT_TEST_RE = /^libs\/ui\/registry\/ui\/([^/]+)\/[^/]+\.test\.tsx$/;
@@ -186,36 +182,6 @@ function findVitestSymbols(sourceFile, checker) {
   return { describeSymbols, testSymbols };
 }
 
-function describeCall(expression) {
-  if (ts.isIdentifier(expression)) {
-    return { base: expression.text, baseNode: expression, modifiers: [] };
-  }
-  if (ts.isPropertyAccessExpression(expression)) {
-    const descriptor = describeCall(expression.expression);
-    return descriptor
-      ? {
-          base: descriptor.base,
-          baseNode: descriptor.baseNode,
-          modifiers: [...descriptor.modifiers, expression.name.text],
-        }
-      : null;
-  }
-  if (ts.isElementAccessExpression(expression)) {
-    const descriptor = describeCall(expression.expression);
-    if (!descriptor) return null;
-    const modifier = ts.isStringLiteral(expression.argumentExpression)
-      ? expression.argumentExpression.text
-      : "<dynamic>";
-    return {
-      base: descriptor.base,
-      baseNode: descriptor.baseNode,
-      modifiers: [...descriptor.modifiers, modifier],
-    };
-  }
-  if (ts.isCallExpression(expression)) return describeCall(expression.expression);
-  return null;
-}
-
 function isEnabledTestCallback(node, checker, testSymbols) {
   if (
     (!ts.isArrowFunction(node) && !ts.isFunctionExpression(node)) ||
@@ -322,11 +288,9 @@ function isAfterUnconditionalExit(node, testCallback) {
     const parent = current.parent;
     if (!parent) return true;
     if (ts.isBlock(parent)) {
-      const statement = parent.statements.find((candidate) => candidate === current);
-      if (statement) {
-        const index = parent.statements.indexOf(statement);
-        if (parent.statements.slice(0, index).some(statementDefinitelyExits)) return true;
-      }
+      const index = parent.statements.indexOf(current);
+      if (index > 0 && parent.statements.slice(0, index).some(statementDefinitelyExits))
+        return true;
     }
     current = parent;
   }
@@ -418,117 +382,9 @@ function hasAwaitedAxeCall(sourceFile, checker) {
   return found;
 }
 
-function findFireEventImportSymbols(sourceFile, checker) {
-  const symbols = new Set();
-
-  for (const statement of sourceFile.statements) {
-    if (!ts.isImportDeclaration(statement)) continue;
-    if (!ts.isStringLiteral(statement.moduleSpecifier)) continue;
-    if (!FIRE_EVENT_SOURCE_MODULES.has(statement.moduleSpecifier.text)) continue;
-    const bindings = statement.importClause?.namedBindings;
-    if (!bindings || !ts.isNamedImports(bindings)) continue;
-
-    for (const element of bindings.elements) {
-      const importedName = element.propertyName?.text ?? element.name.text;
-      if (importedName !== "fireEvent") continue;
-      const symbol = checker.getSymbolAtLocation(element.name);
-      if (symbol) symbols.add(symbol);
-    }
-  }
-
-  return symbols;
-}
-
-function collectRealComments(sourceFile) {
-  const text = sourceFile.text;
-  const seenStarts = new Set();
-  const comments = [];
-
-  function collectLeadingComments(pos) {
-    for (const range of ts.getLeadingCommentRanges(text, pos) ?? []) {
-      if (seenStarts.has(range.pos)) continue;
-      seenStarts.add(range.pos);
-      comments.push({
-        text: text.slice(range.pos, range.end),
-        endLine: sourceFile.getLineAndCharacterOfPosition(range.end).line,
-      });
-    }
-  }
-
-  function visit(node) {
-    collectLeadingComments(node.getFullStart());
-    ts.forEachChild(node, visit);
-  }
-
-  visit(sourceFile);
-  return comments;
-}
-
-function collectFireEventCalls(sourceFile, checker, fireEventSymbols) {
-  const calls = [];
-
-  function visit(node) {
-    if (ts.isCallExpression(node)) {
-      const descriptor = describeCall(node.expression);
-      const symbol = descriptor && checker.getSymbolAtLocation(descriptor.baseNode);
-      if (symbol && fireEventSymbols.has(symbol)) calls.push(node);
-    }
-    ts.forEachChild(node, visit);
-  }
-
-  visit(sourceFile);
-  return calls;
-}
-
-function isFireEventCallRationalized(callNode, sourceFile, comments) {
-  const callLine = sourceFile.getLineAndCharacterOfPosition(callNode.getStart(sourceFile)).line;
-  return comments.some((comment) => {
-    if (!comment.text.includes(FIRE_EVENT_RETAINED_TEXT)) return false;
-    const distance = callLine - comment.endLine;
-    return distance >= 0 && distance <= FIRE_EVENT_COMMENT_LOOKBACK_LINES;
-  });
-}
-
-function createFixtureSourceFile(source, fileName) {
-  const options = { jsx: ts.JsxEmit.Preserve, noLib: true, noResolve: true };
-  const sourceFile = ts.createSourceFile(
-    fileName,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TSX,
-  );
-  const defaultHost = ts.createCompilerHost(options);
-  const host = {
-    ...defaultHost,
-    fileExists: (path) => path === fileName || defaultHost.fileExists(path),
-    readFile: (path) => (path === fileName ? source : defaultHost.readFile(path)),
-    getSourceFile: (path, ...args) =>
-      path === fileName ? sourceFile : defaultHost.getSourceFile(path, ...args),
-  };
-  const program = ts.createProgram([fileName], options, host);
-  return { sourceFile, checker: program.getTypeChecker() };
-}
-
 export function sourceHasAwaitedAxeCall(source) {
   const { sourceFile, checker } = createFixtureSourceFile(source, "/axe-convention-fixture.tsx");
   return hasAwaitedAxeCall(sourceFile, checker);
-}
-
-export function sourceFireEventCallsAreRationalized(source) {
-  const { sourceFile, checker } = createFixtureSourceFile(
-    source,
-    "/fire-event-convention-fixture.tsx",
-  );
-  const fireEventSymbols = findFireEventImportSymbols(sourceFile, checker);
-  const comments = collectRealComments(sourceFile);
-  return collectFireEventCalls(sourceFile, checker, fireEventSymbols).every((call) =>
-    isFireEventCallRationalized(call, sourceFile, comments),
-  );
-}
-
-function listTestFiles() {
-  return listRepoFiles().filter((file) => TEST_FILE_RE.test(file));
 }
 
 function listUiComponentFolders() {
@@ -540,37 +396,6 @@ function listUiComponentFolders() {
   }
 
   return [...folders].sort();
-}
-
-export function collectFireEventViolations() {
-  const violations = [];
-  const candidateFiles = listTestFiles().filter((file) =>
-    readFileSync(file, "utf8").includes("fireEvent"),
-  );
-  if (candidateFiles.length === 0) return violations;
-
-  const program = ts.createProgram(candidateFiles, {
-    jsx: ts.JsxEmit.Preserve,
-    noLib: true,
-    noResolve: true,
-  });
-  const checker = program.getTypeChecker();
-
-  for (const file of candidateFiles) {
-    const sourceFile = program.getSourceFile(file);
-    if (!sourceFile) continue;
-    const fireEventSymbols = findFireEventImportSymbols(sourceFile, checker);
-    if (fireEventSymbols.size === 0) continue;
-
-    const comments = collectRealComments(sourceFile);
-    for (const call of collectFireEventCalls(sourceFile, checker, fireEventSymbols)) {
-      if (isFireEventCallRationalized(call, sourceFile, comments)) continue;
-      const line = sourceFile.getLineAndCharacterOfPosition(call.getStart(sourceFile)).line;
-      violations.push(`${file}:${line + 1}: ${call.getText(sourceFile)}`);
-    }
-  }
-
-  return violations;
 }
 
 export function collectAxeCoverageViolations() {

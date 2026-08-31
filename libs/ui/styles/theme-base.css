@@ -98,7 +98,10 @@
     );
   }
 
-  [data-slot="scroll-area-overlay-thumb"]:hover {
+  /* Descendant form so this matches the container-hover rule's specificity and
+   * wins on source order; the bare `:hover` selector would lose to it, and the
+   * thumb can never be hovered without the container being hovered too. */
+  [data-slot="scroll-area"] [data-slot="scroll-area-overlay-thumb"]:hover {
     background: var(--foreground);
   }
 

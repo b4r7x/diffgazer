@@ -12,7 +12,8 @@ const TEST_ONLY_FIXTURES = [
   // production program, whose emitted dist is what `start` runs.
   "src/shared/lib/config/store.test-support.ts",
   "src/shared/lib/config/persistence/persistence.test-support.ts",
-  "src/shared/lib/ai/providers/hosted/fixtures.ts",
+  "src/shared/lib/ai/providers/hosted/conformance-cases.ts",
+  "src/shared/lib/ai/providers/hosted/live-probe.ts",
 ] as const;
 
 function parseTsConfig(configName: string): ts.ParsedCommandLine {

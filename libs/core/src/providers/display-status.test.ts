@@ -15,6 +15,7 @@ import {
 } from "./display-status.js";
 
 const CHECKED_AT = "2026-07-31T10:00:00.000Z";
+const GO_ENDPOINT = "https://opencode.ai/zen/go/v1";
 const NOT_APPLICABLE = { status: "not-applicable" } as const;
 const REQUIRED = { status: "required", noticeId: "provider-notice", noticeVersion: 1 } as const;
 const ACCEPTED = {
@@ -240,6 +241,18 @@ describe("resolveShellProviderIdentity", () => {
     expect(identity.providerName).toBe("Google Gemini");
     expect(identity.providerStatus).toMatchObject({ status: "model-missing" });
   });
+
+  it("headers a pool-bound configuration as the pool that will be billed", () => {
+    const identity = resolveShellProviderIdentity({
+      status: "configured",
+      readiness: readiness("ready"),
+      productId: "opencode-zen",
+      modelId: null,
+      endpoint: GO_ENDPOINT,
+    });
+
+    expect(identity.providerName).toBe("OpenCode Go");
+  });
 });
 
 describe("getProviderDisplay", () => {
@@ -261,5 +274,27 @@ describe("getProviderDisplay", () => {
     expect(getProviderDisplay("gemini", "gemini-not-in-catalog")).toBe(
       "Google Gemini / gemini-not-in-catalog",
     );
+  });
+
+  it("names the bound pool instead of the product when the endpoints are wallets", () => {
+    expect(getProviderDisplay("opencode-zen", undefined, GO_ENDPOINT)).toBe("OpenCode Go");
+    expect(getProviderDisplay("opencode-zen", "model-not-in-catalog", GO_ENDPOINT)).toBe(
+      "OpenCode Go / model-not-in-catalog",
+    );
+    expect(getProviderDisplay("opencode-zen", undefined, "https://opencode.ai/zen/v1")).toBe(
+      "OpenCode Zen",
+    );
+  });
+
+  // Moonshot's two endpoints are regions with separate accounts, not pools, so
+  // the product name is still the only honest subject.
+  it("keeps the product name for a product whose endpoints are not pools", () => {
+    expect(getProviderDisplay("moonshot", undefined, "https://api.moonshot.cn/v1")).toBe(
+      "Moonshot Open Platform",
+    );
+  });
+
+  it("keeps the product name when no endpoint is known, as history renders it", () => {
+    expect(getProviderDisplay("opencode-zen")).toBe("OpenCode Zen");
   });
 });

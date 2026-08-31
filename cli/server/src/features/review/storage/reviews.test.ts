@@ -15,10 +15,8 @@ import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHostedAdapter } from "../../../shared/lib/ai/providers/hosted/transport.js";
-import {
-  createEnvironmentSecretBinding,
-  resolveSecretBinding,
-} from "../../../shared/lib/config/secret-bindings.js";
+import { createEnvironmentSecretBinding } from "../../../shared/lib/config/secret-binding-model.js";
+import { resolveSecretBinding } from "../../../shared/lib/config/secret-bindings.js";
 import { assertTempHome } from "../../../shared/lib/testing/temp-home.js";
 import {
   CURSOR_INDEX_MARKER,
@@ -390,6 +388,37 @@ describe("reviews storage", () => {
     const detail = await getReviewDetail(REVIEW_ID);
     expect(detail.ok).toBe(true);
     if (detail.ok) expect(detail.value.review.metadata.failedLensCount).toBe(1);
+  });
+
+  it("persists salvagedLensCount from lensStats with dropped candidates", async () => {
+    const { saveReview } = await loadStorage();
+
+    const saved = await saveReview(
+      makeSaveOptions({
+        reviewId: REVIEW_ID,
+        lensStats: [
+          { lensId: "correctness", issueCount: 3, status: "success", droppedCandidateCount: 4 },
+          { lensId: "security", issueCount: 0, status: "success" },
+        ],
+      }),
+    );
+
+    expect(saved.ok).toBe(true);
+    if (saved.ok) expect(saved.value.salvagedLensCount).toBe(1);
+    const persisted = await readSavedReview(REVIEW_ID);
+    expect(persisted.metadata.salvagedLensCount).toBe(1);
+
+    const whole = await saveReview(
+      makeSaveOptions({
+        reviewId: REVIEW_ID_2,
+        lensStats: [{ lensId: "correctness", issueCount: 1, status: "success" }],
+      }),
+    );
+
+    expect(whole.ok).toBe(true);
+    if (whole.ok) expect(whole.value.salvagedLensCount).toBe(0);
+    const wholePersisted = await readSavedReview(REVIEW_ID_2);
+    expect(wholePersisted.metadata.salvagedLensCount).toBe(0);
   });
 
   it("migrates a historical zero-issue failed-lens review for list and detail reads", async () => {

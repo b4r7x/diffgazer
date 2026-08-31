@@ -46,7 +46,7 @@ describe("catalog provider observations", () => {
   it("keeps the overlay observational and unable to enable products or models", () => {
     for (const overlay of Object.values(PROVIDER_OVERLAY)) {
       for (const key of Object.keys(overlay ?? {})) {
-        expect(["modelsDevIds", "nameSourceIds"]).toContain(key);
+        expect(["modelsDevIds", "nameSourceIds", "endpointSources"]).toContain(key);
       }
       expect(overlay).not.toHaveProperty("enabled");
       expect(overlay).not.toHaveProperty("selectable");

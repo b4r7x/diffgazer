@@ -11,6 +11,7 @@ import {
   findProviderHotkeyAction,
   getProviderActionLayout,
   getProviderActionShortcuts,
+  getProviderDisplay,
   getProviderRowId,
   getUnrecognizedConfigurationActionLayout,
   isConsentGatedProviderAction,
@@ -293,7 +294,15 @@ export function ProvidersScreen(): ReactElement {
     );
   }
 
-  const selectedName = selectedRow?.product.name ?? UNRECOGNIZED_CONFIGURATION_COPY.label;
+  // The overlay title and the delete prompt name the pool a configured
+  // dual-pool row will bill, matching the list row they were opened from.
+  const selectedName = selectedRow
+    ? getProviderDisplay(
+        selectedRow.product.productId,
+        undefined,
+        selectedRow.configuration?.endpoint,
+      )
+    : UNRECOGNIZED_CONFIGURATION_COPY.label;
 
   if (overlay === "more") {
     return (
@@ -327,7 +336,9 @@ export function ProvidersScreen(): ReactElement {
           if (!open) management.closeDialog(modelDialog.owner);
         }}
         selectedId={modelDialog.configuration.selectedModelId ?? undefined}
-        onSelect={(modelId) => management.handleSelectModel(modelDialog.owner, modelId)}
+        onSelect={(modelId, endpoint) =>
+          management.handleSelectModel(modelDialog.owner, modelId, endpoint)
+        }
       />
     );
   }

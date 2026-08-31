@@ -8,8 +8,9 @@ import { acceptNotice } from "./product-registry.js";
 
 type AcceptedAcknowledgement = Extract<ReadinessAcknowledgement, { status: "accepted" }>;
 
-function resolveHostedEndpoint(row: ProviderListRow): string {
+function resolveHostedEndpoint(row: ProviderListRow, endpoint?: string): string {
   if (row.configuration) return row.configuration.endpoint;
+  if (endpoint !== undefined) return endpoint;
 
   const defaultProfile = row.product.endpoints[0];
   if (!defaultProfile) {
@@ -25,11 +26,12 @@ function resolveHostedEndpoint(row: ProviderListRow): string {
 export function buildSetupInput(
   row: ProviderListRow,
   credential?: WriteOnlySecretInput,
+  options?: { endpoint?: string },
 ): ClientConfigurationInput {
   return {
     transportFamily: "hosted-api",
     productId: row.product.productId,
-    endpoint: resolveHostedEndpoint(row),
+    endpoint: resolveHostedEndpoint(row, options?.endpoint),
     ...(credential ? { credential } : {}),
   };
 }

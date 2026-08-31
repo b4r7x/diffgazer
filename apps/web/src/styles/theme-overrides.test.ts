@@ -154,10 +154,18 @@ describe("theme override domain token parity", () => {
     const css = loadThemeOverridesCss();
     const contrastStart = css.indexOf("@media (prefers-contrast: more)");
     const selector = String.raw`\[data-theme="${theme}"\]`;
+    const resting = getDeclarations(getThemeBlock(css, selector));
     const contrast = getDeclarations(getThemeBlock(css.slice(contrastStart), selector));
 
     expect(contrastStart).toBeGreaterThan(css.indexOf(`[data-theme="${theme}"]`));
-    expect(contrast.size).toBeGreaterThan(0);
+    // Every edge token a user asking for more contrast relies on must be
+    // restated here, and restated to a *different* value than the resting
+    // palette — a restatement equal to the resting value is a no-op override.
+    for (const variable of ["--base-border", "--border-strong", "--control-border"]) {
+      expect(resolveDeclaration(contrast, variable)).not.toBe(
+        resolveDeclaration(resting, variable),
+      );
+    }
   });
 
   it.each([

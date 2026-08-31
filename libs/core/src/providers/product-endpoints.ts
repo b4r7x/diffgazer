@@ -2,6 +2,8 @@ import type { RunnableProductId } from "../schemas/config/product-ids.js";
 export interface EndpointProfile {
   readonly id: string;
   readonly label: string;
+  /** Badge-length pool name (e.g. "Zen", "Go"); set only on billing-pool profiles. */
+  readonly shortLabel?: string;
   readonly endpoint: string;
 }
 
@@ -43,7 +45,7 @@ export const PRODUCT_ENDPOINT_TUPLES = {
   // Zen first: the quick-setup default binds `endpoints[0]`, and pay-as-you-go
   // credits are the tier every key can bill; Go serves only subscribers.
   "opencode-zen": [
-    { id: "zen", label: "OpenCode Zen", endpoint: "https://opencode.ai/zen/v1" },
-    { id: "go", label: "OpenCode Go", endpoint: "https://opencode.ai/zen/go/v1" },
+    { id: "zen", label: "OpenCode Zen", shortLabel: "Zen", endpoint: "https://opencode.ai/zen/v1" },
+    { id: "go", label: "OpenCode Go", shortLabel: "Go", endpoint: "https://opencode.ai/zen/go/v1" },
   ],
 } as const satisfies ProductEndpointTupleRegistry;

@@ -7,7 +7,7 @@ import {
   fireTab,
   fireTabFromActive,
   renderTrap,
-} from "./trap-harness.js";
+} from "../../testing/internal/focus-trap-harness.js";
 
 // File convention: this suite asserts focus-trap focus movement to specific
 // elements identified by `#id`. The buttons are intentionally labelled "A"/"B"/"C"

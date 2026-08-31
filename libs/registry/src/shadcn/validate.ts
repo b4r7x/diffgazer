@@ -225,7 +225,7 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
 
       for (const field of fileMetadataFields) {
         ensureSameValue({
-          label: `file ${field} is stale`,
+          label: `file ${field}`,
           a: expectedFile[field as keyof typeof expectedFile],
           b: publicFile[field as keyof typeof publicFile],
           itemName: sourceItem.name,

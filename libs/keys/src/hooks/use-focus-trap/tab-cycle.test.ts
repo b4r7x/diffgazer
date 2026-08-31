@@ -3,14 +3,14 @@ import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getDeepActiveElement } from "../../dom/element-guards.js";
 import { queryTestElement, requireFrameDocument } from "../../testing/internal/assertions.js";
-import { useFocusTrap } from "../use-focus-trap.js";
 import {
   createContainer,
   createContainerIn,
   fireTab,
   fireTabFromActive,
   renderTrap,
-} from "./trap-harness.js";
+} from "../../testing/internal/focus-trap-harness.js";
+import { useFocusTrap } from "../use-focus-trap.js";
 
 // File convention: this suite asserts focus-trap focus movement to specific
 // elements identified by `#id`. The buttons are intentionally labelled "A"/"B"/"C"

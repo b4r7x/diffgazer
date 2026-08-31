@@ -376,6 +376,7 @@ describe("per-issue salvage", () => {
         code: "output-salvaged",
         retryable: false,
         safeMessage: expect.stringContaining("1 finding(s) were salvaged and 1 candidate(s)"),
+        salvage: { keptFindingCount: 1, droppedCandidateCount: 1 },
       }),
     );
     expect(vi.mocked(log)).toHaveBeenCalledWith(

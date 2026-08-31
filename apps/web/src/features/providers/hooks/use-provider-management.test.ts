@@ -14,6 +14,7 @@ import {
   makeConfigurationInitResponse,
   makeConfigurationListResponse,
   makeReadiness,
+  OPENCODE_GO_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -286,13 +287,45 @@ describe("useProviderManagement", () => {
       ).resolves.toEqual({ status: "succeeded" });
     });
 
-    expect(mockApi.selectConfiguration).toHaveBeenCalledWith("gemini-primary", "gemini-2.5-flash");
+    expect(mockApi.selectConfiguration).toHaveBeenCalledWith(
+      "gemini-primary",
+      "gemini-2.5-flash",
+      undefined,
+    );
     expect(mockApi.selectConfiguration).toHaveBeenCalledOnce();
     expect(toastMocks.success).toHaveBeenCalledWith("Configuration Selected", {
       message: "Google Gemini is now active",
     });
     expect(toastMocks.success).toHaveBeenCalledOnce();
     expect(toastMocks.error).not.toHaveBeenCalled();
+  });
+
+  it("names the billing pool in the selection toast, as the row and the header do", async () => {
+    vi.mocked(mockApi.loadConfigurationInit).mockResolvedValue(
+      makeInitResponse({
+        configurations: [configurationStatus(OPENCODE_GO_CONFIGURATION, "ready")],
+      }),
+    );
+    const { result } = renderManagedHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const row = result.current.providers.find(
+      (provider) =>
+        provider.configuration?.configurationId === OPENCODE_GO_CONFIGURATION.configurationId,
+    );
+    if (!row) throw new Error("Expected the OpenCode Go row");
+
+    await act(async () => {
+      await result.current.handleSelectConfiguration(
+        row,
+        OPENCODE_GO_CONFIGURATION.selectedModelId,
+      );
+    });
+
+    // "OpenCode Zen is now active" beside a header that just read "OpenCode Go"
+    // named two things for one record.
+    expect(toastMocks.success).toHaveBeenCalledWith("Configuration Selected", {
+      message: "OpenCode Go is now active",
+    });
   });
 
   it("succeeds model selection, closes the dialog, and toasts with the expected payload", async () => {
@@ -309,7 +342,11 @@ describe("useProviderManagement", () => {
       });
     });
 
-    expect(mockApi.selectConfiguration).toHaveBeenCalledWith("gemini-primary", "gemini-2.5-pro");
+    expect(mockApi.selectConfiguration).toHaveBeenCalledWith(
+      "gemini-primary",
+      "gemini-2.5-pro",
+      undefined,
+    );
     expect(mockApi.selectConfiguration).toHaveBeenCalledOnce();
     expect(toastMocks.success).toHaveBeenCalledWith("Model Selected", {
       message: "Selected gemini-2.5-pro",

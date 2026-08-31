@@ -13,9 +13,8 @@ import { resolveGitDiff } from "./diff.js";
 import { resolveReviewDefaults } from "./pipeline.js";
 import { CreateReviewBodySchema } from "./schemas.js";
 import { buildReviewInputHash, createReviewSession } from "./service.js";
+import { buildReviewConfigKey, buildScopeKey } from "./stream/scope-keys.js";
 import {
-  buildReviewConfigKey,
-  buildScopeKey,
   cancelStaleSessionsForProjectMode,
   createSession,
   deleteSessionForTests,
@@ -51,7 +50,7 @@ describe("createReviewSession canonical file-scoped identity", () => {
     const generate: InitializedAIClient["generate"] = async <T extends z.ZodType>(
       _prompt: string,
       schema: T,
-    ) => ok(schema.parse({ issues: [] }));
+    ) => ok({ data: schema.parse({ issues: [] }) });
 
     return {
       provider: "openrouter",

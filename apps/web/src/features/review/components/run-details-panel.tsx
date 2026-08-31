@@ -1,4 +1,4 @@
-import type { LensSummaryRow } from "@diffgazer/core/review";
+import { type LensSummaryRow, lensAnsweredIncompletely } from "@diffgazer/core/review";
 import { Panel } from "@diffgazer/ui/components/panel";
 
 export interface RunDetailsPanelProps {
@@ -41,13 +41,7 @@ export function RunDetailsPanel({ notices, lensRows }: RunDetailsPanelProps) {
                   <th className="py-0.5 pr-4 text-left font-normal" scope="row">
                     {row.label}
                   </th>
-                  <td className="py-0.5 text-right tabular-nums">
-                    {row.status === "failed" ? (
-                      <span className="text-warning-text">{formatLensFailure(row.errorCode)}</span>
-                    ) : (
-                      row.issueCount
-                    )}
-                  </td>
+                  <td className="py-0.5 text-right tabular-nums">{renderLensCell(row)}</td>
                 </tr>
               ))}
             </tbody>
@@ -62,4 +56,19 @@ export function RunDetailsPanel({ notices, lensRows }: RunDetailsPanelProps) {
 // for machine tokens; a bare `failed (RATE_LIMITED)` string read as raw output.
 function formatLensFailure(errorCode: string | undefined): string {
   return errorCode ? `failed [${errorCode}]` : "failed";
+}
+
+// A lens that answered incompletely keeps its issue count but owes the reader
+// the dropped-candidate fact beside it, in the same warning tone as a failure.
+function renderLensCell(row: LensSummaryRow) {
+  if (row.status === "failed") {
+    return <span className="text-warning-text">{formatLensFailure(row.errorCode)}</span>;
+  }
+  // Read once so the count the cell prints is the same number the branch tested;
+  // the shared predicate returns a boolean and narrows nothing.
+  const dropped = row.droppedCandidateCount ?? 0;
+  if (lensAnsweredIncompletely(row)) {
+    return <span className="text-warning-text">{`${row.issueCount} · ${dropped} dropped`}</span>;
+  }
+  return row.issueCount;
 }

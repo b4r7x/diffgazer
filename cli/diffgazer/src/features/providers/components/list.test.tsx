@@ -3,6 +3,7 @@ import {
   buildProviderRows,
   configurationStatus,
   GEMINI_CONFIGURATION,
+  OPENCODE_GO_CONFIGURATION,
   ZAI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { cleanup, render } from "ink-testing-library";
@@ -34,6 +35,16 @@ afterEach(() => {
 });
 
 describe("ProviderList", () => {
+  // The wallet, not the product, is what the user bound, so the row names it.
+  test("names a configured dual-pool row by the pool its runs will bill", () => {
+    const frame = renderList(
+      buildProviderRows([configurationStatus(OPENCODE_GO_CONFIGURATION, "ready")]),
+    );
+
+    expect(frame).toContain("OpenCode Go");
+    expect(frame).not.toContain("OpenCode Zen");
+  });
+
   test("subtitles a configured row with the catalog display name", () => {
     const frame = renderList(
       buildProviderRows([configurationStatus(GEMINI_CONFIGURATION, "ready")]),

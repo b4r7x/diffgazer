@@ -25,6 +25,7 @@ import { ProviderList } from "@/features/providers/components/list";
 import { ModelSelectDialog } from "@/features/providers/components/model-select-dialog/dialog";
 import type { ProvidersFocusZone } from "@/features/providers/hooks/use-keyboard";
 import { useProvidersPageState } from "@/features/providers/hooks/use-page-state";
+import { getProviderRowDisplayName } from "@/features/providers/lib/display-name";
 import { useConfigData } from "@/hooks/use-config";
 import { useFocusWithin } from "@/hooks/use-focus-within";
 
@@ -186,9 +187,11 @@ export function ProvidersPage() {
   }
 
   const hasSelection = selectedRow !== null || selectedUnrecognized !== null;
+  // The pane chip names the pool a configured dual-pool row will bill, matching
+  // the list row it was opened from.
+  const selectedRowName = selectedRow ? getProviderRowDisplayName(selectedRow) : null;
   const selectedName =
-    selectedRow?.product.name ??
-    (selectedUnrecognized ? UNRECOGNIZED_CONFIGURATION_COPY.label : null);
+    selectedRowName ?? (selectedUnrecognized ? UNRECOGNIZED_CONFIGURATION_COPY.label : null);
   const setupDialog = dialogs.current?.kind === "setup" ? dialogs.current : null;
   const modelDialog = dialogs.current?.kind === "model" ? dialogs.current : null;
 
@@ -338,7 +341,9 @@ export function ProvidersPage() {
           configuration={modelDialog.row.configuration}
           currentModel={modelDialog.row.configuration.selectedModelId ?? undefined}
           isSaving={isSubmitting}
-          onSelect={(modelId) => void handlers.selectModel(modelDialog.owner, modelId)}
+          onSelect={(modelId, endpoint) =>
+            void handlers.selectModel(modelDialog.owner, modelId, endpoint)
+          }
         />
       ) : null}
     </div>

@@ -1,5 +1,6 @@
 import { makeIssue } from "@diffgazer/core/testing/factories";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { claimTempHome } from "../../../testing/temp-home.js";
 import { executeHostedReview } from "./execute.js";
 import {
   executeRequest,
@@ -11,6 +12,12 @@ import {
   openAiSuccessBody,
   TEST_CREDENTIAL,
 } from "./execute.test-support.js";
+
+// The pool-aware diagnostics below reach readCachedLiveModelList, which reads
+// DIFFGAZER_HOME; without a scratch home their outcome would depend on what the
+// developer's real ~/.diffgazer happens to hold.
+const home = claimTempHome("diffgazer-execute-diagnostics-");
+afterAll(() => home.release());
 
 describe("openrouter free-pool rate limiting", () => {
   afterEach(() => {
@@ -406,6 +413,93 @@ describe("http error diagnostics", () => {
 
     expect(result.receipt.outcome).toBe("transport-failed");
     expect(pulledChunks).toBeLessThanOrEqual(16);
+  });
+
+  it("names the bound pool, not the product, on an opencode failure", async () => {
+    const fetch = mockFetchResponse({ error: "no such model" }, { status: 404 });
+    const reportDiagnostic = vi.fn();
+
+    await executeHostedReview({
+      ...executeRequest("opencode-zen", {
+        normalizedEndpoint: "https://opencode.ai/zen/go/v1",
+        modelId: "deepseek-v4-flash",
+      }),
+      reportDiagnostic,
+      context: hostedContext(fetch),
+    });
+
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        safeMessage: "OpenCode Go could not find the selected model (HTTP 404).",
+        remediation: "Choose a model this pool serves, or switch to OpenCode Zen in Select Model.",
+      }),
+    );
+  });
+
+  it("burns the standard rate-limit retries before naming the pool in the 429 copy", async () => {
+    const fetch = mockFetchResponse({ error: "slow down" }, { status: 429 });
+    const reportDiagnostic = vi.fn();
+
+    vi.useFakeTimers();
+    try {
+      const pending = executeHostedReview({
+        ...executeRequest("opencode-zen", {
+          normalizedEndpoint: "https://opencode.ai/zen/go/v1",
+        }),
+        reportDiagnostic,
+        context: hostedContext(fetch),
+      });
+      await vi.advanceTimersByTimeAsync(10_000);
+      await pending;
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        safeMessage: "OpenCode Go rate limited the request (HTTP 429).",
+        remediation:
+          "Wait and retry. If Agent Execution is set to Parallel, switching it to Sequential can help.",
+      }),
+    );
+  });
+
+  it("still short-circuits a Z.AI exhausted-quota 429 without retrying", async () => {
+    const fetch = mockFetchResponse({ error: { code: "1113" } }, { status: 429 });
+    const reportDiagnostic = vi.fn();
+
+    await executeHostedReview({
+      ...executeRequest("zai"),
+      reportDiagnostic,
+      context: hostedContext(fetch),
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        safeMessage: "Z.AI reported the account's balance or quota is exhausted (HTTP 429).",
+        remediation: "Check the account balance or plan, or change the model.",
+      }),
+    );
+  });
+
+  it("leaves a single-endpoint product's failure copy product-named", async () => {
+    const fetch = mockFetchResponse({ error: "no balance" }, { status: 402 });
+    const reportDiagnostic = vi.fn();
+
+    await executeHostedReview({
+      ...executeRequest("deepseek"),
+      reportDiagnostic,
+      context: hostedContext(fetch),
+    });
+
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        safeMessage: "DeepSeek reported billing or quota exhausted (HTTP 402).",
+        remediation: "Check the account balance or plan, or change the model.",
+      }),
+    );
   });
 
   it("does not capture the body of a 500 response", async () => {

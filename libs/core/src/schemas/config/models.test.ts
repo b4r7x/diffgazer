@@ -82,6 +82,64 @@ describe("schemas/config/models", () => {
     expect(ProviderModelsResponseSchema.safeParse(input).success).toBe(false);
   });
 
+  it("parses a model row with endpointProfileIds and round-trips the field", () => {
+    const result = ProviderModelsResponseSchema.safeParse({
+      models: [
+        {
+          id: "deepseek-v4-flash",
+          name: "DeepSeek V4 Flash",
+          description: "d",
+          tier: "paid",
+          endpointProfileIds: ["zen", "go"],
+        },
+      ],
+      fetchedAt: "2026-06-02T00:00:00.000Z",
+      source: "live",
+      cached: false,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.models[0]?.endpointProfileIds).toEqual(["zen", "go"]);
+    }
+  });
+
+  it.each([
+    { name: "empty membership list", endpointProfileIds: [] },
+    { name: "blank profile id", endpointProfileIds: [""] },
+  ])("rejects a model row whose endpointProfileIds is not real membership: $name", (row) => {
+    const result = ProviderModelsResponseSchema.safeParse({
+      models: [
+        {
+          id: "m",
+          name: "M",
+          description: "d",
+          tier: "paid",
+          endpointProfileIds: row.endpointProfileIds,
+        },
+      ],
+      fetchedAt: "2026-06-02T00:00:00.000Z",
+      source: "live",
+      cached: false,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("parses a model row without endpointProfileIds (today's shape)", () => {
+    const result = ProviderModelsResponseSchema.safeParse({
+      models: [{ id: "m", name: "M", description: "d", tier: "paid" }],
+      fetchedAt: "2026-06-02T00:00:00.000Z",
+      source: "live",
+      cached: false,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.models[0]).not.toHaveProperty("endpointProfileIds");
+    }
+  });
+
   it("makes a contradictory source/cached pair unrepresentable in the exported type", () => {
     type CachedFor<Source extends ProviderModelsResponse["source"]> = Extract<
       ProviderModelsResponse,

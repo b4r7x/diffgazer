@@ -90,6 +90,7 @@ export function useHistoryPage() {
     isCleanRun({
       issueCount: selectedRun.issueCount,
       failedLensCount: selectedRun.failedLensCount,
+      salvagedLensCount: selectedRun.salvagedLensCount,
       terminalOutcome: selectedRun.terminalOutcome,
     });
   const reviewDetail = history.reviewDetail;
@@ -190,7 +191,6 @@ export function useHistoryPage() {
     cleanRun,
     sortedIssues: history.sortedIssues,
     duration: history.duration,
-    hasReviews: history.hasReviews,
     emptyRunsMessage: history.emptyRunsMessage,
     hasSearchQuery: history.hasSearchQuery,
     hasMoreReviews: history.hasMoreReviews,

@@ -337,8 +337,18 @@ describe("product registry authority", () => {
         // Zen first: quick setup defaults to `endpoints[0]`, and pay-as-you-go
         // credits are the tier every key can bill.
         endpoints: [
-          { id: "zen", label: "OpenCode Zen", endpoint: "https://opencode.ai/zen/v1" },
-          { id: "go", label: "OpenCode Go", endpoint: "https://opencode.ai/zen/go/v1" },
+          {
+            id: "zen",
+            label: "OpenCode Zen",
+            shortLabel: "Zen",
+            endpoint: "https://opencode.ai/zen/v1",
+          },
+          {
+            id: "go",
+            label: "OpenCode Go",
+            shortLabel: "Go",
+            endpoint: "https://opencode.ai/zen/go/v1",
+          },
         ],
         // No suggested model: Zen rotates stealth routes, so a pinned guess
         // would outlive the model it names.

@@ -2,17 +2,19 @@ import { HOSTED_API_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   canProduceReadyEvidence,
-  HOSTED_LIVE_PROBE_DESCRIPTORS,
-  HOSTED_LIVE_PROBE_OPT_IN_ENV,
   HOSTED_REQ_084_CASES,
   HOSTED_REQ_085_CASES,
   HOSTED_REQ_086_CASES,
+  runHostedMockConformanceCase,
+} from "./conformance-cases.js";
+import {
+  HOSTED_LIVE_PROBE_DESCRIPTORS,
+  HOSTED_LIVE_PROBE_OPT_IN_ENV,
   isHostedLiveProbeOptIn,
   reportHostedLiveSkipped,
   resolveHostedLiveSkipReason,
   runHostedLiveProbe,
-  runHostedMockConformanceCase,
-} from "./fixtures.js";
+} from "./live-probe.js";
 
 // Stubbed env is restored even when an expectation between the stubs fails, so a
 // leaked live-probe opt-in or fake credential cannot cascade into later suites.

@@ -17,7 +17,7 @@ interface RunsWindowOptions {
   itemRows: number;
 }
 
-const SALVAGED_MARKER = "[Salvaged]";
+const OMITTED_ISSUES_MARKER = "[Omitted]";
 
 /**
  * A run spends two rows while a scroll caret spends one, so the window has to
@@ -57,7 +57,7 @@ export interface RunsListProps {
   width: number;
   hasMore?: boolean;
   isLoadingMore?: boolean;
-  salvagedRunIds?: ReadonlySet<string>;
+  droppedIssueRunIds?: ReadonlySet<string>;
   subZone?: HistoryRunsSubZone;
   onSubZoneChange?: (zone: HistoryRunsSubZone) => void;
   onLoadMore?: () => void;
@@ -75,7 +75,7 @@ export function RunsList({
   width,
   hasMore = false,
   isLoadingMore = false,
-  salvagedRunIds,
+  droppedIssueRunIds,
   subZone = "list",
   onSubZoneChange,
   onLoadMore,
@@ -89,12 +89,12 @@ export function RunsList({
 
   const displayIds = runs.map((run) => run.displayId);
   const regularItemWidth = Math.max(width - 4, 1);
-  const hasSalvagedRun = runs.some((run) => salvagedRunIds?.has(run.id));
+  const hasOmittedRun = runs.some((run) => droppedIssueRunIds?.has(run.id));
   const tightIdentifierLayout = displayIds.some(
     (displayId) =>
       terminalCellWidth(displayId) > regularItemWidth ||
-      (hasSalvagedRun &&
-        terminalCellWidth(displayId) + SALVAGED_MARKER.length + 1 > regularItemWidth),
+      (hasOmittedRun &&
+        terminalCellWidth(displayId) + OMITTED_ISSUES_MARKER.length + 1 > regularItemWidth),
   );
   const itemWidth = tightIdentifierLayout ? Math.max(width, 1) : regularItemWidth;
   const statusWidth = tightIdentifierLayout ? Math.max(width, 1) : Math.max(width - 2, 1);
@@ -103,7 +103,7 @@ export function RunsList({
     : 1;
   const defaultItemRows = availableRows < 4 ? 1 : 2;
   const itemRows = tightIdentifierLayout
-    ? maxIdentifierRows + (hasSalvagedRun ? 1 : 0)
+    ? maxIdentifierRows + (hasOmittedRun ? 1 : 0)
     : defaultItemRows;
   const showsPaginationStatus = paginationStatus !== null && availableRows >= itemRows + 1;
   const listViewportRows = availableRows - (showsPaginationStatus ? 1 : 0);
@@ -176,7 +176,7 @@ export function RunsList({
               const runIndex = window.start + visibleIndex;
               const displayId = displayIds[runIndex] ?? run.displayId;
               const safeBranch = run.branch ? sanitizeTerminalText(run.branch) : run.branch;
-              const isSalvaged = salvagedRunIds?.has(run.id) ?? false;
+              const isOmitted = droppedIssueRunIds?.has(run.id) ?? false;
               return (
                 <NavigationList.Item key={run.id} id={run.id}>
                   {({ tone }) => {
@@ -190,11 +190,11 @@ export function RunsList({
                               </Text>{" "}
                             </Text>
                           </Box>
-                          {hasSalvagedRun ? (
+                          {hasOmittedRun ? (
                             <Box width={itemWidth} marginLeft={-2}>
                               <Text color={tone.secondary} wrap="truncate-end">
-                                {isSalvaged ? (
-                                  <Text color={tokens.warning}>{SALVAGED_MARKER} </Text>
+                                {isOmitted ? (
+                                  <Text color={tokens.warning}>{OMITTED_ISSUES_MARKER} </Text>
                                 ) : null}
                                 {run.summary}
                               </Text>
@@ -211,8 +211,8 @@ export function RunsList({
                             <Text color={tone.primary} bold>
                               {displayId}
                             </Text>{" "}
-                            {isSalvaged ? (
-                              <Text color={tokens.warning}>{SALVAGED_MARKER} </Text>
+                            {isOmitted ? (
+                              <Text color={tokens.warning}>{OMITTED_ISSUES_MARKER} </Text>
                             ) : null}
                             <Text color={tone.secondary}>{run.summary}</Text>
                           </Text>
@@ -233,8 +233,8 @@ export function RunsList({
                         </Box>
                         <Box width={itemWidth}>
                           <Text color={tone.secondary} wrap="truncate-end">
-                            {isSalvaged ? (
-                              <Text color={tokens.warning}>{SALVAGED_MARKER} </Text>
+                            {isOmitted ? (
+                              <Text color={tokens.warning}>{OMITTED_ISSUES_MARKER} </Text>
                             ) : null}
                             {run.summary}
                           </Text>

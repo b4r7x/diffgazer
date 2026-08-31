@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
+import { log } from "../../log.js";
+import { isNodeError } from "../../node-error.js";
 import { getGlobalConfigPath, getGlobalSecretsPath } from "../../paths.js";
 import { decodeConfigFile, isV1ConfigMigrationFailure } from "../persistence/config.js";
 import {
@@ -107,7 +110,13 @@ export function createDocumentCapture(
     let configBytes: Uint8Array | null;
     try {
       configBytes = loadFileBytes(getGlobalConfigPath());
-    } catch {
+    } catch (cause) {
+      // An unreadable file (EACCES, EISDIR, I/O) reaches the user as
+      // CONFIGURATION_UNSUPPORTED, so the errno has to survive somewhere.
+      log("warn", "config_document_read_failed", {
+        code: isNodeError(cause) ? cause.code : undefined,
+        error: getErrorMessage(cause),
+      });
       return latchedFailure ? err(latchedFailure) : ok(null);
     }
 

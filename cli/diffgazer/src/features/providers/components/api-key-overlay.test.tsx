@@ -11,7 +11,9 @@ import { requireValue } from "@diffgazer/core/testing/assertions";
 import {
   buildProviderRows,
   configurationStatus,
+  configuredRow,
   GEMINI_CONFIGURATION,
+  OPENCODE_GO_CONFIGURATION,
   unconfiguredRow,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -24,6 +26,7 @@ import { createTestQueryClient } from "../../../testing/query-client";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 import { flushUntil } from "../testing/model-select-overlay";
+import { setTestTerminalDimensions } from "../testing/terminal-mock";
 import { ApiKeyOverlay } from "./api-key-overlay";
 
 const ARROW_DOWN = "\u001B[B";
@@ -217,6 +220,245 @@ describe("ApiKeyOverlay hosted write-only flow", () => {
 
     const frame = view.lastFrame() ?? "";
     expect(frame).not.toContain("sk-visible-secret");
+  });
+});
+
+describe("ApiKeyOverlay endpoint binding", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  /**
+   * Measured height of the opencode create card: 30 rows show the whole body,
+   * and 26 are already needed without the endpoint control because the product
+   * notice wraps to six lines — the card overflowed the support floor before
+   * this control existed. Cases that assert body content render tall; the 80x24
+   * floor has its own case below.
+   */
+  const FULL_BODY_ROWS = 30;
+  const SUPPORT_FLOOR_ROWS = 24;
+
+  function renderOverlay(
+    row: ProviderListRow,
+    handlers: {
+      onCreate?: (input: ClientConfigurationInput) => Promise<void>;
+      onUpdate?: (payload: {
+        input: ClientConfigurationInput;
+        acknowledgement: ReadinessAcknowledgement;
+      }) => Promise<void>;
+    } = {},
+    rows = FULL_BODY_ROWS,
+  ) {
+    setTestTerminalDimensions({ columns: 80, rows });
+    return render(
+      <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
+        <ApiKeyOverlay
+          open
+          row={row}
+          onOpenChange={() => {}}
+          onCreate={handlers.onCreate ?? (async () => {})}
+          onUpdate={handlers.onUpdate ?? (async () => {})}
+        />
+      </Wrapper>,
+    );
+  }
+
+  async function typeKeyAndSave(view: ReturnType<typeof render>, key: string) {
+    view.stdin.write("\t");
+    await flush();
+    view.stdin.write(key);
+    await flush();
+    view.stdin.write("\t");
+    await flush();
+    view.stdin.write("\r");
+  }
+
+  /**
+   * Arrows down through the endpoint group into the method radios, commits the
+   * env method with Space (so Enter can save without a typed key), then arrows
+   * back up into the endpoint zone. Leaves the highlight on the second pool.
+   */
+  async function selectEnvMethodAndReturnToEndpoint(view: ReturnType<typeof render>) {
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(" ");
+    await flush();
+    view.stdin.write(ARROW_UP);
+    await flush();
+    view.stdin.write(ARROW_UP);
+    await flush();
+  }
+
+  test("keeps the title and the Save action on screen at the 80x24 support floor", async () => {
+    const view = renderOverlay(unconfiguredRow("opencode-zen"), {}, SUPPORT_FLOOR_ROWS);
+    await flushUntil(() => view.lastFrame()?.includes("OpenCode Zen") ?? false);
+
+    const frame = view.lastFrame() ?? "";
+    expect(frame).toContain("Create Configuration");
+    expect(frame).toContain("Save");
+  });
+
+  test("names both billing pools when creating on a multi-endpoint product", async () => {
+    const view = renderOverlay(unconfiguredRow("opencode-zen"));
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+
+    const frame = view.lastFrame() ?? "";
+    expect(frame).toContain("Endpoint profile:");
+    expect(frame).toContain("https://opencode.ai/zen/v1");
+    expect(frame).toContain("https://opencode.ai/zen/go/v1");
+  });
+
+  test("binds the first profile when the endpoint choice is left untouched", async () => {
+    const onCreate = vi.fn(async (_input: ClientConfigurationInput) => {});
+    const view = renderOverlay(unconfiguredRow("opencode-zen"), { onCreate });
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+
+    await typeKeyAndSave(view, "sk-zen-key");
+    await waitUntil(() => onCreate.mock.calls.length > 0);
+
+    expect(onCreate.mock.calls[0]?.[0]).toMatchObject({
+      productId: "opencode-zen",
+      endpoint: "https://opencode.ai/zen/v1",
+    });
+  });
+
+  test("keeps the first profile bound when arrows only pass through the group", async () => {
+    const onCreate = vi.fn(async (_input: ClientConfigurationInput) => {});
+    const view = renderOverlay(unconfiguredRow("opencode-zen"), { onCreate });
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+    // The overlay enters its first zone in a mount effect, one commit after the
+    // first frame; keys written before that land on an unfocused group.
+    await flush();
+
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    expect(view.lastFrame()).toContain("( * ) OpenCode Zen");
+
+    await typeKeyAndSave(view, "sk-zen-key");
+    await waitUntil(() => onCreate.mock.calls.length > 0);
+
+    expect(onCreate.mock.calls[0]?.[0]).toMatchObject({
+      productId: "opencode-zen",
+      endpoint: "https://opencode.ai/zen/v1",
+    });
+  });
+
+  test("binds the Go pool once Space commits the highlighted profile", async () => {
+    const onCreate = vi.fn(async (_input: ClientConfigurationInput) => {});
+    const view = renderOverlay(unconfiguredRow("opencode-zen"), { onCreate });
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+    // The overlay enters its first zone in a mount effect, one commit after the
+    // first frame; keys written before that land on an unfocused group.
+    await flush();
+
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    view.stdin.write(" ");
+    await flush();
+    expect(view.lastFrame()).toContain("( * ) OpenCode Go");
+
+    await typeKeyAndSave(view, "sk-go-key");
+    await waitUntil(() => onCreate.mock.calls.length > 0);
+
+    expect(onCreate.mock.calls[0]?.[0]).toMatchObject({
+      productId: "opencode-zen",
+      endpoint: "https://opencode.ai/zen/go/v1",
+    });
+  });
+
+  test("keeps the first pool bound when Enter saves over an uncommitted highlight", async () => {
+    const onCreate = vi.fn(async (_input: ClientConfigurationInput) => {});
+    const view = renderOverlay(unconfiguredRow("opencode-zen"), { onCreate });
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+    // The overlay enters its first zone in a mount effect, one commit after the
+    // first frame; keys written before that land on an unfocused group.
+    await flush();
+
+    await selectEnvMethodAndReturnToEndpoint(view);
+    view.stdin.write(ARROW_UP);
+    await flush();
+    view.stdin.write(ARROW_DOWN);
+    await flush();
+    expect(view.lastFrame()).toContain("( * ) OpenCode Zen");
+
+    view.stdin.write("\r");
+    await waitUntil(() => onCreate.mock.calls.length > 0);
+
+    expect(onCreate.mock.calls[0]?.[0]).toMatchObject({
+      productId: "opencode-zen",
+      endpoint: "https://opencode.ai/zen/v1",
+      credential: { kind: "environment" },
+    });
+    expect(view.lastFrame()).toContain("( * ) OpenCode Zen");
+  });
+
+  test("binds the Go pool when Space commits the highlight before Enter saves", async () => {
+    const onCreate = vi.fn(async (_input: ClientConfigurationInput) => {});
+    const view = renderOverlay(unconfiguredRow("opencode-zen"), { onCreate });
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+    // The overlay enters its first zone in a mount effect, one commit after the
+    // first frame; keys written before that land on an unfocused group.
+    await flush();
+
+    await selectEnvMethodAndReturnToEndpoint(view);
+    view.stdin.write(" ");
+    await flush();
+    expect(view.lastFrame()).toContain("( * ) OpenCode Go");
+
+    view.stdin.write("\r");
+    await waitUntil(() => onCreate.mock.calls.length > 0);
+
+    expect(onCreate.mock.calls[0]?.[0]).toMatchObject({
+      productId: "opencode-zen",
+      endpoint: "https://opencode.ai/zen/go/v1",
+      credential: { kind: "environment" },
+    });
+  });
+
+  test("offers no endpoint choice on a single-endpoint product", async () => {
+    const onCreate = vi.fn(async (_input: ClientConfigurationInput) => {});
+    const view = renderOverlay(unconfiguredRow("deepseek"), { onCreate });
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+    expect(view.lastFrame()).not.toContain("Endpoint profile:");
+
+    await typeKeyAndSave(view, "sk-deepseek-key");
+    await waitUntil(() => onCreate.mock.calls.length > 0);
+
+    expect(onCreate.mock.calls[0]?.[0]).toEqual({
+      transportFamily: "hosted-api",
+      productId: "deepseek",
+      endpoint: "https://api.deepseek.com/v1",
+      credential: { kind: "literal", value: "sk-deepseek-key" },
+    });
+  });
+
+  test("keeps the stored pool read-only while re-keying a configuration", async () => {
+    const onUpdate = vi.fn(
+      async (_payload: {
+        input: ClientConfigurationInput;
+        acknowledgement: ReadinessAcknowledgement;
+      }) => {},
+    );
+    const view = renderOverlay(configuredRow(OPENCODE_GO_CONFIGURATION), { onUpdate });
+    await flushUntil(() => view.lastFrame()?.includes("Update Configuration") ?? false);
+
+    const frame = view.lastFrame() ?? "";
+    expect(frame).toContain("Endpoint: OpenCode Go");
+    expect(frame).not.toContain("Endpoint profile:");
+
+    await typeKeyAndSave(view, "sk-rotated-go-key");
+    await waitUntil(() => onUpdate.mock.calls.length > 0);
+
+    expect(onUpdate.mock.calls[0]?.[0]?.input).toMatchObject({
+      productId: "opencode-zen",
+      endpoint: "https://opencode.ai/zen/go/v1",
+    });
   });
 });
 

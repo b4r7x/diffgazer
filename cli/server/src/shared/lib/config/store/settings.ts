@@ -7,8 +7,10 @@ import {
   createFileSecretBinding,
   createKeyringSecretBinding,
   createLocalBearerBinding,
-  resolveSecretBinding,
   type SecretBinding,
+} from "../secret-binding-model.js";
+import {
+  resolveSecretBinding,
   type SecretBindingIO,
   writeSecretBinding,
 } from "../secret-bindings.js";

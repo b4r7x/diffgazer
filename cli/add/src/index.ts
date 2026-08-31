@@ -55,7 +55,10 @@ const COMMANDS = [
 ];
 
 for (const { command } of COMMANDS) {
-  const examples = EXAMPLES[command.name()] ?? [];
+  const examples = EXAMPLES[command.name()];
+  if (!examples?.length) {
+    throw new Error(`No --help examples registered for "${command.name()}".`);
+  }
   command.addHelpText("after", `\nExamples:\n${examples.map((line) => `  ${line}`).join("\n")}\n`);
 }
 
