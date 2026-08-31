@@ -3,15 +3,15 @@ import { CANDIDATE_PRODUCT_IDS } from "../schemas/config/transports.js";
 import * as selectableProducts from "./selectable-products.js";
 
 const SELECTABLE_PRODUCT_IDS = [
-  "gemini",
-  "zai",
-  "openrouter",
-  "deepseek",
-  "qwen",
-  "moonshot",
-  "minimax",
   "ollama-cloud",
+  "openrouter",
   "opencode-zen",
+  "deepseek",
+  "zai",
+  "qwen",
+  "minimax",
+  "moonshot",
+  "gemini",
 ];
 
 describe("selectable product presentation", () => {

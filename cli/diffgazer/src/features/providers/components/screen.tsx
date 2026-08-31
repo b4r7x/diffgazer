@@ -11,8 +11,8 @@ import {
   findProviderHotkeyAction,
   getProviderActionLayout,
   getProviderActionShortcuts,
-  getProviderDisplay,
   getProviderRowId,
+  getProviderShortDisplay,
   getUnrecognizedConfigurationActionLayout,
   isConsentGatedProviderAction,
   mapProviderList,
@@ -297,11 +297,7 @@ export function ProvidersScreen(): ReactElement {
   // The overlay title and the delete prompt name the pool a configured
   // dual-pool row will bill, matching the list row they were opened from.
   const selectedName = selectedRow
-    ? getProviderDisplay(
-        selectedRow.product.productId,
-        undefined,
-        selectedRow.configuration?.endpoint,
-      )
+    ? getProviderShortDisplay(selectedRow.product.productId, selectedRow.configuration?.endpoint)
     : UNRECOGNIZED_CONFIGURATION_COPY.label;
 
   if (overlay === "more") {

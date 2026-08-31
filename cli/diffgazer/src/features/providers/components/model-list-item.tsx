@@ -13,7 +13,6 @@ interface ModelListItemProps {
   isHighlighted: boolean;
   isSelected: boolean;
   maxWidth: number;
-  poolBadgeLabel?: string;
 }
 
 function getPrefix(isSelected: boolean, isHighlighted: boolean): string {
@@ -26,19 +25,13 @@ function badgeColumnWidth(label: string | undefined): number {
   return label ? terminalCellWidth(label) + 3 : 0;
 }
 
-export function ModelListItem({
-  model,
-  isHighlighted,
-  isSelected,
-  maxWidth,
-  poolBadgeLabel,
-}: ModelListItemProps) {
+export function ModelListItem({ model, isHighlighted, isSelected, maxWidth }: ModelListItemProps) {
   const { tokens } = useTheme();
 
   const prefix = getPrefix(isSelected, isHighlighted);
   const check = isSelected ? "[*]" : "[ ]";
   const tierBadge = getModelTierBadge(model.tier);
-  const badgeWidth = badgeColumnWidth(tierBadge?.label) + badgeColumnWidth(poolBadgeLabel);
+  const badgeWidth = badgeColumnWidth(tierBadge?.label);
   const textWidth = Math.max(1, maxWidth - 6 - badgeWidth);
   const detail = getModelDetail(model);
   const hasDetail = detail.length > 0 && textWidth >= 4;
@@ -75,9 +68,6 @@ export function ModelListItem({
           >
             {tierBadge.label}
           </Badge>
-        )}
-        {poolBadgeLabel && (
-          <Badge color={tone.background ? tone.primary : undefined}>{poolBadgeLabel}</Badge>
         )}
         {hasDetail && (
           <Box width={detailWidth} flexShrink={0}>

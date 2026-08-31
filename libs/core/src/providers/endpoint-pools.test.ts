@@ -4,10 +4,12 @@ import type { ModelInfo } from "../schemas/config/models.js";
 import { RUNNABLE_PRODUCT_IDS, type RunnableProductId } from "../schemas/config/transports.js";
 import {
   type EndpointPoolContext,
+  filterModelsByPool,
   getEndpointPoolContext,
   getEndpointProfile,
   getModelBillingPool,
   getPoolBillingChangeNote,
+  getPoolHiddenSelectionNotice,
   nextArmedPoolId,
   poolBadgeLabel,
   resolveSelectEndpoint,
@@ -230,5 +232,53 @@ describe("getPoolBillingChangeNote", () => {
 
   test("says nothing off a dual-pool product, where billing cannot move", () => {
     expect(getPoolBillingChangeNote(null, "go")).toBeNull();
+  });
+});
+
+describe("pool tab filtering", () => {
+  const zen = poolContext(ZEN_ENDPOINT);
+  const zenOnly: ModelInfo = { ...makeModel(["zen"]), id: "zen-only", name: "Zen Only" };
+  const goOnly: ModelInfo = { ...makeModel(["go"]), id: "go-only", name: "Go Only" };
+  const shared: ModelInfo = { ...makeModel(["zen", "go"]), id: "shared", name: "Shared" };
+  const unknownMembership: ModelInfo = { ...makeModel(), id: "unknown", name: "Unknown" };
+  const models = [zenOnly, goOnly, shared, unknownMembership];
+
+  function idsOnTab(
+    activeProfileId: string | undefined,
+    context: EndpointPoolContext | null = zen,
+  ) {
+    return filterModelsByPool(models, context, activeProfileId).map((model) => model.id);
+  }
+
+  test("filterModelsByPool keeps every row when the product has no pool context or no tab is active", () => {
+    expect(idsOnTab("zen", null)).toEqual(["zen-only", "go-only", "shared", "unknown"]);
+    expect(idsOnTab(undefined)).toEqual(["zen-only", "go-only", "shared", "unknown"]);
+  });
+
+  test("filterModelsByPool lists a shared row under both tabs and an exclusive row only under its own", () => {
+    expect(idsOnTab("zen")).toContain("shared");
+    expect(idsOnTab("go")).toContain("shared");
+    expect(idsOnTab("zen")).toContain("zen-only");
+    expect(idsOnTab("zen")).not.toContain("go-only");
+    expect(idsOnTab("go")).toContain("go-only");
+    expect(idsOnTab("go")).not.toContain("zen-only");
+  });
+
+  test("filterModelsByPool passes a row of unknown membership through every tab", () => {
+    expect(idsOnTab("zen")).toContain("unknown");
+    expect(idsOnTab("go")).toContain("unknown");
+  });
+
+  test("getPoolHiddenSelectionNotice names the tab that serves a hidden exclusive row", () => {
+    expect(getPoolHiddenSelectionNotice(zen, zenOnly, "go")).toBe("Zen Only is on the Zen tab.");
+    expect(getPoolHiddenSelectionNotice(zen, goOnly, "zen")).toBe("Go Only is on the Go tab.");
+  });
+
+  test("getPoolHiddenSelectionNotice stays null for a visible, shared, unknown, or non-pool model", () => {
+    expect(getPoolHiddenSelectionNotice(zen, zenOnly, "zen")).toBeNull();
+    expect(getPoolHiddenSelectionNotice(zen, shared, "go")).toBeNull();
+    expect(getPoolHiddenSelectionNotice(zen, unknownMembership, "go")).toBeNull();
+    expect(getPoolHiddenSelectionNotice(null, zenOnly, "go")).toBeNull();
+    expect(getPoolHiddenSelectionNotice(zen, undefined, "go")).toBeNull();
   });
 });

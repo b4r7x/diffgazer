@@ -9,12 +9,14 @@ import {
 import {
   getProviderDisplay,
   getProviderDisplayStatus,
+  getProviderShortDisplay,
   getUnconfiguredDisplayStatus,
   isRedundantStatusSegment,
   resolveShellProviderIdentity,
 } from "./display-status.js";
 
 const CHECKED_AT = "2026-07-31T10:00:00.000Z";
+const ZEN_ENDPOINT = "https://opencode.ai/zen/v1";
 const GO_ENDPOINT = "https://opencode.ai/zen/go/v1";
 const NOT_APPLICABLE = { status: "not-applicable" } as const;
 const REQUIRED = { status: "required", noticeId: "provider-notice", noticeVersion: 1 } as const;
@@ -251,7 +253,23 @@ describe("resolveShellProviderIdentity", () => {
       endpoint: GO_ENDPOINT,
     });
 
-    expect(identity.providerName).toBe("OpenCode Go");
+    expect(identity.providerName).toBe("OpenCode · Go");
+  });
+});
+
+describe("getProviderShortDisplay", () => {
+  it("short display names the pool product as its short name and bound pool", () => {
+    expect(getProviderShortDisplay("opencode-zen", ZEN_ENDPOINT)).toBe("OpenCode · Zen");
+    expect(getProviderShortDisplay("opencode-zen", GO_ENDPOINT)).toBe("OpenCode · Go");
+  });
+
+  it("short display falls back to the full name without a shortName", () => {
+    expect(getProviderShortDisplay("gemini")).toBe("Google Gemini");
+  });
+
+  it("short display adds no pool suffix off a pool product", () => {
+    expect(getProviderShortDisplay("moonshot", "https://api.moonshot.ai/v1")).toBe("Moonshot");
+    expect(getProviderShortDisplay("qwen")).toBe("Qwen");
   });
 });
 
@@ -276,13 +294,10 @@ describe("getProviderDisplay", () => {
     );
   });
 
-  it("names the bound pool instead of the product when the endpoints are wallets", () => {
-    expect(getProviderDisplay("opencode-zen", undefined, GO_ENDPOINT)).toBe("OpenCode Go");
+  it("keeps the product name for records whatever endpoint is passed", () => {
+    expect(getProviderDisplay("opencode-zen", undefined, GO_ENDPOINT)).toBe("OpenCode Zen");
     expect(getProviderDisplay("opencode-zen", "model-not-in-catalog", GO_ENDPOINT)).toBe(
-      "OpenCode Go / model-not-in-catalog",
-    );
-    expect(getProviderDisplay("opencode-zen", undefined, "https://opencode.ai/zen/v1")).toBe(
-      "OpenCode Zen",
+      "OpenCode Zen / model-not-in-catalog",
     );
   });
 

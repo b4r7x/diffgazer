@@ -53,7 +53,7 @@ export function getEndpointPoolContext(
 
 /**
  * The pool a row will bill. A model exactly one pool serves always bills that
- * pool, so the row's badge is the authority and the picker's pool selector only
+ * pool, so membership is the authority and the picker's active pool tab only
  * decides the rows both pools serve. Unknown membership follows the armed pool,
  * which defaults to the one the configuration is already bound to. Null off a
  * dual-pool product, where a row has no pool to name. Callers hold a nullable
@@ -133,4 +133,43 @@ export function getPoolBillingChangeNote(
 ): string | null {
   if (!context || billingProfileId !== context.sibling.id) return null;
   return `Saving moves billing to ${context.sibling.label}.`;
+}
+
+/**
+ * The rows a pool tab lists: the ones that pool is known to serve, plus the ones
+ * whose membership is unknown, which no tab may hide. Every row a tab lists
+ * bills that tab's pool when the tab id is passed as `armedProfileId` — a row a
+ * tab lists is either exclusive to it or shared, and `getModelBillingPool`'s
+ * membership cases resolve both to the tab. Unfiltered off a pool product or
+ * before a tab is active, so a non-pool picker passes its list straight through.
+ */
+export function filterModelsByPool(
+  models: ModelInfo[],
+  context: EndpointPoolContext | null,
+  activeProfileId: string | undefined,
+): ModelInfo[] {
+  if (!context || activeProfileId === undefined) return models;
+  return models.filter(
+    (model) =>
+      model.endpointProfileIds === undefined || model.endpointProfileIds.includes(activeProfileId),
+  );
+}
+
+/**
+ * The picker's one line about a model the active tab does not list, naming the
+ * tab that does: a hidden row always has exclusive membership, so the pool it is
+ * not filtered out of is the other one. Null while the model is listed, absent,
+ * or off a dual-pool product.
+ */
+export function getPoolHiddenSelectionNotice(
+  context: EndpointPoolContext | null,
+  model: ModelInfo | undefined,
+  activeProfileId: string | undefined,
+): string | null {
+  if (!context || !model) return null;
+  if (filterModelsByPool([model], context, activeProfileId).length > 0) return null;
+
+  const membership = model.endpointProfileIds ?? [];
+  const serving = membership.includes(context.bound.id) ? context.bound : context.sibling;
+  return `${model.name} is on the ${poolBadgeLabel(serving)} tab.`;
 }

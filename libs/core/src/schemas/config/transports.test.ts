@@ -28,15 +28,15 @@ describe("transport family contract", () => {
 
   it("keeps every runnable product hosted", () => {
     expect(RUNNABLE_PRODUCT_IDS).toEqual([
-      "gemini",
-      "zai",
-      "openrouter",
-      "deepseek",
-      "qwen",
-      "moonshot",
-      "minimax",
       "ollama-cloud",
+      "openrouter",
       "opencode-zen",
+      "deepseek",
+      "zai",
+      "qwen",
+      "minimax",
+      "moonshot",
+      "gemini",
     ]);
     expect(RUNNABLE_PRODUCT_IDS).toEqual(HOSTED_API_PRODUCT_IDS);
   });

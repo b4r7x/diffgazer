@@ -4,9 +4,7 @@ import {
   getUnrecognizedConfigurationActionLayout,
 } from "@diffgazer/core/providers";
 import { CONFORMANCE_TEST_COST_DISCLOSURE } from "@diffgazer/core/schemas/config";
-import { requireValue } from "@diffgazer/core/testing/assertions";
 import {
-  buildProviderRows,
   configurationStatus,
   configuredRow,
   GEMINI_CONFIGURATION,
@@ -38,10 +36,7 @@ function renderDetails(
 }
 
 function rowWithStatus(status: Parameters<typeof configurationStatus>[1]): ProviderListRow {
-  return requireValue(
-    buildProviderRows([configurationStatus(GEMINI_CONFIGURATION, status)])[0],
-    `provider row for ${status}`,
-  );
+  return configuredRow(GEMINI_CONFIGURATION, status);
 }
 
 afterEach(() => {
@@ -149,13 +144,13 @@ describe("ProviderDetails", () => {
     }
   });
 
-  test("states a bound pool once: the name says it, the endpoint row gives the URL", () => {
+  test("names the full product and leaves the bound pool to the endpoint row", () => {
     const frame = renderDetails(configuredRow(OPENCODE_GO_CONFIGURATION));
 
-    expect(frame).toContain("Name : OpenCode Go");
+    // This pane is the reference view, so the name row is the catalog's full
+    // product name; the endpoint row below it is what says which pool is bound.
+    expect(frame).toContain("Name : OpenCode Zen");
     expect(frame).toContain("Endpoint : https://opencode.ai/zen/go/v1");
-    // The pane used to read "OpenCode Go" as the name, the endpoint value and
-    // its description — one thing said three times.
     expect(frame).not.toContain("Endpoint : OpenCode Go");
   });
 

@@ -131,8 +131,10 @@ describe("HomeScreen", () => {
   });
 
   test("names the bound billing pool in the Provider row", async () => {
+    // No model bound yet: the sidebar elides the middle of a value too long for
+    // it, and the pool name is the half this row is asserted on.
     const init = makeConfigurationInitResponse([
-      configurationStatus(OPENCODE_GO_CONFIGURATION, "ready"),
+      configurationStatus({ ...OPENCODE_GO_CONFIGURATION, selectedModelId: null }, "model-missing"),
     ]);
     useConfigurationInitMock.mockReturnValue({
       data: { ...init, project: { projectId: "project-1", path: "/tmp/repo", trust: TRUST } },
@@ -143,7 +145,7 @@ describe("HomeScreen", () => {
 
     const { lastFrame } = renderRootFrame(100, 30, renderHome());
 
-    await vi.waitFor(() => expect(lastFrame()).toContain("Provider: OpenCode Go"));
+    await vi.waitFor(() => expect(lastFrame()).toContain("Provider: OpenCode · Go"));
     expect(lastFrame()).not.toContain("OpenCode Zen");
   });
 

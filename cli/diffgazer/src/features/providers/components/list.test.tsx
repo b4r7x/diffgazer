@@ -41,7 +41,7 @@ describe("ProviderList", () => {
       buildProviderRows([configurationStatus(OPENCODE_GO_CONFIGURATION, "ready")]),
     );
 
-    expect(frame).toContain("OpenCode Go");
+    expect(frame).toContain("OpenCode · Go");
     expect(frame).not.toContain("OpenCode Zen");
   });
 

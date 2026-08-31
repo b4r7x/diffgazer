@@ -2,16 +2,16 @@ import { getEndpointPoolContext } from "@diffgazer/core/providers";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { ModelPoolTabs } from "./pool-tabs";
+import { ModelPoolFilterTabs } from "./pool-filter-tabs";
 
 const poolContext = getEndpointPoolContext("opencode-zen", "https://opencode.ai/zen/v1");
 if (!poolContext) throw new Error("opencode-zen must expose a billing-pool context");
 const PROFILES = [poolContext.bound, poolContext.sibling];
 
-function renderTabs(overrides: Partial<Parameters<typeof ModelPoolTabs>[0]> = {}) {
+function renderTabs(overrides: Partial<Parameters<typeof ModelPoolFilterTabs>[0]> = {}) {
   const onChange = overrides.onChange ?? vi.fn();
   render(
-    <ModelPoolTabs
+    <ModelPoolFilterTabs
       profiles={PROFILES}
       value={PROFILES[0]?.id ?? ""}
       onChange={onChange}
@@ -23,7 +23,7 @@ function renderTabs(overrides: Partial<Parameters<typeof ModelPoolTabs>[0]> = {}
   return { onChange, group: screen.getByRole("radiogroup", { name: "Billing pool" }) };
 }
 
-describe("ModelPoolTabs", () => {
+describe("ModelPoolFilterTabs", () => {
   it("names each pool in full while showing the badge-length label", () => {
     const { group } = renderTabs();
 

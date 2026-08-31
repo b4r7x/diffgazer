@@ -57,7 +57,7 @@ describe("ModelSelectOverlay reads as an overlay", () => {
     const frame = stripAnsi(lastFrame() ?? "");
 
     expect(frame).toContain("Select Model");
-    expect(frame).toContain("gemini · 1 model");
+    expect(frame).toContain("Google Gemini · 1 model");
   });
 
   test("publishes its keys to the one shortcut-bar grammar instead of an inline hint row", async () => {

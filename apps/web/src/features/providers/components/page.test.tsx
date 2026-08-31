@@ -190,6 +190,7 @@ describe("ProvidersPage", () => {
     renderProvidersPage();
 
     await screen.findByRole("listbox", { name: "Providers" });
+    await user.click(screen.getByRole("option", { name: "Google Gemini" }));
     expect(screen.queryByText(PROVIDER_CONSENT_TEXT)).not.toBeInTheDocument();
     const select = screen.getByRole("button", { name: "Select configuration" });
     await user.click(select);
@@ -232,6 +233,7 @@ describe("ProvidersPage", () => {
     renderProvidersPage();
 
     await screen.findByRole("listbox", { name: "Providers" });
+    await user.click(screen.getByRole("option", { name: "Google Gemini" }));
     await user.click(screen.getByRole("button", { name: "More actions" }));
     await user.click(await screen.findByRole("menuitem", { name: "Verify" }));
     await user.click(within(getConsentDialog()).getByRole("button", { name: "Not now" }));
@@ -307,6 +309,7 @@ describe("ProvidersPage", () => {
     renderProvidersPage();
 
     await screen.findByRole("listbox", { name: "Providers" });
+    await user.click(screen.getByRole("option", { name: "Google Gemini" }));
     expect(screen.queryByText("Consent required to run reviews")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Select configuration" }));
 
@@ -356,6 +359,7 @@ describe("ProvidersPage", () => {
   });
 
   it("shows the active configuration as a chip beside Change model and More", async () => {
+    const user = userEvent.setup();
     const init = makeConfigurationInitResponse(
       [configurationStatus(GEMINI_CONFIGURATION, "ready")],
       GEMINI_CONFIGURATION.configurationId,
@@ -364,6 +368,8 @@ describe("ProvidersPage", () => {
     mockApi.listConfigurations.mockResolvedValue(makeConfigurationListResponse(init));
     renderProvidersPage();
 
+    await screen.findByRole("listbox", { name: "Providers" });
+    await user.click(screen.getByRole("option", { name: "Google Gemini" }));
     const actions = await screen.findByRole("group", { name: "Provider actions" });
     expect(within(actions).getByText("Active")).toBeInTheDocument();
     expect(

@@ -60,7 +60,7 @@ describe("ProviderList", () => {
   it("names a configured dual-pool row by the pool its runs will bill", () => {
     render(<ProviderList providers={[goBoundRow()]} {...DEFAULT_LIST_PROPS} />);
 
-    expect(screen.getByRole("option", { name: "OpenCode Go" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "OpenCode · Go" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "OpenCode Zen" })).not.toBeInTheDocument();
   });
 
@@ -101,7 +101,7 @@ describe("ProviderList", () => {
     render(<ProviderList providers={[GEMINI_ROW]} {...DEFAULT_LIST_PROPS} />);
 
     expect(screen.getByRole("option", { name: "Google Gemini" })).toHaveAccessibleDescription(
-      "FREE TIER Gemini 2.5 Flash gemini-2.5-flash",
+      "FREE QUOTA Gemini 2.5 Flash gemini-2.5-flash",
     );
   });
 
@@ -127,7 +127,7 @@ describe("ProviderList", () => {
       expect(screen.queryByText(row.readiness.remediation.message)).not.toBeInTheDocument();
     }
     expect(screen.getByRole("option", { name: "Google Gemini" })).toHaveAccessibleDescription(
-      "FREE TIER Gemini 2.5 Flash gemini-2.5-flash",
+      "FREE QUOTA Gemini 2.5 Flash gemini-2.5-flash",
     );
   });
 

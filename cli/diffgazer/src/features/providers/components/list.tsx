@@ -1,8 +1,8 @@
 import {
   getCatalogModelName,
-  getProviderDisplay,
   getProviderDisplayStatus,
   getProviderRowId,
+  getProviderShortDisplay,
   type ProviderListRow,
   UNRECOGNIZED_CONFIGURATION_COPY,
 } from "@diffgazer/core/providers";
@@ -124,9 +124,8 @@ export function ProviderList({
       {providers.map((row) => {
         const rowId = getProviderRowId(row);
         // A configured dual-pool product reads as the pool its runs will bill.
-        const providerName = getProviderDisplay(
+        const providerName = getProviderShortDisplay(
           row.product.productId,
-          undefined,
           row.configuration?.endpoint,
         );
         const subtitle = getModelSubtitle(row, providerName, contentWidth);

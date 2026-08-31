@@ -2,8 +2,8 @@ import { CATALOG_MODEL_DERIVED } from "../catalog/model-derived.js";
 import type { Readiness, ReadinessAction, ReadinessStatus } from "../schemas/config/readiness.js";
 import type { RunnableProductId } from "../schemas/config/transports.js";
 import type { BadgeVariant } from "../schemas/presentation/index.js";
-import { getEndpointPoolContext } from "./endpoint-pools.js";
-import { PRODUCT_REGISTRY } from "./product-registry.js";
+import { getEndpointPoolContext, poolBadgeLabel } from "./endpoint-pools.js";
+import { PRODUCT_REGISTRY, type RunnableProductDescriptor } from "./product-registry.js";
 
 interface ReadinessBadge {
   readonly label: string;
@@ -108,21 +108,38 @@ export function getCatalogModelName(productId: RunnableProductId, modelId: strin
 }
 
 /**
- * The provider a surface names. With an endpoint, a product whose endpoints are
- * separate billing pools reads as the bound pool — the wallet, not the product,
- * is what the user picked. History passes no endpoint on purpose: its records
- * predate the pool label, and one render path cannot relabel only the new ones.
+ * The provider a record names: the full product name, whatever endpoint the
+ * configuration is bound to. History rows, receipts, and detail panes read the
+ * same string for one product, so a pool binding can never relabel only the
+ * records written after it.
  */
 export function getProviderDisplay(
   productId?: RunnableProductId,
   modelId?: string,
-  endpoint?: string,
+  _endpoint?: string,
 ): string {
   if (!productId) return "Not configured";
-  const poolLabel = endpoint ? getEndpointPoolContext(productId, endpoint)?.bound.label : undefined;
-  const name = poolLabel ?? PRODUCT_REGISTRY[productId].presentation.name;
+  const name = PRODUCT_REGISTRY[productId].presentation.name;
   if (modelId) return `${name} / ${getCatalogModelName(productId, modelId)}`;
   return name;
+}
+
+/**
+ * The provider a compact surface names: the short human name where the registry
+ * publishes one, with the bound pool appended for a product whose endpoints are
+ * billing pools — a header has room for the wallet, not for the catalog's full
+ * product name.
+ */
+export function getProviderShortDisplay(productId: RunnableProductId, endpoint?: string): string {
+  // The registry is declared `as const`, so a product that publishes no
+  // shortName has no such key on its literal type; the descriptor type is where
+  // the optional field is declared.
+  const { presentation }: RunnableProductDescriptor<RunnableProductId> =
+    PRODUCT_REGISTRY[productId];
+  const name = presentation.shortName ?? presentation.name;
+  const poolContext = endpoint ? getEndpointPoolContext(productId, endpoint) : null;
+  if (!poolContext) return name;
+  return `${name} · ${poolBadgeLabel(poolContext.bound)}`;
 }
 
 /**
@@ -174,8 +191,13 @@ export function resolveShellProviderIdentity(state: ShellProviderState): ShellPr
     return { providerName: getProviderDisplay(), providerStatus: getUnconfiguredDisplayStatus() };
   }
 
+  const providerName = getProviderShortDisplay(state.productId, state.endpoint);
+  const modelId = state.modelId ?? undefined;
+
   return {
-    providerName: getProviderDisplay(state.productId, state.modelId ?? undefined, state.endpoint),
+    providerName: modelId
+      ? `${providerName} / ${getCatalogModelName(state.productId, modelId)}`
+      : providerName,
     providerStatus: getProviderDisplayStatus(state.readiness),
   };
 }

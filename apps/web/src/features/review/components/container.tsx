@@ -1,5 +1,5 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { getProviderDisplay } from "@diffgazer/core/providers";
+import { getCatalogModelName, getProviderShortDisplay } from "@diffgazer/core/providers";
 import {
   CONFIGURE_PROVIDER_LABEL,
   classifyReviewStreamError,
@@ -212,30 +212,23 @@ function ReviewStreamContainer({
       );
     }
 
+    // The review screen is live, not a record: it names the same configuration
+    // the shell header does, pool and all, so one session never shows two names
+    // for the wallet that pays.
+    const providerLabel = selectedConfiguration
+      ? getProviderShortDisplay(selectedConfiguration.productId, selectedConfiguration.endpoint)
+      : undefined;
+    const selectedModelId = selectedConfiguration?.selectedModelId;
+    const modelName =
+      selectedConfiguration && selectedModelId
+        ? getCatalogModelName(selectedConfiguration.productId, selectedModelId)
+        : undefined;
+
     return (
       <ApiKeyMissingView
         readiness={readiness}
-        // The review screen is live, not a record: it names the same
-        // configuration the shell header does, pool and all, so one session
-        // never shows two names for the wallet that pays.
-        productLabel={
-          selectedConfiguration
-            ? getProviderDisplay(
-                selectedConfiguration.productId,
-                undefined,
-                selectedConfiguration.endpoint,
-              )
-            : undefined
-        }
-        meta={
-          selectedConfiguration
-            ? getProviderDisplay(
-                selectedConfiguration.productId,
-                selectedConfiguration.selectedModelId ?? undefined,
-                selectedConfiguration.endpoint,
-              )
-            : undefined
-        }
+        productLabel={providerLabel}
+        meta={modelName ? `${providerLabel} / ${modelName}` : providerLabel}
         // The button leaves for the providers screen, so it is named for where
         // it goes. Naming it after `readiness.action` promised a Test, an
         // inspect or a model pick this gate never performs.

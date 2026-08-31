@@ -1,8 +1,10 @@
 import { getDateLabel } from "@diffgazer/core/format";
 import {
+  filterModelsByPool,
   getEndpointPoolContext,
-  getModelBillingPool,
   getPoolBillingChangeNote,
+  getPoolHiddenSelectionNotice,
+  getProviderShortDisplay,
   getRetainedModelNotice,
   nextArmedPoolId,
   resolveSelectEndpoint,
@@ -32,7 +34,7 @@ import {
 import { useRef, useState } from "react";
 import { ModelFilterTabs } from "./filter-tabs";
 import { ModelList } from "./list";
-import { ModelPoolTabs } from "./pool-tabs";
+import { ModelPoolFilterTabs } from "./pool-filter-tabs";
 import { ModelSearchInput } from "./search-input";
 import { useModelDialogKeyboard } from "./use-dialog-keyboard";
 
@@ -57,7 +59,7 @@ const FOOTER_HINTS: KeyboardHint[] = [
   { key: "f", label: "Filter" },
   { key: "Space", label: "Select" },
 ];
-// Taught only where it does something: the pool row renders on dual-pool
+// Taught only where it does something: the pool group renders on dual-pool
 // products alone.
 const POOL_FOOTER_HINT: KeyboardHint = { key: "p", label: "Pool" };
 
@@ -78,13 +80,13 @@ export function ModelSelectDialog({
   };
 
   // The endpoint profiles of a product whose endpoints are billing pools; null
-  // everywhere else, which is what hides the pool row.
+  // everywhere else, which is what hides the pool group.
   const poolContext = getEndpointPoolContext(configuration.productId, configuration.endpoint);
   const poolProfiles = poolContext ? [poolContext.bound, poolContext.sibling] : [];
-  // Selector, not filter: the armed pool decides which pool a row that both
-  // pools serve will bill, and never which rows the list shows.
+  // The active tab is the wallet: it lists the rows its pool serves, and every
+  // row it lists bills that pool when the confirm posts.
   const [selectedPoolId, setSelectedPoolId] = useState<string | null>(null);
-  const armedPoolId = selectedPoolId ?? poolContext?.bound.id;
+  const activePoolTabId = selectedPoolId ?? poolContext?.bound.id;
 
   const {
     searchQuery,
@@ -94,7 +96,7 @@ export function ModelSelectDialog({
     filteredModels,
     cycleTierFilter,
     resetFilters,
-  } = useModelFilter(source.models);
+  } = useModelFilter(filterModelsByPool(source.models, poolContext, activePoolTabId));
 
   const discoveryStatus = isSaving ? "passed" : source.status;
   const discoveryMessage = source.status === "skipped" ? source.reason : source.error;
@@ -102,21 +104,13 @@ export function ModelSelectDialog({
   const canSelect = !isSaving && source.status === "passed" && filteredModels.length > 0;
   // Generic copy only: the discovery message has exactly one home, the strip below.
   const emptyLabel =
-    source.models.length === 0 ? "No models available" : "No models match your search";
+    source.models.length === 0 ? "No models available" : "No models match the current filters.";
 
   const showRetry = Boolean(discoveryMessage) && !isSaving;
 
   const cyclePool = () => {
     if (!poolContext) return;
-    setSelectedPoolId(nextArmedPoolId(poolContext, armedPoolId));
-  };
-
-  // The row's own badge is the authority: a model only one pool serves bills
-  // that pool whatever the selector says, so the pool is resolved from the row,
-  // not from the toggle.
-  const resolveBillingPool = (modelId: string | undefined) => {
-    const model = source.models.find((candidate) => candidate.id === modelId);
-    return model ? getModelBillingPool(poolContext, model, armedPoolId) : null;
+    setSelectedPoolId(nextArmedPoolId(poolContext, activePoolTabId));
   };
 
   const handleSelectModel = (modelId: string) => {
@@ -125,7 +119,7 @@ export function ModelSelectDialog({
       ? resolveSelectEndpoint({
           context: poolContext,
           model,
-          armedProfileId: armedPoolId,
+          armedProfileId: activePoolTabId,
           boundEndpoint: configuration.endpoint,
         })
       : undefined;
@@ -136,12 +130,9 @@ export function ModelSelectDialog({
     focusZone,
     focusedModelId,
     checkedModelId,
-    imminentConfirmModelId,
-    filterIndex,
-    poolIndex,
+    headerIndex,
     handleConfirm,
-    handleFilterKeyDown,
-    handlePoolKeyDown,
+    handleHeaderKeyDown,
     handleSearchFocus,
     handleSearchArrowDown,
     handleListHighlightChange,
@@ -186,13 +177,15 @@ export function ModelSelectDialog({
       ? "bundled catalog"
       : checkedAtLabel && `checked ${checkedAtLabel}`;
   const retainedModelNotice = isSaving ? null : getRetainedModelNotice(currentModel, source.models);
-  // Derived from the row the imminent confirm will actually post — inside the
-  // list the focused row Enter posts, elsewhere the checked-first resolution,
-  // which a search can filter out from under the user — so a save can never
-  // move the wallet without the note that says so.
-  const poolBillingChangeNote = getPoolBillingChangeNote(
+  // Every row the active tab lists bills that tab, so the tab alone decides
+  // whether a confirm moves the wallet — no save can move it without this note.
+  const poolBillingChangeNote = getPoolBillingChangeNote(poolContext, activePoolTabId);
+  // The checked row is looked up unfiltered: the check survives a tab switch
+  // that hides it, and this names the tab that lists it again.
+  const poolHiddenSelectionNotice = getPoolHiddenSelectionNotice(
     poolContext,
-    resolveBillingPool(imminentConfirmModelId)?.id,
+    source.models.find((model) => model.id === checkedModelId),
+    activePoolTabId,
   );
   const footerHints = poolContext ? FOOTER_HINTS.toSpliced(2, 0, POOL_FOOTER_HINT) : FOOTER_HINTS;
 
@@ -214,7 +207,9 @@ export function ModelSelectDialog({
         <DialogHeader className="pr-10">
           <DialogTitle className="shrink-0">Select Model</DialogTitle>
           <p className="min-w-0 truncate text-xs text-muted-foreground">
-            {configuration.productId}
+            {/* No endpoint argument: the pool tabs below name the wallet, so
+                the subtitle would only say it twice. */}
+            {getProviderShortDisplay(configuration.productId)}
             {source.models.length > 0 ? ` · ${pluralize(source.models.length, "model")}` : ""}
             {freshnessLabel ? ` · ${freshnessLabel}` : ""}
           </p>
@@ -230,28 +225,39 @@ export function ModelSelectDialog({
             disabled={isSaving || loading}
           />
 
-          {poolContext && armedPoolId ? (
-            <ModelPoolTabs
-              profiles={poolProfiles}
-              value={armedPoolId}
-              onChange={setSelectedPoolId}
-              focusedIndex={poolIndex}
-              isFocused={focusZone === "pool"}
-              onKeyDown={handlePoolKeyDown}
-              getTabProps={getPoolButtonProps}
+          {/* One row, two controls: the divider and the wider gap keep the pool
+              tabs from reading as more segments of the tier filter. */}
+          <div
+            role="toolbar"
+            aria-label="Model filters"
+            className="flex items-center gap-3 px-5 pb-2"
+          >
+            {poolContext && activePoolTabId ? (
+              <>
+                <ModelPoolFilterTabs
+                  profiles={poolProfiles}
+                  value={activePoolTabId}
+                  onChange={setSelectedPoolId}
+                  focusedIndex={headerIndex}
+                  isFocused={focusZone === "filters"}
+                  onKeyDown={handleHeaderKeyDown}
+                  getTabProps={getPoolButtonProps}
+                  disabled={isSaving || source.status !== "passed"}
+                />
+                <div aria-hidden className="h-4 w-px bg-border" />
+              </>
+            ) : null}
+
+            <ModelFilterTabs
+              value={tierFilter}
+              onChange={setTierFilter}
+              focusedIndex={headerIndex - poolProfiles.length}
+              isFocused={focusZone === "filters"}
+              onKeyDown={handleHeaderKeyDown}
+              getTabProps={getFilterButtonProps}
               disabled={isSaving || source.status !== "passed"}
             />
-          ) : null}
-
-          <ModelFilterTabs
-            value={tierFilter}
-            onChange={setTierFilter}
-            focusedIndex={filterIndex}
-            isFocused={focusZone === "filters"}
-            onKeyDown={handleFilterKeyDown}
-            getTabProps={getFilterButtonProps}
-            disabled={isSaving || source.status !== "passed"}
-          />
+          </div>
 
           {discoveryMessage && !isSaving ? (
             // The single discovery surface: the list's empty state carries generic
@@ -285,11 +291,17 @@ export function ModelSelectDialog({
             </Callout>
           ) : null}
 
+          {poolHiddenSelectionNotice ? (
+            // The checked row is not on this tab. It keeps its check for the
+            // tab that serves it, so this names that tab rather than dropping it.
+            <Callout tone="info" className="mx-5 mb-2 py-2 text-2xs">
+              <Callout.Content>{poolHiddenSelectionNotice}</Callout.Content>
+            </Callout>
+          ) : null}
+
           <ModelList
             ref={listContainerRef}
             models={filteredModels}
-            poolContext={poolContext}
-            armedPoolId={armedPoolId}
             focusedModelId={focusedModelId}
             currentModelId={checkedModelId}
             isFocused={focusZone === "list" && !isSaving && source.status === "passed"}
@@ -303,8 +315,8 @@ export function ModelSelectDialog({
           />
 
           {poolBillingChangeNote ? (
-            // Selecting the sibling pool changes which wallet drains, so the
-            // consequence is stated where the eye already is before Confirm.
+            // The sibling tab bills the other wallet, so the consequence is
+            // stated where the eye already is before Confirm.
             <p className="mx-5 mb-2 text-2xs text-muted-foreground">{poolBillingChangeNote}</p>
           ) : null}
         </DialogBody>

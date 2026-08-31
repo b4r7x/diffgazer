@@ -104,9 +104,9 @@ function TestInteractiveModelDialogKeyboard({
     createElement(ModelFilterTabs, {
       value: tierFilter,
       onChange: applyTierFilter,
-      focusedIndex: keyboard.filterIndex,
+      focusedIndex: keyboard.headerIndex,
       isFocused: keyboard.focusZone === "filters",
-      onKeyDown: keyboard.handleFilterKeyDown,
+      onKeyDown: keyboard.handleHeaderKeyDown,
       getTabProps: keyboard.getFilterButtonProps,
       // Mirrors the dialog: the tier row is disabled unless discovery passed.
       disabled: resolvedDiscoveryStatus !== "passed",
@@ -463,7 +463,7 @@ describe("useModelDialogKeyboard navigation", () => {
     expect(screen.getByRole("radio", { name: "model-b" })).toHaveFocus();
   });
 
-  it("moves out of the tier-filter row with j and k exactly like the arrow keys", async () => {
+  it("moves out of the merged filter row with j and k exactly like the arrow keys", async () => {
     const { user } = renderInteractiveSubject(vi.fn(), { currentModel: "model-a" });
 
     await waitFor(() => {
@@ -484,19 +484,27 @@ describe("useModelDialogKeyboard navigation", () => {
     expect(screen.getByRole("radio", { name: "model-a" })).toHaveFocus();
   });
 
-  it("changes tier filters through ModelFilterTabs roving controls", async () => {
+  it("moves focus across the merged row without changing the selection until Space", async () => {
     const onTierFilter = vi.fn();
     const { user } = renderInteractiveSubject(onTierFilter);
 
     await user.keyboard("/");
     await user.keyboard("{ArrowDown}");
 
-    expect(screen.getByRole("radio", { name: "all" })).toHaveFocus();
+    const allFilter = screen.getByRole("radio", { name: "all" });
+    expect(allFilter).toHaveFocus();
 
     await user.keyboard("{ArrowRight}");
 
+    // Manual activation: the horizontal keys move focus alone.
     const freeFilter = screen.getByRole("radio", { name: "free" });
     expect(freeFilter).toHaveFocus();
+    expect(freeFilter).toHaveAttribute("aria-checked", "false");
+    expect(allFilter).toHaveAttribute("aria-checked", "true");
+    expect(onTierFilter).not.toHaveBeenCalled();
+
+    await user.keyboard(" ");
+
     expect(freeFilter).toHaveAttribute("aria-checked", "true");
     expect(onTierFilter).toHaveBeenCalledWith("free");
   });

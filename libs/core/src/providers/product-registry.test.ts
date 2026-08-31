@@ -75,15 +75,15 @@ function hasForbiddenSerializedData(descriptor: unknown): boolean {
 describe("product registry authority", () => {
   it("enumerates exactly the 9 selectable products with add-now notices and gates", () => {
     expect(SELECTABLE_PRODUCT_IDS).toEqual([
-      "gemini",
-      "zai",
-      "openrouter",
-      "deepseek",
-      "qwen",
-      "moonshot",
-      "minimax",
       "ollama-cloud",
+      "openrouter",
       "opencode-zen",
+      "deepseek",
+      "zai",
+      "qwen",
+      "minimax",
+      "moonshot",
+      "gemini",
     ]);
 
     const selectableEntries = Object.values(PRODUCT_REGISTRY).filter(
@@ -142,47 +142,24 @@ describe("product registry authority", () => {
 
     expect(policies).toEqual([
       {
-        id: "gemini",
-        endpoints: [
-          {
-            id: "global",
-            label: "Global",
-            endpoint: "https://generativelanguage.googleapis.com/v1beta",
-          },
-        ],
+        id: "ollama-cloud",
+        endpoints: [{ id: "cloud", label: "Ollama Cloud", endpoint: "https://ollama.com/v1" }],
         modelPolicy: {
           kind: "discovered-exact",
-          suggestedModelId: "gemini-2.5-flash",
-          aliases: "forbidden",
-        },
-        checks: HOSTED_CHECKS,
-        structuredOutput: "strict-json-schema",
-        notice: notice(
-          "gemini-hosted-api",
-          ["Free and paid availability depends on the selected account and exact model."],
-          ["Data handling follows the configured Google API product and account terms."],
-        ),
-      },
-      {
-        id: "zai",
-        endpoints: [
-          {
-            id: "general-payg",
-            label: "General Open Platform PAYG",
-            endpoint: "https://api.z.ai/api/paas/v4",
-          },
-        ],
-        modelPolicy: {
-          kind: "discovered-exact",
-          suggestedModelId: "glm-5-turbo",
+          suggestedModelId: "gpt-oss:20b",
           aliases: "forbidden",
         },
         checks: HOSTED_CHECKS,
         structuredOutput: "json-object-local-validation",
         notice: notice(
-          "zai-general-payg",
-          ["This configuration uses general Open Platform pay-as-you-go billing."],
-          ["API no-training and data-handling claims apply only to the exact general PAYG route."],
+          "ollama-cloud-hosted-api",
+          [
+            "Usage counts against the account's Ollama plan quota (Free, Pro, or Max) in 5-hour session and 7-day weekly windows; no per-token price is published.",
+          ],
+          [
+            "Ollama states that cloud prompts and responses are not logged, stored, or trained on.",
+            "Repository content is sent to ollama.com; this is not the loopback Ollama transport.",
+          ],
         ),
       },
       {
@@ -203,132 +180,6 @@ describe("product registry authority", () => {
           ["Billing and availability are disclosed for the exact pinned downstream route."],
           [
             "Provider, region, license, and retention facts come from the pinned route, not the aggregator brand.",
-          ],
-        ),
-      },
-      {
-        id: "deepseek",
-        endpoints: [
-          { id: "payg", label: "Open Platform PAYG", endpoint: "https://api.deepseek.com/v1" },
-        ],
-        modelPolicy: {
-          kind: "discovered-exact",
-          suggestedModelId: "deepseek-v4-flash",
-          aliases: "forbidden",
-        },
-        checks: HOSTED_CHECKS,
-        structuredOutput: "json-object-local-validation",
-        notice: notice(
-          "deepseek-payg-prc",
-          ["This is opt-in pay-as-you-go usage with account-specific limits."],
-          [
-            "Inputs and outputs may be processed and stored in the PRC.",
-            "Retention duration is uncertain and the service-improvement setting provides an opt-out.",
-            "DeepSeek is not presented as zero retention.",
-          ],
-        ),
-      },
-      {
-        id: "qwen",
-        endpoints: [
-          {
-            id: "international",
-            label: "International",
-            endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-          },
-        ],
-        modelPolicy: {
-          kind: "discovered-exact",
-          suggestedModelId: "qwen3-coder-flash",
-          aliases: "forbidden",
-        },
-        checks: HOSTED_CHECKS,
-        structuredOutput: "json-object-local-validation",
-        // Version 2: the v1 notice made region/workspace claims the simplified
-        // configuration dropped, so a stale v1 acknowledgement must not carry.
-        notice: {
-          ...notice(
-            "qwen-international-payg",
-            [
-              "The international endpoint and the owning account determine billing and availability.",
-              "No international free quota is promised.",
-              "Subscription plan credentials are excluded.",
-            ],
-            [
-              "Requests go only to the international endpoint; mainland accounts and keys are separate.",
-              "Provider material permits retention where required by law and gives no fixed retention period.",
-            ],
-          ),
-          noticeVersion: 2,
-        },
-      },
-      {
-        id: "moonshot",
-        // International first: quick setup defaults to `endpoints[0]`.
-        endpoints: [
-          { id: "international", label: "International", endpoint: "https://api.moonshot.ai/v1" },
-          { id: "mainland", label: "Mainland China", endpoint: "https://api.moonshot.cn/v1" },
-        ],
-        modelPolicy: {
-          kind: "discovered-exact",
-          suggestedModelId: "kimi-k2.6",
-          aliases: "forbidden",
-        },
-        checks: HOSTED_CHECKS,
-        structuredOutput: "strict-json-schema",
-        notice: notice(
-          "moonshot-open-platform-payg",
-          ["Mainland and international accounts, balances, and endpoints are isolated."],
-          [
-            "API no-training claims apply only to the selected Open Platform PAYG route.",
-            "Consumer and Kimi Code products have different terms and are not substituted.",
-          ],
-        ),
-      },
-      {
-        id: "minimax",
-        endpoints: [
-          { id: "international", label: "International", endpoint: "https://api.minimax.io/v1" },
-        ],
-        modelPolicy: {
-          kind: "discovered-exact",
-          suggestedModelId: "MiniMax-M2.7",
-          aliases: "forbidden",
-        },
-        checks: HOSTED_CHECKS,
-        structuredOutput: "json-object-local-validation",
-        notice: notice(
-          "minimax-international-payg",
-          [
-            "The international endpoint and the owning account determine billing and availability.",
-            "No free quota is promised.",
-            "Token Plan and subscription keys draw on separate account resources and are excluded.",
-          ],
-          [
-            "Requests go only to the international endpoint; mainland accounts and keys are separate.",
-            "Provider material permits retention as long as necessary or permitted by law and gives no fixed retention period.",
-            "MiniMax is not presented as zero retention.",
-          ],
-        ),
-      },
-      {
-        id: "ollama-cloud",
-        endpoints: [{ id: "cloud", label: "Ollama Cloud", endpoint: "https://ollama.com/v1" }],
-        modelPolicy: {
-          kind: "discovered-exact",
-          suggestedModelId: "gpt-oss:20b",
-          aliases: "forbidden",
-        },
-        checks: HOSTED_CHECKS,
-        structuredOutput: "json-object-local-validation",
-        notice: notice(
-          "ollama-cloud-hosted-api",
-          [
-            "Usage counts against the account's Ollama plan quota (Free, Pro, or Max) in 5-hour session and 7-day weekly windows; no per-token price is published.",
-          ],
-          [
-            "Ollama states that cloud prompts and responses are not logged, stored, or trained on.",
-            "Repository content is sent to ollama.com; this is not the loopback Ollama transport.",
           ],
         ),
       },
@@ -372,6 +223,155 @@ describe("product registry authority", () => {
           ),
           noticeVersion: 2,
         },
+      },
+      {
+        id: "deepseek",
+        endpoints: [
+          { id: "payg", label: "Open Platform PAYG", endpoint: "https://api.deepseek.com/v1" },
+        ],
+        modelPolicy: {
+          kind: "discovered-exact",
+          suggestedModelId: "deepseek-v4-flash",
+          aliases: "forbidden",
+        },
+        checks: HOSTED_CHECKS,
+        structuredOutput: "json-object-local-validation",
+        notice: notice(
+          "deepseek-payg-prc",
+          ["This is opt-in pay-as-you-go usage with account-specific limits."],
+          [
+            "Inputs and outputs may be processed and stored in the PRC.",
+            "Retention duration is uncertain and the service-improvement setting provides an opt-out.",
+            "DeepSeek is not presented as zero retention.",
+          ],
+        ),
+      },
+      {
+        id: "zai",
+        endpoints: [
+          {
+            id: "general-payg",
+            label: "General Open Platform PAYG",
+            endpoint: "https://api.z.ai/api/paas/v4",
+          },
+        ],
+        modelPolicy: {
+          kind: "discovered-exact",
+          suggestedModelId: "glm-5-turbo",
+          aliases: "forbidden",
+        },
+        checks: HOSTED_CHECKS,
+        structuredOutput: "json-object-local-validation",
+        notice: notice(
+          "zai-general-payg",
+          ["This configuration uses general Open Platform pay-as-you-go billing."],
+          ["API no-training and data-handling claims apply only to the exact general PAYG route."],
+        ),
+      },
+      {
+        id: "qwen",
+        endpoints: [
+          {
+            id: "international",
+            label: "International",
+            endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+          },
+        ],
+        modelPolicy: {
+          kind: "discovered-exact",
+          suggestedModelId: "qwen3-coder-flash",
+          aliases: "forbidden",
+        },
+        checks: HOSTED_CHECKS,
+        structuredOutput: "json-object-local-validation",
+        // Version 2: the v1 notice made region/workspace claims the simplified
+        // configuration dropped, so a stale v1 acknowledgement must not carry.
+        notice: {
+          ...notice(
+            "qwen-international-payg",
+            [
+              "The international endpoint and the owning account determine billing and availability.",
+              "No international free quota is promised.",
+              "Subscription plan credentials are excluded.",
+            ],
+            [
+              "Requests go only to the international endpoint; mainland accounts and keys are separate.",
+              "Provider material permits retention where required by law and gives no fixed retention period.",
+            ],
+          ),
+          noticeVersion: 2,
+        },
+      },
+      {
+        id: "minimax",
+        endpoints: [
+          { id: "international", label: "International", endpoint: "https://api.minimax.io/v1" },
+        ],
+        modelPolicy: {
+          kind: "discovered-exact",
+          suggestedModelId: "MiniMax-M2.7",
+          aliases: "forbidden",
+        },
+        checks: HOSTED_CHECKS,
+        structuredOutput: "json-object-local-validation",
+        notice: notice(
+          "minimax-international-payg",
+          [
+            "The international endpoint and the owning account determine billing and availability.",
+            "No free quota is promised.",
+            "Token Plan and subscription keys draw on separate account resources and are excluded.",
+          ],
+          [
+            "Requests go only to the international endpoint; mainland accounts and keys are separate.",
+            "Provider material permits retention as long as necessary or permitted by law and gives no fixed retention period.",
+            "MiniMax is not presented as zero retention.",
+          ],
+        ),
+      },
+      {
+        id: "moonshot",
+        // International first: quick setup defaults to `endpoints[0]`.
+        endpoints: [
+          { id: "international", label: "International", endpoint: "https://api.moonshot.ai/v1" },
+          { id: "mainland", label: "Mainland China", endpoint: "https://api.moonshot.cn/v1" },
+        ],
+        modelPolicy: {
+          kind: "discovered-exact",
+          suggestedModelId: "kimi-k2.6",
+          aliases: "forbidden",
+        },
+        checks: HOSTED_CHECKS,
+        structuredOutput: "strict-json-schema",
+        notice: notice(
+          "moonshot-open-platform-payg",
+          ["Mainland and international accounts, balances, and endpoints are isolated."],
+          [
+            "API no-training claims apply only to the selected Open Platform PAYG route.",
+            "Consumer and Kimi Code products have different terms and are not substituted.",
+          ],
+        ),
+      },
+      {
+        id: "gemini",
+        endpoints: [
+          {
+            id: "global",
+            label: "Global",
+            endpoint: "https://generativelanguage.googleapis.com/v1beta",
+          },
+        ],
+        modelPolicy: {
+          kind: "discovered-exact",
+          suggestedModelId: "gemini-2.5-flash",
+          aliases: "forbidden",
+        },
+        checks: HOSTED_CHECKS,
+        structuredOutput: "strict-json-schema",
+        notice: notice(
+          "gemini-hosted-api",
+          ["Free and paid availability depends on the selected account and exact model."],
+          ["Data handling follows the configured Google API product and account terms."],
+        ),
       },
     ]);
   });

@@ -267,6 +267,7 @@ describe("useOnboarding", () => {
     const draft = readyDraft("gemini");
 
     act(() => {
+      onboardingHook.result.current.setProduct("gemini");
       applyDraft(onboardingHook.result.current, draft);
       for (let index = 0; index < draft.plan.steps.length - 1; index += 1) {
         onboardingHook.result.current.next();
@@ -329,6 +330,7 @@ describe("useOnboarding", () => {
     const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
 
     act(() => {
+      onboardingHook.result.current.setProduct("gemini");
       applyDraft(onboardingHook.result.current, literalDraft);
       for (let index = 0; index < literalDraft.plan.steps.length - 1; index += 1) {
         onboardingHook.result.current.next();
@@ -389,6 +391,7 @@ describe("useOnboarding", () => {
     const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
 
     act(() => {
+      onboardingHook.result.current.setProduct("gemini");
       applyDraft(onboardingHook.result.current, draft);
       for (let index = 0; index < draft.plan.steps.length - 1; index += 1) {
         onboardingHook.result.current.next();

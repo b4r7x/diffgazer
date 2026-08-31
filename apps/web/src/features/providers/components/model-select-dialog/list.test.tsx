@@ -1,4 +1,4 @@
-import { getEndpointPoolContext, LIVE_ONLY_MODEL_DESCRIPTION } from "@diffgazer/core/providers";
+import { LIVE_ONLY_MODEL_DESCRIPTION } from "@diffgazer/core/providers";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -32,9 +32,7 @@ const LIST_PROPS = {
   onBoundaryReached: vi.fn(),
 };
 
-describe("ModelList endpoint pool badges", () => {
-  const ZEN_POOL = getEndpointPoolContext("opencode-zen", "https://opencode.ai/zen/v1");
-
+describe("ModelList endpoint pools", () => {
   const POOL_MODELS: ModelInfo[] = [
     {
       id: "deepseek-v4-flash",
@@ -65,39 +63,12 @@ describe("ModelList endpoint pool badges", () => {
     },
   ];
 
-  it("badges each row with the pool that will bill it", () => {
-    render(
-      <ModelList models={POOL_MODELS} poolContext={ZEN_POOL} armedPoolId="zen" {...LIST_PROPS} />,
-    );
-
-    expect(screen.getByRole("radio", { name: /deepseek-v4-flash/ })).toHaveTextContent("Zen");
-    expect(screen.getByRole("radio", { name: /claude-opus-5/ })).toHaveTextContent("Zen");
-    expect(screen.getByRole("radio", { name: /qwen3\.7-max/ })).toHaveTextContent("Go");
-    expect(screen.getByRole("radio", { name: /glm-5\.3/ })).toHaveTextContent("Zen");
-  });
-
-  it("arming the sibling pool moves only the rows both pools serve", () => {
-    const { rerender } = render(
-      <ModelList models={POOL_MODELS} poolContext={ZEN_POOL} armedPoolId="zen" {...LIST_PROPS} />,
-    );
-    const before = screen.getAllByRole("radio").map((row) => row.getAttribute("data-value"));
-
-    rerender(
-      <ModelList models={POOL_MODELS} poolContext={ZEN_POOL} armedPoolId="go" {...LIST_PROPS} />,
-    );
-
-    expect(screen.getAllByRole("radio").map((row) => row.getAttribute("data-value"))).toEqual(
-      before,
-    );
-    expect(screen.getByRole("radio", { name: /deepseek-v4-flash/ })).toHaveTextContent("Go");
-    // A single-pool row's own pool wins over the selector.
-    expect(screen.getByRole("radio", { name: /claude-opus-5/ })).toHaveTextContent("Zen");
-    expect(screen.getByRole("radio", { name: /qwen3\.7-max/ })).toHaveTextContent("Go");
-  });
-
-  it("shows no pool badge for a configuration whose endpoints are not billing pools", () => {
+  // The picker's active pool tab names the pool, so the rows never repeat it —
+  // whatever pools the rows belong to, and whether or not the product has any.
+  it("renders no pool badges on any row", () => {
     render(<ModelList models={POOL_MODELS} {...LIST_PROPS} />);
 
+    expect(screen.getAllByRole("radio")).toHaveLength(POOL_MODELS.length);
     expect(screen.queryByText(/^(Zen|Go)$/)).not.toBeInTheDocument();
   });
 });

@@ -254,7 +254,7 @@ describe("GlobalLayout", () => {
 
     renderShell();
 
-    const status = await screen.findByLabelText(/^Provider: OpenCode Go \//);
+    const status = await screen.findByLabelText(/^Provider: OpenCode · Go \//);
     expect(status).not.toHaveTextContent("OpenCode Zen");
   });
 

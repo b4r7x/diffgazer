@@ -7,140 +7,86 @@ import type { DerivedCatalogModel } from "./model-capability.js";
 export const CATALOG_MODEL_DERIVED: Partial<
   Record<RunnableProductId, Record<string, DerivedCatalogModel>>
 > = {
-  gemini: {
-    "gemini-2.5-computer-use-preview-10-2025": {
-      name: "Gemini 2.5 Computer Use Preview 10-2025",
-      billing: "paid",
-    },
-    "gemini-2.5-flash": {
-      name: "Gemini 2.5 Flash",
-      billing: "paid",
-    },
-    "gemini-2.5-flash-lite": {
-      name: "Gemini 2.5 Flash-Lite",
-      billing: "paid",
-    },
-    "gemini-2.5-pro": {
-      name: "Gemini 2.5 Pro",
-      billing: "paid",
-    },
-    "gemini-3-flash-preview": {
-      name: "Gemini 3 Flash Preview",
-      billing: "paid",
-    },
-    "gemini-3.1-flash-lite": {
-      name: "Gemini 3.1 Flash Lite",
-      billing: "paid",
-    },
-    "gemini-3.1-flash-lite-preview": {
-      name: "Gemini 3.1 Flash Lite Preview",
-      billing: "paid",
-    },
-    "gemini-3.1-pro-preview": {
-      name: "Gemini 3.1 Pro Preview",
-      billing: "paid",
-    },
-    "gemini-3.1-pro-preview-customtools": {
-      name: "Gemini 3.1 Pro Preview Custom Tools",
-      billing: "paid",
-    },
-    "gemini-3.5-flash": {
-      name: "Gemini 3.5 Flash",
-      billing: "paid",
-    },
-    "gemini-3.5-flash-lite": {
-      name: "Gemini 3.5 Flash Lite",
-      billing: "paid",
-    },
-    "gemini-3.6-flash": {
-      name: "Gemini 3.6 Flash",
-      billing: "paid",
-    },
-    "gemini-3.7-flash": {
-      name: "Gemini 3.7 Flash",
-      billing: "paid",
-    },
-    "gemini-embedding-001": {
-      name: "Gemini Embedding 001",
-      billing: "paid",
-    },
-    "gemini-embedding-2": {
-      name: "Gemini Embedding 2",
-      billing: "paid",
-    },
-    "gemini-robotics-er-1.6-preview": {
-      name: "Gemini Robotics-ER 1.6 Preview",
-      billing: "paid",
-    },
-    "gemma-4-26b-a4b-it": {
-      name: "Gemma 4 26B A4B IT",
+  "ollama-cloud": {
+    "deepseek-v4-flash": {
+      name: "deepseek-v4-flash",
       billing: "unknown",
     },
-    "gemma-4-31b-it": {
-      name: "Gemma 4 31B IT",
+    "deepseek-v4-flash:0731": {
+      name: "DeepSeek V4 Flash 0731",
       billing: "unknown",
     },
-  },
-  zai: {
-    "glm-4.5": {
-      name: "GLM-4.5",
-      billing: "paid",
+    "deepseek-v4-pro": {
+      name: "deepseek-v4-pro",
+      billing: "unknown",
     },
-    "glm-4.5-air": {
-      name: "GLM-4.5-Air",
-      billing: "paid",
-    },
-    "glm-4.5-flash": {
-      name: "GLM-4.5-Flash",
-      billing: "free",
-    },
-    "glm-4.5v": {
-      name: "GLM-4.5V",
-      billing: "paid",
-    },
-    "glm-4.6": {
-      name: "GLM-4.6",
-      billing: "paid",
-    },
-    "glm-4.6v": {
-      name: "GLM-4.6V",
-      billing: "paid",
-    },
-    "glm-4.7": {
-      name: "GLM-4.7",
-      billing: "paid",
-    },
-    "glm-4.7-flash": {
-      name: "GLM-4.7-Flash",
-      billing: "free",
-    },
-    "glm-4.7-flashx": {
-      name: "GLM-4.7-FlashX",
-      billing: "paid",
-    },
-    "glm-5": {
-      name: "GLM-5",
-      billing: "paid",
-    },
-    "glm-5-turbo": {
-      name: "GLM-5-Turbo",
-      billing: "paid",
+    "gemma4:31b": {
+      name: "gemma4:31b",
+      billing: "unknown",
     },
     "glm-5.1": {
-      name: "GLM-5.1",
-      billing: "paid",
+      name: "glm-5.1",
+      billing: "unknown",
     },
     "glm-5.2": {
       name: "GLM-5.2",
-      billing: "paid",
+      billing: "unknown",
     },
-    "glm-5.3": {
-      name: "GLM-5.3",
-      billing: "paid",
+    "gpt-oss:120b": {
+      name: "gpt-oss:120b",
+      billing: "unknown",
     },
-    "glm-5v-turbo": {
-      name: "GLM-5V-Turbo",
-      billing: "paid",
+    "gpt-oss:20b": {
+      name: "gpt-oss:20b",
+      billing: "unknown",
+    },
+    "kimi-k2.5": {
+      name: "kimi-k2.5",
+      billing: "unknown",
+    },
+    "kimi-k2.6": {
+      name: "kimi-k2.6",
+      billing: "unknown",
+    },
+    "kimi-k2.7-code": {
+      name: "kimi-k2.7-code",
+      billing: "unknown",
+    },
+    "kimi-k3": {
+      name: "kimi-k3",
+      billing: "unknown",
+    },
+    "minimax-m2.5": {
+      name: "minimax-m2.5",
+      billing: "unknown",
+    },
+    "minimax-m2.7": {
+      name: "minimax-m2.7",
+      billing: "unknown",
+    },
+    "minimax-m3": {
+      name: "minimax-m3",
+      billing: "unknown",
+    },
+    "mistral-large-3:675b": {
+      name: "mistral-large-3:675b",
+      billing: "unknown",
+    },
+    "nemotron-3-nano:30b": {
+      name: "nemotron-3-nano:30b",
+      billing: "unknown",
+    },
+    "nemotron-3-super": {
+      name: "nemotron-3-super",
+      billing: "unknown",
+    },
+    "nemotron-3-ultra": {
+      name: "nemotron-3-ultra",
+      billing: "unknown",
+    },
+    "qwen3.5:397b": {
+      name: "qwen3.5:397b",
+      billing: "unknown",
     },
   },
   openrouter: {
@@ -1481,368 +1427,6 @@ export const CATALOG_MODEL_DERIVED: Partial<
       billing: "paid",
     },
   },
-  deepseek: {
-    "deepseek-v4-flash": {
-      name: "DeepSeek V4 Flash",
-      billing: "paid",
-    },
-    "deepseek-v4-flash-vision-exp": {
-      name: "DeepSeek V4 Flash Vision Exp",
-      billing: "paid",
-    },
-    "deepseek-v4-pro": {
-      name: "DeepSeek V4 Pro",
-      billing: "paid",
-    },
-  },
-  qwen: {
-    "deepseek-v4-flash-0731": {
-      name: "DeepSeek V4 Flash 0731",
-      billing: "paid",
-    },
-    "glm-5.2": {
-      name: "GLM-5.2",
-      billing: "paid",
-    },
-    "qvq-max": {
-      name: "QVQ Max",
-      billing: "paid",
-    },
-    "qwen-flash": {
-      name: "Qwen Flash",
-      billing: "paid",
-    },
-    "qwen-max": {
-      name: "Qwen Max",
-      billing: "paid",
-    },
-    "qwen-mt-plus": {
-      name: "Qwen-MT Plus",
-      billing: "paid",
-    },
-    "qwen-mt-turbo": {
-      name: "Qwen-MT Turbo",
-      billing: "paid",
-    },
-    "qwen-plus": {
-      name: "Qwen Plus",
-      billing: "paid",
-    },
-    "qwen-plus-character-ja": {
-      name: "Qwen Plus Character (Japanese)",
-      billing: "paid",
-    },
-    "qwen-turbo": {
-      name: "Qwen Turbo",
-      billing: "paid",
-    },
-    "qwen-vl-max": {
-      name: "Qwen-VL Max",
-      billing: "paid",
-    },
-    "qwen-vl-ocr": {
-      name: "Qwen-VL OCR",
-      billing: "paid",
-    },
-    "qwen-vl-plus": {
-      name: "Qwen-VL Plus",
-      billing: "paid",
-    },
-    "qwen2-5-14b-instruct": {
-      name: "Qwen2.5 14B Instruct",
-      billing: "paid",
-    },
-    "qwen2-5-32b-instruct": {
-      name: "Qwen2.5 32B Instruct",
-      billing: "paid",
-    },
-    "qwen2-5-72b-instruct": {
-      name: "Qwen2.5 72B Instruct",
-      billing: "paid",
-    },
-    "qwen2-5-7b-instruct": {
-      name: "Qwen2.5 7B Instruct",
-      billing: "paid",
-    },
-    "qwen2-5-vl-72b-instruct": {
-      name: "Qwen2.5-VL 72B Instruct",
-      billing: "paid",
-    },
-    "qwen2-5-vl-7b-instruct": {
-      name: "Qwen2.5-VL 7B Instruct",
-      billing: "paid",
-    },
-    "qwen3-14b": {
-      name: "Qwen3 14B",
-      billing: "paid",
-    },
-    "qwen3-235b-a22b": {
-      name: "Qwen3 235B-A22B",
-      billing: "paid",
-    },
-    "qwen3-32b": {
-      name: "Qwen3 32B",
-      billing: "paid",
-    },
-    "qwen3-8b": {
-      name: "Qwen3 8B",
-      billing: "paid",
-    },
-    "qwen3-asr-flash": {
-      name: "Qwen3-ASR Flash",
-      billing: "paid",
-    },
-    "qwen3-coder-30b-a3b-instruct": {
-      name: "Qwen3-Coder 30B-A3B Instruct",
-      billing: "paid",
-    },
-    "qwen3-coder-480b-a35b-instruct": {
-      name: "Qwen3-Coder 480B-A35B Instruct",
-      billing: "paid",
-    },
-    "qwen3-coder-flash": {
-      name: "Qwen3 Coder Flash",
-      billing: "paid",
-    },
-    "qwen3-coder-plus": {
-      name: "Qwen3 Coder Plus",
-      billing: "paid",
-    },
-    "qwen3-max": {
-      name: "Qwen3 Max",
-      billing: "paid",
-    },
-    "qwen3-next-80b-a3b-instruct": {
-      name: "Qwen3-Next 80B-A3B Instruct",
-      billing: "paid",
-    },
-    "qwen3-next-80b-a3b-thinking": {
-      name: "Qwen3-Next 80B-A3B (Thinking)",
-      billing: "paid",
-    },
-    "qwen3-vl-235b-a22b": {
-      name: "Qwen3-VL 235B-A22B",
-      billing: "paid",
-    },
-    "qwen3-vl-30b-a3b": {
-      name: "Qwen3-VL 30B-A3B",
-      billing: "paid",
-    },
-    "qwen3-vl-plus": {
-      name: "Qwen3-VL Plus",
-      billing: "paid",
-    },
-    "qwen3.5-122b-a10b": {
-      name: "Qwen3.5 122B-A10B",
-      billing: "paid",
-    },
-    "qwen3.5-27b": {
-      name: "Qwen3.5 27B",
-      billing: "paid",
-    },
-    "qwen3.5-35b-a3b": {
-      name: "Qwen3.5 35B-A3B",
-      billing: "paid",
-    },
-    "qwen3.5-397b-a17b": {
-      name: "Qwen3.5 397B-A17B",
-      billing: "paid",
-    },
-    "qwen3.5-plus": {
-      name: "Qwen3.5 Plus",
-      billing: "paid",
-    },
-    "qwen3.6-27b": {
-      name: "Qwen3.6 27B",
-      billing: "paid",
-    },
-    "qwen3.6-35b-a3b": {
-      name: "Qwen3.6 35B-A3B",
-      billing: "paid",
-    },
-    "qwen3.6-flash": {
-      name: "Qwen3.6 Flash",
-      billing: "paid",
-    },
-    "qwen3.6-max-preview": {
-      name: "Qwen3.6 Max Preview",
-      billing: "paid",
-    },
-    "qwen3.6-plus": {
-      name: "Qwen3.6 Plus",
-      billing: "paid",
-    },
-    "qwen3.7-max": {
-      name: "Qwen3.7 Max",
-      billing: "paid",
-    },
-    "qwen3.7-plus": {
-      name: "Qwen3.7 Plus",
-      billing: "paid",
-    },
-    "qwen3.8-max": {
-      name: "Qwen3.8 Max",
-      billing: "paid",
-    },
-    "qwq-plus": {
-      name: "QwQ Plus",
-      billing: "paid",
-    },
-  },
-  moonshot: {
-    "kimi-k2-0711-preview": {
-      name: "Kimi K2 0711",
-      billing: "paid",
-    },
-    "kimi-k2-0905-preview": {
-      name: "Kimi K2 0905",
-      billing: "paid",
-    },
-    "kimi-k2-thinking": {
-      name: "Kimi K2 Thinking",
-      billing: "paid",
-    },
-    "kimi-k2-thinking-turbo": {
-      name: "Kimi K2 Thinking Turbo",
-      billing: "paid",
-    },
-    "kimi-k2-turbo-preview": {
-      name: "Kimi K2 Turbo",
-      billing: "paid",
-    },
-    "kimi-k2.5": {
-      name: "Kimi K2.5",
-      billing: "paid",
-    },
-    "kimi-k2.6": {
-      name: "Kimi K2.6",
-      billing: "paid",
-    },
-    "kimi-k2.7-code": {
-      name: "Kimi K2.7 Code",
-      billing: "paid",
-    },
-    "kimi-k2.7-code-highspeed": {
-      name: "Kimi K2.7 Code HighSpeed",
-      billing: "paid",
-    },
-    "kimi-k3": {
-      name: "Kimi K3",
-      billing: "paid",
-    },
-  },
-  minimax: {
-    "MiniMax-M2": {
-      name: "MiniMax-M2",
-      billing: "paid",
-    },
-    "MiniMax-M2.1": {
-      name: "MiniMax-M2.1",
-      billing: "paid",
-    },
-    "MiniMax-M2.5": {
-      name: "MiniMax-M2.5",
-      billing: "paid",
-    },
-    "MiniMax-M2.5-highspeed": {
-      name: "MiniMax-M2.5-highspeed",
-      billing: "paid",
-    },
-    "MiniMax-M2.7": {
-      name: "MiniMax-M2.7",
-      billing: "paid",
-    },
-    "MiniMax-M2.7-highspeed": {
-      name: "MiniMax-M2.7-highspeed",
-      billing: "paid",
-    },
-    "MiniMax-M3": {
-      name: "MiniMax-M3",
-      billing: "paid",
-    },
-  },
-  "ollama-cloud": {
-    "deepseek-v4-flash": {
-      name: "deepseek-v4-flash",
-      billing: "unknown",
-    },
-    "deepseek-v4-flash:0731": {
-      name: "DeepSeek V4 Flash 0731",
-      billing: "unknown",
-    },
-    "deepseek-v4-pro": {
-      name: "deepseek-v4-pro",
-      billing: "unknown",
-    },
-    "gemma4:31b": {
-      name: "gemma4:31b",
-      billing: "unknown",
-    },
-    "glm-5.1": {
-      name: "glm-5.1",
-      billing: "unknown",
-    },
-    "glm-5.2": {
-      name: "GLM-5.2",
-      billing: "unknown",
-    },
-    "gpt-oss:120b": {
-      name: "gpt-oss:120b",
-      billing: "unknown",
-    },
-    "gpt-oss:20b": {
-      name: "gpt-oss:20b",
-      billing: "unknown",
-    },
-    "kimi-k2.5": {
-      name: "kimi-k2.5",
-      billing: "unknown",
-    },
-    "kimi-k2.6": {
-      name: "kimi-k2.6",
-      billing: "unknown",
-    },
-    "kimi-k2.7-code": {
-      name: "kimi-k2.7-code",
-      billing: "unknown",
-    },
-    "kimi-k3": {
-      name: "kimi-k3",
-      billing: "unknown",
-    },
-    "minimax-m2.5": {
-      name: "minimax-m2.5",
-      billing: "unknown",
-    },
-    "minimax-m2.7": {
-      name: "minimax-m2.7",
-      billing: "unknown",
-    },
-    "minimax-m3": {
-      name: "minimax-m3",
-      billing: "unknown",
-    },
-    "mistral-large-3:675b": {
-      name: "mistral-large-3:675b",
-      billing: "unknown",
-    },
-    "nemotron-3-nano:30b": {
-      name: "nemotron-3-nano:30b",
-      billing: "unknown",
-    },
-    "nemotron-3-super": {
-      name: "nemotron-3-super",
-      billing: "unknown",
-    },
-    "nemotron-3-ultra": {
-      name: "nemotron-3-ultra",
-      billing: "unknown",
-    },
-    "qwen3.5:397b": {
-      name: "qwen3.5:397b",
-      billing: "unknown",
-    },
-  },
   "opencode-zen": {
     "big-pickle": {
       name: "Big Pickle",
@@ -2267,6 +1851,422 @@ export const CATALOG_MODEL_DERIVED: Partial<
     "x-preview-f-free": {
       name: "Ox Alpha Free (Unlimited)",
       billing: "free",
+    },
+  },
+  deepseek: {
+    "deepseek-v4-flash": {
+      name: "DeepSeek V4 Flash",
+      billing: "paid",
+    },
+    "deepseek-v4-flash-vision-exp": {
+      name: "DeepSeek V4 Flash Vision Exp",
+      billing: "paid",
+    },
+    "deepseek-v4-pro": {
+      name: "DeepSeek V4 Pro",
+      billing: "paid",
+    },
+  },
+  zai: {
+    "glm-4.5": {
+      name: "GLM-4.5",
+      billing: "paid",
+    },
+    "glm-4.5-air": {
+      name: "GLM-4.5-Air",
+      billing: "paid",
+    },
+    "glm-4.5-flash": {
+      name: "GLM-4.5-Flash",
+      billing: "free",
+    },
+    "glm-4.5v": {
+      name: "GLM-4.5V",
+      billing: "paid",
+    },
+    "glm-4.6": {
+      name: "GLM-4.6",
+      billing: "paid",
+    },
+    "glm-4.6v": {
+      name: "GLM-4.6V",
+      billing: "paid",
+    },
+    "glm-4.7": {
+      name: "GLM-4.7",
+      billing: "paid",
+    },
+    "glm-4.7-flash": {
+      name: "GLM-4.7-Flash",
+      billing: "free",
+    },
+    "glm-4.7-flashx": {
+      name: "GLM-4.7-FlashX",
+      billing: "paid",
+    },
+    "glm-5": {
+      name: "GLM-5",
+      billing: "paid",
+    },
+    "glm-5-turbo": {
+      name: "GLM-5-Turbo",
+      billing: "paid",
+    },
+    "glm-5.1": {
+      name: "GLM-5.1",
+      billing: "paid",
+    },
+    "glm-5.2": {
+      name: "GLM-5.2",
+      billing: "paid",
+    },
+    "glm-5.3": {
+      name: "GLM-5.3",
+      billing: "paid",
+    },
+    "glm-5v-turbo": {
+      name: "GLM-5V-Turbo",
+      billing: "paid",
+    },
+  },
+  qwen: {
+    "deepseek-v4-flash-0731": {
+      name: "DeepSeek V4 Flash 0731",
+      billing: "paid",
+    },
+    "glm-5.2": {
+      name: "GLM-5.2",
+      billing: "paid",
+    },
+    "qvq-max": {
+      name: "QVQ Max",
+      billing: "paid",
+    },
+    "qwen-flash": {
+      name: "Qwen Flash",
+      billing: "paid",
+    },
+    "qwen-max": {
+      name: "Qwen Max",
+      billing: "paid",
+    },
+    "qwen-mt-plus": {
+      name: "Qwen-MT Plus",
+      billing: "paid",
+    },
+    "qwen-mt-turbo": {
+      name: "Qwen-MT Turbo",
+      billing: "paid",
+    },
+    "qwen-plus": {
+      name: "Qwen Plus",
+      billing: "paid",
+    },
+    "qwen-plus-character-ja": {
+      name: "Qwen Plus Character (Japanese)",
+      billing: "paid",
+    },
+    "qwen-turbo": {
+      name: "Qwen Turbo",
+      billing: "paid",
+    },
+    "qwen-vl-max": {
+      name: "Qwen-VL Max",
+      billing: "paid",
+    },
+    "qwen-vl-ocr": {
+      name: "Qwen-VL OCR",
+      billing: "paid",
+    },
+    "qwen-vl-plus": {
+      name: "Qwen-VL Plus",
+      billing: "paid",
+    },
+    "qwen2-5-14b-instruct": {
+      name: "Qwen2.5 14B Instruct",
+      billing: "paid",
+    },
+    "qwen2-5-32b-instruct": {
+      name: "Qwen2.5 32B Instruct",
+      billing: "paid",
+    },
+    "qwen2-5-72b-instruct": {
+      name: "Qwen2.5 72B Instruct",
+      billing: "paid",
+    },
+    "qwen2-5-7b-instruct": {
+      name: "Qwen2.5 7B Instruct",
+      billing: "paid",
+    },
+    "qwen2-5-vl-72b-instruct": {
+      name: "Qwen2.5-VL 72B Instruct",
+      billing: "paid",
+    },
+    "qwen2-5-vl-7b-instruct": {
+      name: "Qwen2.5-VL 7B Instruct",
+      billing: "paid",
+    },
+    "qwen3-14b": {
+      name: "Qwen3 14B",
+      billing: "paid",
+    },
+    "qwen3-235b-a22b": {
+      name: "Qwen3 235B-A22B",
+      billing: "paid",
+    },
+    "qwen3-32b": {
+      name: "Qwen3 32B",
+      billing: "paid",
+    },
+    "qwen3-8b": {
+      name: "Qwen3 8B",
+      billing: "paid",
+    },
+    "qwen3-asr-flash": {
+      name: "Qwen3-ASR Flash",
+      billing: "paid",
+    },
+    "qwen3-coder-30b-a3b-instruct": {
+      name: "Qwen3-Coder 30B-A3B Instruct",
+      billing: "paid",
+    },
+    "qwen3-coder-480b-a35b-instruct": {
+      name: "Qwen3-Coder 480B-A35B Instruct",
+      billing: "paid",
+    },
+    "qwen3-coder-flash": {
+      name: "Qwen3 Coder Flash",
+      billing: "paid",
+    },
+    "qwen3-coder-plus": {
+      name: "Qwen3 Coder Plus",
+      billing: "paid",
+    },
+    "qwen3-max": {
+      name: "Qwen3 Max",
+      billing: "paid",
+    },
+    "qwen3-next-80b-a3b-instruct": {
+      name: "Qwen3-Next 80B-A3B Instruct",
+      billing: "paid",
+    },
+    "qwen3-next-80b-a3b-thinking": {
+      name: "Qwen3-Next 80B-A3B (Thinking)",
+      billing: "paid",
+    },
+    "qwen3-vl-235b-a22b": {
+      name: "Qwen3-VL 235B-A22B",
+      billing: "paid",
+    },
+    "qwen3-vl-30b-a3b": {
+      name: "Qwen3-VL 30B-A3B",
+      billing: "paid",
+    },
+    "qwen3-vl-plus": {
+      name: "Qwen3-VL Plus",
+      billing: "paid",
+    },
+    "qwen3.5-122b-a10b": {
+      name: "Qwen3.5 122B-A10B",
+      billing: "paid",
+    },
+    "qwen3.5-27b": {
+      name: "Qwen3.5 27B",
+      billing: "paid",
+    },
+    "qwen3.5-35b-a3b": {
+      name: "Qwen3.5 35B-A3B",
+      billing: "paid",
+    },
+    "qwen3.5-397b-a17b": {
+      name: "Qwen3.5 397B-A17B",
+      billing: "paid",
+    },
+    "qwen3.5-plus": {
+      name: "Qwen3.5 Plus",
+      billing: "paid",
+    },
+    "qwen3.6-27b": {
+      name: "Qwen3.6 27B",
+      billing: "paid",
+    },
+    "qwen3.6-35b-a3b": {
+      name: "Qwen3.6 35B-A3B",
+      billing: "paid",
+    },
+    "qwen3.6-flash": {
+      name: "Qwen3.6 Flash",
+      billing: "paid",
+    },
+    "qwen3.6-max-preview": {
+      name: "Qwen3.6 Max Preview",
+      billing: "paid",
+    },
+    "qwen3.6-plus": {
+      name: "Qwen3.6 Plus",
+      billing: "paid",
+    },
+    "qwen3.7-max": {
+      name: "Qwen3.7 Max",
+      billing: "paid",
+    },
+    "qwen3.7-plus": {
+      name: "Qwen3.7 Plus",
+      billing: "paid",
+    },
+    "qwen3.8-max": {
+      name: "Qwen3.8 Max",
+      billing: "paid",
+    },
+    "qwq-plus": {
+      name: "QwQ Plus",
+      billing: "paid",
+    },
+  },
+  minimax: {
+    "MiniMax-M2": {
+      name: "MiniMax-M2",
+      billing: "paid",
+    },
+    "MiniMax-M2.1": {
+      name: "MiniMax-M2.1",
+      billing: "paid",
+    },
+    "MiniMax-M2.5": {
+      name: "MiniMax-M2.5",
+      billing: "paid",
+    },
+    "MiniMax-M2.5-highspeed": {
+      name: "MiniMax-M2.5-highspeed",
+      billing: "paid",
+    },
+    "MiniMax-M2.7": {
+      name: "MiniMax-M2.7",
+      billing: "paid",
+    },
+    "MiniMax-M2.7-highspeed": {
+      name: "MiniMax-M2.7-highspeed",
+      billing: "paid",
+    },
+    "MiniMax-M3": {
+      name: "MiniMax-M3",
+      billing: "paid",
+    },
+  },
+  moonshot: {
+    "kimi-k2-0711-preview": {
+      name: "Kimi K2 0711",
+      billing: "paid",
+    },
+    "kimi-k2-0905-preview": {
+      name: "Kimi K2 0905",
+      billing: "paid",
+    },
+    "kimi-k2-thinking": {
+      name: "Kimi K2 Thinking",
+      billing: "paid",
+    },
+    "kimi-k2-thinking-turbo": {
+      name: "Kimi K2 Thinking Turbo",
+      billing: "paid",
+    },
+    "kimi-k2-turbo-preview": {
+      name: "Kimi K2 Turbo",
+      billing: "paid",
+    },
+    "kimi-k2.5": {
+      name: "Kimi K2.5",
+      billing: "paid",
+    },
+    "kimi-k2.6": {
+      name: "Kimi K2.6",
+      billing: "paid",
+    },
+    "kimi-k2.7-code": {
+      name: "Kimi K2.7 Code",
+      billing: "paid",
+    },
+    "kimi-k2.7-code-highspeed": {
+      name: "Kimi K2.7 Code HighSpeed",
+      billing: "paid",
+    },
+    "kimi-k3": {
+      name: "Kimi K3",
+      billing: "paid",
+    },
+  },
+  gemini: {
+    "gemini-2.5-computer-use-preview-10-2025": {
+      name: "Gemini 2.5 Computer Use Preview 10-2025",
+      billing: "paid",
+    },
+    "gemini-2.5-flash": {
+      name: "Gemini 2.5 Flash",
+      billing: "paid",
+    },
+    "gemini-2.5-flash-lite": {
+      name: "Gemini 2.5 Flash-Lite",
+      billing: "paid",
+    },
+    "gemini-2.5-pro": {
+      name: "Gemini 2.5 Pro",
+      billing: "paid",
+    },
+    "gemini-3-flash-preview": {
+      name: "Gemini 3 Flash Preview",
+      billing: "paid",
+    },
+    "gemini-3.1-flash-lite": {
+      name: "Gemini 3.1 Flash Lite",
+      billing: "paid",
+    },
+    "gemini-3.1-flash-lite-preview": {
+      name: "Gemini 3.1 Flash Lite Preview",
+      billing: "paid",
+    },
+    "gemini-3.1-pro-preview": {
+      name: "Gemini 3.1 Pro Preview",
+      billing: "paid",
+    },
+    "gemini-3.1-pro-preview-customtools": {
+      name: "Gemini 3.1 Pro Preview Custom Tools",
+      billing: "paid",
+    },
+    "gemini-3.5-flash": {
+      name: "Gemini 3.5 Flash",
+      billing: "paid",
+    },
+    "gemini-3.5-flash-lite": {
+      name: "Gemini 3.5 Flash Lite",
+      billing: "paid",
+    },
+    "gemini-3.6-flash": {
+      name: "Gemini 3.6 Flash",
+      billing: "paid",
+    },
+    "gemini-3.7-flash": {
+      name: "Gemini 3.7 Flash",
+      billing: "paid",
+    },
+    "gemini-embedding-001": {
+      name: "Gemini Embedding 001",
+      billing: "paid",
+    },
+    "gemini-embedding-2": {
+      name: "Gemini Embedding 2",
+      billing: "paid",
+    },
+    "gemini-robotics-er-1.6-preview": {
+      name: "Gemini Robotics-ER 1.6 Preview",
+      billing: "paid",
+    },
+    "gemma-4-26b-a4b-it": {
+      name: "Gemma 4 26B A4B IT",
+      billing: "unknown",
+    },
+    "gemma-4-31b-it": {
+      name: "Gemma 4 31B IT",
+      billing: "unknown",
     },
   },
 };

@@ -8,40 +8,40 @@ export const PROVIDER_DERIVED: Record<
   RunnableProductId,
   { displayName: string; billing: CatalogBillingRange }
 > = {
-  gemini: {
-    displayName: "Google Gemini",
-    billing: "paid",
-  },
-  zai: {
-    displayName: "Z.AI",
-    billing: "mixed",
+  "ollama-cloud": {
+    displayName: "Ollama Cloud",
+    billing: "unknown",
   },
   openrouter: {
     displayName: "OpenRouter",
+    billing: "mixed",
+  },
+  "opencode-zen": {
+    displayName: "OpenCode Zen",
     billing: "mixed",
   },
   deepseek: {
     displayName: "DeepSeek",
     billing: "paid",
   },
+  zai: {
+    displayName: "Z.AI",
+    billing: "mixed",
+  },
   qwen: {
     displayName: "Qwen International",
-    billing: "paid",
-  },
-  moonshot: {
-    displayName: "Moonshot Open Platform",
     billing: "paid",
   },
   minimax: {
     displayName: "MiniMax International",
     billing: "paid",
   },
-  "ollama-cloud": {
-    displayName: "Ollama Cloud",
-    billing: "unknown",
+  moonshot: {
+    displayName: "Moonshot Open Platform",
+    billing: "paid",
   },
-  "opencode-zen": {
-    displayName: "OpenCode Zen",
-    billing: "mixed",
+  gemini: {
+    displayName: "Google Gemini",
+    billing: "paid",
   },
 };

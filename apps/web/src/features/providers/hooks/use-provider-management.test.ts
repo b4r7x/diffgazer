@@ -321,10 +321,10 @@ describe("useProviderManagement", () => {
       );
     });
 
-    // "OpenCode Zen is now active" beside a header that just read "OpenCode Go"
+    // "OpenCode Zen is now active" beside a header that just read "OpenCode · Go"
     // named two things for one record.
     expect(toastMocks.success).toHaveBeenCalledWith("Configuration Selected", {
-      message: "OpenCode Go is now active",
+      message: "OpenCode · Go is now active",
     });
   });
 

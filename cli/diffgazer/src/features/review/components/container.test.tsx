@@ -310,11 +310,11 @@ describe("ReviewContainer", () => {
 
     await waitUntil(() => frameText(lastFrame()).includes("Configuration Not Ready"));
 
-    // The shell header already reads "OpenCode Go" for this configuration; the
+    // The shell header already reads "OpenCode · Go" for this configuration; the
     // review screen is live too, so it must not name the other wallet.
     const frame = frameText(lastFrame());
-    expect(frame).toContain("Configuration Not Ready (OpenCode Go)");
-    expect(frame).toContain("OpenCode Go / DeepSeek V4 Flash");
+    expect(frame).toContain("Configuration Not Ready (OpenCode · Go)");
+    expect(frame).toContain("OpenCode · Go / DeepSeek V4 Flash");
     expect(frame).not.toContain("OpenCode Zen");
   });
 

@@ -60,15 +60,15 @@ describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
         credentialEnv,
       ]),
     ).toEqual([
-      ["gemini", "GOOGLE_API_KEY"],
-      ["zai", "ZAI_API_KEY"],
-      ["openrouter", "OPENROUTER_API_KEY"],
-      ["deepseek", "DEEPSEEK_API_KEY"],
-      ["qwen", "QWEN_API_KEY"],
-      ["moonshot", "MOONSHOT_API_KEY"],
-      ["minimax", "MINIMAX_API_KEY"],
       ["ollama-cloud", "OLLAMA_API_KEY"],
+      ["openrouter", "OPENROUTER_API_KEY"],
       ["opencode-zen", "OPENCODE_API_KEY"],
+      ["deepseek", "DEEPSEEK_API_KEY"],
+      ["zai", "ZAI_API_KEY"],
+      ["qwen", "QWEN_API_KEY"],
+      ["minimax", "MINIMAX_API_KEY"],
+      ["moonshot", "MOONSHOT_API_KEY"],
+      ["gemini", "GOOGLE_API_KEY"],
     ]);
     expect(HOSTED_LIVE_PROBE_DESCRIPTORS).toHaveLength(HOSTED_API_PRODUCT_IDS.length);
   });

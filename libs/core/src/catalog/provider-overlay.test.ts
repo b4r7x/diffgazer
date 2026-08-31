@@ -6,15 +6,15 @@ import { PROVIDER_OVERLAY } from "./provider-overlay.js";
 describe("catalog provider observations", () => {
   it("leaves exact 9-product eligibility with the product registry", () => {
     expect(SELECTABLE_PRODUCT_IDS).toEqual([
-      "gemini",
-      "zai",
-      "openrouter",
-      "deepseek",
-      "qwen",
-      "moonshot",
-      "minimax",
       "ollama-cloud",
+      "openrouter",
       "opencode-zen",
+      "deepseek",
+      "zai",
+      "qwen",
+      "minimax",
+      "moonshot",
+      "gemini",
     ]);
     expect(SELECTABLE_PRODUCT_IDS).toEqual(
       Object.values(PRODUCT_REGISTRY)
@@ -22,15 +22,15 @@ describe("catalog provider observations", () => {
         .map((product) => product.id),
     );
     expect(Object.keys(PROVIDER_OVERLAY)).toEqual([
-      "gemini",
-      "zai",
-      "openrouter",
-      "deepseek",
-      "qwen",
-      "moonshot",
-      "minimax",
       "ollama-cloud",
+      "openrouter",
       "opencode-zen",
+      "deepseek",
+      "zai",
+      "qwen",
+      "minimax",
+      "moonshot",
+      "gemini",
     ]);
   });
 

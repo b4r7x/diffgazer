@@ -14,7 +14,6 @@ import {
   makeConfigurationListResponse,
   makeReadiness,
   OPENROUTER_CONFIGURATION,
-  ZAI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -23,6 +22,7 @@ import { cleanupRootFrames } from "../../../testing/render-root-frame";
 import {
   ARROW_DOWN,
   ARROW_LEFT,
+  ARROW_UP,
   ENTER,
   ESCAPE,
   FooterProbe,
@@ -86,20 +86,23 @@ afterEach(() => {
 });
 
 describe("ProvidersScreen V2 products and readiness", () => {
-  test("opens with the selected configuration already in the details pane", async () => {
-    const { lastFrame } = render(
+  test("opens with the first product row already in the details pane", async () => {
+    const { stdin, lastFrame } = render(
       <Wrapper>
         <ProvidersScreen />
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    await flushUntil(() => lastFrame()?.includes("Product       : ollama-cloud") ?? false);
+    expect(lastFrame()).not.toContain("Select a provider to view details");
+
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
+    // The pane names the configured model in full: catalog name, then the id a review pins.
+    await flushUntil(() => lastFrame()?.includes("Gemini 2.5 Flash · gemini-2.5-flash") ?? false);
 
     const frame = lastFrame() ?? "";
-    expect(frame).not.toContain("Select a provider to view details");
     expect(frame).toContain("Google Gemini");
-    // The pane names the configured model in full: catalog name, then the id a review pins.
-    expect(frame).toContain("Gemini 2.5 Flash · gemini-2.5-flash");
     expect(frame).toContain("Ready");
     expect(frame).not.toContain(LEGACY_V1_HAS_API_KEY_PROPERTY);
     expect(frame).not.toContain("API Key Status");
@@ -124,7 +127,7 @@ describe("ProvidersScreen V2 products and readiness", () => {
     // "Change model" on the review error screen lands in the dialog itself.
     await flushUntil(() => lastFrame()?.includes("Select Model") ?? false);
     // The subtitle names the configuration's product, so it tells the rows apart.
-    expect(lastFrame()).toContain(ZAI_CONFIGURATION.productId);
+    expect(lastFrame()).toContain("Z.AI");
 
     // Closing it stays closed: the intent is one-shot, not a sticky reopen.
     stdin.write(ESCAPE);
@@ -153,7 +156,11 @@ describe("ProvidersScreen V2 products and readiness", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it, and
+    // the pane's full model line confirms the move.
+    stdin.write(ARROW_UP);
+    await flushUntil(() => lastFrame()?.includes("Gemini 2.5 Flash · gemini-2.5-flash") ?? false);
     // The details pane says how to get back to the notice, in the footer too.
     expect(lastFrame()).toContain("Consent required to run reviews · [c] Review");
     expect(lastFrame()).toContain("[c] Review");
@@ -220,12 +227,17 @@ describe("ProvidersScreen V2 products and readiness", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
 
     // Enter in the list runs the highlighted row's primary, Select configuration,
     // and the footer says so; the notice stands between the key and the send.
-    expect(lastFrame()).toContain(
-      "FOOTER [Esc] Back [Enter] Select configuration [m] Model [e] Edit [v] Verify [d] Delete [c] Review |",
+    await flushUntil(
+      () =>
+        lastFrame()?.includes(
+          "FOOTER [Esc] Back [Enter] Select configuration [m] Model [e] Edit [v] Verify [d] Delete [c] Review |",
+        ) ?? false,
     );
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("Provider data notice") ?? false);

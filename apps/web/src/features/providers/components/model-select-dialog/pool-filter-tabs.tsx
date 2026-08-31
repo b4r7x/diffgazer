@@ -1,11 +1,11 @@
-import { type EndpointProfile, poolBadgeLabel } from "@diffgazer/core/providers";
+import type { EndpointProfile } from "@diffgazer/core/providers";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from "react";
 
-interface ModelPoolTabsProps {
+interface ModelPoolFilterTabsProps {
   /** The product's billing pools in rendered order, bound pool first. */
   profiles: readonly EndpointProfile[];
-  /** The armed pool: the one a row both pools serve will bill. */
+  /** The active pool tab: the pool whose rows the list shows and a save bills. */
   value: string;
   onChange: (value: string) => void;
   focusedIndex: number;
@@ -20,10 +20,10 @@ interface ModelPoolTabsProps {
 }
 
 /**
- * Pool selector, not a pool filter: it never changes which rows the list shows,
- * only which pool a row that both pools serve will bill.
+ * The picker's pool filter: the active tab lists the rows its pool serves and
+ * names the wallet a confirm moves billing to.
  */
-export function ModelPoolTabs({
+export function ModelPoolFilterTabs({
   profiles,
   value,
   onChange,
@@ -32,7 +32,7 @@ export function ModelPoolTabs({
   disabled = false,
   onKeyDown,
   getTabProps,
-}: ModelPoolTabsProps) {
+}: ModelPoolFilterTabsProps) {
   const handlePoolChange = (nextValue: string | null) => {
     if (nextValue) onChange(nextValue);
   };
@@ -44,7 +44,6 @@ export function ModelPoolTabs({
       highlighted={isFocused ? (profiles[focusedIndex]?.id ?? null) : null}
       onKeyDown={onKeyDown}
       label="Billing pool"
-      className="px-5 pb-2"
       disabled={disabled}
     >
       {profiles.map((profile, idx) => {
@@ -61,7 +60,7 @@ export function ModelPoolTabs({
             onFocus={tabProps?.onFocus}
             className="h-6 min-h-0 px-2.5 text-2xs pointer-coarse:min-h-11 pointer-coarse:px-3"
           >
-            {poolBadgeLabel(profile)}
+            {profile.shortLabel ?? profile.label}
           </ToggleGroupItem>
         );
       })}

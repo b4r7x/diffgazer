@@ -1,8 +1,12 @@
 import "../testing/terminal-mock";
 import type { BoundApi } from "@diffgazer/core/api";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
-import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
+import {
+  GEMINI_CONFIGURATION,
+  OPENCODE_ZEN_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { cleanup, render } from "ink-testing-library";
+import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   ARROW_DOWN,
@@ -34,6 +38,36 @@ function renderTwoModelOverlay() {
       <ModelSelectOverlay open onOpenChange={() => {}} configuration={GEMINI_CONFIGURATION} />
     </Wrapper>,
   );
+}
+
+// A dual-pool product draws both filter groups on one row, so the same zone
+// chain has to be read off that row rather than off two.
+const POOL_MODELS: ModelInfo[] = JK_MODELS.map((model) => ({
+  ...model,
+  endpointProfileIds: ["zen", "go"],
+}));
+
+function renderPoolOverlay() {
+  const getConfigurationModels = vi
+    .fn<BoundApi["getConfigurationModels"]>()
+    .mockResolvedValue(catalogModelsResponse(OPENCODE_ZEN_CONFIGURATION, POOL_MODELS));
+  const api = { ...makeGeminiApi(), getConfigurationModels } satisfies BoundApi;
+  return render(
+    <Wrapper api={api}>
+      <ModelSelectOverlay open onOpenChange={() => {}} configuration={OPENCODE_ZEN_CONFIGURATION} />
+    </Wrapper>,
+  );
+}
+
+/** Only the focused group draws the arrow hint, and the pool group draws first. */
+function focusedFilterGroup(frame: string | undefined): "pool" | "tier" | null {
+  const row = stripAnsi(frame ?? "")
+    .split("\n")
+    .find((line) => line.includes("ALL"));
+  if (!row) return null;
+  const hint = row.indexOf("<-/->");
+  if (hint < 0) return null;
+  return hint < row.indexOf("ALL") ? "pool" : "tier";
 }
 
 describe("ModelSelectOverlay list navigation", () => {
@@ -132,6 +166,77 @@ describe("ModelSelectOverlay zone arrow chain", () => {
     stdin.write(ARROW_UP);
     await flush();
     expect(lastFrame()).toContain("<-/->");
+    expect(countPrefixes(lastFrame(), "jet-flash").highlighted).toBe(0);
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(countPrefixes(lastFrame(), "jet-pro").highlighted).toBe(1);
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(countPrefixes(lastFrame(), "jet-pro").highlighted).toBe(1);
+    expect(countPrefixes(lastFrame(), "jet-flash").highlighted).toBe(0);
+  });
+
+  test("arrows walk search, the pool group, and the tier group of the merged row", async () => {
+    const { stdin, lastFrame } = renderPoolOverlay();
+
+    await flushUntil(() => lastFrame()?.includes("jet-pro") ?? false);
+    stdin.write("/");
+    await flush();
+    expect(lastFrame()).toContain("Search models...█");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(focusedFilterGroup(lastFrame())).toBe("pool");
+    expect(lastFrame()).not.toContain("Search models...█");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(focusedFilterGroup(lastFrame())).toBe("tier");
+
+    stdin.write(ARROW_UP);
+    await flush();
+    expect(focusedFilterGroup(lastFrame())).toBe("pool");
+
+    stdin.write(ARROW_UP);
+    await flush();
+    expect(lastFrame()).toContain("Search models...█");
+  });
+
+  test("arrows move down from the merged row into the model list", async () => {
+    const { stdin, lastFrame } = renderPoolOverlay();
+
+    await flushUntil(() => lastFrame()?.includes("jet-pro") ?? false);
+    stdin.write("\t");
+    await flush();
+    stdin.write("\t");
+    await flush();
+    expect(focusedFilterGroup(lastFrame())).toBe("pool");
+    stdin.write("\t");
+    await flush();
+    expect(focusedFilterGroup(lastFrame())).toBe("tier");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(focusedFilterGroup(lastFrame())).toBeNull();
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(countPrefixes(lastFrame(), "jet-pro").highlighted).toBe(1);
+  });
+
+  test("the populated list exits up into the tier group of the merged row", async () => {
+    const { stdin, lastFrame } = renderPoolOverlay();
+
+    await flushUntil(() => lastFrame()?.includes("jet-pro") ?? false);
+    expect(countPrefixes(lastFrame(), "jet-flash").highlighted).toBe(1);
+
+    stdin.write(ARROW_UP);
+    await flush();
+    expect(focusedFilterGroup(lastFrame())).toBe("tier");
     expect(countPrefixes(lastFrame(), "jet-flash").highlighted).toBe(0);
 
     stdin.write(ARROW_DOWN);

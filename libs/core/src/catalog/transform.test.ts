@@ -31,15 +31,15 @@ describe("transformCatalogObservation", () => {
     const observations = transform();
 
     expect(observations.map(({ productId }) => productId)).toEqual([
-      "gemini",
-      "zai",
-      "openrouter",
-      "deepseek",
-      "qwen",
-      "moonshot",
-      "minimax",
       "ollama-cloud",
+      "openrouter",
       "opencode-zen",
+      "deepseek",
+      "zai",
+      "qwen",
+      "minimax",
+      "moonshot",
+      "gemini",
     ]);
 
     for (const observation of observations) {

@@ -53,6 +53,7 @@ export {
   getCatalogModelName,
   getProviderDisplay,
   getProviderDisplayStatus,
+  getProviderShortDisplay,
   getUnconfiguredDisplayStatus,
   isRedundantStatusSegment,
   type ProviderDisplayStatus,
@@ -62,10 +63,12 @@ export {
 } from "./display-status.js";
 export {
   type EndpointPoolContext,
+  filterModelsByPool,
   getEndpointPoolContext,
   getEndpointProfile,
   getModelBillingPool,
   getPoolBillingChangeNote,
+  getPoolHiddenSelectionNotice,
   nextArmedPoolId,
   poolBadgeLabel,
   resolveSelectEndpoint,

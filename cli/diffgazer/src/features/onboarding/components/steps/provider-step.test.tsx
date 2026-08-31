@@ -17,7 +17,7 @@ async function flushInk() {
 function renderStep(onChange = vi.fn()) {
   return render(
     <CliThemeProvider initialTheme="dark">
-      <ProviderStep value="gemini" onChange={onChange} />
+      <ProviderStep value="ollama-cloud" onChange={onChange} />
     </CliThemeProvider>,
   );
 }
@@ -48,7 +48,7 @@ describe("ProviderStep (TUI)", () => {
     await flushInk();
     stdin.write("\r");
     await flushInk();
-    expect(onChange).toHaveBeenCalledWith("openrouter");
+    expect(onChange).toHaveBeenCalledWith("opencode-zen");
   });
 
   test("windows the list at the 80 by 24 floor and scrolls to every product", async () => {
@@ -57,7 +57,7 @@ describe("ProviderStep (TUI)", () => {
     const lastProductId = SELECTABLE_PRODUCT_IDS.at(-1) ?? "gemini";
     const lastProductName = PRODUCT_REGISTRY[lastProductId].presentation.name;
 
-    expect(lastFrame()).toContain("Google Gemini");
+    expect(lastFrame()).toContain("Ollama Cloud");
     expect(lastFrame()).not.toContain(lastProductName);
 
     for (let step = 1; step < SELECTABLE_PRODUCT_IDS.length; step += 1) {

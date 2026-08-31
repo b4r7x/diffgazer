@@ -1,6 +1,10 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import { getCatalogModelName, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import {
+  getCatalogModelName,
+  getProviderShortDisplay,
+  PRODUCT_REGISTRY,
+} from "@diffgazer/core/providers";
 import { DEFAULT_SETTINGS, LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import {
   GEMINI_CONFIGURATION,
@@ -227,7 +231,9 @@ describe("legibility invariant", () => {
 
     for (const product of Object.values(PRODUCT_REGISTRY)) {
       if (product.kind !== "runnable" || !product.selectable) continue;
-      expect(frame).toContain(product.presentation.name);
+      // The rows carry the short display name, so that is the string a
+      // 100-column frame has to print without eliding it.
+      expect(frame).toContain(getProviderShortDisplay(product.id));
     }
   });
 

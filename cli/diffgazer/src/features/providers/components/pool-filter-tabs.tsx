@@ -7,16 +7,16 @@ import { useTheme } from "../../../theme/provider";
 interface PoolFilterTabsProps {
   /** The product's billing pools in rendered order, bound pool first. */
   profiles: readonly EndpointProfile[];
-  /** The armed pool: the one a row both pools serve will bill. */
+  /** The active tab: the pool whose rows the list shows and a save bills. */
   value: string;
   onChange: (value: string) => void;
   isActive: boolean;
 }
 
 /**
- * Pool selector, not a pool filter: it never changes which rows the list shows,
- * only which pool a row that both pools serve will bill. Named for the tier row
- * it mirrors, which owns the segmented idiom this overlay already draws.
+ * The pool filter: the active tab narrows the list to the rows its pool serves
+ * and names the wallet a save will bill. Named for the tier row it mirrors,
+ * which owns the segmented idiom this overlay already draws.
  */
 export function PoolFilterTabs({ profiles, value, onChange, isActive }: PoolFilterTabsProps) {
   const { tokens } = useTheme();

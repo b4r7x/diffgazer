@@ -253,6 +253,7 @@ async function clickNext(user: ReturnType<typeof userEvent.setup>) {
 
 async function walkToModel(user: ReturnType<typeof userEvent.setup>) {
   await expectStep(/select product/i);
+  await user.click(screen.getByRole("radio", { name: /google gemini/i }));
   await clickNext(user);
   await expectStep(/configure endpoint/i);
   await clickNext(user);
@@ -353,8 +354,9 @@ describe("OnboardingWizard", () => {
     renderWizard();
 
     await expectStep(/select product/i);
-    expect(screen.getByRole("radio", { name: /google gemini/i })).toHaveFocus();
+    expect(screen.getByRole("radio", { name: /ollama cloud/i })).toHaveFocus();
 
+    await user.click(screen.getByRole("radio", { name: /google gemini/i }));
     await clickNext(user);
     await expectStep(/configure endpoint/i);
     expect(screen.getByRole("radio", { name: /global/i })).toHaveFocus();

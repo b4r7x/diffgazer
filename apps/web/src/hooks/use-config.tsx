@@ -10,7 +10,7 @@ import {
   useTestConfiguration,
   useUpdateConfiguration,
 } from "@diffgazer/core/api/hooks";
-import { getCatalogModelName, getProviderDisplay } from "@diffgazer/core/providers";
+import { getCatalogModelName, getProviderShortDisplay } from "@diffgazer/core/providers";
 import {
   type ClientConfigurationAction,
   type ClientConfigurationActionResponse,
@@ -139,9 +139,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       provider:
         selectedConfiguration === null
           ? undefined
-          : getProviderDisplay(
+          : getProviderShortDisplay(
               selectedConfiguration.productId,
-              undefined,
               selectedConfiguration.endpoint,
             ),
       model: selectedConfiguration?.selectedModelId

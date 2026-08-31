@@ -485,10 +485,12 @@ describe("ReviewContainer configuration gates", () => {
 
     renderReviewContainer();
 
-    // The shell header already reads "OpenCode Go" for this configuration; the
+    // The shell header already reads "OpenCode · Go" for this configuration; the
     // review screen is live too, so it must not name the other wallet.
-    expect(await screen.findByText(/Configuration Not Ready \(OpenCode Go\)/)).toBeInTheDocument();
-    expect(screen.getByText("OpenCode Go / DeepSeek V4 Flash")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Configuration Not Ready \(OpenCode · Go\)/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("OpenCode · Go / DeepSeek V4 Flash")).toBeInTheDocument();
     expect(screen.queryByText(/OpenCode Zen/)).not.toBeInTheDocument();
   });
 

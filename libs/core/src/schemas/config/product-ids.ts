@@ -12,15 +12,15 @@ export const TransportFamilySchema = z.enum(TRANSPORT_FAMILIES);
 export type TransportFamily = z.infer<typeof TransportFamilySchema>;
 
 export const HOSTED_API_PRODUCT_IDS = [
-  "gemini",
-  "zai",
-  "openrouter",
-  "deepseek",
-  "qwen",
-  "moonshot",
-  "minimax",
   "ollama-cloud",
+  "openrouter",
   "opencode-zen",
+  "deepseek",
+  "zai",
+  "qwen",
+  "minimax",
+  "moonshot",
+  "gemini",
 ] as const;
 export const HostedApiProductIdSchema = z.enum(HOSTED_API_PRODUCT_IDS);
 export type HostedApiProductId = z.infer<typeof HostedApiProductIdSchema>;

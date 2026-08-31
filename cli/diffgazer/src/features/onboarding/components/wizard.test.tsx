@@ -180,7 +180,7 @@ describe("OnboardingWizard", () => {
     // Five steps fit the 80-column floor, so the full progress bar renders.
     expect(frame).toContain("[o] Product");
     expect(frame).toContain("[ ] Model");
-    expect(frame).toContain("Google Gemini");
+    expect(frame).toContain("Ollama Cloud");
     expect(frame).toContain("[ Next ]");
   });
 
@@ -223,7 +223,7 @@ describe("OnboardingWizard", () => {
     await walkToConsentStep(stdin, frameText);
 
     expect(frameText()).toContain("Diffgazer sends repository content");
-    expect(frameText()).toContain("Google Gemini notice:");
+    expect(frameText()).toContain("Ollama Cloud notice:");
     expect(frameText()).toContain("[ Accept ]");
   });
 

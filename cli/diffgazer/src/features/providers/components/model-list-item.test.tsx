@@ -13,7 +13,7 @@ const model: ModelInfo = {
   tier: "paid",
 };
 
-function renderRow(overrides: Partial<ModelInfo> = {}, maxWidth = 100, poolBadgeLabel?: string) {
+function renderRow(overrides: Partial<ModelInfo> = {}, maxWidth = 100) {
   return render(
     <CliThemeProvider initialTheme="dark">
       <ModelListItem
@@ -21,7 +21,6 @@ function renderRow(overrides: Partial<ModelInfo> = {}, maxWidth = 100, poolBadge
         isHighlighted={false}
         isSelected={false}
         maxWidth={maxWidth}
-        poolBadgeLabel={poolBadgeLabel}
       />
     </CliThemeProvider>,
   );
@@ -81,18 +80,12 @@ describe("ModelListItem", () => {
     expect(frame).toContain("Pricing unknown");
   });
 
-  // The badge names the pool the row will bill, beside its tier, so the row the
-  // user is about to confirm says which wallet drains.
-  test("tags a row with the pool it will bill", () => {
-    const frame = renderRow({}, 100, "Go").lastFrame() ?? "";
-
-    expect(frame).toContain("[Go]");
-    expect(frame).toContain("[PAID]");
-  });
-
-  test("wears no pool tag off a billing-pool product", () => {
+  // The picker's active pool tab names the wallet a save bills, so the row has
+  // nothing left to tag and takes no pool prop to tag it with.
+  test("never wears a pool tag from the picker path", () => {
     const frame = renderRow().lastFrame() ?? "";
 
+    expect(frame).toContain("[PAID]");
     expect(frame).not.toContain("[Go]");
     expect(frame).not.toContain("[Zen]");
   });

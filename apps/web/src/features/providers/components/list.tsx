@@ -126,7 +126,7 @@ export function ProviderList({
     const subtitle = (modelId && findCatalogModel(row)?.name) || modelId;
 
     return (
-      <NavigationListItem key={rowId} id={rowId}>
+      <NavigationListItem key={rowId} id={rowId} density="compact">
         {/* A configured dual-pool product reads as the pool its runs will bill. */}
         <NavigationListTitle>{getProviderRowDisplayName(row)}</NavigationListTitle>
         <NavigationListStatus
@@ -169,7 +169,7 @@ export function ProviderList({
   // show, so the row carries its id — the one thing that ties it to the file on
   // disk — and the details pane explains it.
   const renderUnrecognizedRow = ({ configurationId }: UnrecognizedConfiguration) => (
-    <NavigationListItem key={configurationId} id={configurationId}>
+    <NavigationListItem key={configurationId} id={configurationId} density="compact">
       <NavigationListTitle>{UNRECOGNIZED_CONFIGURATION_COPY.label}</NavigationListTitle>
       <div className="col-span-full row-start-2 flex min-w-0 items-center gap-2">
         <NavigationListSubtitle className="min-w-0 truncate font-mono group-data-[highlighted]:text-primary-foreground/85">

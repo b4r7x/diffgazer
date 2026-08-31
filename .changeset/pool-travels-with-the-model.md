@@ -4,10 +4,9 @@
 
 The OpenCode pool now travels with the model. Both model pickers list the union of what Zen
 credits and the Go subscription serve — the 13 Go-only models that used to be listed nowhere
-are selectable — and every row carries a short badge naming the pool that will bill it. A
-`[Zen] [Go]` selector resolves the 17 models both pools serve; it is a selector, not a
-filter, so it never changes which rows are listed, only which wallet the ambiguous ones
-charge. Confirming a row saves the model and its pool together, so a Go allowance that runs
+are selectable. `[Zen] [Go]` tabs filter the list to the models the active pool serves —
+the 17 models both pools serve appear under both tabs — and the active tab is the wallet a
+save bills. Confirming a row saves the model and its pool together, so a Go allowance that runs
 out mid-session is answered by picking the same model on Zen credits, without re-entering a
 key. Creating a configuration still binds an endpoint and re-keying one still shows it
 read-only; the pool moves from the picker now, not from the credential dialog. Quota and

@@ -6,12 +6,10 @@ import { SELECTED_OPTION_ROW } from "@/lib/selected-option-row";
 
 interface ModelListItemProps {
   model: ModelInfo;
-  /** The pool this row will bill, e.g. "Go". Absent off a dual-pool product. */
-  poolBadgeLabel?: string;
   onDoubleClick: () => void;
 }
 
-export function ModelListItem({ model, poolBadgeLabel, onDoubleClick }: ModelListItemProps) {
+export function ModelListItem({ model, onDoubleClick }: ModelListItemProps) {
   // The catalog display name leads because it is what a person recognises; the
   // exact id stays beside it because that is the string the review pins.
   const tierBadge = getModelTierBadge(model.tier);
@@ -30,11 +28,6 @@ export function ModelListItem({ model, poolBadgeLabel, onDoubleClick }: ModelLis
           {tierBadge ? (
             <Badge variant={tierBadge.variant} size="xs">
               {tierBadge.label}
-            </Badge>
-          ) : null}
-          {poolBadgeLabel ? (
-            <Badge variant="neutral" appearance="outline" size="xs">
-              {poolBadgeLabel}
             </Badge>
           ) : null}
         </span>

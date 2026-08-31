@@ -1,8 +1,3 @@
-import {
-  type EndpointPoolContext,
-  getModelBillingPool,
-  poolBadgeLabel,
-} from "@diffgazer/core/providers";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { getVerticalArrowDirection } from "@diffgazer/keys";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
@@ -13,13 +8,6 @@ import { ModelListItem } from "./list-item";
 
 interface ModelListProps {
   models: ModelInfo[];
-  /**
-   * The product's billing pools. Absent for products whose endpoints are not
-   * separate billing pools, which is what leaves the rows unbadged.
-   */
-  poolContext?: EndpointPoolContext | null;
-  /** The armed pool, which decides only how a row both pools serve is badged. */
-  armedPoolId?: string;
   focusedModelId: string | null;
   currentModelId?: string;
   isFocused: boolean;
@@ -43,13 +31,13 @@ function StatusMessage({ loading, emptyLabel }: { loading: boolean; emptyLabel?:
       </>
     );
   }
-  return <EmptyState.Message>{emptyLabel ?? "No models match your search"}</EmptyState.Message>;
+  return (
+    <EmptyState.Message>{emptyLabel ?? "No models match the current filters."}</EmptyState.Message>
+  );
 }
 
 export function ModelList({
   models,
-  poolContext = null,
-  armedPoolId,
   focusedModelId,
   currentModelId,
   isFocused,
@@ -98,18 +86,9 @@ export function ModelList({
           wrap={false}
           className="min-h-0 space-y-1"
         >
-          {models.map((model) => {
-            const billingPool = getModelBillingPool(poolContext, model, armedPoolId);
-
-            return (
-              <ModelListItem
-                key={model.id}
-                model={model}
-                poolBadgeLabel={poolBadgeLabel(billingPool)}
-                onDoubleClick={() => onConfirm(model.id)}
-              />
-            );
-          })}
+          {models.map((model) => (
+            <ModelListItem key={model.id} model={model} onDoubleClick={() => onConfirm(model.id)} />
+          ))}
         </RadioGroup>
       ) : null}
       {/* The dialog height is fixed, so filling the viewport centers the

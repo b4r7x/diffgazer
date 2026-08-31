@@ -114,8 +114,8 @@ describe("filterProviders", () => {
 
   it("keeps every stored configuration under 'configured' in list order", () => {
     expect(rowIds(filterProviders(ALL_ROWS, "configured"))).toEqual([
-      "gemini-primary",
       "zen-pending",
+      "gemini-primary",
     ]);
   });
 
@@ -187,14 +187,15 @@ describe("filterProviders", () => {
     expect(rowIds(filterProviders(ALL_ROWS, "all", "zai"))).toEqual(["zai"]);
   });
 
-  // The row renders as its pool, so the name a user can read is the name they
-  // can type; the product name keeps working because unconfigured rows show it.
-  it("matches search against the pool name a configured dual-pool row displays", () => {
+  // The row renders as its short name and bound pool, so the name a user can
+  // read is the name they can type; the product name keeps working because
+  // unconfigured rows show it.
+  it("matches search against the short display name a configured dual-pool row shows", () => {
     const rows = mapProviderList([
       configurationStatus(OPENCODE_GO_CONFIGURATION, "conformance-pending"),
     ]);
 
-    expect(rowIds(filterProviders(rows, "all", "opencode go"))).toEqual(["opencode-go"]);
+    expect(rowIds(filterProviders(rows, "all", "opencode · go"))).toEqual(["opencode-go"]);
     expect(rowIds(filterProviders(rows, "all", "opencode zen"))).toEqual(["opencode-go"]);
   });
 

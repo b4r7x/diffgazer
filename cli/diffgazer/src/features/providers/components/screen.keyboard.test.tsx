@@ -136,6 +136,9 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
+    await flush();
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
     // Gemini is the active configuration: its row is Change model, then More.
@@ -160,6 +163,9 @@ describe("ProvidersScreen keyboard zones", () => {
       </Wrapper>,
     );
 
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
     await flushUntil(() => lastFrame()?.includes("[ Change model ]") ?? false);
     stdin.write(ARROW_RIGHT);
     await flush();
@@ -178,20 +184,24 @@ describe("ProvidersScreen keyboard zones", () => {
       </Wrapper>,
     );
 
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
     await flushUntil(() => lastFrame()?.includes("[ Change model ]") ?? false);
     for (const key of [ARROW_RIGHT, ARROW_RIGHT, ARROW_LEFT, ARROW_DOWN]) {
       stdin.write(key);
       await flush();
     }
     expect(lastFrame()).toContain("[ Change model ]");
-    expect(lastFrame()).not.toContain("[ Select configuration ]");
+    expect(lastFrame()).not.toContain("[ Configure ]");
 
     stdin.write(ARROW_LEFT);
     await flush();
+    // Down from the last row wraps back to the unconfigured first product.
     stdin.write(ARROW_DOWN);
-    await flushUntil(() => lastFrame()?.includes("[ Select configuration ]") ?? false);
+    await flushUntil(() => lastFrame()?.includes("[ Configure ]") ?? false);
 
-    expect(lastFrame()).toContain("[ Select configuration ]");
+    expect(lastFrame()).toContain("[ Configure ]");
   });
 
   test("keeps every menu entry in place and explains the ones the state cannot run", async () => {
@@ -242,6 +252,9 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
+    await flush();
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
     // d asks first; the key repeated on the confirmation deletes nothing, and
@@ -275,10 +288,16 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
+    await flush();
     stdin.write("d");
     await flushUntil(() => lastFrame()?.includes("Delete configuration?") ?? false);
     // It opens on Cancel: Enter as it stands keeps the configuration.
-    expect(lastFrame()).toContain("FOOTER [←/→] Switch Action [Enter] Cancel | [Esc] Cancel");
+    await flushUntil(
+      () =>
+        lastFrame()?.includes("FOOTER [←/→] Switch Action [Enter] Cancel | [Esc] Cancel") ?? false,
+    );
     stdin.write(ARROW_LEFT);
     await flush();
     expect(lastFrame()).toContain("FOOTER [←/→] Switch Action [Enter] Delete | [Esc] Cancel");
@@ -328,6 +347,10 @@ describe("ProvidersScreen keyboard zones", () => {
       </Wrapper>,
     );
 
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // The configured Gemini row is last; wrapping up from the first row lands on
+    // it, and the pane's readiness line confirms the move.
+    stdin.write(ARROW_UP);
     await flushUntil(() => lastFrame()?.includes("Not verified") ?? false);
     // Verify lives behind More; its accelerator runs it from the list.
     stdin.write("v");
@@ -370,6 +393,9 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
+    await flush();
     stdin.write("d");
     await flushUntil(() => lastFrame()?.includes("Delete configuration?") ?? false);
     stdin.write(ARROW_LEFT);
@@ -426,6 +452,9 @@ describe("ProvidersScreen keyboard zones", () => {
       </Wrapper>,
     );
 
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
     await flushUntil(() => lastFrame()?.includes("[ Select configuration ]") ?? false);
     stdin.write(TAB);
     await flush();
@@ -472,9 +501,11 @@ describe("ProvidersScreen keyboard zones", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("OpenCode Zen") ?? false);
-    // The configured row is last; wrapping up from the first row lands on it.
-    stdin.write(ARROW_UP);
+    await flushUntil(() => lastFrame()?.includes("OpenCode · Zen") ?? false);
+    // The configured Zen row sits third, behind Ollama Cloud and OpenRouter.
+    stdin.write(ARROW_DOWN);
+    await flush();
+    stdin.write(ARROW_DOWN);
     await flushUntil(() => lastFrame()?.includes("Product       : opencode-zen") ?? false);
     stdin.write("m");
     await flushUntil(() => lastFrame()?.includes("deepseek-v4-flash") ?? false);
@@ -498,6 +529,9 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
+    await flush();
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("[ Change model ]") ?? false);
 
@@ -533,7 +567,9 @@ describe("ProvidersScreen keyboard zones", () => {
   }) => {
     const view = renderRootFrame(80, 24, <ProvidersApiBoundary api={makeApi()} />);
 
-    await flushUntilRoot(() => view.lastFrame()?.includes("Google Gemini") ?? false);
+    await flushUntilRoot(() => view.lastFrame()?.includes("Ollama Cloud") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    await pressRoot(view, ARROW_UP);
     await pressRoot(view, ENTER);
     await flushUntilRoot(() => view.lastFrame()?.includes("gemini-2.5-flash") ?? false);
     for (const key of keys) {
@@ -576,6 +612,9 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
+    await flush();
     // The keybar teaches only the accelerators the highlighted row can run.
     await flushUntil(() => lastFrame()?.includes("[d] Delete") ?? false);
     expect(lastFrame()).toContain("FOOTER [Esc] Back [m] Model [e] Edit [v] Verify [d] Delete |");
@@ -600,6 +639,9 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
+    await flush();
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
     for (const key of [TAB, ARROW_RIGHT, ENTER, ENTER]) {
@@ -731,12 +773,9 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // The unconfigured OpenRouter row sits second, behind Ollama Cloud.
     stdin.write("\u001b[B");
-    await flush();
-    stdin.write("\u001b[B");
-    await flushUntil(
-      () => lastFrame()?.includes(PRODUCT_REGISTRY.openrouter.presentation.name) ?? false,
-    );
+    await flushUntil(() => lastFrame()?.includes("Product       : openrouter") ?? false);
     // Enter in the list runs the row's primary, Configure.
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("Create Configuration") ?? false);
@@ -796,8 +835,8 @@ describe("ProvidersScreen keyboard zones", () => {
     expect(lastFrame()).not.toContain("Select Model");
 
     stdin.write(ARROW_UP);
-    await flushUntil(() => lastFrame()?.includes("Product       : zai") ?? false);
-    expect(lastFrame()).toContain("Product       : zai");
+    await flushUntil(() => lastFrame()?.includes("Product       : ollama-cloud") ?? false);
+    expect(lastFrame()).toContain("Product       : ollama-cloud");
   });
 
   test("suppresses the help shortcut while the model dialog is open", async () => {
@@ -810,6 +849,9 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
+    await flush();
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
     stdin.write("m");
@@ -831,6 +873,9 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    // Gemini is the last row; wrapping up from the first row lands on it.
+    stdin.write(ARROW_UP);
+    await flush();
     stdin.write(TAB);
     await flush();
     stdin.write(ARROW_RIGHT);

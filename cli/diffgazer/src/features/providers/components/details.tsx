@@ -133,13 +133,9 @@ export function ProviderDetails({
           pane, so a terminal too small for every row still shows what the
           configuration is and what can be done to it. */}
       <Box flexDirection="column" gap={compact ? 0 : 1} flexShrink={0}>
-        {/* The pool, not the product, once a dual-pool configuration binds one:
-            the list row above names it the same way. */}
-        <KeyValue
-          label="Name"
-          value={getProviderDisplay(row.product.productId, undefined, row.configuration?.endpoint)}
-          labelWidth={14}
-        />
+        {/* The full product name: this pane is the reference view, and the
+            endpoint rows below it disambiguate the pool or region. */}
+        <KeyValue label="Name" value={getProviderDisplay(row.product.productId)} labelWidth={14} />
         <KeyValue label="Product" value={row.product.productId} labelWidth={14} />
         {/* The narrow list drops the id when the row cannot fit it, so this pane is
             where the configured model is always named in full. */}

@@ -38,7 +38,6 @@ export function ModelFilterTabs({
       highlighted={isFocused ? (TIER_FILTERS[focusedIndex] ?? null) : null}
       onKeyDown={onKeyDown}
       label="Model tier filter"
-      className="px-5 pb-2"
       disabled={disabled}
     >
       {TIER_FILTERS.map((filter, idx) => {

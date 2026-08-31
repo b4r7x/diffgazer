@@ -24,7 +24,7 @@ export const BILLING_TIER_BADGES = {
   free: { label: "FREE", variant: "success" },
   paid: { label: "PAID", variant: "neutral" },
   mixed: { label: "FREE/PAID", variant: "info" },
-  "free-tier": { label: "FREE TIER", variant: "info" },
+  "free-tier": { label: "FREE QUOTA", variant: "info" },
 } as const satisfies Record<BillingTier, BillingTierBadge>;
 
 /** The declared billing modes that let an account run a priced model at no cost. */
@@ -42,7 +42,7 @@ function declaresFreeTier(productId: RunnableProductId): boolean {
  * is read first: a product whose offerable models really are zero-priced earns
  * FREE, and one selling both halves earns FREE/PAID. Only when no offerable
  * model is priced at zero does the registry's declared account tier speak, and
- * it may say no more than FREE TIER — a claim about an account's quota, never
+ * it may say no more than FREE QUOTA — a claim about an account's quota, never
  * about a model's price. A registry claim therefore can never produce FREE,
  * which is the safeguard that matters: the badge that could cost a user money.
  * What it stops doing is understating a product's only free on-ramp as PAID.

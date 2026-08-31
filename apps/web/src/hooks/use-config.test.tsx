@@ -200,7 +200,7 @@ describe("ConfigProvider", () => {
     renderWithProvider();
 
     await waitFor(() => {
-      expect(screen.getByText("Provider: OpenCode Go")).toBeInTheDocument();
+      expect(screen.getByText("Provider: OpenCode · Go")).toBeInTheDocument();
     });
   });
 

@@ -48,7 +48,7 @@ describe("getBillingTier", () => {
 
   // The one safeguard that costs money if it slips: FREE is a claim about a
   // price, so only a real zero-priced catalog range may ever produce it. A
-  // declared account tier can reach FREE TIER and no further.
+  // declared account tier can reach FREE QUOTA and no further.
   it("never lets a registry claim earn the FREE badge", () => {
     for (const productId of SELECTABLE_PRODUCT_IDS) {
       if (PROVIDER_DERIVED[productId].billing === "free") continue;
@@ -70,7 +70,7 @@ describe("BILLING_TIER_BADGES", () => {
   it("gives every tier its own badge word so surfaces cannot invent one", () => {
     const labels = Object.values(BILLING_TIER_BADGES).map(({ label }) => label);
 
-    expect(labels).toEqual(["FREE", "PAID", "FREE/PAID", "FREE TIER"]);
+    expect(labels).toEqual(["FREE", "PAID", "FREE/PAID", "FREE QUOTA"]);
     expect(BILLING_TIER_BADGES.free.variant).toBe("success");
     expect(BILLING_TIER_BADGES["free-tier"].variant).toBe("info");
   });

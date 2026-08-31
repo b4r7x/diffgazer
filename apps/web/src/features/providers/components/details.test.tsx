@@ -182,9 +182,9 @@ describe("ProviderDetails", () => {
     const term = screen.getByText("Endpoint");
     const value = screen.getByText("https://opencode.ai/zen/go/v1", { selector: "dd" });
     expect(term.nextElementSibling).toBe(value);
-    // The chip above the pane already reads "OpenCode Go"; the endpoint row
+    // The chip above the pane already reads "OpenCode · Go"; the endpoint row
     // does not repeat that label as its value and its description too.
-    expect(screen.queryByText("OpenCode Go")).not.toBeInTheDocument();
+    expect(screen.queryByText("OpenCode · Go")).not.toBeInTheDocument();
   });
 
   it("states no endpoint for a product that has no configuration yet", () => {

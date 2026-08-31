@@ -1,8 +1,3 @@
-import {
-  type EndpointPoolContext,
-  getModelBillingPool,
-  poolBadgeLabel,
-} from "@diffgazer/core/providers";
 import type { useModelFilter, useModelSource } from "@diffgazer/core/providers/hooks";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { Box, Text } from "ink";
@@ -23,9 +18,6 @@ interface ModelListBodyProps {
   selectedId: string | undefined;
   contentWidth: number;
   viewportSize: number;
-  poolContext: EndpointPoolContext | null;
-  /** The armed pool, which decides only how a row both pools serve is badged. */
-  armedPoolId: string | undefined;
 }
 
 export function ModelListBody({
@@ -39,8 +31,6 @@ export function ModelListBody({
   selectedId,
   contentWidth,
   viewportSize,
-  poolContext,
-  armedPoolId,
 }: ModelListBodyProps): ReactElement {
   const { tokens } = useTheme();
 
@@ -56,7 +46,7 @@ export function ModelListBody({
   if (filteredModels.length === 0) {
     return (
       <Text color={tokens.muted}>
-        {models.length === 0 ? "No models available" : "No models match your search"}
+        {models.length === 0 ? "No models available" : "No models match the current filters."}
       </Text>
     );
   }
@@ -72,7 +62,6 @@ export function ModelListBody({
       {window.canScrollUp ? <Text color={tokens.muted}>{"\u25B2"}</Text> : null}
       {visibleModels.map((model, idx) => {
         const absoluteIndex = window.start + idx;
-        const billingPool = getModelBillingPool(poolContext, model, armedPoolId);
         return (
           <ModelListItem
             key={model.id}
@@ -80,7 +69,6 @@ export function ModelListBody({
             isHighlighted={isListFocused && absoluteIndex === safeHighlightIndex}
             isSelected={model.id === selectedId}
             maxWidth={contentWidth}
-            poolBadgeLabel={poolBadgeLabel(billingPool)}
           />
         );
       })}

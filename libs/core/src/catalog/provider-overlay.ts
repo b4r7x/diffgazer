@@ -18,18 +18,18 @@ export type ProviderOverlay = {
 };
 
 export const PROVIDER_OVERLAY: Partial<Record<RunnableProductId, ProviderOverlay>> = {
-  gemini: { modelsDevIds: ["google"] },
-  zai: { modelsDevIds: ["zai"], nameSourceIds: ["zai-coding-plan", "zhipuai-coding-plan"] },
-  openrouter: { modelsDevIds: ["openrouter"] },
-  deepseek: { modelsDevIds: ["deepseek"] },
-  qwen: { modelsDevIds: ["alibaba"] },
-  moonshot: { modelsDevIds: ["moonshotai"] },
-  minimax: { modelsDevIds: ["minimax"] },
   "ollama-cloud": { modelsDevIds: ["ollama-cloud"] },
+  openrouter: { modelsDevIds: ["openrouter"] },
   // `opencode` first: on the ids both sources publish, first-source-wins dedup
   // keeps the Zen pay-as-you-go price — the price the default endpoint bills.
   "opencode-zen": {
     modelsDevIds: ["opencode", "opencode-go"],
     endpointSources: { zen: "opencode", go: "opencode-go" },
   },
+  deepseek: { modelsDevIds: ["deepseek"] },
+  zai: { modelsDevIds: ["zai"], nameSourceIds: ["zai-coding-plan", "zhipuai-coding-plan"] },
+  qwen: { modelsDevIds: ["alibaba"] },
+  minimax: { modelsDevIds: ["minimax"] },
+  moonshot: { modelsDevIds: ["moonshotai"] },
+  gemini: { modelsDevIds: ["google"] },
 };

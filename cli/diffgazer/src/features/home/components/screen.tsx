@@ -7,7 +7,7 @@ import {
 } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { deriveTrustStatus, selectResumableSession } from "@diffgazer/core/navigation";
-import { getCatalogModelName, getProviderDisplay } from "@diffgazer/core/providers";
+import { getCatalogModelName, getProviderShortDisplay } from "@diffgazer/core/providers";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { resolveSelectedConfiguration } from "@diffgazer/core/schemas/config";
 import type { HomeContextInfo, MenuAction, Shortcut } from "@diffgazer/core/schemas/presentation";
@@ -112,11 +112,7 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
 
   const selected = resolveSelectedConfiguration(initData);
   const provider = selected
-    ? getProviderDisplay(
-        selected.configuration.productId,
-        undefined,
-        selected.configuration.endpoint,
-      )
+    ? getProviderShortDisplay(selected.configuration.productId, selected.configuration.endpoint)
     : undefined;
   const model = selected?.configuration.selectedModelId
     ? getCatalogModelName(selected.configuration.productId, selected.configuration.selectedModelId)

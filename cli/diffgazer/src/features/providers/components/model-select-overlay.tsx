@@ -1,9 +1,11 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import { getDateLabel } from "@diffgazer/core/format";
 import {
+  filterModelsByPool,
   getEndpointPoolContext,
-  getModelBillingPool,
   getPoolBillingChangeNote,
+  getPoolHiddenSelectionNotice,
+  getProviderShortDisplay,
   getRetainedModelNotice,
   nextArmedPoolId,
   resolveSelectEndpoint,
@@ -72,10 +74,10 @@ export function ModelSelectOverlay({
   const source = useModelSource(open, configuration);
   const poolContext = getEndpointPoolContext(configuration.productId, configuration.endpoint);
   const poolProfiles = poolContext ? [poolContext.bound, poolContext.sibling] : [];
-  // Selector, not filter: the armed pool decides which pool a row that both
-  // pools serve will bill, and never which rows the list shows.
+  // The active tab is the wallet: it lists the rows its pool serves, and every
+  // row it lists bills that pool once confirmed.
   const [selectedPoolId, setSelectedPoolId] = useState<string>();
-  const armedPoolId = selectedPoolId ?? poolContext?.bound.id;
+  const activePoolTabId = selectedPoolId ?? poolContext?.bound.id;
 
   const {
     searchQuery,
@@ -85,7 +87,7 @@ export function ModelSelectOverlay({
     filteredModels,
     cycleTierFilter,
     resetFilters,
-  } = useModelFilter(source.models);
+  } = useModelFilter(filterModelsByPool(source.models, poolContext, activePoolTabId));
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [highlightedModelId, setHighlightedModelId] = useState<string>();
   const [selection, setSelection] = useState<SelectionState>(IDLE_SELECTION);
@@ -148,21 +150,20 @@ export function ModelSelectOverlay({
 
   function cyclePool() {
     if (!poolContext) return;
-    setSelectedPoolId(nextArmedPoolId(poolContext, armedPoolId));
+    setSelectedPoolId(nextArmedPoolId(poolContext, activePoolTabId));
   }
 
   // The overlay stays open and pending until the selection mutation settles;
   // closing first would hide the only place its failure can be reported.
-  // The row's own badge is the authority: a model only one pool serves bills
-  // that pool whatever the selector says, so the endpoint comes from the
-  // confirmed row, not from the toggle.
+  // Membership is the authority: a model only one pool serves bills that pool
+  // whatever tab lists it, so the endpoint comes from the confirmed row.
   async function handleSelect(model: ModelInfo) {
     if (saving) return;
     setSelection({ status: "selecting" });
     const endpoint = resolveSelectEndpoint({
       context: poolContext,
       model,
-      armedProfileId: armedPoolId,
+      armedProfileId: activePoolTabId,
       boundEndpoint: configuration.endpoint,
     });
     try {
@@ -275,23 +276,24 @@ export function ModelSelectOverlay({
       ? "bundled catalog"
       : checkedAtLabel && `checked ${checkedAtLabel}`;
   const retainedModelNotice = saving ? null : getRetainedModelNotice(selectedId, source.models);
-  // The badge is the authority: the note names the pool the highlighted row
-  // will actually bill, so a single-pool row never promises a move.
-  const highlightedModel = filteredModels[safeHighlightIndex];
-  const highlightedBillingPool = highlightedModel
-    ? getModelBillingPool(poolContext, highlightedModel, armedPoolId)
-    : null;
-  const poolBillingChangeNote = getPoolBillingChangeNote(poolContext, highlightedBillingPool?.id);
-  // The note appears and disappears as the highlight crosses a pool badge, so
-  // its rows are reserved for as long as the pool row itself: sizing the
-  // viewport from the highlighted row would re-window the list under a
-  // stationary cursor on ordinary arrow navigation.
+  // Every row the active tab lists bills that tab, so the note is tab-level:
+  // it states the move once, for as long as the sibling tab is active.
+  const poolBillingChangeNote = getPoolBillingChangeNote(poolContext, activePoolTabId);
+  // The note comes and goes with the tab, so its rows are reserved for as long
+  // as the pool row itself: sizing the viewport from the active tab would
+  // re-window the list on an ordinary tab switch.
   const reservedPoolNote = getPoolBillingChangeNote(poolContext, poolContext?.sibling.id);
   const poolNoteRows = reservedPoolNote ? wrappedRowCount(reservedPoolNote, contentWidth) : 0;
+  const savedModel = source.models.find((model) => model.id === selectedId);
+  const poolHiddenSelectionNotice = getPoolHiddenSelectionNotice(
+    poolContext,
+    savedModel,
+    activePoolTabId,
+  );
   const conditionalRows = [
     freshnessLabel ? 1 : 0,
-    poolContext ? 1 : 0,
     poolNoteRows,
+    poolHiddenSelectionNotice ? wrappedRowCount(poolHiddenSelectionNotice, contentWidth) : 0,
     skippedReason ? wrappedRowCount(skippedReason, contentWidth) : 0,
     retryVisible ? 1 : 0,
     retainedModelNotice ? wrappedRowCount(retainedModelNotice, contentWidth) : 0,
@@ -312,7 +314,7 @@ export function ModelSelectOverlay({
         <Dialog.Header>
           <Dialog.Title>Select Model</Dialog.Title>
           <Dialog.Subtitle>
-            {`${configuration.productId} · ${modelCountLabel}${
+            {`${getProviderShortDisplay(configuration.productId)} · ${modelCountLabel}${
               freshnessLabel ? ` · ${freshnessLabel}` : ""
             }`}
           </Dialog.Subtitle>
@@ -325,20 +327,29 @@ export function ModelSelectOverlay({
               isActive={activeZone === "search" && !saving}
             />
 
-            {poolContext && armedPoolId ? (
-              <PoolFilterTabs
-                profiles={poolProfiles}
-                value={armedPoolId}
-                onChange={setSelectedPoolId}
-                isActive={activeZone === "pool" && !saving}
-              />
-            ) : null}
+            {/* One row: the terminal floor is 40 columns, so the row clips
+                rather than wrapping into the list's rows. */}
+            <Box flexDirection="row" flexWrap="nowrap" height={1} overflow="hidden">
+              {poolContext && activePoolTabId ? (
+                <>
+                  <PoolFilterTabs
+                    profiles={poolProfiles}
+                    value={activePoolTabId}
+                    onChange={setSelectedPoolId}
+                    isActive={activeZone === "pool" && !saving}
+                  />
+                  <Text color={tokens.muted} wrap="truncate-end">
+                    {" │ "}
+                  </Text>
+                </>
+              ) : null}
 
-            <TierFilterTabs
-              value={tierFilter}
-              onChange={setTierFilter}
-              isActive={activeZone === "filters" && !saving}
-            />
+              <TierFilterTabs
+                value={tierFilter}
+                onChange={setTierFilter}
+                isActive={activeZone === "filters" && !saving}
+              />
+            </Box>
 
             {skippedReason ? <Text color={tokens.warning}>{skippedReason}</Text> : null}
             {retryVisible ? (
@@ -355,6 +366,11 @@ export function ModelSelectOverlay({
               // working, so this states the gap rather than dropping the row.
               <Text color={tokens.muted}>{sanitizeTerminalText(retainedModelNotice)}</Text>
             ) : null}
+            {poolHiddenSelectionNotice ? (
+              // The saved model is not on the active tab. It keeps working, so
+              // this names the tab that lists it rather than hiding the gap.
+              <Text color={tokens.muted}>{sanitizeTerminalText(poolHiddenSelectionNotice)}</Text>
+            ) : null}
 
             <ModelListBody
               loading={loading}
@@ -367,14 +383,12 @@ export function ModelSelectOverlay({
               selectedId={selectedId}
               contentWidth={contentWidth}
               viewportSize={modelViewportSize}
-              poolContext={poolContext}
-              armedPoolId={armedPoolId}
             />
             {poolNoteRows > 0 ? (
-              // Confirming this row changes which wallet drains, so the
+              // Confirming on this tab changes which wallet drains, so the
               // consequence is stated where the eye already is before Enter.
               // The box keeps its reserved height while the note is absent, so
-              // the list below never shifts as the highlight moves.
+              // the list below never shifts as the tab switches.
               <Box height={poolNoteRows} flexShrink={0}>
                 {poolBillingChangeNote ? (
                   <Text color={tokens.muted}>{poolBillingChangeNote}</Text>

@@ -65,7 +65,7 @@ describe("GlobalLayout", () => {
 
     const { lastFrame } = renderRootFrame(120, 24, <Text>content</Text>);
 
-    await vi.waitFor(() => expect(stripAnsi(lastFrame() ?? "")).toContain("OpenCode Go"));
+    await vi.waitFor(() => expect(stripAnsi(lastFrame() ?? "")).toContain("OpenCode · Go"));
     expect(stripAnsi(lastFrame() ?? "")).not.toContain("OpenCode Zen");
   });
 
