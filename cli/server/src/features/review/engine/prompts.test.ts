@@ -90,6 +90,17 @@ describe("buildReviewPrompt", () => {
     );
   });
 
+  it("spells out that testsToAdd and betterOptions items are plain strings", () => {
+    const { user } = buildReviewPrompt(makeLens(), makeParsedDiff());
+
+    expect(user).toContain(
+      "- betterOptions: optional array of strings, one alternative approach per string",
+    );
+    expect(user).toContain(
+      "- testsToAdd: optional array of strings, one test case per string (its name or a one-line description) — never objects",
+    );
+  });
+
   it.each([
     { label: "undefined", context: undefined },
     { label: "blank", context: "   " },

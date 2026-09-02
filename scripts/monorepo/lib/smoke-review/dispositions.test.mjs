@@ -12,7 +12,9 @@ import {
   E2E_PRODUCT_ENV,
   E2E_SCENARIO_ENV,
   E2E_SCENARIO_IDS,
+  entitlementFallback,
   expandScenarioCells,
+  FALLBACK_E2E_MODELS,
   finalizeE2eDispositions,
   findActiveLocalBinding,
   modelOverrideNotice,
@@ -31,6 +33,7 @@ const CREDENTIAL_ENVS = {
   gemini: "GOOGLE_API_KEY",
   zai: "ZAI_API_KEY",
   deepseek: "DEEPSEEK_API_KEY",
+  "ollama-cloud": "OLLAMA_API_KEY",
 };
 const SUGGESTED_MODELS = {
   openrouter: null,
@@ -38,6 +41,7 @@ const SUGGESTED_MODELS = {
   gemini: "gemini-2.5-flash",
   zai: "glm-5-turbo",
   deepseek: "deepseek-v4-flash",
+  "ollama-cloud": "gpt-oss:20b",
 };
 
 function resolveAll({
@@ -320,14 +324,14 @@ test("unknown-scenario and keyring-only cells fail strict skips with their detai
   const unknownScenario = {
     kind: "unavailable",
     reason: "unknown-scenario",
-    scenarioId: "medium",
-    scenarioIds: ["small", "medium"],
+    scenarioId: "xlarge",
+    scenarioIds: ["small", "xlarge"],
     productId: "openrouter",
     credentialEnv: "OPENROUTER_API_KEY",
   };
   assert.throws(
     () => finalizeE2eDispositions([unknownScenario], true),
-    /unknown-scenario.*unknown scenario 'medium'/,
+    /unknown-scenario.*unknown scenario 'xlarge'/,
   );
   const keyringOnly = {
     kind: "unavailable",
@@ -393,6 +397,15 @@ test("cell model precedence: pin, then table, then suggested, then null", () => 
   assert.equal(resolveCellModel({ ...base, modelOverride: null }), DEFAULT_E2E_MODELS.zai.small);
   assert.equal(
     resolveCellModel({
+      productId: "zai",
+      scenarioId: "medium",
+      modelOverride: null,
+      suggestedModel: "glm-5-turbo",
+    }),
+    DEFAULT_E2E_MODELS.zai.medium,
+  );
+  assert.equal(
+    resolveCellModel({
       productId: "gemini",
       scenarioId: "large",
       suggestedModel: "gemini-2.5-flash",
@@ -405,7 +418,7 @@ test("cell model precedence: pin, then table, then suggested, then null", () => 
   );
 });
 
-test("the mandatory 2x2 matrix expands in product order, small before large", () => {
+test("the mandatory 2x3 matrix expands in product order, small before medium before large", () => {
   const cells = expandAll({
     env: {
       [E2E_OPT_IN_ENV]: "1",
@@ -413,14 +426,16 @@ test("the mandatory 2x2 matrix expands in product order, small before large", ()
       OPENROUTER_API_KEY: "k",
       OPENCODE_API_KEY: "k",
     },
-    scenarioIds: ["large", "small"],
+    scenarioIds: ["large", "medium", "small"],
   });
   assert.deepEqual(
     cells.map((cell) => [cell.kind, cell.productId, cell.scenarioId, cell.modelId]),
     [
       ["run", "openrouter", "small", DEFAULT_E2E_MODELS.openrouter.small],
+      ["run", "openrouter", "medium", DEFAULT_E2E_MODELS.openrouter.medium],
       ["run", "openrouter", "large", DEFAULT_E2E_MODELS.openrouter.large],
       ["run", "opencode-zen", "small", DEFAULT_E2E_MODELS["opencode-zen"].small],
+      ["run", "opencode-zen", "medium", DEFAULT_E2E_MODELS["opencode-zen"].medium],
       ["run", "opencode-zen", "large", DEFAULT_E2E_MODELS["opencode-zen"].large],
     ],
   );
@@ -429,7 +444,7 @@ test("the mandatory 2x2 matrix expands in product order, small before large", ()
   }
 });
 
-test("three-product matrix with all credentials yields six run cells, zai on its table model", () => {
+test("three-product matrix with all credentials yields nine run cells, zai on its table models", () => {
   const cells = expandAll({
     env: {
       [E2E_OPT_IN_ENV]: "1",
@@ -438,9 +453,9 @@ test("three-product matrix with all credentials yields six run cells, zai on its
       OPENCODE_API_KEY: "k",
       ZAI_API_KEY: "k",
     },
-    scenarioIds: ["small", "large"],
+    scenarioIds: ["small", "medium", "large"],
   });
-  assert.equal(cells.length, 6);
+  assert.equal(cells.length, 9);
   for (const cell of cells) {
     assert.equal(cell.kind, "run");
     assert.equal(typeof cell.modelId, "string");
@@ -449,7 +464,53 @@ test("three-product matrix with all credentials yields six run cells, zai on its
   const zaiCells = cells.filter((cell) => cell.productId === "zai");
   assert.deepEqual(
     zaiCells.map((cell) => cell.modelId),
-    ["glm-4.7-flash", "glm-4.7-flash"],
+    ["glm-4.7-flash", "glm-4.5-air", "glm-4.5-air"],
+  );
+});
+
+const FOUR_PRODUCT_ENV = {
+  [E2E_OPT_IN_ENV]: "1",
+  [E2E_PRODUCT_ENV]: "openrouter,opencode-zen,zai,ollama-cloud",
+  OPENROUTER_API_KEY: "k",
+  OPENCODE_API_KEY: "k",
+  ZAI_API_KEY: "k",
+  OLLAMA_API_KEY: "k",
+};
+
+test("four-product matrix with all credentials yields twelve run cells, ollama-cloud on its table models", () => {
+  const cells = expandAll({ env: FOUR_PRODUCT_ENV, scenarioIds: ["small", "medium", "large"] });
+  assert.equal(cells.length, 12);
+  assert.deepEqual(
+    cells.map((cell) => [cell.kind, cell.productId, cell.scenarioId, cell.modelId]),
+    ["openrouter", "opencode-zen", "zai", "ollama-cloud"].flatMap((productId) =>
+      ["small", "medium", "large"].map((scenarioId) => [
+        "run",
+        productId,
+        scenarioId,
+        DEFAULT_E2E_MODELS[productId][scenarioId],
+      ]),
+    ),
+  );
+  for (const cell of cells) {
+    assert.equal(typeof cell.modelId, "string");
+    assert.deepEqual(cell.credentialSource, { source: "env" });
+  }
+});
+
+test("all four table products resolve to run dispositions on the default scenario, none model-unresolved", () => {
+  const dispositions = resolveAll({ env: FOUR_PRODUCT_ENV });
+  assert.deepEqual(
+    dispositions.map((disposition) => [
+      disposition.kind,
+      disposition.productId,
+      disposition.modelId,
+    ]),
+    [
+      ["run", "openrouter", DEFAULT_E2E_MODELS.openrouter.small],
+      ["run", "opencode-zen", DEFAULT_E2E_MODELS["opencode-zen"].small],
+      ["run", "zai", DEFAULT_E2E_MODELS.zai.small],
+      ["run", "ollama-cloud", DEFAULT_E2E_MODELS["ollama-cloud"].small],
+    ],
   );
 });
 
@@ -460,33 +521,34 @@ test("a blocked product passes through the matrix as one unexpanded skip", () =>
       [E2E_PRODUCT_ENV]: "openrouter,opencode-zen",
       OPENROUTER_API_KEY: "k",
     },
-    scenarioIds: ["small", "large"],
+    scenarioIds: ["small", "medium", "large"],
   });
   assert.deepEqual(
     cells.map((cell) => [cell.kind, cell.productId, cell.scenarioId ?? null]),
     [
       ["run", "openrouter", "small"],
+      ["run", "openrouter", "medium"],
       ["run", "openrouter", "large"],
       ["unavailable", "opencode-zen", null],
     ],
   );
-  assert.equal(cells[2].reason, "credential-missing");
+  assert.equal(cells[3].reason, "credential-missing");
 });
 
 test("unknown scenario id -> unavailable cell naming the valid scenarios", () => {
   const cells = expandAll({
     env: { [E2E_OPT_IN_ENV]: "1", OPENROUTER_API_KEY: "k" },
-    scenarioIds: ["small", "medium"],
+    scenarioIds: ["small", "xlarge"],
   });
   assert.equal(cells[0].kind, "run");
   assert.equal(cells[1].kind, "unavailable");
   assert.equal(cells[1].reason, "unknown-scenario");
-  assert.equal(cells[1].scenarioId, "medium");
-  assert.deepEqual(E2E_SCENARIO_IDS, ["small", "large"]);
-  assert.match(skipLine(cells[1]), /unknown scenario 'medium'; valid: small, large/);
+  assert.equal(cells[1].scenarioId, "xlarge");
+  assert.deepEqual(E2E_SCENARIO_IDS, ["small", "medium", "large"]);
+  assert.match(skipLine(cells[1]), /unknown scenario 'xlarge'; valid: small, medium, large/);
   assert.match(
     skipLine(cells[1]),
-    /DIFFGAZER_LIVE_E2E_SCENARIO=small,medium .*pnpm run smoke:review/,
+    /DIFFGAZER_LIVE_E2E_SCENARIO=small,xlarge .*pnpm run smoke:review/,
   );
 });
 
@@ -505,18 +567,18 @@ test("skip-line rerun command carries the scenario env only when non-default", (
   assert.ok(!skipLine({ ...blocked, scenarioIds: ["small"] }).includes(E2E_SCENARIO_ENV));
 });
 
-test("a single-product model pin applies to both scenarios", () => {
+test("a single-product model pin applies to all three scenarios", () => {
   const cells = expandAll({
     env: {
       [E2E_OPT_IN_ENV]: "1",
       [E2E_MODEL_ENV]: "meta/llama-pinned",
       OPENROUTER_API_KEY: "k",
     },
-    scenarioIds: ["small", "large"],
+    scenarioIds: ["small", "medium", "large"],
   });
   assert.deepEqual(
     cells.map((cell) => cell.modelId),
-    ["meta/llama-pinned", "meta/llama-pinned"],
+    ["meta/llama-pinned", "meta/llama-pinned", "meta/llama-pinned"],
   );
 });
 
@@ -614,6 +676,21 @@ function localBinding(productId) {
     configDoc: LOCAL_CONFIG_DOC,
     secretsDoc: LOCAL_SECRETS_DOC,
     productId,
+  });
+}
+
+const OLLAMA_FILE_BINDING = {
+  kind: "file-0600",
+  filePath: "/home/user/.diffgazer/credentials/cfg-ollama.key",
+};
+
+function ollamaLocalBinding(binding) {
+  return findActiveLocalBinding({
+    configDoc: { configurations: [{ configurationId: "cfg-ollama", productId: "ollama-cloud" }] },
+    secretsDoc: {
+      bindings: [{ configurationId: "cfg-ollama", revision: 1, status: "active", ...binding }],
+    },
+    productId: "ollama-cloud",
   });
 }
 
@@ -736,6 +813,53 @@ test("keyring-only local binding yields the credential-keyring-only disposition"
   ]);
 });
 
+test("ollama-cloud credential sourcing: env beats local, file-0600 falls back, keyring-only is a named skip", () => {
+  assert.deepEqual(
+    resolveCredentialSource({
+      env: { OLLAMA_API_KEY: "k" },
+      credentialEnv: "OLLAMA_API_KEY",
+      localBinding: ollamaLocalBinding(OLLAMA_FILE_BINDING),
+    }),
+    { source: "env" },
+  );
+  assert.deepEqual(
+    resolveCredentialSource({
+      env: {},
+      credentialEnv: "OLLAMA_API_KEY",
+      localBinding: ollamaLocalBinding(OLLAMA_FILE_BINDING),
+    }),
+    { source: "local-file", filePath: "/home/user/.diffgazer/credentials/cfg-ollama.key" },
+  );
+  const keyringOnly = resolve({
+    env: { [E2E_OPT_IN_ENV]: "1", [E2E_PRODUCT_ENV]: "ollama-cloud" },
+    localBindingFor: () =>
+      ollamaLocalBinding({ kind: "keyring-reference", keyId: "keyring-item-ollama" }),
+  });
+  assert.deepEqual(keyringOnly, {
+    kind: "unavailable",
+    reason: "credential-keyring-only",
+    productId: "ollama-cloud",
+    credentialEnv: "OLLAMA_API_KEY",
+    bindingKind: "keyring-reference",
+  });
+});
+
+test("uncredentialed ollama-cloud is one credential-missing skip naming the env var and ~/.diffgazer", () => {
+  const disposition = resolve({
+    env: { [E2E_OPT_IN_ENV]: "1", [E2E_PRODUCT_ENV]: "ollama-cloud" },
+  });
+  assert.deepEqual(disposition, {
+    kind: "unavailable",
+    reason: "credential-missing",
+    productId: "ollama-cloud",
+    credentialEnv: "OLLAMA_API_KEY",
+  });
+  assert.match(
+    skipLine(disposition),
+    /set OLLAMA_API_KEY or configure ollama-cloud in ~\/\.diffgazer/,
+  );
+});
+
 test("the selected configuration's credential binding wins over an earlier configuration's", () => {
   const configDoc = {
     selectedConfigurationId: "cfg-b",
@@ -852,13 +976,31 @@ test("credential binding status: removed bindings are skipped, absent status mea
 test("secret hygiene: no formatted line or descriptor carries the credential value", () => {
   const env = {
     [E2E_OPT_IN_ENV]: "1",
-    [E2E_PRODUCT_ENV]: "openrouter,opencode-zen,zai",
+    [E2E_PRODUCT_ENV]: "openrouter,opencode-zen,zai,ollama-cloud",
     OPENROUTER_API_KEY: SENTINEL,
     OPENCODE_API_KEY: SENTINEL,
     ZAI_API_KEY: SENTINEL,
+    OLLAMA_API_KEY: SENTINEL,
   };
+  const ollamaMissing = resolve({
+    env: { ...env, [E2E_PRODUCT_ENV]: "ollama-cloud", OLLAMA_API_KEY: "" },
+  });
+  assert.equal(ollamaMissing.reason, "credential-missing");
+  assert.throws(
+    () => finalizeE2eDispositions([ollamaMissing], true),
+    (error) => error.message.includes("credential-missing") && !error.message.includes(SENTINEL),
+  );
   const outputs = [
     JSON.stringify(localBinding("openrouter")),
+    JSON.stringify(ollamaLocalBinding(OLLAMA_FILE_BINDING)),
+    JSON.stringify(
+      resolveCredentialSource({
+        env,
+        credentialEnv: "OLLAMA_API_KEY",
+        localBinding: ollamaLocalBinding(OLLAMA_FILE_BINDING),
+      }),
+    ),
+    skipLine(ollamaMissing),
     JSON.stringify(
       resolveCredentialSource({
         env,
@@ -886,7 +1028,12 @@ const OVERLAY_SOURCES = {
   openrouter: ["openrouter"],
   "opencode-zen": ["opencode", "opencode-go"],
   zai: ["zai"],
+  "ollama-cloud": ["ollama-cloud"],
 };
+// ollama-cloud bills plan quota — "no per-token price is published"
+// (libs/core/src/providers/product-registry.ts:113-117) — so its snapshot rows
+// carry no `cost`; the pin asserts that absence instead of a price.
+const UNPRICED_QUOTA_PRODUCTS = new Set(["ollama-cloud"]);
 // Only a genuinely absent build skips these pins: a dist that exists but throws
 // on import is a broken build, and the pin must fail loudly, not report green.
 async function importCoreDist(t, entry) {
@@ -898,20 +1045,38 @@ async function importCoreDist(t, entry) {
   return await import(pathToFileURL(distFile).href);
 }
 
-test("default e2e models are priced snapshot rows compatible with each product's dispatch mode", async (t) => {
+test("default and fallback e2e models are priced or quota-billed snapshot rows compatible with each product's dispatch mode", async (t) => {
   const catalog = await importCoreDist(t, "catalog/catalog-snapshot.js");
   if (!catalog) return;
   const { CATALOG_SNAPSHOT } = catalog;
-  for (const [productId, models] of Object.entries(DEFAULT_E2E_MODELS)) {
-    for (const [scenarioId, modelId] of Object.entries(models)) {
-      const sourceId = OVERLAY_SOURCES[productId].find(
-        (candidate) => CATALOG_SNAPSHOT[candidate]?.models?.[modelId],
+  // Defaults are pinned per scenario; a fallback is one id for the whole
+  // product, labelled "fallback" in the diagnostics. Same rules for both.
+  const pinned = [
+    ...Object.entries(DEFAULT_E2E_MODELS).flatMap(([productId, models]) =>
+      Object.entries(models).map(([scenarioId, modelId]) => [productId, scenarioId, modelId]),
+    ),
+    ...Object.entries(FALLBACK_E2E_MODELS).map(([productId, modelId]) => [
+      productId,
+      "fallback",
+      modelId,
+    ]),
+  ];
+  for (const [productId, scenarioId, modelId] of pinned) {
+    const sourceId = OVERLAY_SOURCES[productId].find(
+      (candidate) => CATALOG_SNAPSHOT[candidate]?.models?.[modelId],
+    );
+    assert.ok(
+      sourceId,
+      `${productId}/${scenarioId}: '${modelId}' is in none of the snapshot sources ${OVERLAY_SOURCES[productId].join(", ")}`,
+    );
+    const row = CATALOG_SNAPSHOT[sourceId].models[modelId];
+    if (UNPRICED_QUOTA_PRODUCTS.has(productId)) {
+      assert.equal(
+        row.cost,
+        undefined,
+        `${productId}/${scenarioId}: '${modelId}' is priced now; drop ${productId} from UNPRICED_QUOTA_PRODUCTS`,
       );
-      assert.ok(
-        sourceId,
-        `${productId}/${scenarioId}: '${modelId}' is in none of the snapshot sources ${OVERLAY_SOURCES[productId].join(", ")}`,
-      );
-      const row = CATALOG_SNAPSHOT[sourceId].models[modelId];
+    } else {
       assert.equal(
         typeof row.cost?.input,
         "number",
@@ -922,19 +1087,19 @@ test("default e2e models are priced snapshot rows compatible with each product's
         "number",
         `${productId}/${scenarioId}: '${modelId}' has no snapshot output price`,
       );
-      if (productId === "openrouter") {
-        assert.equal(
-          row.structured_output,
-          true,
-          `${productId}/${scenarioId}: '${modelId}' must declare structured_output for strict-json-schema dispatch`,
-        );
-      } else {
-        assert.notEqual(
-          row.structured_output,
-          false,
-          `${productId}/${scenarioId}: '${modelId}' declares structured_output: false; incompatible with json-object-local-validation`,
-        );
-      }
+    }
+    if (productId === "openrouter") {
+      assert.equal(
+        row.structured_output,
+        true,
+        `${productId}/${scenarioId}: '${modelId}' must declare structured_output for strict-json-schema dispatch`,
+      );
+    } else {
+      assert.notEqual(
+        row.structured_output,
+        false,
+        `${productId}/${scenarioId}: '${modelId}' declares structured_output: false; incompatible with json-object-local-validation`,
+      );
     }
   }
 });
@@ -946,4 +1111,83 @@ test("the harness-sent opencode-zen endpoint is the Zen-first tuple", async (t) 
     providers.PRODUCT_REGISTRY["opencode-zen"].configuration.endpoints[0].endpoint,
     "https://opencode.ai/zen/v1",
   );
+});
+
+const REFUSED_CELL = {
+  productId: "ollama-cloud",
+  scenarioId: "small",
+  modelId: "deepseek-v4-flash:0731",
+};
+const refusal = (code, message) => ({ type: "error", error: { code, message } });
+const ENTITLEMENT_REFUSAL = refusal(
+  "PROVIDER_REJECTED",
+  "provider rejected the request: HTTP 402 model requires a paid plan",
+);
+
+test("a 402 provider refusal falls the cell back to the product's fallback model", () => {
+  assert.equal(
+    entitlementFallback({ terminal: ENTITLEMENT_REFUSAL, cell: REFUSED_CELL, modelOverride: null }),
+    "gpt-oss:20b",
+  );
+});
+
+test("only a 402 PROVIDER_REJECTED terminal falls back", () => {
+  const declined = [
+    refusal("PROVIDER_REJECTED", "upstream rate limit: HTTP 429 too many requests"),
+    refusal("RATE_LIMITED", "HTTP 402 mentioned under another code"),
+    { type: "complete", result: { issues: [] } },
+    null,
+  ];
+  for (const terminal of declined) {
+    assert.equal(
+      entitlementFallback({ terminal, cell: REFUSED_CELL, modelOverride: null }),
+      null,
+      `expected no fallback for ${JSON.stringify(terminal)}`,
+    );
+  }
+});
+
+test("a user's model pin is never overridden by the fallback", () => {
+  assert.equal(
+    entitlementFallback({
+      terminal: ENTITLEMENT_REFUSAL,
+      cell: REFUSED_CELL,
+      modelOverride: "deepseek-v4-flash:0731",
+    }),
+    null,
+  );
+});
+
+test("a cell already running its fallback does not fall back again", () => {
+  assert.equal(
+    entitlementFallback({
+      terminal: ENTITLEMENT_REFUSAL,
+      cell: { ...REFUSED_CELL, modelId: "gpt-oss:20b", fallbackFrom: "deepseek-v4-flash:0731" },
+      modelOverride: null,
+    }),
+    null,
+  );
+});
+
+test("a product without a fallback, and a cell already on the fallback id, decline", () => {
+  assert.equal(
+    entitlementFallback({
+      terminal: ENTITLEMENT_REFUSAL,
+      cell: { productId: "zai", scenarioId: "small", modelId: "glm-4.7-flash" },
+      modelOverride: null,
+    }),
+    null,
+  );
+  assert.equal(
+    entitlementFallback({
+      terminal: ENTITLEMENT_REFUSAL,
+      cell: { ...REFUSED_CELL, modelId: "gpt-oss:20b" },
+      modelOverride: null,
+    }),
+    null,
+  );
+});
+
+test("the fallback table maps product ids to single model ids", () => {
+  assert.deepEqual(FALLBACK_E2E_MODELS, { "ollama-cloud": "gpt-oss:20b" });
 });

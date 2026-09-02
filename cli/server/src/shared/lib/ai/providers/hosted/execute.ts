@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type {
   ExecutionLimits,
@@ -8,7 +9,11 @@ import type {
 } from "@diffgazer/core/schemas/review";
 import { log } from "../../../log.js";
 import { composeExecutionDeadline } from "../../deadline.js";
-import { createCorrelationId, serializeFailureDiagnostic } from "../../diagnostics.js";
+import {
+  createCorrelationId,
+  type FailureDiagnosticInput,
+  serializeFailureDiagnostic,
+} from "../../diagnostics.js";
 import {
   cancelResponseBody,
   createResponseLimitingFetch,
@@ -102,7 +107,8 @@ const SLOW_ANSWER_REMEDIATION =
  * wall, so wherever `RequestInit.dispatcher` is honored the wall aborts first
  * and this retry never runs. It is the fallback for the fetch paths that ignore
  * the dispatcher — a non-undici runtime, or an injected fetch — where the
- * client's own response timeout is the bound that fires.
+ * client's own response timeout is the bound that fires. It also bounds the
+ * blind re-dispatch after a 2xx body that is not JSON.
  */
 const TIMEOUT_RETRY_MIN_REMAINING_MS = 60_000;
 
@@ -155,18 +161,20 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
       usageAvailability: lastUsageAvailability,
     });
 
+  const productName = PRODUCT_REGISTRY[hostedProductId].presentation.name;
+  const elapsedSeconds = () => Math.round((now().getTime() - Date.parse(startedAt)) / 1000);
+
   /**
    * The wall deadline names its own numbers on expiry, so the lens error is
    * more than the bare timeout sentence. A plain cancel stays silent.
    */
   const timedOutOrCancelled = (): ExecutionResult => {
     if (!deadline.expired()) return failed("cancelled");
-    const elapsedSeconds = Math.round((now().getTime() - Date.parse(startedAt)) / 1000);
     request.reportDiagnostic?.(
       serializeFailureDiagnostic({
         code: "timed-out",
         retryable: true,
-        message: `The dispatch hit its ${Math.round(admittedLimits.wallTimeMs / 1000)}s wall-time limit after ${elapsedSeconds}s without a complete answer.`,
+        message: `The dispatch hit its ${Math.round(admittedLimits.wallTimeMs / 1000)}s wall-time limit after ${elapsedSeconds()}s without a complete answer.`,
         remediation: slowAnswerRemediation,
         sensitive: { literalSecrets: [credential] },
       }),
@@ -180,17 +188,43 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
    * timeout instead of leaving an unexplained transport failure behind.
    */
   const transportTimedOut = (causeCode: string): ExecutionResult => {
-    const elapsedSeconds = Math.round((now().getTime() - Date.parse(startedAt)) / 1000);
     request.reportDiagnostic?.(
       serializeFailureDiagnostic({
         code: "timed-out",
         retryable: true,
-        message: `${PRODUCT_REGISTRY[hostedProductId].presentation.name} sent no response before the HTTP client's own response timeout (${causeCode}) after ${elapsedSeconds}s.`,
+        message: `${productName} sent no response before the HTTP client's own response timeout (${causeCode}) after ${elapsedSeconds()}s.`,
         remediation: SLOW_ANSWER_REMEDIATION,
         sensitive: { literalSecrets: [credential] },
       }),
     );
     return failed("timed-out");
+  };
+
+  /**
+   * A terminal exit the user can act on: one bounded, scrubbed diagnostic on
+   * the receipt and one warn line naming the same correlation id. Without it
+   * the client synthesizes "Adapter transport failed." from the bare outcome.
+   */
+  const failWithDiagnostic = (
+    event: string,
+    outcome: Parameters<typeof createFailedExecutionResult>[1],
+    input: Omit<FailureDiagnosticInput, "sensitive">,
+    fields: Record<string, number> = {},
+  ): ExecutionResult => {
+    const diagnostic = serializeFailureDiagnostic({
+      ...input,
+      sensitive: { literalSecrets: [credential] },
+    });
+    log("warn", event, {
+      productId: hostedProductId,
+      code: diagnostic.code,
+      correlationId: diagnostic.correlationId,
+      safeMessage: diagnostic.safeMessage,
+      details: diagnostic.truncatedDetails,
+      ...fields,
+    });
+    request.reportDiagnostic?.(diagnostic);
+    return failed(outcome);
   };
 
   // The pool a failure belongs to is the endpoint this dispatch is bound to,
@@ -258,7 +292,28 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
           }
           const transportTimeout = transportTimeoutCause(error);
           if (transportTimeout === null) {
-            return failed("transport-failed");
+            const cause = error instanceof Error ? error.cause : undefined;
+            const causeCode = errorCode(error) ?? errorCode(cause);
+            return failWithDiagnostic(
+              "hosted_fetch_failed",
+              "transport-failed",
+              {
+                code: "fetch-failed",
+                retryable: true,
+                message: `The request to ${productName} failed (${causeCode ?? getErrorMessage(error)}) after ${elapsedSeconds()}s on attempt ${attemptCount}.`,
+                remediation:
+                  "Check the network and retry. If it keeps happening, the provider endpoint may be unreachable from this machine.",
+                details: [
+                  {
+                    label: "cause",
+                    text: `${getErrorMessage(error)}${
+                      cause instanceof Error ? `: ${cause.name}: ${cause.message}` : ""
+                    }`,
+                  },
+                ],
+              },
+              { attemptCount },
+            );
           }
           if (
             timeoutRetryUsed ||
@@ -367,10 +422,34 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         "Hosted provider",
       );
       if (!bodyResult.ok) {
-        return failed(
-          attempt > 0 && bodyResult.error.code === "oversize-response"
-            ? "budget-exhausted"
-            : "transport-failed",
+        // A gateway commits 200 + headers as soon as the upstream accepts the
+        // request, so a stalled generation expires the wall inside this read.
+        if (deadline.signal.aborted) return timedOutOrCancelled();
+        if (bodyResult.error.code === "oversize-response") {
+          if (attempt > 0) return failed("budget-exhausted");
+          return failWithDiagnostic(
+            "hosted_response_read_failed",
+            "transport-failed",
+            {
+              code: "oversize-response",
+              retryable: false,
+              message: `${productName} sent more than ${remainingLimits.maxResponseBytes} bytes; the body was discarded.`,
+              remediation: "Reduce the review scope, or raise the response-size budget.",
+            },
+            { attemptCount },
+          );
+        }
+        return failWithDiagnostic(
+          "hosted_response_read_failed",
+          "transport-failed",
+          {
+            code: "response-read-failed",
+            retryable: true,
+            message: `${productName}'s response died while being read (${bodyResult.error.message}) after ${elapsedSeconds()}s on attempt ${attemptCount}.`,
+            remediation:
+              "Retry — the connection dropped before the answer was complete. If it keeps happening, pick a faster model or a different provider.",
+          },
+          { attemptCount },
         );
       }
 
@@ -379,7 +458,46 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
       try {
         payload = JSON.parse(bodyResult.value);
       } catch {
-        return failed("schema-failed");
+        // A 2xx that is not JSON is the gateway's page, not the model's answer:
+        // one blind re-dispatch while the wall still fits a whole answer, then
+        // a transport failure that names what came back.
+        if (
+          attemptCount < maxAttempts &&
+          deadline.remainingMs() >= TIMEOUT_RETRY_MIN_REMAINING_MS
+        ) {
+          log("warn", "hosted_unparseable_response_retry", {
+            productId: hostedProductId,
+            status: response.status,
+            responseBytes,
+            remainingMs: deadline.remainingMs(),
+          });
+          // The page was buffered, so it spends the envelope like any other
+          // answer. The read was capped at what remained, so this debit can
+          // never itself exhaust the budget.
+          remainingLimits = accountResponse(
+            remainingLimits,
+            reportedUsage,
+            null,
+            responseBytes,
+          ).limits;
+          continue;
+        }
+        const name =
+          describePoolFailure({ ...poolFailure, status: response.status })?.poolLabel ??
+          productName;
+        return failWithDiagnostic(
+          "hosted_unparseable_response",
+          "transport-failed",
+          {
+            code: "unparseable-response",
+            retryable: true,
+            message: `${name} answered HTTP ${response.status} with a body that is not JSON (${response.headers.get("content-type") ?? "no content-type"}; ${responseBytes} bytes) after ${attemptCount} attempt(s).`,
+            remediation:
+              "Retry — the provider answered with something other than a model response. If it keeps happening, pick a different model or provider.",
+            capture: { channel: "response", text: bodyResult.value },
+          },
+          { status: response.status, responseBytes, attemptCount },
+        );
       }
 
       const parsed = parseProviderPayload(hostedProductId, payload);
@@ -470,7 +588,22 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
       if (!parsed.content) {
         const retry = canRetry();
         if (retry === "retry") continue;
-        return failed(retry === "budget-exhausted" ? "budget-exhausted" : "schema-failed");
+        if (retry === "budget-exhausted") return failed("budget-exhausted");
+        const name =
+          describePoolFailure({ ...poolFailure, status: response.status })?.poolLabel ??
+          productName;
+        return failWithDiagnostic(
+          "hosted_empty_content",
+          "transport-failed",
+          {
+            code: "empty-content",
+            retryable: true,
+            message: `${name} returned an empty answer (finish reason "${reportedFinishReason}", no reasoning tokens reported) after ${attemptCount} attempt(s).`,
+            remediation:
+              "Retry, or pick a different model — the route answered without content on every attempt.",
+          },
+          { attemptCount },
+        );
       }
 
       // One id for this answer's outcome: whether it ends as a malformed-output

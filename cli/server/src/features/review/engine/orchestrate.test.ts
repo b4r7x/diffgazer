@@ -485,6 +485,36 @@ describe("orchestrateReview", () => {
     }
   });
 
+  it("does not count a provider-response diagnostic toward the structured-output verdict", async () => {
+    const client = makeClient([
+      err({
+        code: "STREAM_ERROR",
+        message: "OpenRouter answered HTTP 200 with a text/html body that is not JSON.",
+        diagnostic: {
+          code: "unparseable-response",
+          safeMessage: "OpenRouter answered HTTP 200 with a text/html body that is not JSON.",
+          retryable: true,
+          remediation: "Retry.",
+          correlationId: "correlation-unparseable",
+        },
+      }),
+    ]);
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts"]),
+      { lenses: ["correctness"] },
+      () => {},
+      { concurrency: 1 },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.allLensesSchemaFailed).toBeUndefined();
+    expect(result.error.code).toBe("STREAM_ERROR");
+    expect(result.error.lensStats[0]).toMatchObject({ lensId: "correctness", status: "failed" });
+  });
+
   it("stops dispatching the remaining lenses after the first budget-exhausted settlement", async () => {
     const client = makeClient([
       ok({ issues: [makeIssue({ id: "issue-1", file: "file-1" })] }),

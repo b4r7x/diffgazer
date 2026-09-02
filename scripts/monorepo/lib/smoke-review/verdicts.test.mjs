@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { E2E_LENS, evaluateBatchingProof, evaluateRun, labelCellLines } from "./verdicts.mjs";
+import {
+  E2E_LENS,
+  evaluateBatchingProof,
+  evaluateRun,
+  fallbackLine,
+  labelCellLines,
+} from "./verdicts.mjs";
 
 const completeTerminal = { type: "complete", result: { issues: [] }, reviewId: "r-1" };
 const completeWithFinding = {
@@ -135,6 +141,19 @@ test("timeout -> fail", () => {
   assert.match(lines[0], /did not reach a terminal event/);
 });
 
+test("timeout reports the enforced per-scenario bound", () => {
+  const { verdict, lines } = evaluateRun({
+    sawNonTerminalEvent: true,
+    terminal: null,
+    timedOut: true,
+    persisted: false,
+    listed: false,
+    timeoutMs: 1_200_000,
+  });
+  assert.equal(verdict, "fail");
+  assert.match(lines[0], /did not reach a terminal event within 1200000ms/);
+});
+
 for (const { persisted, listed, missing } of [
   { persisted: false, listed: true, missing: "detail fetch" },
   { persisted: true, listed: false, missing: "history listing" },
@@ -206,15 +225,17 @@ test("batching proof passes clean, stating the observed batch count", () => {
   const { verdict, lines } = evaluateBatchingProof({
     sizeWarnings: [{ batchCount: 3 }],
     lensStats: provenLensStats,
+    minBatchCount: 2,
   });
   assert.equal(verdict, "pass");
-  assert.deepEqual(lines, ["OK: live review e2e — batching proven: 3 batches + synthesis"]);
+  assert.deepEqual(lines, ["OK: live review e2e — batching proven: 3 batches (>= 2) + synthesis"]);
 });
 
 test("batching proof fails without a size warning", () => {
   const { verdict, lines } = evaluateBatchingProof({
     sizeWarnings: [],
     lensStats: provenLensStats,
+    minBatchCount: 2,
   });
   assert.equal(verdict, "fail");
   assert.match(lines[0], /no review_size_warning with batchCount >= 2/);
@@ -224,6 +245,7 @@ test("batching proof fails on a single-batch size warning", () => {
   const { verdict, lines } = evaluateBatchingProof({
     sizeWarnings: [{ batchCount: 1 }],
     lensStats: provenLensStats,
+    minBatchCount: 2,
   });
   assert.equal(verdict, "fail");
   assert.match(lines[0], /no review_size_warning with batchCount >= 2/);
@@ -236,15 +258,17 @@ test("batching proof fails when dispatches miss batchIndex 1", () => {
       { lensId: E2E_LENS, dispatches: [{ batchIndex: 0 }] },
       { lensId: "synthesis", status: "success" },
     ],
+    minBatchCount: 2,
   });
   assert.equal(verdict, "fail");
-  assert.match(lines[0], /dispatches do not cover batchIndex 0 and 1/);
+  assert.match(lines[0], /dispatches do not cover batchIndex 0\.\.1/);
 });
 
 test("batching proof fails without a synthesis row", () => {
   const { verdict, lines } = evaluateBatchingProof({
     sizeWarnings: [{ batchCount: 3 }],
     lensStats: [provenLensStats[0]],
+    minBatchCount: 2,
   });
   assert.equal(verdict, "fail");
   assert.match(lines[0], /no lensId "synthesis" row/);
@@ -257,7 +281,78 @@ test("batching proof passes on a failed synthesis, warning with its errorCode", 
       { lensId: E2E_LENS, dispatches: [{ batchIndex: 0 }, { batchIndex: 1 }] },
       { lensId: "synthesis", status: "failed", errorCode: "AI_ERROR" },
     ],
+    minBatchCount: 2,
   });
   assert.equal(verdict, "pass");
   assert.match(lines[1], /^WARN: synthesis lens failed honestly \(AI_ERROR\)/);
+});
+
+test("large family: batching proof passes at minBatchCount 3 with batchIndex 0..2 covered", () => {
+  const { verdict, lines } = evaluateBatchingProof({
+    sizeWarnings: [{ batchCount: 3 }],
+    lensStats: provenLensStats,
+    minBatchCount: 3,
+  });
+  assert.equal(verdict, "pass");
+  assert.deepEqual(lines, ["OK: live review e2e — batching proven: 3 batches (>= 3) + synthesis"]);
+});
+
+test("large family: batching proof fails at batchCount 2 against minBatchCount 3", () => {
+  const { verdict, lines } = evaluateBatchingProof({
+    sizeWarnings: [{ batchCount: 2 }],
+    lensStats: provenLensStats,
+    minBatchCount: 3,
+  });
+  assert.equal(verdict, "fail");
+  assert.match(lines[0], /no review_size_warning with batchCount >= 3/);
+});
+
+test("large family: batching proof fails when dispatches miss batchIndex 2 against minBatchCount 3", () => {
+  const { verdict, lines } = evaluateBatchingProof({
+    sizeWarnings: [{ batchCount: 3 }],
+    lensStats: [
+      { lensId: E2E_LENS, dispatches: [{ batchIndex: 0 }, { batchIndex: 1 }] },
+      { lensId: "synthesis", status: "success" },
+    ],
+    minBatchCount: 3,
+  });
+  assert.equal(verdict, "fail");
+  assert.match(lines[0], /dispatches do not cover batchIndex 0\.\.2/);
+});
+
+test("batching proof throws on a missing or sub-2 minBatchCount", () => {
+  assert.throws(
+    () => evaluateBatchingProof({ sizeWarnings: [{ batchCount: 3 }], lensStats: provenLensStats }),
+    /minBatchCount/,
+  );
+  assert.throws(
+    () =>
+      evaluateBatchingProof({
+        sizeWarnings: [{ batchCount: 3 }],
+        lensStats: provenLensStats,
+        minBatchCount: 1,
+      }),
+    /minBatchCount/,
+  );
+});
+
+test("the fallback line names both models, the 402, and is labelled as a WARN", () => {
+  const line = fallbackLine(
+    { productId: "ollama-cloud", scenarioId: "small", modelId: "deepseek-v4-flash:0731" },
+    "gpt-oss:20b",
+  );
+  assert.match(line, /^WARN: /);
+  assert.match(line, /deepseek-v4-flash:0731 refused with HTTP 402 \(plan\/entitlement\)/);
+  assert.match(line, /retrying the cell on fallback gpt-oss:20b$/);
+});
+
+test("a labelled fallback line carries its cell", () => {
+  const cell = {
+    productId: "ollama-cloud",
+    scenarioId: "small",
+    modelId: "deepseek-v4-flash:0731",
+  };
+  assert.deepEqual(labelCellLines([fallbackLine(cell, "gpt-oss:20b")], cell), [
+    "WARN: (ollama-cloud/small) live review e2e — deepseek-v4-flash:0731 refused with HTTP 402 (plan/entitlement); retrying the cell on fallback gpt-oss:20b",
+  ]);
 });

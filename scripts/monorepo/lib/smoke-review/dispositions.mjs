@@ -9,28 +9,47 @@ export const E2E_OPT_IN_ENV = "DIFFGAZER_LIVE_E2E";
 export const E2E_PRODUCT_ENV = "DIFFGAZER_LIVE_E2E_PRODUCT";
 export const E2E_MODEL_ENV = "DIFFGAZER_LIVE_E2E_MODEL";
 export const E2E_SCENARIO_ENV = "DIFFGAZER_LIVE_E2E_SCENARIO";
-export const E2E_SCENARIO_IDS = ["small", "large"];
+export const E2E_SCENARIO_IDS = ["small", "medium", "large"];
 export const DEFAULT_E2E_SCENARIO = "small";
 export const DEFAULT_E2E_PRODUCT = "openrouter";
 // A published free OpenRouter route proven to reach `completed` in the manual
 // live sessions; override with DIFFGAZER_LIVE_E2E_MODEL when it rots.
 export const DEFAULT_OPENROUTER_E2E_MODEL = "nvidia/nemotron-3-super-120b-a12b:free";
-// Every id here is pinned by the REQ-013 offline snapshot test: priced in the
-// committed catalog snapshot and structured-output-compatible with the
-// product's dispatch mode.
+// Every id here is pinned by the offline snapshot test: a committed catalog
+// snapshot row, priced or quota-billed (ollama-cloud's committed rows carry
+// no cost), and structured-output-compatible with the product's dispatch mode.
+// zai splits by scenario: the free glm-4.7-flash route is enough for one small
+// call but is throttled on the multi-call scenarios, so medium and large run
+// the priced glm-4.5-air (live round 2026-09-02).
 export const DEFAULT_E2E_MODELS = {
   openrouter: {
     small: DEFAULT_OPENROUTER_E2E_MODEL,
+    medium: "deepseek/deepseek-v4-flash-0731",
     large: "deepseek/deepseek-v4-flash-0731",
   },
   "opencode-zen": {
     small: "deepseek-v4-flash",
+    medium: "deepseek-v4-flash",
     large: "deepseek-v4-flash",
   },
   zai: {
     small: "glm-4.7-flash",
-    large: "glm-4.7-flash",
+    medium: "glm-4.5-air",
+    large: "glm-4.5-air",
   },
+  "ollama-cloud": {
+    small: "deepseek-v4-flash:0731",
+    medium: "deepseek-v4-flash:0731",
+    large: "deepseek-v4-flash:0731",
+  },
+};
+
+// Used only when the default model is refused with HTTP 402 (plan/entitlement):
+// Ollama's Free plan serves starter models only; gpt-oss:20b completed a live
+// small cell on this account (probe 2026-09-01). Pinned by the same snapshot
+// test as the defaults.
+export const FALLBACK_E2E_MODELS = {
+  "ollama-cloud": "gpt-oss:20b",
 };
 
 function parseProductIds(raw) {
@@ -52,6 +71,28 @@ export function parseScenarioIds(raw) {
 /** Per-cell model precedence: env pin, then the table, then the registry suggestion. */
 export function resolveCellModel({ productId, scenarioId, modelOverride, suggestedModel }) {
   return modelOverride || DEFAULT_E2E_MODELS[productId]?.[scenarioId] || suggestedModel || null;
+}
+
+// The stream's terminal error object is `{message, code}` only
+// (createDomainErrorSchema, libs/core/src/schemas/errors.ts:60) — no structured
+// HTTP status field reaches the harness, which sees the stream event and not
+// the adapter diagnostic — so the status is read out of the message.
+const ENTITLEMENT_REFUSED_RE = /\bHTTP 402\b/;
+
+/**
+ * The one refusal that earns a second attempt on another model: the plan does
+ * not entitle this account to the default model (HTTP 402), as opposed to a
+ * rate limit, a bad credential, or a model the run itself chose. A user's
+ * DIFFGAZER_LIVE_E2E_MODEL pin is exempt — their choice is not overridden — and
+ * a cell already running its fallback never falls back again. Returns the
+ * fallback model id, else null.
+ */
+export function entitlementFallback({ terminal, cell, modelOverride }) {
+  if (terminal?.type !== "error" || terminal.error?.code !== "PROVIDER_REJECTED") return null;
+  if (!ENTITLEMENT_REFUSED_RE.test(String(terminal.error.message ?? ""))) return null;
+  if (modelOverride || cell.fallbackFrom) return null;
+  const fallbackModelId = FALLBACK_E2E_MODELS[cell.productId];
+  return fallbackModelId && fallbackModelId !== cell.modelId ? fallbackModelId : null;
 }
 
 /**
@@ -217,11 +258,11 @@ export function singleProductModelOverride({ env }) {
 }
 
 /**
- * One cell per `kind: "run"` product × requested scenario, `small` before
- * `large` within a product; non-run dispositions pass through unexpanded. The
- * per-cell model supersedes the product-level (small-scenario) value, and each
- * cell carries its credential-source descriptor for the harness to read at
- * dispatch time.
+ * One cell per `kind: "run"` product × requested scenario, in `E2E_SCENARIO_IDS`
+ * order (small, medium, large) within a product; non-run dispositions pass
+ * through unexpanded. The per-cell model supersedes the product-level
+ * (small-scenario) value, and each cell carries its credential-source
+ * descriptor for the harness to read at dispatch time.
  */
 export function expandScenarioCells({
   dispositions,

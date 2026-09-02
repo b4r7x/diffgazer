@@ -162,7 +162,7 @@ describe("reasoning-budget trap", () => {
     );
   });
 
-  it("keeps the plain retry flow for empty content without reasoning tokens", async () => {
+  it("keeps the plain retry flow for empty content without reasoning tokens, then names the empty answer as a transport failure", async () => {
     const fetch = mockFetchResponse({
       choices: [{ message: { content: "" }, finish_reason: "stop" }],
       usage: { prompt_tokens: 12, completion_tokens: 0, total_tokens: 12 },
@@ -174,9 +174,12 @@ describe("reasoning-budget trap", () => {
       reportDiagnostic,
     });
 
-    expect(result.receipt.outcome).toBe("schema-failed");
+    expect(result.receipt.outcome).toBe("transport-failed");
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(reportDiagnostic).not.toHaveBeenCalled();
+    expect(reportDiagnostic).toHaveBeenCalledTimes(1);
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "empty-content" }),
+    );
   });
 });
 

@@ -788,6 +788,40 @@ describe("finalizeReview", () => {
     });
   });
 
+  it("reports a provider response failure as a generic AI error that carries the cause, never as model incompatibility", async () => {
+    saveReview.mockResolvedValue(ok({ id: "review-1" }));
+    const execution = buildExecutionResult(pipelineAdmittedPlan(), "transport-failed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:02.000Z",
+      attemptCount: 2,
+      usageAvailability: "unavailable",
+    });
+    const terminalDiagnostic = {
+      code: "unparseable-response",
+      safeMessage:
+        "OpenRouter answered HTTP 200 with a text/html body that is not JSON (312 bytes) after 2 attempt(s).",
+      retryable: true,
+      remediation:
+        "Retry — the provider answered with something other than a model response. If it keeps happening, pick a different model or provider.",
+      correlationId: "unparseable-correlation",
+    };
+
+    const result = await runFinalize([], undefined, undefined, {
+      issues: [],
+      execution,
+      terminalDiagnostic,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatchObject({
+      kind: "review_abort",
+      code: "AI_ERROR",
+      message: `${terminalDiagnostic.safeMessage} ${terminalDiagnostic.remediation}`,
+    });
+    expect(result.error.code).not.toBe(ReviewErrorCode.MODEL_INCOMPATIBLE);
+  });
+
   it("names Sequential mode in the abort message when every lens died rate-limited", async () => {
     saveReview.mockResolvedValue(ok({ id: "review-1" }));
     const execution = buildExecutionResult(pipelineAdmittedPlan(), "transport-failed", {

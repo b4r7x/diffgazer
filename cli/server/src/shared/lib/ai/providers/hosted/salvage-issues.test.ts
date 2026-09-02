@@ -41,6 +41,24 @@ describe("salvageLensIssues", () => {
     expect(salvaged.droppedCount).toBe(1);
   });
 
+  it("keeps a candidate whose only defect is object-shaped testsToAdd, with the entries coerced to strings", () => {
+    const payload = {
+      issues: [
+        {
+          ...makeIssue({ id: "kept" }),
+          testsToAdd: [{ name: "adds two positives", description: "expect(add(2, 3)).toBe(5)" }],
+        },
+      ],
+    };
+
+    const salvaged = salvageLensIssues(payload, JSON.stringify(payload));
+
+    expect(salvaged.issues).toMatchObject([
+      { id: "kept", testsToAdd: [expect.stringContaining("adds two positives")] },
+    ]);
+    expect(salvaged.droppedCount).toBe(0);
+  });
+
   it("stops at the per-lens cap", () => {
     const issues = Array.from({ length: MAX_REVIEW_ISSUES_PER_LENS + 3 }, (_, index) =>
       makeIssue({ id: `issue-${index}` }),

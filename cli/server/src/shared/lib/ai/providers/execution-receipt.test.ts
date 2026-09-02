@@ -1,5 +1,6 @@
 import { canonicalJson } from "@diffgazer/core/json";
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { describe, expect, it } from "vitest";
 import { createBudgetLedger } from "../budget/ledger.js";
 import {
@@ -170,5 +171,27 @@ describe("createFailedExecutionResult", () => {
 
     expect(result.receipt.usageAvailability).toBe("reported");
     expect(result.receipt.usage).toEqual(usage);
+  });
+});
+
+describe("createCompletedExecutionResult", () => {
+  it("keeps a finding whose required text is blank for the completeness gate to drop", () => {
+    const result = createCompletedExecutionResult(
+      {
+        configurationId: "configuration-1",
+        configurationRevision: 1,
+        evidenceKey,
+        prompt: "review",
+      },
+      { issues: [makeIssue({ symptom: "   " })] },
+      {
+        startedAt: "2026-01-01T00:00:00.000Z",
+        finishedAt: "2026-01-01T00:00:01.000Z",
+        attemptCount: 1,
+      },
+    );
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.result.issues).toEqual([makeIssue({ symptom: "" })]);
   });
 });

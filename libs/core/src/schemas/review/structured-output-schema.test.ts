@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { sha256CanonicalJsonSync } from "../canonical-json.js";
 import {
   buildLensReviewResultJsonSchema,
   buildProviderLensReviewResultJsonSchema,
@@ -57,6 +58,29 @@ describe("structured output schema dialect", () => {
         expect.arrayContaining([expect.objectContaining({ type: "null" })]),
       );
     }
+  });
+
+  it("projects the provider-lenient string lists as plain string arrays", () => {
+    const stringList = { type: "array", items: { type: "string" } };
+    const properties = issueSchema(canonical).properties as Record<string, unknown>;
+    const strictProperties = issueSchema(toOpenAiStrictJsonSchema(canonical)).properties as Record<
+      string,
+      unknown
+    >;
+
+    for (const list of ["betterOptions", "testsToAdd"] as const) {
+      expect(properties[list]).toStrictEqual(stringList);
+      expect(strictProperties[list]).toStrictEqual({ anyOf: [stringList, { type: "null" }] });
+    }
+  });
+
+  it("hashes to the value every recorded admission tuple carries", () => {
+    // STRUCTURED_OUTPUT_SCHEMA_SHA256 (cli/server admission/protocol.ts) is this
+    // hash of the canonical projection; the lenient provider reads are
+    // z.preprocess constructs precisely so it does not move.
+    expect(sha256CanonicalJsonSync(canonical)).toBe(
+      "26ae0b23ec858ae7c35f1c50efc556af158dfab5325d382c227afe7476b5db86",
+    );
   });
 
   it("drops draft-07-only keywords for the Google responseSchema dialect", () => {

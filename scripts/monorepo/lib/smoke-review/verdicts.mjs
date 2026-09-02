@@ -1,8 +1,9 @@
 // The verdict rules for the live review e2e: what a run must show to pass, what
-// the large scenario must show to prove batching, and how a matrix labels its
-// verdict lines. The lens and the hard cap the harness dispatches with live here
-// too — they are the two limits every verdict line is stated against. No I/O and
-// no network so `test:scripts` can exercise every branch offline.
+// a fixture scenario (medium, large) must show to prove batching, and how a
+// matrix labels its verdict lines. The lens and the default hard cap live here
+// too; the timeout and batching-proof lines are stated against the bounds the
+// harness actually enforced. No I/O and no network so `test:scripts` can
+// exercise every branch offline.
 
 import { E2E_MODEL_ENV } from "./dispositions.mjs";
 
@@ -39,12 +40,13 @@ export function evaluateRun({
   listed,
   failedLenses = [],
   schemaErrors = [],
+  timeoutMs = HARD_TIMEOUT_MS,
 }) {
   if (timedOut) {
     return {
       verdict: "fail",
       lines: [
-        `FAIL: live review e2e did not reach a terminal event within ${HARD_TIMEOUT_MS}ms; session cancelled.`,
+        `FAIL: live review e2e did not reach a terminal event within ${timeoutMs}ms; session cancelled.`,
       ],
     };
   }
@@ -101,13 +103,19 @@ export function evaluateRun({
 }
 
 /**
- * REQ-006: batching is proven, not assumed. A large cell fails unless a
- * `review_size_warning` reported >= 2 batches, the review lens dispatched
- * batchIndex 0 and 1, and a synthesis row exists. A synthesis row that failed
- * honestly WARNs but passes — synthesis ran, which is what the proof needs.
- * The OK line is grep-distinguishable from evaluateRun's `— completed` line.
+ * REQ-006: batching is proven, not assumed. A fixture cell fails unless a
+ * `review_size_warning` reported >= minBatchCount batches, the review lens
+ * dispatched every batchIndex in 0..minBatchCount-1, and a synthesis row
+ * exists. A synthesis row that failed honestly WARNs but passes — synthesis
+ * ran, which is what the proof needs. The OK line is grep-distinguishable from
+ * evaluateRun's `— completed` line. minBatchCount is REQUIRED: an omitted
+ * argument would make `batchCount < undefined` false and silently weaken the
+ * proof, so a missing or sub-2 bar is a wiring error and throws.
  */
-export function evaluateBatchingProof({ sizeWarnings, lensStats }) {
+export function evaluateBatchingProof({ sizeWarnings, lensStats, minBatchCount }) {
+  if (!Number.isInteger(minBatchCount) || minBatchCount < 2) {
+    throw new Error(`evaluateBatchingProof needs minBatchCount >= 2, got ${minBatchCount}`);
+  }
   const batchCount = Math.max(0, ...sizeWarnings.map((warning) => warning?.batchCount ?? 0));
   const reviewLens = lensStats.find((row) => row.lensId === E2E_LENS);
   const batchIndexes = new Set(
@@ -116,11 +124,12 @@ export function evaluateBatchingProof({ sizeWarnings, lensStats }) {
   const synthesis = lensStats.find((row) => row.lensId === "synthesis");
 
   const missing = [];
-  if (batchCount < 2) {
-    missing.push("no review_size_warning with batchCount >= 2");
+  if (batchCount < minBatchCount) {
+    missing.push(`no review_size_warning with batchCount >= ${minBatchCount}`);
   }
-  if (!(batchIndexes.has(0) && batchIndexes.has(1))) {
-    missing.push(`${E2E_LENS} lens dispatches do not cover batchIndex 0 and 1`);
+  const requiredIndexes = Array.from({ length: minBatchCount }, (_, index) => index);
+  if (!requiredIndexes.every((index) => batchIndexes.has(index))) {
+    missing.push(`${E2E_LENS} lens dispatches do not cover batchIndex 0..${minBatchCount - 1}`);
   }
   if (!synthesis) {
     missing.push('no lensId "synthesis" row in lensStats');
@@ -131,13 +140,25 @@ export function evaluateBatchingProof({ sizeWarnings, lensStats }) {
       lines: [`FAIL: live review e2e batching proof missing: ${missing.join("; ")}`],
     };
   }
-  const lines = [`OK: live review e2e — batching proven: ${batchCount} batches + synthesis`];
+  const lines = [
+    `OK: live review e2e — batching proven: ${batchCount} batches (>= ${minBatchCount}) + synthesis`,
+  ];
   if (synthesis.status === "failed") {
     lines.push(
       `WARN: synthesis lens failed honestly (${synthesis.errorCode ?? "no errorCode"}); batching itself is proven.`,
     );
   }
   return { verdict: "pass", lines };
+}
+
+/**
+ * The superseded attempt's only line: this cell's model was refused on plan
+ * grounds, so the run retries it on the product's fallback instead of reporting
+ * a verdict on a model it is abandoning. `WARN:` so `labelCellLines` labels it,
+ * and the wording is grep-distinguishable from every other WARN.
+ */
+export function fallbackLine(cell, fallbackModelId) {
+  return `WARN: live review e2e — ${cell.modelId} refused with HTTP 402 (plan/entitlement); retrying the cell on fallback ${fallbackModelId}`;
 }
 
 const VERDICT_PREFIX_RE = /^(OK|WARN|FAIL): /;

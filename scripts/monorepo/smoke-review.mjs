@@ -24,8 +24,14 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { ENV } from "./lib/env.mjs";
 import { errorMessage } from "./lib/error-message.mjs";
 import {
+  BATCHING_CALL_TOKEN_CAP,
+  buildDiffFixture,
+  SCENARIO_FIXTURES,
+} from "./lib/smoke-review/diff-fixtures.mjs";
+import {
   E2E_OPT_IN_ENV,
   E2E_SCENARIO_ENV,
+  entitlementFallback,
   expandScenarioCells,
   finalizeE2eDispositions,
   findActiveLocalBinding,
@@ -36,15 +42,12 @@ import {
   singleProductModelOverride,
   skipLine,
 } from "./lib/smoke-review/dispositions.mjs";
-import {
-  buildLargeDiffFixture,
-  LARGE_CALL_TOKEN_CAP,
-} from "./lib/smoke-review/large-diff-fixture.mjs";
 import { createSseFrameParser } from "./lib/smoke-review/sse-frames.mjs";
 import {
   E2E_LENS,
   evaluateBatchingProof,
   evaluateRun,
+  fallbackLine,
   HARD_TIMEOUT_MS,
   labelCellLines,
 } from "./lib/smoke-review/verdicts.mjs";
@@ -107,8 +110,7 @@ function git(cwd, args) {
   execFileSync("git", args, { cwd, stdio: "ignore" });
 }
 
-function createScratchRepo() {
-  const repo = realpathSync(mkdtempSync(join(tmpdir(), "diffgazer-e2e-repo-")));
+function createScratchRepo(repo) {
   git(repo, ["init", "--quiet"]);
   git(repo, ["config", "user.email", "smoke-review@diffgazer.invalid"]);
   git(repo, ["config", "user.name", "Diffgazer Smoke Review"]);
@@ -127,22 +129,19 @@ function createScratchRepo() {
     join(repo, "math.js"),
     "export function add(a, b) {\n  return a - b;\n}\n\nexport function half(n) {\n  return n / 2;\n}\n\nexport function double(n) {\n  return n * 2;\n}\n",
   );
-  return repo;
 }
 
-// The large scenario's repo mirrors the small idiom: commit one-line seeds,
+// A fixture scenario's repo mirrors the small idiom: commit one-line seeds,
 // then overwrite with the deterministic fixture so the diff stays unstaged.
-function createLargeScratchRepo() {
-  const repo = realpathSync(mkdtempSync(join(tmpdir(), "diffgazer-e2e-repo-")));
+function createFixtureScratchRepo(repo, fixture) {
   git(repo, ["init", "--quiet"]);
   git(repo, ["config", "user.email", "smoke-review@diffgazer.invalid"]);
   git(repo, ["config", "user.name", "Diffgazer Smoke Review"]);
-  const files = buildLargeDiffFixture();
+  const files = buildDiffFixture(fixture);
   for (const file of files) writeFileSync(join(repo, file.path), file.seedContent);
   git(repo, ["add", "."]);
   git(repo, ["commit", "--quiet", "-m", "seed"]);
   for (const file of files) writeFileSync(join(repo, file.path), file.modifiedContent);
-  return repo;
 }
 
 function listen(server) {
@@ -173,7 +172,7 @@ async function requestJson(baseUrl, headers, method, path, body) {
   return text ? JSON.parse(text) : null;
 }
 
-async function consumeStream(baseUrl, headers, reviewId, core) {
+async function consumeStream(baseUrl, headers, reviewId, core, timeoutMs) {
   const controller = new AbortController();
   const state = {
     sawNonTerminalEvent: false,
@@ -186,7 +185,7 @@ async function consumeStream(baseUrl, headers, reviewId, core) {
   const watchdog = setTimeout(() => {
     state.timedOut = true;
     controller.abort();
-  }, HARD_TIMEOUT_MS);
+  }, timeoutMs);
 
   try {
     const response = await fetch(`${baseUrl}/api/review/reviews/${reviewId}/stream`, {
@@ -224,12 +223,14 @@ async function consumeStream(baseUrl, headers, reviewId, core) {
   } finally {
     clearTimeout(watchdog);
     controller.abort();
-  }
-
-  if (state.timedOut) {
-    await requestJson(baseUrl, headers, "DELETE", `/api/review/sessions/${reviewId}`).catch(
-      () => {},
-    );
+    // Dropping the SSE client only unsubscribes; DELETE is the one route that
+    // cancels the detached pipeline, so any exit without a terminal event
+    // cancels here — before the cell's server closes and the run outlives it.
+    if (!state.terminal) {
+      await requestJson(baseUrl, headers, "DELETE", `/api/review/sessions/${reviewId}`).catch(
+        () => {},
+      );
+    }
   }
   if (state.terminal?.type === "complete") {
     // The report the run produced is pinned to the published report contract
@@ -280,34 +281,72 @@ function resolveCredentialLiteral(cell) {
   return literal;
 }
 
-async function runLiveE2e(cell, core, multiCell) {
+// The server resolves its paths from DIFFGAZER_HOME per call, except two it
+// pins at first use: the reviews directory when the dist is imported
+// (storage/project-index.js) and the trust file when the config store is
+// created. Both are primed here against one invocation-scoped home that
+// outlives every cell, so a later cell's trust or review write cannot
+// re-create a home an earlier cell already removed — and neither pin can land
+// in the real `~/.diffgazer`.
+async function loadServerRuntime() {
+  const pinnedHome = mkdtempSync(join(tmpdir(), "diffgazer-e2e-pinned-"));
+  assertTempPath("Live e2e pinned home", pinnedHome);
+  process.env.DIFFGAZER_HOME = pinnedHome;
+  process.env.DIFFGAZER_SHUTDOWN_TOKEN = "smoke-review-shutdown-token";
+  if (!process.env.DIFFGAZER_LOG_LEVEL) process.env.DIFFGAZER_LOG_LEVEL = "warn";
+  try {
+    const { createApp } = await import(pathToFileURL(SERVER_DIST).href);
+    const { getStore } = await import(
+      pathToFileURL(resolve(root, "cli/server/dist/shared/lib/config/store.js")).href
+    );
+    const { shutdownSessions } = await import(
+      pathToFileURL(resolve(root, "cli/server/dist/features/review/stream/store.js")).href
+    );
+    const { createAdaptorServer } = await import(
+      pathToFileURL(serverRequire.resolve("@hono/node-server")).href
+    );
+    // Workspace packages are not linked under scripts/, so import the built dist.
+    const { SHUTDOWN_TOKEN_HEADER } = await import(
+      pathToFileURL(resolve(root, "libs/core/dist/api/protocol.js")).href
+    );
+    if (!SHUTDOWN_TOKEN_HEADER) throw new Error("SHUTDOWN_TOKEN_HEADER missing from core dist");
+    // Store creation is the trust-file pin.
+    getStore();
+    return { pinnedHome, createApp, createAdaptorServer, SHUTDOWN_TOKEN_HEADER, shutdownSessions };
+  } catch (error) {
+    rmSync(pinnedHome, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+async function runLiveE2e(cell, core, runtime, multiCell, modelOverride) {
   const { PRODUCT_REGISTRY, acceptNotice } = core;
   const product = PRODUCT_REGISTRY[cell.productId];
 
+  const fixture = SCENARIO_FIXTURES[cell.scenarioId] ?? null;
+  const timeoutMs = fixture?.timeoutMs ?? HARD_TIMEOUT_MS;
+
   const home = mkdtempSync(join(tmpdir(), "diffgazer-e2e-home-"));
-  const repo = cell.scenarioId === "large" ? createLargeScratchRepo() : createScratchRepo();
-  assertTempPath("Live e2e DIFFGAZER_HOME", home);
-  assertTempPath("Live e2e project root", repo);
-  process.env.DIFFGAZER_HOME = home;
-  process.env.DIFFGAZER_PROJECT_ROOT = repo;
-  process.env.DIFFGAZER_SHUTDOWN_TOKEN = "smoke-review-shutdown-token";
-  if (!process.env.DIFFGAZER_LOG_LEVEL) process.env.DIFFGAZER_LOG_LEVEL = "warn";
-
-  const { createApp } = await import(pathToFileURL(SERVER_DIST).href);
-  const { createAdaptorServer } = await import(
-    pathToFileURL(serverRequire.resolve("@hono/node-server")).href
-  );
-  // Workspace packages are not linked under scripts/, so import the built dist.
-  const { SHUTDOWN_TOKEN_HEADER } = await import(
-    pathToFileURL(resolve(root, "libs/core/dist/api/protocol.js")).href
-  );
-  if (!SHUTDOWN_TOKEN_HEADER) throw new Error("SHUTDOWN_TOKEN_HEADER missing from core dist");
-
-  const server = createAdaptorServer({ fetch: createApp().fetch, hostname: "127.0.0.1" });
+  let repo = null;
+  let server = null;
   try {
+    // Made here rather than in the seeder so `repo` is assigned before any git
+    // call can throw and the finally below owns the directory either way.
+    repo = realpathSync(mkdtempSync(join(tmpdir(), "diffgazer-e2e-repo-")));
+    if (fixture) createFixtureScratchRepo(repo, fixture);
+    else createScratchRepo(repo);
+    assertTempPath("Live e2e DIFFGAZER_HOME", home);
+    assertTempPath("Live e2e project root", repo);
+    process.env.DIFFGAZER_HOME = home;
+    process.env.DIFFGAZER_PROJECT_ROOT = repo;
+
+    server = runtime.createAdaptorServer({
+      fetch: runtime.createApp().fetch,
+      hostname: "127.0.0.1",
+    });
     const baseUrl = await listen(server);
     const headers = {
-      [SHUTDOWN_TOKEN_HEADER]: process.env.DIFFGAZER_SHUTDOWN_TOKEN,
+      [runtime.SHUTDOWN_TOKEN_HEADER]: process.env.DIFFGAZER_SHUTDOWN_TOKEN,
       "content-type": "application/json",
     };
 
@@ -320,11 +359,12 @@ async function runLiveE2e(cell, core, multiCell) {
       trustMode: "persistent",
       capabilities: { readFiles: true },
     });
-    if (cell.scenarioId === "large") {
-      // Hermetic-server-only settings patch (REQ-015): the schema-minimum call
-      // token cap forces the large fixture to partition into >= 2 batches.
+    if (fixture) {
+      // Hermetic-server-only settings patch (REQ-118): the schema-minimum call
+      // token cap forces the fixture to partition into >= fixture.minBatches
+      // batches; small stays on the default cap.
       await requestJson(baseUrl, headers, "POST", "/api/settings", {
-        effectiveCallTokenCap: LARGE_CALL_TOKEN_CAP,
+        effectiveCallTokenCap: BATCHING_CALL_TOKEN_CAP,
       });
     }
     const credentialValue = resolveCredentialLiteral(cell);
@@ -355,35 +395,49 @@ async function runLiveE2e(cell, core, multiCell) {
     if (!reviewId) throw new Error("review create returned no reviewId");
     console.log(`live review e2e: ${cell.productId}/${cell.modelId}, review ${reviewId}`);
 
-    const stream = await consumeStream(baseUrl, headers, reviewId, core);
+    const stream = await consumeStream(baseUrl, headers, reviewId, core, timeoutMs);
+    const fallbackModelId = entitlementFallback({ terminal: stream.terminal, cell, modelOverride });
     const persistence =
       stream.terminal?.type === "complete"
         ? await pollPersistence(baseUrl, headers, reviewId)
         : { persisted: false, listed: false, review: null };
 
-    const evaluations = [evaluateRun({ ...stream, ...persistence })];
-    if (cell.scenarioId === "large") {
-      evaluations.push(
-        evaluateBatchingProof({
-          sizeWarnings: stream.sizeWarnings,
-          lensStats: persistence.review?.lensStats ?? [],
-        }),
-      );
-    }
-    for (const evaluation of evaluations) {
-      for (const line of multiCell ? labelCellLines(evaluation.lines, cell) : evaluation.lines) {
-        console.log(line);
+    // A cell headed for its fallback prints why and nothing else: evaluateRun's
+    // FAIL and the batching proof would judge an attempt this run supersedes.
+    const evaluations = [];
+    if (!fallbackModelId) {
+      evaluations.push(evaluateRun({ ...stream, ...persistence, timeoutMs }));
+      // A red run already prints its FAIL and has no lens stats for the proof to judge.
+      if (fixture && evaluations[0].verdict === "pass") {
+        evaluations.push(
+          evaluateBatchingProof({
+            sizeWarnings: stream.sizeWarnings,
+            lensStats: persistence.review?.lensStats ?? [],
+            minBatchCount: fixture.minBatches,
+          }),
+        );
       }
     }
+    const lines = fallbackModelId
+      ? [fallbackLine(cell, fallbackModelId)]
+      : evaluations.flatMap((evaluation) => evaluation.lines);
+    for (const line of multiCell ? labelCellLines(lines, cell) : lines) {
+      console.log(line);
+    }
     console.log(`live review e2e wall time: ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
-    return evaluations.every((evaluation) => evaluation.verdict === "pass") ? 0 : 1;
+    // The empty `evaluations` of a superseded attempt passes `every`, which is
+    // the point: the retry cell, not this one, carries the verdict.
+    return {
+      failures: evaluations.every((evaluation) => evaluation.verdict === "pass") ? 0 : 1,
+      fallbackModelId,
+    };
   } finally {
-    await new Promise((resolveClose) => server.close(() => resolveClose()));
+    if (server) await new Promise((resolveClose) => server.close(() => resolveClose()));
     // `paths.ts` re-reads DIFFGAZER_HOME per call, so the env vars stay in
     // place: clearing them would re-point a still-draining write at the real
     // `~/.diffgazer`.
     rmSync(home, { recursive: true, force: true });
-    rmSync(repo, { recursive: true, force: true });
+    if (repo) rmSync(repo, { recursive: true, force: true });
   }
 }
 
@@ -427,10 +481,11 @@ async function run() {
     localBindingFor,
   });
   const scenarioIds = parseScenarioIds(process.env[E2E_SCENARIO_ENV]);
+  const modelOverride = singleProductModelOverride({ env: process.env });
   const cells = expandScenarioCells({
     dispositions,
     scenarioIds,
-    modelOverride: singleProductModelOverride({ env: process.env }),
+    modelOverride,
     suggestedModelFor,
     env: process.env,
     localBindingFor,
@@ -446,6 +501,7 @@ async function run() {
   // not count, so a lone run beside a skip keeps the legacy unlabeled
   // single-cell output (REQ-017).
   const multiCell = cells.filter((cell) => cell.kind === "run").length > 1;
+  const runtime = cells.some((cell) => cell.kind === "run") ? await loadServerRuntime() : null;
   let failures = 0;
   for (const cell of cells) {
     if (cell.kind !== "run") {
@@ -455,12 +511,31 @@ async function run() {
       continue;
     }
     try {
-      failures += await runLiveE2e(cell, core, multiCell);
+      const result = await runLiveE2e(cell, core, runtime, multiCell, modelOverride);
+      failures += result.failures;
+      // The retry boots fresh like any cell; its header line names the fallback
+      // model, so the record shows which model actually produced the verdict.
+      if (result.fallbackModelId) {
+        const retry = await runLiveE2e(
+          { ...cell, modelId: result.fallbackModelId, fallbackFrom: cell.modelId },
+          core,
+          runtime,
+          multiCell,
+          modelOverride,
+        );
+        failures += retry.failures;
+      }
     } catch (error) {
       const lines = [runFailureLine(cell.productId, errorMessage(error))];
       for (const line of multiCell ? labelCellLines(lines, cell) : lines) console.log(line);
       failures += 1;
     }
+  }
+  if (runtime) {
+    // A cancelled cell's partial review write is fire-and-forget on the server
+    // side; its own bounded drain lands it before the pinned home goes.
+    await runtime.shutdownSessions();
+    rmSync(runtime.pinnedHome, { recursive: true, force: true });
   }
   finalizeE2eDispositions(cells, process.env[ENV.smokeStrictSkips] === "1");
   return failures === 0 ? 0 : 1;

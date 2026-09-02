@@ -151,10 +151,23 @@ single-lens review through a real provider over HTTP + SSE, and verifies the run
 persists. Off by default; skips honestly without the opt-in envs. Uses an isolated
 temp config home — your `~/.diffgazer` is never touched. Spends tokens on the
 selected model (defaults to a free OpenRouter route).
+The release gate is the full {openrouter, opencode-zen} × {small, medium, large}
+matrix; zai and ollama-cloud join automatically when credentialed.
 
 ```bash
 DIFFGAZER_SMOKE_ALLOW_NETWORK=1 DIFFGAZER_LIVE_E2E=1 OPENROUTER_API_KEY=sk-... pnpm run smoke:review
 ```
+
+```bash
+# Release gate: full matrix (zai and ollama-cloud join when credentialed)
+DIFFGAZER_SMOKE_ALLOW_NETWORK=1 DIFFGAZER_LIVE_E2E=1 \
+DIFFGAZER_LIVE_E2E_PRODUCT=openrouter,opencode-zen \
+DIFFGAZER_LIVE_E2E_SCENARIO=small,medium,large \
+pnpm run smoke:review
+```
+
+ollama-cloud falls back to gpt-oss:20b when the plan refuses the default model
+(HTTP 402); zai runs glm-4.7-flash for small and glm-4.5-air for medium/large.
 
 ## Package Governance
 

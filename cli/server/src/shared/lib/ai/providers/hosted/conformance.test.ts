@@ -181,7 +181,7 @@ describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
     if (!httpOnly) return;
 
     const observation = await runHostedMockConformanceCase(httpOnly);
-    expect(observation.outcome).toBe("schema-failed");
+    expect(observation.outcome).toBe("transport-failed");
     expect(canProduceReadyEvidence(observation)).toBe(false);
   });
 });

@@ -3,8 +3,12 @@ import type { Result } from "@diffgazer/core/result";
 import type { RunnableProductId, TransportFamily } from "@diffgazer/core/schemas/config";
 import type { SharedErrorCode } from "@diffgazer/core/schemas/errors";
 import type { EvidenceKey, ExecutionResult } from "@diffgazer/core/schemas/review";
-import { ExecutionResultSchema } from "@diffgazer/core/schemas/review";
-import type { z } from "zod";
+import {
+  ExecutionReceiptSchema,
+  ExecutionResultSchema,
+  LensReviewResultSchema,
+} from "@diffgazer/core/schemas/review";
+import { z } from "zod";
 import type { SecretsStorageErrorCode } from "../config/types.js";
 import type { BoundedDiagnostic } from "./diagnostics.js";
 
@@ -106,8 +110,25 @@ export interface Adapter {
 
 export type AdapterRegistry = Record<RunnableProductId, Adapter>;
 
+type CompletedExecutionResult = Extract<ExecutionResult, { receipt: { outcome: "completed" } }>;
+
+/**
+ * A completed dispatch is bound by the contract the provider seam validated:
+ * `LensReviewResultSchema` trims a blank required text instead of rejecting
+ * it, so the completeness gate can drop that one finding and account for it.
+ * The persisted `ExecutionResultSchema` stays strict where the record is
+ * saved; applied here it would void the whole lens answer on that finding.
+ */
+const CompletedExecutionResultSchema = z
+  .strictObject({ receipt: ExecutionReceiptSchema, result: LensReviewResultSchema })
+  .readonly();
+
 export function assertBoundedExecutionResult(result: ExecutionResult): ExecutionResult {
-  if (result.receipt.outcome !== "completed" && result.result.issues.length > 0) {
+  if (result.receipt.outcome === "completed") {
+    // zod types the receipt union whole; the guard above already selected the completed variant.
+    return CompletedExecutionResultSchema.parse(result) as CompletedExecutionResult;
+  }
+  if (result.result.issues.length > 0) {
     throw new Error("Non-completed adapter execution cannot emit findings");
   }
   return ExecutionResultSchema.parse(result);

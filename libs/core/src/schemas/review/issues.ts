@@ -88,11 +88,12 @@ export const TraceRefSchema = z.object({
   artifacts: z.array(z.string()).optional(),
 });
 
+const FixPlanRiskSchema = z.enum(["low", "medium", "high"]);
 const FixPlanStepSchema = z.object({
   step: z.number(),
   action: z.string(),
   files: z.array(z.string()).optional(),
-  risk: z.enum(["low", "medium", "high"]).optional(),
+  risk: FixPlanRiskSchema.optional(),
 });
 export type FixPlanStep = z.infer<typeof FixPlanStepSchema>;
 
@@ -142,7 +143,89 @@ export function hasSuggestedPatch(issue: Pick<ReviewIssue, "suggested_patch">): 
 // a time. Keep the same shape and trim semantics as ReviewIssueSchema, but do
 // not let one blank required field reject the entire paid lens response before
 // the server can drop and account for that individual finding.
-export const ProviderReviewIssueSchema = ReviewIssueSchema.extend({
+//
+// Optional fields are read leniently for the same reason: JSON-mode routes see
+// only the prompt, and strict routes receive every optional as nullable AND
+// required (structured-output-schema.ts), so a conforming answer carries null
+// for an optional it has nothing for. A null optional key is read as omitted,
+// an omitted nullable key (the prompt's "null if not applicable") is read as
+// null, a null or undefined list item is dropped and any other non-string item is
+// coerced to a string, a malformed optional sub-field of an evidence ref or fix
+// step is dropped (a blank file, and a blank or non-string files entry,
+// included), a fix step without a string action and a trace entry that is not
+// a well-formed ref are dropped, a fix step without a numeric step is numbered
+// by its position among the kept steps, and an evidence ref's text that is not
+// a string is read as blank so the server's completeness rule drops that ref,
+// not the finding. The issue's own required fields and a ref's type stay
+// strict. Every lenient read is a z.preprocess so the draft-7 projection and
+// STRUCTURED_OUTPUT_SCHEMA_SHA256 stay byte-identical; none yields undefined
+// for a present key, which canonicalJson rejects at save time.
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function asList(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [value];
+}
+
+function coerceStringListItems(value: unknown): string[] {
+  return asList(value).flatMap((item) => {
+    if (item === null || item === undefined) return [];
+    if (typeof item === "string") return [item];
+    return [typeof item === "object" ? JSON.stringify(item) : String(item)];
+  });
+}
+
+const ProviderStringListSchema = z
+  .preprocess(coerceStringListItems, z.array(z.string()))
+  .optional();
+
+type LooseFixPlanStep = { action: string; step?: unknown; files?: unknown; risk?: unknown };
+
+function coerceFixPlanSteps(value: unknown): FixPlanStep[] {
+  const readable = asList(value).flatMap((item): LooseFixPlanStep[] => {
+    if (typeof item === "string") return [{ action: item }];
+    if (isRecord(item) && typeof item.action === "string") {
+      return [{ action: item.action, step: item.step, files: item.files, risk: item.risk }];
+    }
+    return [];
+  });
+  return readable.map((raw, index) => {
+    const step: FixPlanStep = {
+      step: typeof raw.step === "number" ? raw.step : index + 1,
+      action: raw.action,
+    };
+    if (raw.files !== undefined && raw.files !== null) {
+      step.files = asList(raw.files).filter(
+        (file): file is string => typeof file === "string" && file.trim() !== "",
+      );
+    }
+    const risk = FixPlanRiskSchema.safeParse(
+      typeof raw.risk === "string" ? raw.risk.toLowerCase() : raw.risk,
+    );
+    if (risk.success) step.risk = risk.data;
+    return step;
+  });
+}
+
+function coerceEvidenceRef(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const { type, title, sourceId, excerpt, file, range, sha } = value;
+  const ref: Record<string, unknown> = {
+    type,
+    title: typeof title === "string" ? title : "",
+    sourceId: typeof sourceId === "string" ? sourceId : "",
+    excerpt: typeof excerpt === "string" ? excerpt : "",
+  };
+  if (typeof file === "string" && file.trim() !== "") ref.file = file;
+  if (isRecord(range) && typeof range.start === "number" && typeof range.end === "number") {
+    ref.range = range;
+  }
+  if (typeof sha === "string") ref.sha = sha;
+  return ref;
+}
+
+const ProviderReviewIssueFieldsSchema = ReviewIssueSchema.extend({
   id: TrimmedProviderTextSchema,
   title: TrimmedProviderTextSchema,
   file: TrimmedProviderTextSchema,
@@ -150,11 +233,45 @@ export const ProviderReviewIssueSchema = ReviewIssueSchema.extend({
   recommendation: TrimmedProviderTextSchema,
   symptom: TrimmedProviderTextSchema,
   whyItMatters: TrimmedProviderTextSchema,
+  fixPlan: z.preprocess(coerceFixPlanSteps, z.array(FixPlanStepSchema)).optional(),
+  betterOptions: ProviderStringListSchema,
+  testsToAdd: ProviderStringListSchema,
   // This schema is also the provider response schema. Per-row gutter numbers are
   // synthesized from the diff after the call, so asking a model for them would
   // only spend tokens on numbers the server discards.
-  evidence: z.array(ProviderEvidenceRefSchema),
+  evidence: z.array(z.preprocess(coerceEvidenceRef, ProviderEvidenceRefSchema)),
+  trace: z
+    .preprocess(
+      (value) => asList(value).filter((entry) => TraceRefSchema.safeParse(entry).success),
+      z.array(TraceRefSchema),
+    )
+    .optional(),
 });
+
+const PROVIDER_OPTIONAL_ISSUE_KEYS = Object.entries(ProviderReviewIssueFieldsSchema.shape)
+  .filter(([, field]) => field instanceof z.ZodOptional)
+  .map(([key]) => key);
+
+const PROVIDER_NULLABLE_ISSUE_KEYS = Object.entries(ProviderReviewIssueFieldsSchema.shape)
+  .filter(([, field]) => field instanceof z.ZodNullable)
+  .map(([key]) => key);
+
+function normalizeIssueKeys(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const issue = { ...value };
+  for (const key of PROVIDER_OPTIONAL_ISSUE_KEYS) {
+    if (issue[key] === null) delete issue[key];
+  }
+  for (const key of PROVIDER_NULLABLE_ISSUE_KEYS) {
+    if (!(key in issue)) issue[key] = null;
+  }
+  return issue;
+}
+
+export const ProviderReviewIssueSchema = z.preprocess(
+  normalizeIssueKeys,
+  ProviderReviewIssueFieldsSchema,
+);
 
 /** Provider-response cap for one lens analysis. */
 export const MAX_REVIEW_ISSUES_PER_LENS = 256;

@@ -239,8 +239,8 @@ const ISSUE_OUTPUT_CONTRACT = `For each issue found, provide:
 - symptom: what observable behavior or code pattern indicates the problem
 - whyItMatters: business/technical impact explaining why this needs attention
 - fixPlan: optional array of step-by-step fix instructions [{step: 1, action: "...", files: ["file-1"], risk: "low|medium|high"}]; every files entry must be an opaque file id from <files-changed>, never a display-path
-- betterOptions: optional array of alternative approaches to consider
-- testsToAdd: optional array of test cases that should be added
+- betterOptions: optional array of strings, one alternative approach per string
+- testsToAdd: optional array of strings, one test case per string (its name or a one-line description) — never objects
 - evidence: array of evidence references supporting the issue, each with:
   - type: "code"|"doc"|"trace"|"external"
   - title: brief description

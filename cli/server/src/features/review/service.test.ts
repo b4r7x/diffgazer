@@ -1734,6 +1734,39 @@ describe("admitted configuration execution", () => {
     recordEvidence.mockRestore();
   });
 
+  it.each([
+    "unparseable-response",
+    "empty-content",
+    "fetch-failed",
+  ])("records no conformance evidence for a provider response failure (%s)", async (diagnosticCode) => {
+    const { getStore } = await import("../../shared/lib/config/store.js");
+    const recordEvidence = vi.spyOn(getStore(), "recordConfigurationEvidence");
+    const aiClient = makeConformanceAIClient({
+      evidenceState: "unproven",
+      structuredOutputFailure: { diagnosticCode, attemptCount: 2, outcome: "transport-failed" },
+    });
+
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    await vi.waitFor(
+      () => {
+        if (!getSession(result.value.reviewId)?.isComplete) {
+          throw new Error("session not complete yet");
+        }
+      },
+      { timeout: 10_000 },
+    );
+
+    expect(recordEvidence).not.toHaveBeenCalled();
+    recordEvidence.mockRestore();
+  });
+
   // attemptCount 2 is the blind-retry case: a retry that carried no correction
   // (an upstream mid-generation death, an empty answer) spends the same retry
   // budget, so only the adapter's code may arm the memo.

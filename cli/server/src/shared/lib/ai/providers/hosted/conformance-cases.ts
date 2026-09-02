@@ -340,7 +340,7 @@ export const HOSTED_REQ_084_CASES: readonly HostedMockConformanceCase[] = [
     requirement: "REQ-084",
     productId: "openrouter",
     fetch: (async () => mockResponse({ ok: true, data: { status: "healthy" } })) as typeof fetch,
-    expectedOutcome: "schema-failed",
+    expectedOutcome: "transport-failed",
   },
 ];
 
@@ -447,7 +447,7 @@ const DEPTH_BEHAVIOURS: readonly DepthBehaviour[] = [
             },
           ],
         })) as typeof fetch,
-    expectedOutcome: "schema-failed",
+    expectedOutcome: "transport-failed",
     expectedAttemptCount: 1,
   },
   {
