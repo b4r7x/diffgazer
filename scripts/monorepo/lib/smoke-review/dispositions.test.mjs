@@ -19,9 +19,12 @@ import {
   findActiveLocalBinding,
   modelOverrideNotice,
   parseScenarioIds,
+  REVIEW_WALL_CAP_MARGIN_MS,
+  REVIEW_WALL_TIME_CAP_MIN_MS,
   resolveCellModel,
   resolveCredentialSource,
   resolveE2eDispositions,
+  reviewWallCapMs,
   runFailureLine,
   singleProductModelOverride,
   skipLine,
@@ -1190,4 +1193,12 @@ test("a product without a fallback, and a cell already on the fallback id, decli
 
 test("the fallback table maps product ids to single model ids", () => {
   assert.deepEqual(FALLBACK_E2E_MODELS, { "ollama-cloud": "gpt-oss:20b" });
+});
+
+test("the review wall cap trails each scenario watchdog by the margin, never below the floor", () => {
+  assert.equal(REVIEW_WALL_CAP_MARGIN_MS, 30_000);
+  assert.equal(reviewWallCapMs(900_000), 870_000);
+  assert.equal(reviewWallCapMs(1_200_000), 1_170_000);
+  assert.equal(reviewWallCapMs(600_000), 570_000);
+  assert.equal(reviewWallCapMs(REVIEW_WALL_TIME_CAP_MIN_MS), REVIEW_WALL_TIME_CAP_MIN_MS);
 });

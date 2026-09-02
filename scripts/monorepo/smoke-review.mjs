@@ -38,6 +38,7 @@ import {
   modelOverrideNotice,
   parseScenarioIds,
   resolveE2eDispositions,
+  reviewWallCapMs,
   runFailureLine,
   singleProductModelOverride,
   skipLine,
@@ -359,14 +360,15 @@ async function runLiveE2e(cell, core, runtime, multiCell, modelOverride) {
       trustMode: "persistent",
       capabilities: { readFiles: true },
     });
-    if (fixture) {
-      // Hermetic-server-only settings patch (REQ-118): the schema-minimum call
-      // token cap forces the fixture to partition into >= fixture.minBatches
-      // batches; small stays on the default cap.
-      await requestJson(baseUrl, headers, "POST", "/api/settings", {
-        effectiveCallTokenCap: BATCHING_CALL_TOKEN_CAP,
-      });
-    }
+    // Hermetic-server-only settings patch. Every cell caps the review wall
+    // under its watchdog so the engine ends with a terminal event instead of
+    // the harness cancelling it. The schema-minimum call token cap (REQ-118)
+    // forces a fixture to partition into >= fixture.minBatches batches; small
+    // stays on the default cap.
+    await requestJson(baseUrl, headers, "POST", "/api/settings", {
+      reviewWallTimeCapMs: reviewWallCapMs(timeoutMs),
+      ...(fixture ? { effectiveCallTokenCap: BATCHING_CALL_TOKEN_CAP } : {}),
+    });
     const credentialValue = resolveCredentialLiteral(cell);
     const created = await requestJson(baseUrl, headers, "POST", "/api/config/actions", {
       action: "create",

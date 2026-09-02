@@ -123,6 +123,7 @@ describe("ConfigGate app integration", () => {
           theme: "auto",
           defaultLenses: [],
           effectiveCallTokenCap: 49_152,
+          reviewWallTimeCapMs: null,
           defaultProfile: null,
           severityThreshold: "low",
           secretsStorage: null,

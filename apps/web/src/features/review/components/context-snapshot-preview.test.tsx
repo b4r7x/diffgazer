@@ -25,6 +25,7 @@ function makeSettings(): SettingsConfig {
     theme: "terminal",
     defaultLenses: [],
     effectiveCallTokenCap: 49_152,
+    reviewWallTimeCapMs: null,
     defaultProfile: null,
     severityThreshold: "low",
     secretsStorage: null,

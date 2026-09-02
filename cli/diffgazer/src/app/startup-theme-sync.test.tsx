@@ -26,6 +26,7 @@ function makeInitResponse(theme: SettingsTheme): InitResponse {
       theme,
       defaultLenses: [],
       effectiveCallTokenCap: 49_152,
+      reviewWallTimeCapMs: null,
       defaultProfile: null,
       severityThreshold: "low",
       secretsStorage: "file",

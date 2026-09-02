@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeChunkedResponse } from "../testing/http.js";
 import {
+  ANSWER_IDLE_TIMEOUT_CAUSE,
   createResponseLimitingFetch,
   MAX_RESPONSE_BYTES,
   readJsonResponseWithLimit,
+  readTextResponseWithLimit,
 } from "./http-json.js";
 
 function createNeverSettlingCancelBody(chunks: Uint8Array[]) {
@@ -212,5 +214,101 @@ describe("readJsonResponseWithLimit", () => {
     if (result.ok) {
       expect((result.value as { text: string }).text).toBe("żółć");
     }
+  });
+});
+
+// OpenRouter's non-streaming keep-alive, probed 2026-09-02: an 11-byte
+// whitespace chunk every ≈420 ms for the whole generation, the answer last.
+const KEEP_ALIVE_CHUNK = "\n         \n";
+
+/** A body whose chunks land at the given offsets; `null` closes the stream. */
+function scheduledBody(events: ReadonlyArray<readonly [atMs: number, chunk: string | null]>) {
+  const encoder = new TextEncoder();
+  const timers: Array<ReturnType<typeof setTimeout>> = [];
+  const cancel = vi.fn(async () => {
+    for (const timer of timers) clearTimeout(timer);
+  });
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const [atMs, chunk] of events) {
+        timers.push(
+          setTimeout(() => {
+            if (chunk === null) controller.close();
+            else controller.enqueue(encoder.encode(chunk));
+          }, atMs),
+        );
+      }
+    },
+    cancel,
+  });
+  return { body, cancel };
+}
+
+const keepAliveEvery = (stepMs: number, untilMs: number): Array<readonly [number, string]> =>
+  Array.from({ length: Math.floor(untilMs / stepMs) }, (_, index) => [
+    (index + 1) * stepMs,
+    KEEP_ALIVE_CHUNK,
+  ]);
+
+describe("readTextResponseWithLimit — answer-idle budget", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("whitespace-only chunks past the answer-idle budget fail the read with the idle cause", async () => {
+    vi.useFakeTimers();
+    const { body, cancel } = scheduledBody(keepAliveEvery(10, 1_000));
+
+    const pending = readTextResponseWithLimit(new Response(body), 1_024, "Hosted provider", {
+      answerIdleTimeoutMs: 50,
+    });
+    await vi.advanceTimersByTimeAsync(60);
+    const result = await pending;
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("read-failed");
+    expect(result.error.message).toBe(
+      "Hosted provider sent only keep-alive whitespace for 0s (no answer bytes)",
+    );
+    expect(result.error.cause).toMatchObject({ code: ANSWER_IDLE_TIMEOUT_CAUSE });
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it("a non-whitespace chunk resets the answer-idle budget", async () => {
+    vi.useFakeTimers();
+    const { body } = scheduledBody([
+      ...keepAliveEvery(10, 40),
+      [45, "{"],
+      [50, KEEP_ALIVE_CHUNK],
+      [60, KEEP_ALIVE_CHUNK],
+      [70, KEEP_ALIVE_CHUNK],
+      [80, '"answer":true}'],
+      [80, null],
+    ]);
+
+    const pending = readTextResponseWithLimit(new Response(body), 1_024, "Hosted provider", {
+      answerIdleTimeoutMs: 50,
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await pending;
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(JSON.parse(result.value)).toEqual({ answer: true });
+  });
+
+  it("no option → the read is untouched", async () => {
+    vi.useFakeTimers();
+    const { body, cancel } = scheduledBody([
+      ...keepAliveEvery(10, 120),
+      [120, '{"answer":true}'],
+      [120, null],
+    ]);
+
+    const pending = readTextResponseWithLimit(new Response(body), 1_024, "Hosted provider");
+    await vi.advanceTimersByTimeAsync(130);
+    const result = await pending;
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(JSON.parse(result.value)).toEqual({ answer: true });
+    expect(cancel).not.toHaveBeenCalled();
   });
 });

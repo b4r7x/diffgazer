@@ -5,7 +5,7 @@ type HostedWireFamily = "google" | "openai-compatible" | "openrouter";
 
 export type DispatchPacing = Readonly<{
   perDispatchWallTimeMs?: number;
-  /** Silence after the response headers that ends the body read as a client timeout; unset = the wall bounds it. */
+  /** Answer-idle budget: keep-alive whitespace after the headers does not count as progress (probed 2026-09-02); unset = the wall bounds it. */
   bodyIdleTimeoutMs?: number;
   maxParallelDispatches?: number;
   reasoning?: "may-reason";

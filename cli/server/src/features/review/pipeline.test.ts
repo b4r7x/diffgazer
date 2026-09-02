@@ -48,6 +48,7 @@ describe("resolveReviewDefaults", () => {
     secretsStorage: null,
     defaultLenses: ["correctness", "security"],
     effectiveCallTokenCap: 49_152,
+    reviewWallTimeCapMs: null,
     defaultProfile: null,
     severityThreshold: "low",
     agentExecution: "sequential",
@@ -59,6 +60,7 @@ describe("resolveReviewDefaults", () => {
       theme: "auto",
       defaultLenses: ["security"],
       effectiveCallTokenCap: 49_152,
+      reviewWallTimeCapMs: null,
       defaultProfile: null,
       severityThreshold: "low",
       secretsStorage: null,
@@ -326,6 +328,42 @@ describe("batched review budget envelope", () => {
     expect(result.error.step).toBe("review");
     expect(orchestrateReview).not.toHaveBeenCalled();
     expect(ledger.snapshot().limits.maxInputTokens).toBe(200_000);
+  });
+
+  async function reviewEnvelopeWallMs(reviewWallTimeCapMs: number | null) {
+    const { authorization, ledger } = authorizeAtBaseEnvelope();
+    orchestrationSuccess();
+
+    await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      capacity: capacityPlan(2, 100_000),
+      config: fiveLensConfig(1),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+      reviewWallTimeCapMs,
+    });
+
+    return ledger.snapshot().limits.wallTimeMs;
+  }
+
+  it("review wall cap below the derived envelope becomes the ledger envelope", async () => {
+    // Eleven sequential calls derive well past the cap.
+    expect(await reviewEnvelopeWallMs(870_000)).toBe(870_000);
+  });
+
+  it("review wall cap below one dispatch wall clamps to the wall", async () => {
+    expect(await reviewEnvelopeWallMs(60_000)).toBe(300_000);
+  });
+
+  it("review wall cap null keeps the derived envelope", async () => {
+    expect(await reviewEnvelopeWallMs(null)).toBe(
+      Math.ceil(300_000 * 11 * REVIEW_WALL_CEILING_SLACK),
+    );
   });
 
   it("dispatches the plan's batches through the orchestration options", async () => {

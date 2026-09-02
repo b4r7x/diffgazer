@@ -15,6 +15,7 @@ import {
   serializeFailureDiagnostic,
 } from "../../diagnostics.js";
 import {
+  ANSWER_IDLE_TIMEOUT_CAUSE,
   cancelResponseBody,
   createResponseLimitingFetch,
   readTextResponseWithLimit,
@@ -73,9 +74,14 @@ function isTimeoutError(error: unknown): boolean {
  * its default headers/body timeout (300s) regardless of the dispatch budget,
  * and reports it as a generic `TypeError: fetch failed` whose cause carries the
  * code — so without this check a dispatch that died of slowness would be filed
- * as an undiagnosed transport failure.
+ * as an undiagnosed transport failure. The reader's answer-idle budget ends a
+ * body that carries only keep-alive whitespace the same way.
  */
-const TRANSPORT_TIMEOUT_CAUSE_CODES = new Set(["UND_ERR_HEADERS_TIMEOUT", "UND_ERR_BODY_TIMEOUT"]);
+const TRANSPORT_TIMEOUT_CAUSE_CODES = new Set([
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_BODY_TIMEOUT",
+  ANSWER_IDLE_TIMEOUT_CAUSE,
+]);
 
 function errorCode(value: unknown): string | null {
   const code =
@@ -105,8 +111,8 @@ const SLOW_ANSWER_REMEDIATION =
  *
  * The sized dispatcher holds the client's headers timeout above the dispatch
  * wall, so a pre-accept queue is ended by the wall and never by this retry. A
- * profile that declares a body idle budget sits the body timeout below the
- * wall, and that expiry is exactly what this retry serves. It is also the
+ * profile that declares a body idle budget sits the reader's answer-idle timer
+ * below the wall, and that expiry is exactly what this retry serves. It is also the
  * fallback for the fetch paths that ignore the dispatcher — a non-undici
  * runtime, or an injected fetch — where the client's own response timeout is
  * the bound that fires. It also bounds the blind re-dispatch after a 2xx body
@@ -165,6 +171,8 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
 
   const productName = PRODUCT_REGISTRY[hostedProductId].presentation.name;
   const elapsedSeconds = () => Math.round((now().getTime() - Date.parse(startedAt)) / 1000);
+  // The answer-idle budget: OpenRouter keeps a non-streaming connection alive
+  // with whitespace chunks (probed 2026-09-02), so only answer bytes count.
   const { bodyIdleTimeoutMs } = resolveDispatchPacing(hostedProductId, evidenceKey.modelId);
   // Verified (openrouter.ai/docs/api-reference/streaming, 2026-09-02): "For
   // non-streaming requests … the model will continue processing and you will
@@ -175,7 +183,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
   const bodyIdleHistory = (): string =>
     bodyIdleExpiredAttempt === null || bodyIdleTimeoutMs === undefined
       ? ""
-      : ` ${productName} accepted attempt ${bodyIdleExpiredAttempt} but sent no body bytes for ${Math.round(bodyIdleTimeoutMs / 1000)}s, and the re-dispatched attempt ${attemptCount} did not finish either.`;
+      : ` ${productName} accepted attempt ${bodyIdleExpiredAttempt} but sent only keep-alive whitespace for ${Math.round(bodyIdleTimeoutMs / 1000)}s (no answer bytes), and the re-dispatched attempt ${attemptCount} did not finish either.`;
 
   /**
    * The wall deadline names its own numbers on expiry, so the lens error is
@@ -202,12 +210,12 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
    * The HTTP client gave up before the wall deadline did: the runtime caps a
    * silent response well below a pinned per-dispatch wall, so name that as the
    * timeout instead of leaving an unexplained transport failure behind. Or the
-   * profile's body idle budget cut a body that never came.
+   * profile's answer-idle budget cut a body that carried no answer.
    */
   const transportTimedOut = (causeCode: string): ExecutionResult => {
-    // The body budget names itself; a headers timeout, or a body timeout on a
-    // product that declares none, is the client's own default and says so.
-    const idleBudgetMs = causeCode === "UND_ERR_BODY_TIMEOUT" ? bodyIdleTimeoutMs : undefined;
+    // The answer-idle budget names itself; a headers or body timeout is the
+    // client's own default and says so.
+    const idleBudgetMs = causeCode === ANSWER_IDLE_TIMEOUT_CAUSE ? bodyIdleTimeoutMs : undefined;
     request.reportDiagnostic?.(
       serializeFailureDiagnostic({
         code: "timed-out",
@@ -215,7 +223,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         message:
           idleBudgetMs === undefined
             ? `${productName} sent no response before the HTTP client's own response timeout (${causeCode}) after ${elapsedSeconds()}s.`
-            : `${productName} accepted the request but sent no body bytes for ${Math.round(idleBudgetMs / 1000)}s (idle budget; ${Math.round(admittedLimits.wallTimeMs / 1000)}s wall) after ${elapsedSeconds()}s on attempt ${attemptCount}.`,
+            : `${productName} accepted the request but sent only keep-alive whitespace for ${Math.round(idleBudgetMs / 1000)}s (no answer bytes) — attempt ${attemptCount} of the ${Math.round(admittedLimits.wallTimeMs / 1000)}s wall`,
         remediation:
           idleBudgetMs === undefined
             ? SLOW_ANSWER_REMEDIATION
@@ -304,7 +312,6 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         structuredOutputMode,
         ...(context.boundReasoning ? { boundReasoning: true } : {}),
         ...(correction ? { correction } : {}),
-        ...(bodyIdleTimeoutMs === undefined ? {} : { bodyIdleTimeoutMs }),
         signal: deadline.signal,
       });
 
@@ -448,6 +455,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         response,
         remainingLimits.maxResponseBytes,
         "Hosted provider",
+        { answerIdleTimeoutMs: bodyIdleTimeoutMs },
       );
       if (!bodyResult.ok) {
         // A gateway commits 200 + headers as soon as the upstream accepts the
@@ -455,8 +463,8 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         if (deadline.signal.aborted) return timedOutOrCancelled();
         const idleTimeout = transportTimeoutCause(bodyResult.error.cause);
         if (idleTimeout !== null) {
-          // The client's body budget cut a body that never came — the twin of
-          // the headers timeout in the fetch catch above, sharing its one shot
+          // The reader's answer-idle budget cut a body that carried no answer —
+          // the twin of the headers timeout in the fetch catch above, sharing its one shot
           // and its floor. The re-dispatch takes the outer loop like the
           // non-JSON re-dispatch below; the attempt it spends is one the
           // stalled answer never earned.

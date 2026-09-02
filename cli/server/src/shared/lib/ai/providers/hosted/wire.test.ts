@@ -4,7 +4,7 @@ import { evidenceKeyFor, TEST_CREDENTIAL } from "./execute.test-support.js";
 import { buildRequestInit, parseProviderPayload } from "./wire.js";
 
 describe("buildRequestInit", () => {
-  it("dispatches through the agent sized for the evidence key's wall and the profile's idle budget", () => {
+  it("dispatches through the agent sized for the evidence key's wall", () => {
     const evidenceKey = evidenceKeyFor("openrouter");
 
     const init = buildRequestInit({
@@ -17,18 +17,6 @@ describe("buildRequestInit", () => {
     expect((init as { dispatcher?: unknown }).dispatcher).toBe(
       responseTimeoutDispatcher(evidenceKey.limits.wallTimeMs),
     );
-
-    const idleInit = buildRequestInit({
-      productId: "openrouter",
-      credential: TEST_CREDENTIAL,
-      evidenceKey,
-      prompt: "review this diff",
-      bodyIdleTimeoutMs: 360_000,
-    });
-
-    const idleDispatcher = (idleInit as { dispatcher?: unknown }).dispatcher;
-    expect(idleDispatcher).toBe(responseTimeoutDispatcher(evidenceKey.limits.wallTimeMs, 360_000));
-    expect(idleDispatcher).not.toBe(responseTimeoutDispatcher(evidenceKey.limits.wallTimeMs));
   });
 });
 

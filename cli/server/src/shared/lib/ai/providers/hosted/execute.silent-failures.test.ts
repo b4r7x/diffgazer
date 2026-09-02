@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { log } from "../../../log.js";
 import { executeHostedReview } from "./execute.js";
 import {
@@ -9,8 +9,13 @@ import {
   mockFetchResponse,
   openAiSuccessBody,
 } from "./execute.test-support.js";
+import { resolveDispatchPacing } from "./profiles.js";
 
 vi.mock("../../../log.js", () => ({ log: vi.fn() }));
+vi.mock("./profiles.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./profiles.js")>();
+  return { ...actual, resolveDispatchPacing: vi.fn(actual.resolveDispatchPacing) };
+});
 
 afterEach(() => {
   vi.mocked(log).mockClear();
@@ -69,8 +74,9 @@ function sequenceFetch(factories: Array<() => Response>): FetchFn {
 
 function streamingResponse(
   start: (controller: ReadableStreamDefaultController<Uint8Array>) => void,
+  cancel?: () => void,
 ): Response {
-  return new Response(new ReadableStream<Uint8Array>({ start }), {
+  return new Response(new ReadableStream<Uint8Array>({ start, cancel }), {
     status: 200,
     headers: { "content-type": "application/json" },
   });
@@ -338,27 +344,63 @@ it("does not re-dispatch a non-JSON body for a product without the malformed-out
   );
 });
 
+// OpenRouter's non-streaming keep-alive, probed 2026-09-02: an 11-byte
+// whitespace chunk every ≈420 ms for the whole generation, the answer last —
+// so a stalled generation is never silent and only the reader can see it.
+const KEEP_ALIVE_CHUNK = new TextEncoder().encode("\n         \n");
+
+/**
+ * A 200 whose body is keep-alive whitespace every 20 ms — forever, or until
+ * `answer` lands at `answerAfterMs`. `leadingBytes` arrive first, as the
+ * start of an answer that then stalls.
+ */
+function keepAliveResponse(
+  options: { leadingBytes?: string; answerAfterMs?: number; answer?: unknown } = {},
+): Response {
+  let interval: ReturnType<typeof setInterval> | undefined;
+  return streamingResponse(
+    (controller) => {
+      if (options.leadingBytes) controller.enqueue(new TextEncoder().encode(options.leadingBytes));
+      interval = setInterval(() => controller.enqueue(KEEP_ALIVE_CHUNK), 20);
+      if (options.answerAfterMs === undefined) return;
+      setTimeout(() => {
+        clearInterval(interval);
+        controller.enqueue(new TextEncoder().encode(JSON.stringify(options.answer)));
+        controller.close();
+      }, options.answerAfterMs);
+    },
+    () => clearInterval(interval),
+  );
+}
+
+const stalledResponse = () => keepAliveResponse();
+const headersTimeout = () =>
+  new TypeError("fetch failed", {
+    cause: Object.assign(new Error("Headers Timeout Error"), { code: "UND_ERR_HEADERS_TIMEOUT" }),
+  });
 // The shape undici hands the reader when the pooled agent's body timeout fires
 // after the headers (fetch: `TypeError("terminated", { cause })`).
 const bodyTimeout = () =>
   new TypeError("terminated", {
     cause: Object.assign(new Error("Body Timeout Error"), { code: "UND_ERR_BODY_TIMEOUT" }),
   });
-const stalledResponse = () => streamingResponse((controller) => controller.error(bodyTimeout()));
-const partialThenStalledResponse = () =>
-  streamingResponse((controller) => {
-    controller.enqueue(new TextEncoder().encode('{"choices":['));
-    controller.error(bodyTimeout());
+
+describe("answer-idle budget — openrouter", () => {
+  const ANSWER_IDLE_BUDGET_MS = 200;
+  const actualPacing = vi.mocked(resolveDispatchPacing).getMockImplementation();
+
+  beforeEach(() => {
+    vi.mocked(resolveDispatchPacing).mockImplementation((productId, modelId) => ({
+      ...actualPacing?.(productId, modelId),
+      ...(productId === "openrouter" ? { bodyIdleTimeoutMs: ANSWER_IDLE_BUDGET_MS } : {}),
+    }));
   });
-const headersTimeout = () =>
-  new TypeError("fetch failed", {
-    cause: Object.assign(new Error("Headers Timeout Error"), { code: "UND_ERR_HEADERS_TIMEOUT" }),
+  afterEach(() => {
+    vi.useRealTimers();
+    if (actualPacing) vi.mocked(resolveDispatchPacing).mockImplementation(actualPacing);
   });
 
-describe("body idle budget — openrouter", () => {
-  afterEach(() => vi.useRealTimers());
-
-  it("re-dispatches once after the body idle budget expires and completes on the second attempt", async () => {
+  it("re-dispatches once after the answer-idle budget expires and completes on the second attempt", async () => {
     const fetch = sequenceFetch([
       stalledResponse,
       () => jsonResponse(openAiSuccessBody({ issues: [] })),
@@ -373,11 +415,14 @@ describe("body idle budget — openrouter", () => {
     expect(result.receipt.attemptCount).toBe(2);
     expect(reportDiagnostic).not.toHaveBeenCalled();
     expect(warnLines("hosted_transport_timeout_retry")).toEqual([
-      expect.objectContaining({ productId: "openrouter", causeCode: "UND_ERR_BODY_TIMEOUT" }),
+      expect.objectContaining({
+        productId: "openrouter",
+        causeCode: "DIFFGAZER_ANSWER_IDLE_TIMEOUT",
+      }),
     ]);
   });
 
-  it("reports a second idle expiry as timed-out naming the idle budget, the wall, the elapsed time and the attempt", async () => {
+  it("reports a second idle expiry as timed-out naming the idle budget, the wall and the attempt", async () => {
     const fetch = sequenceFetch([stalledResponse]);
 
     const { result, reportDiagnostic } = await dispatch("openrouter", fetch);
@@ -389,13 +434,13 @@ describe("body idle budget — openrouter", () => {
       expect.objectContaining({
         code: "timed-out",
         retryable: true,
-        safeMessage: expect.stringContaining("sent no body bytes for 360s"),
+        safeMessage: expect.stringContaining(
+          "sent only keep-alive whitespace for 0s (no answer bytes)",
+        ),
       }),
     );
     const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
-    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("120s wall"));
-    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("on attempt 2"));
-    expect(diagnostic.safeMessage).toEqual(expect.stringMatching(/after \d+s/));
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("attempt 2 of the 120s wall"));
     expect(diagnostic.safeMessage).toEqual(expect.not.stringContaining("wall-time limit"));
     expect(diagnostic.remediation).toEqual(expect.stringContaining("keeps billing"));
     expect(diagnostic.remediation).toEqual(expect.not.stringContaining("wall-time budget"));
@@ -404,14 +449,33 @@ describe("body idle budget — openrouter", () => {
     expect(JSON.stringify(vi.mocked(log).mock.calls)).not.toContain(PLAIN_CREDENTIAL);
   });
 
+  it("completes when the answer lands inside the idle budget after keep-alive whitespace", async () => {
+    const fetch = sequenceFetch([
+      () => keepAliveResponse({ answerAfterMs: 150, answer: openAiSuccessBody({ issues: [] }) }),
+    ]);
+
+    const { result, reportDiagnostic } = await dispatch("openrouter", fetch);
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.receipt.attemptCount).toBe(1);
+    expect(reportDiagnostic).not.toHaveBeenCalled();
+    expect(warnLines("hosted_transport_timeout_retry")).toHaveLength(0);
+  });
+
   it("reports a wall expiry on the re-dispatched attempt with the earlier idle history", async () => {
     vi.useFakeTimers();
     const fetch = vi
       .fn<FetchFn>()
       .mockImplementationOnce(async () => stalledResponse())
+      // The re-dispatch keeps trickling answer bytes, so only the wall ends it.
       .mockImplementationOnce(async (_url, init) =>
         streamingResponse((controller) => {
-          init?.signal?.addEventListener("abort", () => controller.error(init.signal?.reason));
+          const trickle = setInterval(() => controller.enqueue(new TextEncoder().encode("{")), 100);
+          init?.signal?.addEventListener("abort", () => {
+            clearInterval(trickle);
+            controller.error(init.signal?.reason);
+          });
         }),
       );
 
@@ -427,7 +491,9 @@ describe("body idle budget — openrouter", () => {
     const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
     expect(diagnostic.safeMessage).toEqual(expect.stringContaining("wall-time limit"));
     expect(diagnostic.safeMessage).toEqual(
-      expect.stringContaining("accepted attempt 1 but sent no body bytes for 360s"),
+      expect.stringContaining(
+        "accepted attempt 1 but sent only keep-alive whitespace for 0s (no answer bytes)",
+      ),
     );
     expect(diagnostic.safeMessage).toEqual(expect.stringContaining("re-dispatched attempt 2"));
     expect(diagnostic.remediation).toEqual(expect.stringContaining("keeps billing"));
@@ -446,8 +512,8 @@ describe("body idle budget — openrouter", () => {
     expect(result.receipt.outcome).toBe("timed-out");
     expect(reportDiagnostic).toHaveBeenCalledTimes(1);
     const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
-    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("on attempt 1"));
-    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("sent no body bytes for 360s"));
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("attempt 1 of the 30s wall"));
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("keep-alive whitespace"));
     expect(warnLines("hosted_transport_timeout_retry")).toHaveLength(0);
   });
 
@@ -463,8 +529,8 @@ describe("body idle budget — openrouter", () => {
     expect(result.receipt.outcome).toBe("timed-out");
     expect(reportDiagnostic).toHaveBeenCalledTimes(1);
     const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
-    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("sent no body bytes for 360s"));
-    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("on attempt 2"));
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("keep-alive whitespace"));
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("attempt 2 of the 120s wall"));
   });
 
   it("shares the one shot between an idle expiry and a headers timeout in the reverse order", async () => {
@@ -485,12 +551,15 @@ describe("body idle budget — openrouter", () => {
     );
   });
 
-  it("discards partial bytes before an idle expiry without debiting the response budget", async () => {
+  it("discards partial answer bytes before an idle expiry without debiting the response budget", async () => {
     // Had the partial `{"choices":[` been debited, the answer would no longer
     // fit the envelope and the second read would be oversize.
     const answer = openAiSuccessBody({ issues: [] });
     const answerBytes = new TextEncoder().encode(JSON.stringify(answer)).byteLength;
-    const fetch = sequenceFetch([partialThenStalledResponse, () => jsonResponse(answer)]);
+    const fetch = sequenceFetch([
+      () => keepAliveResponse({ leadingBytes: '{"choices":[' }),
+      () => jsonResponse(answer),
+    ]);
 
     const { result } = await dispatch("openrouter", fetch, {
       limits: { ...limits, maxResponseBytes: answerBytes + 10 },
@@ -500,8 +569,10 @@ describe("body idle budget — openrouter", () => {
     expect(result.receipt.attemptCount).toBe(2);
   });
 
-  it("treats a body timeout on a product without an idle budget as the client's own timeout", async () => {
-    const fetch = sequenceFetch([stalledResponse]);
+  it("treats the transport's own body timeout as the client's timeout, not the answer-idle budget", async () => {
+    const fetch = sequenceFetch([
+      () => streamingResponse((controller) => controller.error(bodyTimeout())),
+    ]);
 
     const { result, reportDiagnostic } = await dispatch("zai", fetch);
 
@@ -510,6 +581,6 @@ describe("body idle budget — openrouter", () => {
     expect(reportDiagnostic).toHaveBeenCalledTimes(1);
     const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
     expect(diagnostic.safeMessage).toEqual(expect.stringContaining("UND_ERR_BODY_TIMEOUT"));
-    expect(diagnostic.safeMessage).toEqual(expect.not.stringContaining("idle budget"));
+    expect(diagnostic.safeMessage).toEqual(expect.not.stringContaining("keep-alive whitespace"));
   });
 });

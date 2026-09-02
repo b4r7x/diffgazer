@@ -96,6 +96,13 @@ export const EFFECTIVE_CALL_TOKEN_CAP = {
   default: 49_152,
 } as const;
 
+/**
+ * Optional ceiling on a review's elapsed wall clock. `null` keeps the envelope
+ * the engine derives from the plan; a cap is clamped so it never drops below
+ * one dispatch wall.
+ */
+export const REVIEW_WALL_TIME_CAP = { min: 60_000, max: 7_200_000 } as const;
+
 export const SettingsConfigSchema = z.object({
   theme: ThemeSchema,
   // Selectable ids only: `synthesis` is dispatched by the engine, never chosen.
@@ -108,6 +115,12 @@ export const SettingsConfigSchema = z.object({
     .min(EFFECTIVE_CALL_TOKEN_CAP.min)
     .max(EFFECTIVE_CALL_TOKEN_CAP.max)
     .default(EFFECTIVE_CALL_TOKEN_CAP.default),
+  reviewWallTimeCapMs: z
+    .int()
+    .min(REVIEW_WALL_TIME_CAP.min)
+    .max(REVIEW_WALL_TIME_CAP.max)
+    .nullable()
+    .default(null),
   defaultProfile: ProfileIdSchema.nullable(),
   severityThreshold: ReviewSeveritySchema,
   secretsStorage: SecretsStorageSchema.nullable(),
@@ -133,6 +146,7 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
   secretsStorage: null,
   defaultLenses: [...SELECTABLE_LENS_IDS],
   effectiveCallTokenCap: EFFECTIVE_CALL_TOKEN_CAP.default,
+  reviewWallTimeCapMs: null,
   defaultProfile: null,
   severityThreshold: "low",
   agentExecution: "sequential",

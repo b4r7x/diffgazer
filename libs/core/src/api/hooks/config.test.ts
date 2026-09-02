@@ -131,6 +131,7 @@ const configurationInit: ConfigurationInitResponse = {
     theme: "auto",
     defaultLenses: ["correctness"],
     effectiveCallTokenCap: 49_152,
+    reviewWallTimeCapMs: null,
     defaultProfile: null,
     severityThreshold: "low",
     secretsStorage: null,

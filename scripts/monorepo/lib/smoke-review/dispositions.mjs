@@ -12,6 +12,12 @@ export const E2E_SCENARIO_ENV = "DIFFGAZER_LIVE_E2E_SCENARIO";
 export const E2E_SCENARIO_IDS = ["small", "medium", "large"];
 export const DEFAULT_E2E_SCENARIO = "small";
 export const DEFAULT_E2E_PRODUCT = "openrouter";
+// Mirrors libs/core REVIEW_WALL_TIME_CAP.min: the engine never accepts a
+// review wall below one dispatch wall's floor.
+export const REVIEW_WALL_TIME_CAP_MIN_MS = 60_000;
+// Room for the terminal event and persistence to land before the harness
+// watchdog cancels the session.
+export const REVIEW_WALL_CAP_MARGIN_MS = 30_000;
 // A published free OpenRouter route proven to reach `completed` in the manual
 // live sessions; override with DIFFGAZER_LIVE_E2E_MODEL when it rots.
 export const DEFAULT_OPENROUTER_E2E_MODEL = "nvidia/nemotron-3-super-120b-a12b:free";
@@ -57,6 +63,11 @@ function parseProductIds(raw) {
     .map((id) => id.trim())
     .filter(Boolean);
   return ids.length > 0 ? [...new Set(ids)] : [DEFAULT_E2E_PRODUCT];
+}
+
+/** The review wall cap sent per cell so the engine ends honestly before the watchdog fires. */
+export function reviewWallCapMs(watchdogMs) {
+  return Math.max(REVIEW_WALL_TIME_CAP_MIN_MS, watchdogMs - REVIEW_WALL_CAP_MARGIN_MS);
 }
 
 export function parseScenarioIds(raw) {

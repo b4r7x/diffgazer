@@ -31,7 +31,9 @@ export const HOSTED_PROFILES = {
     // 180-300s, so the generic 300s budget wall timed out real work.
     // Non-streaming (wire.ts `stream: false`): the gateway commits 200 +
     // headers on provider accept and the JSON body is the whole generation, so
-    // silence after the headers IS generation time. The idle budget must clear
+    // the keep-alive whitespace after the headers IS generation time (probed
+    // 2026-09-02: an 11-byte whitespace chunk every ≈420 ms) — only answer
+    // bytes count as progress. The idle budget must clear
     // the slowest healthy answer on record — the 180-300s free-route reasoning
     // call above — and still leave the one-shot re-dispatch room for a whole
     // answer inside the 600s wall (execute.ts TIMEOUT_RETRY_MIN_REMAINING_MS,
@@ -79,6 +81,10 @@ export const HOSTED_PROFILES = {
     wireFamily: "openai-compatible",
     structuredOutput: "json-object-local-validation",
     malformedOutputRetry: true,
+    // Live gate 2026-09-02: three cells in a row hit the 300s wall once while
+    // healthy Zen answers took 4-40s; 120s of keep-alive leaves the one-shot
+    // re-dispatch 180s of the same wall.
+    pacing: { perDispatchWallTimeMs: 300_000, bodyIdleTimeoutMs: 120_000 },
   },
 } as const satisfies Record<HostedApiProductId, HostedProductProfile>;
 

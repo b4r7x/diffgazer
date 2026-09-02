@@ -6,6 +6,7 @@ import {
   EFFECTIVE_CALL_TOKEN_CAP,
   parseEffectiveCallTokenCap,
   parseSettingsRecord,
+  REVIEW_WALL_TIME_CAP,
   SettingsConfigSchema,
   serializeSettingsRecord,
 } from "./settings.js";
@@ -50,6 +51,29 @@ describe("SettingsConfigSchema", () => {
         ...baseSettings,
         defaultLenses: ["correctness"],
         effectiveCallTokenCap,
+      });
+      expect(result.success).toBe(false);
+    }
+  });
+
+  it("accepts a null or in-range reviewWallTimeCapMs and rejects the rest", () => {
+    for (const reviewWallTimeCapMs of [null, REVIEW_WALL_TIME_CAP.min, REVIEW_WALL_TIME_CAP.max]) {
+      const parsed = SettingsConfigSchema.parse({
+        ...baseSettings,
+        defaultLenses: ["correctness"],
+        reviewWallTimeCapMs,
+      });
+      expect(parsed.reviewWallTimeCapMs).toBe(reviewWallTimeCapMs);
+    }
+    for (const reviewWallTimeCapMs of [
+      REVIEW_WALL_TIME_CAP.min - 1,
+      REVIEW_WALL_TIME_CAP.max + 1,
+      600_000.5,
+    ]) {
+      const result = SettingsConfigSchema.safeParse({
+        ...baseSettings,
+        defaultLenses: ["correctness"],
+        reviewWallTimeCapMs,
       });
       expect(result.success).toBe(false);
     }

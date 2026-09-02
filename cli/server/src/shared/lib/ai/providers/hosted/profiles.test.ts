@@ -34,6 +34,13 @@ describe("resolveDispatchPacing", () => {
     });
   });
 
+  it("gives opencode-zen an answer-idle budget inside its 300s wall", () => {
+    expect(resolveDispatchPacing("opencode-zen", "deepseek-v4-flash")).toEqual({
+      perDispatchWallTimeMs: 300_000,
+      bodyIdleTimeoutMs: 120_000,
+    });
+  });
+
   it("keeps every body idle budget clear of the wall by the re-dispatch floor", () => {
     const REDISPATCH_FLOOR_MS = 60_000; // execute.ts TIMEOUT_RETRY_MIN_REMAINING_MS — not exported for a test
     const modelIds = [

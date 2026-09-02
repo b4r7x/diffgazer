@@ -430,6 +430,7 @@ export async function createReviewSession(
         headCommit,
         parsed: startResult.value.parsed,
         capacity: startResult.value.capacity,
+        reviewWallTimeCapMs: settings.value.reviewWallTimeCapMs,
         branch,
         elapsedStart,
         emit,
@@ -469,6 +470,7 @@ interface RunReviewSessionOptions {
   headCommit: string;
   parsed: ParsedDiff;
   capacity: ReviewCapacityPlan;
+  reviewWallTimeCapMs: number | null;
   branch: string | null;
   elapsedStart: number;
   emit: EmitFn;
@@ -485,6 +487,7 @@ async function runReviewSession({
   headCommit,
   parsed,
   capacity,
+  reviewWallTimeCapMs,
   branch,
   elapsedStart,
   emit,
@@ -506,6 +509,7 @@ async function runReviewSession({
       aiClient,
       parsed,
       capacity,
+      reviewWallTimeCapMs,
       config,
       emit,
       signal,

@@ -315,6 +315,7 @@ function scaleBudgetEnvelope(
   executionContext: ReviewExecutionContext,
   capacity: ReviewCapacityPlan | undefined,
   reviewCallCount: number,
+  reviewWallTimeCapMs: number | null,
 ): ReviewAbort | null {
   const { budgetLedger, budgetReservation, plan } = executionContext.authorization;
   const configuredBase = budgetLedger.limits;
@@ -350,9 +351,13 @@ function scaleBudgetEnvelope(
     }
   }
 
-  const reviewWallTimeMs = Math.ceil(
+  // The user's cap trims the derived envelope but never below one dispatch
+  // wall: a review must be able to run one call.
+  const derivedWallMs = Math.ceil(
     plan.limits.wallTimeMs * reviewCallCount * BATCHED_ENVELOPE_HEADROOM,
   );
+  const capMs = reviewWallTimeCapMs ?? Number.POSITIVE_INFINITY;
+  const reviewWallTimeMs = Math.max(plan.limits.wallTimeMs, Math.min(derivedWallMs, capMs));
 
   budgetLedger.raiseReviewEnvelope(budgetReservation, {
     inputTokens: scaledInputTokens,
@@ -374,8 +379,11 @@ export async function executeReview(params: {
    * configured envelope: the diff read whole, in one call per lens.
    */
   capacity?: ReviewCapacityPlan;
+  /** The user's ceiling on the review's elapsed wall; `null` keeps the derived envelope. */
+  reviewWallTimeCapMs?: number | null;
 }): Promise<Result<ReviewOutcome, ReviewAbort>> {
   const { aiClient, parsed, config, emit, signal, executionContext, capacity } = params;
+  const reviewWallTimeCapMs = params.reviewWallTimeCapMs ?? null;
   const startedAt = new Date().toISOString();
 
   await emit(stepStart("review"));
@@ -402,7 +410,12 @@ export async function executeReview(params: {
     const batchCount = capacity?.batches.length ?? 1;
     const reviewCallCount =
       batchCount > 1 ? batchCount * config.activeLenses.length + 1 : config.activeLenses.length;
-    const abort = scaleBudgetEnvelope(executionContext, capacity, reviewCallCount);
+    const abort = scaleBudgetEnvelope(
+      executionContext,
+      capacity,
+      reviewCallCount,
+      reviewWallTimeCapMs,
+    );
     if (abort) return err(abort);
 
     // The review's elapsed wall clock, started on the raised envelope. The

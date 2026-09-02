@@ -91,6 +91,12 @@ export type ResponseReadFailure = Readonly<{
   cause?: unknown;
 }>;
 
+/** `cause.code` of a read ended by the answer-idle budget. */
+export const ANSWER_IDLE_TIMEOUT_CAUSE = "DIFFGAZER_ANSWER_IDLE_TIMEOUT";
+
+const isWhitespaceByte = (byte: number): boolean =>
+  byte === 0x20 || byte === 0x09 || byte === 0x0a || byte === 0x0d;
+
 /**
  * Read a fetch response as text with a hard byte ceiling: reject on a declared
  * Content-Length over the cap, otherwise stream the body and cancel it the
@@ -114,10 +120,18 @@ const declaredLengthOverLimit = (
   };
 };
 
+/**
+ * `answerIdleTimeoutMs` bounds the wait for answer bytes: a gateway that has
+ * accepted the request keeps the connection alive with whitespace chunks (probed
+ * on OpenRouter, 2026-09-02: 11 bytes every ≈420 ms for the whole generation),
+ * so transport-level idle timers never fire on a stalled generation. Only a
+ * chunk carrying a non-whitespace byte counts as progress.
+ */
 export const readTextResponseWithLimit = async (
   response: Response,
   maxBytes: number,
   label: string,
+  options: { answerIdleTimeoutMs?: number | undefined } = {},
 ): Promise<Result<string, ResponseReadFailure>> => {
   const declared = declaredLengthOverLimit(response, maxBytes, label);
   if (declared) {
@@ -145,12 +159,35 @@ export const readTextResponseWithLimit = async (
   let receivedBytes = 0;
   let text = "";
 
+  const { answerIdleTimeoutMs } = options;
+  const answerIdle: { cause: Error | null } = { cause: null };
+  let answerIdleTimer: ReturnType<typeof setTimeout> | undefined;
+  const armAnswerIdleTimer = () => {
+    if (answerIdleTimeoutMs === undefined) return;
+    clearTimeout(answerIdleTimer);
+    answerIdleTimer = setTimeout(() => {
+      const cause = Object.assign(
+        new Error(
+          `${label} sent only keep-alive whitespace for ${Math.round(answerIdleTimeoutMs / 1000)}s (no answer bytes)`,
+        ),
+        { code: ANSWER_IDLE_TIMEOUT_CAUSE },
+      );
+      answerIdle.cause = cause;
+      cancelBodyBestEffort(() => reader.cancel(cause));
+    }, answerIdleTimeoutMs);
+  };
+  const answerIdleFailure = (cause: Error): Result<string, ResponseReadFailure> =>
+    err({ code: "read-failed", message: cause.message, cause });
+
+  armAnswerIdleTimer();
   try {
     while (true) {
       const { done, value } = await reader.read();
+      if (answerIdle.cause) return answerIdleFailure(answerIdle.cause);
       if (done) break;
       if (!value) continue;
 
+      if (!value.every(isWhitespaceByte)) armAnswerIdleTimer();
       receivedBytes += value.byteLength;
       if (receivedBytes > maxBytes) {
         cancelBodyBestEffort(() => reader.cancel(`${label} response exceeded the size limit`));
@@ -165,12 +202,15 @@ export const readTextResponseWithLimit = async (
 
     text += decoder.decode();
   } catch (error) {
+    if (answerIdle.cause) return answerIdleFailure(answerIdle.cause);
     cancelBodyBestEffort(() => reader.cancel(`${label} response read failed`));
     return err({
       code: "read-failed",
       message: getErrorMessage(error, `Failed to read ${label} response`),
       cause: error,
     });
+  } finally {
+    clearTimeout(answerIdleTimer);
   }
 
   return ok(text);
