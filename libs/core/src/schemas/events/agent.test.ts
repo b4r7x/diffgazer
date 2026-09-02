@@ -196,6 +196,28 @@ describe("AgentStreamEventSchema", () => {
         timestamp: "now",
       },
     },
+    {
+      label: "orchestrator_complete.batchesAnalyzed",
+      event: {
+        type: "orchestrator_complete",
+        totalIssues: 0,
+        lensStats: [{ lensId: "correctness", issueCount: 0, status: "success" }],
+        filesAnalyzed: 0,
+        batchesAnalyzed: -1,
+        timestamp: "now",
+      },
+    },
+    {
+      label: "orchestrator_complete.batchesPlanned",
+      event: {
+        type: "orchestrator_complete",
+        totalIssues: 0,
+        lensStats: [{ lensId: "correctness", issueCount: 0, status: "success" }],
+        filesAnalyzed: 0,
+        batchesPlanned: 1.5,
+        timestamp: "now",
+      },
+    },
   ])("rejects negative or fractional counters for $label", ({ event }) => {
     expect(AgentStreamEventSchema.safeParse(event).success).toBe(false);
   });
@@ -237,6 +259,8 @@ describe("AgentStreamEventSchema", () => {
         totalIssues: 2,
         lensStats: [{ lensId: "correctness", issueCount: 0, status: "success" }],
         filesAnalyzed: 0,
+        batchesAnalyzed: 1,
+        batchesPlanned: 2,
         droppedDuplicates: 0,
         droppedBelowThreshold: 0,
         droppedIncompleteProviderIssues: 0,

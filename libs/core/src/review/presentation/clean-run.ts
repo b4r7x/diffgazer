@@ -4,7 +4,7 @@ import type { RunnableProductId } from "../../schemas/config/transports.js";
 import type { LensStat } from "../../schemas/events/index.js";
 import type { ReviewMode, ReviewSeverity, TerminalOutcome } from "../../schemas/review/index.js";
 import { capitalize, pluralize } from "../../strings.js";
-import { hasDroppedCandidates, hasFailedLenses } from "./agent-status.js";
+import { isPartiallyComplete } from "./agent-status.js";
 
 /**
  * The failed-lens signal arrives in two shapes: live runs and saved reviews
@@ -25,7 +25,7 @@ export interface CleanRunInput {
  * and the clean-run screen both read this, so the sentence and the screen it
  * opens can never disagree. A zero-issue run with a failed lens is partial,
  * not clean. A zero-issue run with an incompletely-answered lens is partial
- * too.
+ * too. A zero-issue run whose lens ended a batch failed is partial too.
  */
 export function isCleanRun({
   issueCount,
@@ -36,12 +36,7 @@ export function isCleanRun({
 }: CleanRunInput): boolean {
   if (issueCount !== 0) return false;
   if (terminalOutcome !== "completed") return false;
-  return (
-    failedLensCount === 0 &&
-    salvagedLensCount === 0 &&
-    !hasFailedLenses(lensStats) &&
-    !hasDroppedCandidates(lensStats)
-  );
+  return failedLensCount === 0 && salvagedLensCount === 0 && !isPartiallyComplete(lensStats);
 }
 
 /** Row labels for the clean-run receipt ledger, shared by both surfaces. */

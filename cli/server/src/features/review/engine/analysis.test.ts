@@ -93,6 +93,21 @@ function makeSequencedAIClient(results: MockGenerateResult[]): {
   return { client, calls: () => callCount };
 }
 
+function dispatchFailure(code: string, retryable: boolean): Result<never, AIError> {
+  const message = `${code} failure`;
+  return err({
+    code: "STREAM_ERROR",
+    message,
+    diagnostic: {
+      code,
+      safeMessage: message,
+      retryable,
+      remediation: "Retry.",
+      correlationId: `corr-${code}`,
+    },
+  });
+}
+
 function allPaths(batches: readonly ParsedDiff[]): string[] {
   return batches.flatMap((batch) => batch.files.map((file) => file.filePath));
 }
@@ -718,7 +733,7 @@ describe("runLensAnalysis", () => {
     expect(result.value.dispatches[1]?.batchIndex).toBe(1);
   });
 
-  it("stops dispatching batches once one of them fails", async () => {
+  it("stops dispatching batches once one of them fails non-retryably", async () => {
     const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
     const client = makeSequencedAIClient([
       err({ code: "MODEL_ERROR", message: "Model failed" }),
@@ -770,6 +785,325 @@ describe("runLensAnalysis", () => {
     expect(result.value.batchError).toEqual({ code: "MODEL_ERROR", message: "Model failed" });
     expect(client.calls()).toBe(2);
     expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(1);
+  });
+
+  function makeRequeueScenario() {
+    const batches = [
+      makeBatchDiff("src/one.ts"),
+      makeBatchDiff("src/two.ts"),
+      makeBatchDiff("src/three.ts"),
+    ];
+    const client = makeSequencedAIClient([
+      dispatchFailure("provider-rejected", true),
+      ok({ issues: [makeLensIssue("two", "file-1")] }),
+      ok({ issues: [makeLensIssue("three", "file-1")] }),
+      ok({ issues: [makeLensIssue("one", "file-1")] }),
+    ]);
+    return { batches, client };
+  }
+
+  it("re-queues a retryably failed batch after the remaining batches", async () => {
+    const { batches, client } = makeRequeueScenario();
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(
+      result.value.dispatches.map(({ batchIndex, outcome }) => ({ batchIndex, outcome })),
+    ).toEqual([
+      { batchIndex: 0, outcome: "provider-rejected" },
+      { batchIndex: 1, outcome: "completed" },
+      { batchIndex: 2, outcome: "completed" },
+      { batchIndex: 0, outcome: "completed" },
+    ]);
+    expect(client.calls()).toBe(4);
+    expect(result.value.batchError).toBeUndefined();
+    expect(result.value.issues.map((issue) => issue.file).sort()).toEqual([
+      "src/one.ts",
+      "src/three.ts",
+      "src/two.ts",
+    ]);
+    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(1);
+  });
+
+  it("ends a batch that fails its re-queued attempt", async () => {
+    const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
+    const client = makeSequencedAIClient([
+      ok({ issues: [makeLensIssue("kept", "file-1", "high")] }),
+      dispatchFailure("provider-rejected", true),
+      dispatchFailure("provider-rejected", true),
+    ]);
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.dispatches.map((dispatch) => dispatch.outcome)).toEqual([
+      "completed",
+      "provider-rejected",
+      "provider-rejected",
+    ]);
+    expect(result.value.dispatches.map((dispatch) => dispatch.batchIndex)).toEqual([0, 1, 1]);
+    expect(client.calls()).toBe(3);
+    expect(result.value.issues.map((issue) => issue.file)).toEqual(["src/one.ts"]);
+    expect(result.value.batchError?.diagnostic?.code).toBe("provider-rejected");
+    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(1);
+  });
+
+  it("reports a lens whose completed batches found nothing as successful", async () => {
+    const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
+    const client = makeSequencedAIClient([
+      ok({ issues: [] }),
+      err({ code: "MODEL_ERROR", message: "Model failed" }),
+    ]);
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.issues).toEqual([]);
+    expect(result.value.dispatches.map((dispatch) => dispatch.outcome)).toEqual([
+      "completed",
+      "MODEL_ERROR",
+    ]);
+    const completes = events.filter((event) => event.type === "agent_complete");
+    expect(completes).toHaveLength(1);
+    expect(completes[0]).toMatchObject({ issueCount: 0 });
+    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(1);
+  });
+
+  it.each<{ label: string; failure: MockGenerateResult }>([
+    { label: "provider-rejected", failure: dispatchFailure("provider-rejected", false) },
+    { label: "transport-failed", failure: dispatchFailure("transport-failed", false) },
+    { label: "budget-exhausted", failure: dispatchFailure("budget-exhausted", false) },
+    { label: "schema-failed", failure: dispatchFailure("schema-failed", false) },
+    { label: "cancelled", failure: dispatchFailure("cancelled", false) },
+    { label: "undiagnosed", failure: err({ code: "MODEL_ERROR", message: "Model failed" }) },
+  ])("ends the lens at once on a non-retryable $label failure", async ({ failure }) => {
+    const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
+    const client = makeSequencedAIClient([failure, ok({ issues: [] }), ok({ issues: [] })]);
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(client.calls()).toBe(1);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.dispatches).toHaveLength(1);
+  });
+
+  it.each([
+    { label: "provider-rejected", failure: dispatchFailure("provider-rejected", true) },
+    { label: "transport-failed", failure: dispatchFailure("transport-failed", true) },
+    { label: "timed-out", failure: dispatchFailure("timed-out", true) },
+  ])("re-queues the batch once on a retryable $label failure", async ({ failure }) => {
+    const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
+    const client = makeSequencedAIClient([failure, ok({ issues: [] }), ok({ issues: [] })]);
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(client.calls()).toBe(3);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.dispatches.map((dispatch) => dispatch.batchIndex)).toEqual([0, 1, 0]);
+  });
+
+  it("re-queues when the review clock still fits one dispatch", async () => {
+    const { batches, client } = makeRequeueScenario();
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      dispatchWallTimeMs: 600_000,
+      reviewClock: { remainingMs: () => 600_000 },
+      onEvent: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(client.calls()).toBe(4);
+  });
+
+  it("refuses the re-queue when the review clock cannot fit one dispatch", async () => {
+    const { batches, client } = makeRequeueScenario();
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      dispatchWallTimeMs: 600_000,
+      reviewClock: { remainingMs: () => 599_999 },
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(client.calls()).toBe(3);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.dispatches.map((dispatch) => dispatch.batchIndex)).toEqual([0, 1, 2]);
+    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(1);
+    expect(result.value.batchError).toBeDefined();
+    expect(result.value.issues.map((issue) => issue.file).sort()).toEqual([
+      "src/three.ts",
+      "src/two.ts",
+    ]);
+  });
+
+  it("refuses the re-queue once the signal is aborted", async () => {
+    const { batches } = makeRequeueScenario();
+    const controller = new AbortController();
+    let callCount = 0;
+    const client: AIClient = {
+      provider: "openrouter",
+      async generate(_prompt, schema) {
+        callCount += 1;
+        if (callCount === 1) return dispatchFailure("provider-rejected", true);
+        if (callCount === 3) controller.abort();
+        return ok({ data: schema.parse({ issues: [] }) });
+      },
+    };
+
+    const promise = runLensAnalysis({
+      client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      dispatchWallTimeMs: 600_000,
+      signal: controller.signal,
+      onEvent: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(callCount).toBe(3);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.batchError).toBeDefined();
+  });
+
+  it("re-queues when no review clock or dispatch wall is configured", async () => {
+    const { batches, client } = makeRequeueScenario();
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(client.calls()).toBe(4);
+  });
+
+  it("re-queues every retryably failed batch once, in plan order", async () => {
+    const batches = [
+      makeBatchDiff("src/one.ts"),
+      makeBatchDiff("src/two.ts"),
+      makeBatchDiff("src/three.ts"),
+    ];
+    const client = makeSequencedAIClient([
+      dispatchFailure("provider-rejected", true),
+      ok({ issues: [] }),
+      dispatchFailure("provider-rejected", true),
+      ok({ issues: [] }),
+      ok({ issues: [] }),
+    ]);
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: () => {},
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.dispatches.map((dispatch) => dispatch.batchIndex)).toEqual([0, 1, 2, 0, 2]);
+    expect(client.calls()).toBe(5);
+    expect(result.value.batchError).toBeUndefined();
+  });
+
+  it("announces a deferred batch with a progress line and reports each file once", async () => {
+    const { batches, client } = makeRequeueScenario();
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    await promise;
+
+    const deferrals = events.filter(
+      (event) =>
+        event.type === "agent_progress" &&
+        event.message ===
+          "Batch 1/3 failed (provider-rejected) — retrying after the remaining batches",
+    );
+    expect(deferrals).toHaveLength(1);
+    const fileProgress = events.flatMap((event) => (event.type === "file_progress" ? [event] : []));
+    expect(fileProgress.map((event) => event.completed)).toEqual([1, 2, 3]);
+    expect(fileProgress.every((event) => event.total === 3)).toBe(true);
+    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(0);
   });
 
   it("stops emitting progress events after the generate call rejects", async () => {
@@ -849,6 +1183,38 @@ describe("runLensAnalysis", () => {
 
       await vi.advanceTimersByTimeAsync(6000);
       expect(heartbeats(events)).toContain("Waiting for model response — 10s of up to 600s");
+
+      response.resolve(ok({ issues: [] }));
+      await promise;
+    });
+
+    it("marks the re-queued attempt's heartbeat as a retry", async () => {
+      const response = createDeferred<Result<unknown, AIError>>();
+      const events: Array<AgentStreamEvent | StepEvent> = [];
+      const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
+      let callCount = 0;
+      const promise = runLensAnalysis({
+        client: {
+          provider: "openrouter",
+          async generate(_prompt, schema) {
+            callCount += 1;
+            if (callCount === 1) return dispatchFailure("provider-rejected", true);
+            if (callCount === 2) return ok({ data: schema.parse({ issues: [] }) });
+            const result = await response.promise;
+            return result.ok ? ok({ data: schema.parse(result.value) }) : result;
+          },
+        },
+        lens: CORRECTNESS_LENS,
+        batches,
+        allChangedFilePaths: allPaths(batches),
+        dispatchWallTimeMs: 600_000,
+        onEvent: (event) => events.push(event),
+      });
+
+      await vi.advanceTimersByTimeAsync(4000);
+      expect(heartbeats(events)).toContain(
+        "Waiting for model response — 4s of up to 600s (batch 1/2, retry)",
+      );
 
       response.resolve(ok({ issues: [] }));
       await promise;

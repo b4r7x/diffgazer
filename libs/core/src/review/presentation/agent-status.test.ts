@@ -186,6 +186,14 @@ describe("buildCompletionHeadline", () => {
       ]),
     ).toBe("Review Partially Complete");
   });
+
+  it("headlines a run with a lens that ended a batch failed as partially complete", () => {
+    expect(
+      buildCompletionHeadline([
+        { lensId: "correctness", issueCount: 1, status: "success", errorCode: "STREAM_ERROR" },
+      ]),
+    ).toBe("Review Partially Complete");
+  });
 });
 
 describe("buildIncompleteAnswerNotice", () => {

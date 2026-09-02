@@ -27,7 +27,7 @@ import { severityMeetsMinimum } from "./issues/ordering.js";
 import { SYNTHESIS_LENS } from "./lenses.js";
 import { buildReviewPrompt, buildSynthesisPrompt, type ReviewPrompt } from "./prompts.js";
 import { sanitizeIssue } from "./sanitize-issue.js";
-import type { LensAnalysisError, LensDispatch, LensResult, ReviewError } from "./types.js";
+import type { LensAnalysisError, LensDispatch, LensResult } from "./types.js";
 
 function getThinkingMessage(lens: Lens): string {
   switch (lens.id) {
@@ -187,6 +187,26 @@ function emitDispatchError(
 }
 
 /**
+ * A failure the engine may re-queue once: the adapter's own retry ladder is
+ * spent and its diagnostic says waiting can clear it — pacing 429
+ * (`provider-rejected`), HTTP 5xx (`transport-failed`) and both wall/HTTP-client
+ * expiries (`timed-out`) all arrive `retryable: true`. Everything else —
+ * 401/402/403/404/413, exhausted-quota 429, `budget-exhausted`, `cancelled`,
+ * schema failures, HTTP 400, an error with no diagnostic — ends the lens at once.
+ */
+function isRetryableDispatchFailure(error: AIError): boolean {
+  return error.diagnostic?.retryable === true;
+}
+
+/** The dispatch row's label: the diagnostic's cause code, else the bridge code. */
+function dispatchOutcome(error: AIError): string {
+  return error.diagnostic?.code ?? error.code;
+}
+
+/** A planned batch waiting to be dispatched; `retryOf` is the retryable failure a re-queue defers. */
+type QueuedBatch = { batchIndex: number; batch: ParsedDiff; retryOf?: AIError };
+
+/**
  * Streams the issues that meet the threshold and closes the lens's event pair.
  * The full set is still what the caller persists.
  */
@@ -290,8 +310,10 @@ export interface LensAnalysisOptions {
   batches: readonly ParsedDiff[];
   /** Every path the review changed, so each batch can name what it cannot see. */
   allChangedFilePaths: readonly string[];
-  /** The admitted per-dispatch wall, named in the wait heartbeat. */
+  /** The admitted per-dispatch wall: named in the wait heartbeat, and the room a re-queue must still have. */
   dispatchWallTimeMs?: number;
+  /** The review clock. A failed batch is re-queued only while it still fits one full dispatch. */
+  reviewClock?: { remainingMs(): number };
   onEvent: (event: AgentStreamEvent | StepEvent) => void;
   projectContext?: string;
   signal?: AbortSignal;
@@ -304,6 +326,7 @@ export async function runLensAnalysis({
   batches,
   allChangedFilePaths,
   dispatchWallTimeMs,
+  reviewClock,
   onEvent,
   projectContext,
   signal,
@@ -340,26 +363,52 @@ export async function runLensAnalysis({
   let droppedIncompleteProviderIssues = 0;
   let droppedCandidateCount = 0;
   let filesReported = 0;
-  let batchError: ReviewError | undefined;
+  let completedBatchCount = 0;
+  let batchError: AIError | undefined;
 
-  for (const [batchIndex, batch] of batches.entries()) {
-    const batchSuffix = batchCount > 1 ? ` (batch ${batchIndex + 1}/${batchCount})` : "";
+  // A re-queued attempt is a dispatch the envelope never counted
+  // (`reviewCallCount`, pipeline.ts): it runs only in the slack the review clock
+  // still has for one whole dispatch, and never once dispatching was aborted.
+  const canRequeue = (): boolean =>
+    signal?.aborted !== true &&
+    (reviewClock === undefined ||
+      dispatchWallTimeMs === undefined ||
+      reviewClock.remainingMs() >= dispatchWallTimeMs);
+
+  // The plan in dispatch order. A batch whose first attempt failed retryably
+  // goes to the back of the queue once, so the rest of the plan runs first. A
+  // single-batch plan has nothing to run first: the adapter ladder stays its
+  // only retry.
+  const queue: QueuedBatch[] = batches.map((batch, batchIndex) => ({ batchIndex, batch }));
+
+  for (let queued = queue.shift(); queued !== undefined; queued = queue.shift()) {
+    const { batchIndex, batch, retryOf } = queued;
+    if (retryOf !== undefined && !canRequeue()) {
+      emitDispatchError(onEvent, agentId, retryOf);
+      batchError = retryOf;
+      continue;
+    }
+    const retrySuffix = retryOf === undefined ? "" : ", retry";
+    const batchSuffix =
+      batchCount > 1 ? ` (batch ${batchIndex + 1}/${batchCount}${retrySuffix})` : "";
     const {
       user: prompt,
       system,
       files: promptFiles,
     } = buildReviewPrompt(lens, batch, projectContext, allChangedFilePaths);
 
-    for (const { file } of promptFiles) {
-      filesReported += 1;
-      onEvent({
-        type: "file_progress",
-        agent: agentId,
-        file: file.filePath,
-        completed: filesReported,
-        total: totalFiles,
-        timestamp: new Date().toISOString(),
-      });
+    if (retryOf === undefined) {
+      for (const { file } of promptFiles) {
+        filesReported += 1;
+        onEvent({
+          type: "file_progress",
+          agent: agentId,
+          file: file.filePath,
+          completed: filesReported,
+          total: totalFiles,
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
 
     onEvent({
@@ -393,16 +442,31 @@ export async function runLensAnalysis({
       batchIndex,
       startedAt: dispatchStartedAt,
       finishedAt: new Date().toISOString(),
-      outcome: result.ok ? "completed" : (result.error.code ?? "AI_ERROR"),
+      outcome: result.ok ? "completed" : dispatchOutcome(result.error),
     });
 
     if (!result.ok) {
+      const retryable = isRetryableDispatchFailure(result.error);
+      if (retryable && retryOf === undefined && batchCount > 1) {
+        onEvent({
+          type: "agent_progress",
+          agent: agentId,
+          progress: 65,
+          message: `Batch ${batchIndex + 1}/${batchCount} failed (${dispatchOutcome(result.error)}) — retrying after the remaining batches`,
+          timestamp: new Date().toISOString(),
+        });
+        queue.push({ batchIndex, batch, retryOf: result.error });
+        continue;
+      }
       emitDispatchError(onEvent, agentId, result.error);
-      if (collectedIssues.length === 0) return err({ ...result.error, dispatches });
-      batchError = {
-        code: result.error.code ?? "AI_ERROR",
-        message: result.error.message,
-      };
+      batchError = result.error;
+      if (retryable) continue;
+      // A non-retryable failure ends dispatching. Re-queued batches still
+      // waiting end with the failure that deferred them; batches never
+      // attempted leave no row, as before.
+      for (const pending of queue) {
+        if (pending.retryOf !== undefined) emitDispatchError(onEvent, agentId, pending.retryOf);
+      }
       break;
     }
 
@@ -410,6 +474,11 @@ export async function runLensAnalysis({
     collectedIssues.push(...batchIssues.issues);
     droppedIncompleteProviderIssues += batchIssues.droppedCount;
     droppedCandidateCount += result.value.warning?.droppedCandidateCount ?? 0;
+    completedBatchCount += 1;
+  }
+
+  if (batchError !== undefined && completedBatchCount === 0) {
+    return err({ ...batchError, dispatches });
   }
 
   const uniqueIssues = ensureUniqueIssueIds(collectedIssues, lens.id);
@@ -501,7 +570,7 @@ export async function runSynthesisAnalysis({
       batchIndex: 0,
       startedAt: dispatchStartedAt,
       finishedAt: new Date().toISOString(),
-      outcome: result.ok ? "completed" : (result.error.code ?? "AI_ERROR"),
+      outcome: result.ok ? "completed" : dispatchOutcome(result.error),
     },
   ];
 

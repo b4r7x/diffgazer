@@ -137,12 +137,22 @@ export function hasDroppedCandidates(lensStats: readonly LensStat[] | undefined)
 }
 
 /**
+ * Whether this lens reported but ended a batch failed: `success` with the
+ * error that cut that batch short. Structural like `lensAnsweredIncompletely`.
+ */
+function lensStoppedShort(stat: { status: LensStat["status"]; errorCode?: string }): boolean {
+  return stat.status === "success" && stat.errorCode !== undefined;
+}
+
+/**
  * Whether a completed run is partial: failed lenses or incompletely-answered
- * ones. The headline and the web frame tone both read it, so "Partially
- * Complete" and the warning frame can never drift apart.
+ * ones, or lenses that ended a batch failed. The headline and the web frame
+ * tone both read it, so "Partially Complete" and the warning frame can never
+ * drift apart.
  */
 export function isPartiallyComplete(lensStats: readonly LensStat[] | undefined): boolean {
-  return hasFailedLenses(lensStats) || hasDroppedCandidates(lensStats);
+  const stats = lensStats ?? [];
+  return hasFailedLenses(stats) || hasDroppedCandidates(stats) || stats.some(lensStoppedShort);
 }
 
 /**

@@ -219,6 +219,11 @@ const OrchestratorCompleteEventSchema = z.strictObject({
   totalIssues: CountSchema,
   lensStats: z.array(LensStatSchema),
   filesAnalyzed: CountSchema,
+  // Batch coverage: the planned batches every reporting lens completed, out of
+  // the plan. `filesAnalyzed` sums those batches' files. Optional: events
+  // written before coverage was tracked carry neither.
+  batchesAnalyzed: CountSchema.optional(),
+  batchesPlanned: CountSchema.optional(),
   // Counts the dedup/filter passes removed from the streamed total so the UI can
   // explain why the live counter snaps down at `complete`.
   droppedDuplicates: CountSchema.optional(),

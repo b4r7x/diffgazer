@@ -17,14 +17,15 @@ export interface LensResult {
   droppedIncompleteProviderIssues: number;
   /** Candidates the client dropped when a batch's answer arrived incomplete; 0 for a whole answer. */
   droppedCandidateCount: number;
-  /** One entry per model call this lens made, in dispatch order. */
+  /** One entry per model call, in dispatch order; a re-queued batch has two rows under one `batchIndex`. */
   dispatches: LensDispatch[];
   /**
-   * Set when a batch failed after earlier batches had already returned findings.
-   * Dispatching stops there, but what the earlier batches found is already paid
-   * for, so the lens reports those issues beside the error that ended it.
+   * The failure of the last batch that ended failed — its re-queued attempt, or
+   * a non-retryable first attempt, which also ends dispatching. What the
+   * completed batches found is already paid for, so the lens reports those
+   * issues beside it. The orchestrator reads its diagnostic (`budget-exhausted`).
    */
-  batchError?: ReviewError;
+  batchError?: AIError;
 }
 
 /** @see @diffgazer/core/schemas/review ReviewError (Zod-validated full variant with domain error codes) */
@@ -65,10 +66,11 @@ export interface OrchestrationOptions {
   requestedConcurrency?: number;
   /**
    * The review's elapsed wall clock. Its signal aborts in-flight dispatches when
-   * the clock runs out; `expired()` is true only for the clock's own timeout,
-   * never for caller cancellation.
+   * the clock runs out; `remainingMs()` decides whether a failed batch may still be re-queued;
+   * `expired()` is true only for the clock's own timeout, never for caller
+   * cancellation.
    */
-  reviewClock?: { signal: AbortSignal; expired(): boolean };
+  reviewClock?: { signal: AbortSignal; remainingMs(): number; expired(): boolean };
   /**
    * The admitted per-dispatch wall. A non-streaming dispatch has no first-token
    * signal, so the wait heartbeat names this bound instead of leaving the user

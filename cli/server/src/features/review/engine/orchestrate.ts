@@ -55,6 +55,26 @@ function isBudgetExhausted(error: AIError): boolean {
   return error.code === "STREAM_ERROR" && error.diagnostic?.code === "budget-exhausted";
 }
 
+/**
+ * The planned batches every reporting lens completed, in plan order. Coverage
+ * is per batch: a batch one lens never finished was not analyzed whatever the
+ * other lenses saw of it, and with no reporting lens nothing was.
+ */
+function batchesEveryLensCompleted(
+  lensStats: readonly LensStat[],
+  plannedBatches: readonly ParsedDiff[],
+): ParsedDiff[] {
+  const reporting = lensStats.filter((stat) => stat.status === "success");
+  if (reporting.length === 0) return [];
+  return plannedBatches.filter((_, batchIndex) =>
+    reporting.every((stat) =>
+      stat.dispatches?.some(
+        (dispatch) => dispatch.batchIndex === batchIndex && dispatch.outcome === "completed",
+      ),
+    ),
+  );
+}
+
 function isAbortRejection(reason: unknown, signal?: AbortSignal): boolean {
   if (signal?.aborted) return true;
   if (reason instanceof DOMException && reason.name === "AbortError") return true;
@@ -177,6 +197,7 @@ export async function orchestrateReview(
   // incapable tuple spends every lens's dispatches once — capped by the
   // budget ledger and review clock — before the conformance memo blocks it.
   const signal = orchestrationOptions.signal;
+  const plannedBatches = orchestrationOptions.batches ?? [diff];
   // The first dispatch to exhaust the review budget has spent the envelope the
   // remaining lenses would draw on: dispatching them costs money for output the
   // ledger refuses. Stop launching new ones and abort those in flight — a dead
@@ -198,17 +219,18 @@ export async function orchestrateReview(
         const result = await runLensAnalysis({
           client,
           lens: task.lens,
-          batches: orchestrationOptions.batches ?? [diff],
+          batches: plannedBatches,
           allChangedFilePaths: diff.files.map((file) => file.filePath),
           dispatchWallTimeMs: orchestrationOptions.dispatchWallTimeMs,
+          reviewClock,
           onEvent,
           projectContext: orchestrationOptions.projectContext,
           signal: dispatchSignal,
           severityFilter: filter,
         });
-        if (result.ok) {
-          anyLensSucceeded = true;
-        } else if (isBudgetExhausted(result.error)) {
+        if (result.ok) anyLensSucceeded = true;
+        const terminalFailure = result.ok ? result.value.batchError : result.error;
+        if (terminalFailure !== undefined && isBudgetExhausted(terminalFailure)) {
           budgetAbort.abort();
         }
         return result;
@@ -317,8 +339,8 @@ export async function orchestrateReview(
     droppedIncompleteProviderIssues += result.value.droppedIncompleteProviderIssues;
     // Count only issues that meet the severity threshold, matching the streamed
     // per-agent counter so the persisted lens stats stay consistent with the UI.
-    // A lens whose later batch failed still succeeded on what it dispatched, so
-    // it reports its findings and names the error that cut the run short.
+    // A lens that ended a batch failed still reports what its completed batches
+    // found, beside the error that cut that batch short (after its one re-queue).
     lensStats.push({
       lensId: result.value.lensId,
       issueCount: filterIssuesByMinSeverity(result.value.issues, filter).length,
@@ -332,6 +354,10 @@ export async function orchestrateReview(
     });
   });
 
+  // Coverage is per planned batch, read before the synthesis row joins the
+  // stats: its one dispatch is the whole diff, not a planned batch.
+  const analyzedBatches = batchesEveryLensCompleted(lensStats, plannedBatches);
+
   // A batched review's per-lens calls never saw the whole diff at once, so one
   // synthesis pass reads the digest of everything they found and hunts for
   // cross-file problems. It is skipped when nothing decoded (the review is
@@ -339,8 +365,7 @@ export async function orchestrateReview(
   // spent). Its failure is a failed lens, never a failed
   // review: it stays out of `failedLensCount` and `lastError`, because the
   // per-batch findings are already paid for and cross-file coverage only adds.
-  const batchCount = orchestrationOptions.batches?.length ?? 1;
-  if (batchCount > 1 && anyLensSucceeded && !dispatchSignal.aborted) {
+  if (plannedBatches.length > 1 && anyLensSucceeded && !dispatchSignal.aborted) {
     const synthesisResult = await runSynthesisAnalysis({
       client,
       diff,
@@ -385,7 +410,9 @@ export async function orchestrateReview(
     type: "orchestrator_complete",
     totalIssues: sorted.length,
     lensStats,
-    filesAnalyzed: diff.files.length,
+    filesAnalyzed: analyzedBatches.reduce((sum, batch) => sum + batch.files.length, 0),
+    batchesAnalyzed: analyzedBatches.length,
+    batchesPlanned: plannedBatches.length,
     droppedDuplicates,
     droppedBelowThreshold,
     droppedIncompleteProviderIssues,

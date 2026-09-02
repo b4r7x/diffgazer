@@ -111,6 +111,8 @@ describe("orchestrateReview", () => {
     expect(completeEvent).toMatchObject({
       totalIssues: 2,
       filesAnalyzed: 2,
+      batchesAnalyzed: 1,
+      batchesPlanned: 1,
     });
     expect(completeEvent).not.toHaveProperty("summary");
     expect(JSON.stringify(events)).not.toMatch(/"(?:traceId|spanId|parentSpanId)":/);
@@ -708,7 +710,11 @@ describe("orchestrateReview", () => {
       () => {},
       {
         concurrency: 3,
-        reviewClock: { signal: clockAbort.signal, expired: () => clockExpired },
+        reviewClock: {
+          signal: clockAbort.signal,
+          remainingMs: () => 0,
+          expired: () => clockExpired,
+        },
       },
     );
 
@@ -983,6 +989,211 @@ describe("orchestrateReview", () => {
       expect(result.value.droppedBelowThreshold).toBe(1);
       expect(result.value.minSeverity).toBe("low");
     }
+  });
+
+  it("reports coverage for a lens that completed one of two batches", async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const client = makeClient([
+      ok({ issues: [makeIssue({ id: "issue-1", file: "file-1" })] }),
+      err({ code: "MODEL_ERROR", message: "Model failed" }),
+    ]);
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts", "src/b.ts"]),
+      { lenses: ["correctness"] },
+      (event) => events.push(event as Record<string, unknown>),
+      {
+        concurrency: 1,
+        batches: [createDiffForFiles(["src/a.ts"]), createDiffForFiles(["src/b.ts"])],
+      },
+    );
+
+    expect(events.find((event) => event.type === "orchestrator_complete")).toMatchObject({
+      filesAnalyzed: 1,
+      batchesAnalyzed: 1,
+      batchesPlanned: 2,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.lensStats[0]).toMatchObject({
+      status: "success",
+      errorCode: "MODEL_ERROR",
+    });
+    expect(result.value.lensStats).toContainEqual(expect.objectContaining({ lensId: "synthesis" }));
+  });
+
+  it("counts a batch as analyzed only when every reporting lens completed it", async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const client = makeClient([
+      ok({ issues: [] }),
+      ok({ issues: [] }),
+      ok({ issues: [] }),
+      err({ code: "MODEL_ERROR", message: "Model failed" }),
+    ]);
+
+    await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts", "src/b.ts"]),
+      { lenses: ["correctness", "security"] },
+      (event) => events.push(event as Record<string, unknown>),
+      {
+        concurrency: 1,
+        batches: [createDiffForFiles(["src/a.ts"]), createDiffForFiles(["src/b.ts"])],
+      },
+    );
+
+    expect(events.find((event) => event.type === "orchestrator_complete")).toMatchObject({
+      filesAnalyzed: 1,
+      batchesAnalyzed: 1,
+      batchesPlanned: 2,
+    });
+  });
+
+  it("reports full coverage on a clean batched run", async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const client = makeClient([ok({ issues: [] }), ok({ issues: [] })]);
+
+    await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts", "src/b.ts"]),
+      { lenses: ["correctness"] },
+      (event) => events.push(event as Record<string, unknown>),
+      {
+        concurrency: 1,
+        batches: [createDiffForFiles(["src/a.ts"]), createDiffForFiles(["src/b.ts"])],
+      },
+    );
+
+    expect(events.find((event) => event.type === "orchestrator_complete")).toMatchObject({
+      filesAnalyzed: 2,
+      batchesAnalyzed: 2,
+      batchesPlanned: 2,
+    });
+  });
+
+  it("reports zero coverage when every lens failed", async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const client = makeClient([err({ code: "MODEL_ERROR", message: "Model failed" })]);
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts", "src/b.ts"]),
+      { lenses: ["correctness"] },
+      (event) => events.push(event as Record<string, unknown>),
+      {
+        concurrency: 1,
+        batches: [createDiffForFiles(["src/a.ts"]), createDiffForFiles(["src/b.ts"])],
+      },
+    );
+
+    expect(events.find((event) => event.type === "orchestrator_complete")).toMatchObject({
+      filesAnalyzed: 0,
+      batchesAnalyzed: 0,
+      batchesPlanned: 2,
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("completes a review whose only lens found nothing before a batch failed", async () => {
+    const client = makeClient([
+      ok({ issues: [] }),
+      err({ code: "MODEL_ERROR", message: "Model failed" }),
+    ]);
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts", "src/b.ts"]),
+      { lenses: ["correctness"] },
+      () => {},
+      {
+        concurrency: 1,
+        batches: [createDiffForFiles(["src/a.ts"]), createDiffForFiles(["src/b.ts"])],
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.lensStats[0]).toMatchObject({
+      lensId: "correctness",
+      status: "success",
+      issueCount: 0,
+      errorCode: "MODEL_ERROR",
+    });
+    expect(result.value.lensStats).toContainEqual(expect.objectContaining({ lensId: "synthesis" }));
+  });
+
+  it("hands synthesis the findings of a partial lens's completed batches", async () => {
+    const prompts: string[] = [];
+    const queue: Array<Result<unknown, AIError>> = [
+      ok({
+        issues: [
+          makeIssue({
+            id: "cross-1",
+            file: "file-1",
+            title: "Schema changed without its consumer",
+          }),
+        ],
+      }),
+      err({ code: "MODEL_ERROR", message: "Model failed" }),
+      ok({ issues: [] }),
+    ];
+    const client: AIClient = {
+      provider: "openrouter",
+      generate: async <T extends z.ZodType>(prompt: string, schema: T) => {
+        prompts.push(prompt);
+        const next = queue.shift();
+        if (!next?.ok) return err({ code: "MODEL_ERROR", message: "Model failed" });
+        return ok({ data: schema.parse(next.value) as z.output<T> });
+      },
+    };
+
+    await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts", "src/b.ts"]),
+      { lenses: ["correctness"] },
+      () => {},
+      {
+        concurrency: 1,
+        batches: [createDiffForFiles(["src/a.ts"]), createDiffForFiles(["src/b.ts"])],
+      },
+    );
+
+    expect(prompts).toHaveLength(3);
+    expect(prompts[2]).toContain("Schema changed without its consumer");
+  });
+
+  it("stops dispatching the remaining lenses when a partial lens exhausts the budget", async () => {
+    const client = makeClient([
+      ok({ issues: [makeIssue({ id: "issue-1", file: "file-1" })] }),
+      budgetExhaustedError(),
+    ]);
+    const generate = vi.spyOn(client, "generate");
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts", "src/b.ts"]),
+      { lenses: ["correctness", "security"] },
+      () => {},
+      {
+        concurrency: 1,
+        batches: [createDiffForFiles(["src/a.ts"]), createDiffForFiles(["src/b.ts"])],
+      },
+    );
+
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.lensStats).toMatchObject([
+      { lensId: "correctness", status: "success", errorCode: "STREAM_ERROR" },
+      {
+        lensId: "security",
+        status: "failed",
+        errorCode: "BUDGET_EXHAUSTED",
+        errorMessage: "Not dispatched — the review budget was exhausted.",
+      },
+    ]);
+    expect(result.value.lensStats.some((stat) => stat.lensId === "synthesis")).toBe(false);
   });
 
   it("drops incomplete provider output before streaming, lens counts, and deduplication", async () => {

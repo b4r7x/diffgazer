@@ -48,6 +48,18 @@ describe("isCleanRun", () => {
     expect(isCleanRun({ issueCount: 0, salvagedLensCount: 1 })).toBe(false);
   });
 
+  it("is not clean when a lens ended a batch failed, even with zero issues", () => {
+    expect(
+      isCleanRun({
+        issueCount: 0,
+        lensStats: [
+          { lensId: "correctness", issueCount: 0, status: "success" },
+          { lensId: "security", issueCount: 0, status: "success", errorCode: "STREAM_ERROR" },
+        ],
+      }),
+    ).toBe(false);
+  });
+
   it("is not clean when the run ended on a failed terminal outcome", () => {
     expect(isCleanRun({ issueCount: 0, lensStats: succeeded, terminalOutcome: "timed-out" })).toBe(
       false,
