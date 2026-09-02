@@ -18,9 +18,8 @@ export const DEFAULT_OPENROUTER_E2E_MODEL = "nvidia/nemotron-3-super-120b-a12b:f
 // Every id here is pinned by the offline snapshot test: a committed catalog
 // snapshot row, priced or quota-billed (ollama-cloud's committed rows carry
 // no cost), and structured-output-compatible with the product's dispatch mode.
-// zai splits by scenario: the free glm-4.7-flash route is enough for one small
-// call but is throttled on the multi-call scenarios, so medium and large run
-// the priced glm-4.5-air (live round 2026-09-02).
+// zai runs the priced glm-4.5-air everywhere: the free glm-4.7-flash route was
+// throttled (429) on every scenario across the live rounds of 2026-09-02.
 export const DEFAULT_E2E_MODELS = {
   openrouter: {
     small: DEFAULT_OPENROUTER_E2E_MODEL,
@@ -33,7 +32,7 @@ export const DEFAULT_E2E_MODELS = {
     large: "deepseek-v4-flash",
   },
   zai: {
-    small: "glm-4.7-flash",
+    small: "glm-4.5-air",
     medium: "glm-4.5-air",
     large: "glm-4.5-air",
   },

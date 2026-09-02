@@ -340,6 +340,7 @@ export function buildRequestInit(
     boundReasoning?: boolean;
     correction?: OutputCorrection;
     signal?: AbortSignal;
+    bodyIdleTimeoutMs?: number;
   }>,
 ): RequestInit {
   const profile = HOSTED_PROFILES[input.productId];
@@ -395,9 +396,10 @@ export function buildRequestInit(
         // demanding it for JSON mode would 404 routes that lack response_format
         // instead of letting the gateway drop it, and local validation covers
         // the output either way.
-        ...(structuredOutput === "strict-json-schema"
-          ? { provider: { require_parameters: true } }
-          : {}),
+        provider: {
+          ...profile.routingPreferences,
+          ...(structuredOutput === "strict-json-schema" ? { require_parameters: true } : {}),
+        },
         response_format: buildOpenAiResponseFormat(structuredOutput, input.structuredOutputSchema),
       };
       break;
@@ -424,7 +426,10 @@ export function buildRequestInit(
     }),
     // The client's own response timeout must outlive the dispatch wall, or a
     // silent provider dies at the runtime default instead of the declared bound.
-    dispatcher: responseTimeoutDispatcher(input.evidenceKey.limits.wallTimeMs),
+    dispatcher: responseTimeoutDispatcher(
+      input.evidenceKey.limits.wallTimeMs,
+      input.bodyIdleTimeoutMs,
+    ),
   };
 }
 

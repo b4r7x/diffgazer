@@ -207,7 +207,7 @@ test("a comma list resolves one disposition per product, in order", () => {
     ]),
     [
       ["run", "openrouter", DEFAULT_OPENROUTER_E2E_MODEL],
-      ["run", "zai", "glm-4.7-flash"],
+      ["run", "zai", "glm-4.5-air"],
       ["run", "deepseek", "deepseek-v4-flash"],
     ],
   );
@@ -223,7 +223,7 @@ test("the model override is ignored for a multi-product matrix", () => {
   };
   assert.deepEqual(
     resolveAll({ env }).map((disposition) => disposition.modelId),
-    ["gemini-2.5-flash", "glm-4.7-flash"],
+    ["gemini-2.5-flash", "glm-4.5-air"],
   );
   assert.match(modelOverrideNotice(env), /^NOTE: DIFFGAZER_LIVE_E2E_MODEL ignored/);
 });
@@ -464,7 +464,7 @@ test("three-product matrix with all credentials yields nine run cells, zai on it
   const zaiCells = cells.filter((cell) => cell.productId === "zai");
   assert.deepEqual(
     zaiCells.map((cell) => cell.modelId),
-    ["glm-4.7-flash", "glm-4.5-air", "glm-4.5-air"],
+    ["glm-4.5-air", "glm-4.5-air", "glm-4.5-air"],
   );
 });
 
@@ -1173,7 +1173,7 @@ test("a product without a fallback, and a cell already on the fallback id, decli
   assert.equal(
     entitlementFallback({
       terminal: ENTITLEMENT_REFUSAL,
-      cell: { productId: "zai", scenarioId: "small", modelId: "glm-4.7-flash" },
+      cell: { productId: "zai", scenarioId: "small", modelId: "glm-4.5-air" },
       modelOverride: null,
     }),
     null,

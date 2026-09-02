@@ -5,8 +5,15 @@ type HostedWireFamily = "google" | "openai-compatible" | "openrouter";
 
 export type DispatchPacing = Readonly<{
   perDispatchWallTimeMs?: number;
+  /** Silence after the response headers that ends the body read as a client timeout; unset = the wall bounds it. */
+  bodyIdleTimeoutMs?: number;
   maxParallelDispatches?: number;
   reasoning?: "may-reason";
+}>;
+
+/** The verified subset of OpenRouter's `provider` routing preferences the wire may send (docs: features/provider-routing). */
+export type OpenRouterRoutingPreferences = Readonly<{
+  preferred_max_latency: Readonly<Partial<Record<"p50" | "p75" | "p90" | "p99", number>>>;
 }>;
 
 export type HostedProductProfile = Readonly<{
@@ -14,6 +21,7 @@ export type HostedProductProfile = Readonly<{
   structuredOutput: "strict-json-schema" | "json-object-local-validation";
   malformedOutputRetry: boolean;
   pacing?: DispatchPacing;
+  routingPreferences?: OpenRouterRoutingPreferences;
 }>;
 
 export type HostedExecutionContext = Readonly<{

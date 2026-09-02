@@ -167,7 +167,7 @@ pnpm run smoke:review
 ```
 
 ollama-cloud falls back to gpt-oss:20b when the plan refuses the default model
-(HTTP 402); zai runs glm-4.7-flash for small and glm-4.5-air for medium/large.
+(HTTP 402); zai runs glm-4.5-air for every scenario (the free glm-4.7-flash route is throttled).
 
 ## Package Governance
 

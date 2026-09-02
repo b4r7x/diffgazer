@@ -337,3 +337,179 @@ it("does not re-dispatch a non-JSON body for a product without the malformed-out
     expect.objectContaining({ code: "unparseable-response" }),
   );
 });
+
+// The shape undici hands the reader when the pooled agent's body timeout fires
+// after the headers (fetch: `TypeError("terminated", { cause })`).
+const bodyTimeout = () =>
+  new TypeError("terminated", {
+    cause: Object.assign(new Error("Body Timeout Error"), { code: "UND_ERR_BODY_TIMEOUT" }),
+  });
+const stalledResponse = () => streamingResponse((controller) => controller.error(bodyTimeout()));
+const partialThenStalledResponse = () =>
+  streamingResponse((controller) => {
+    controller.enqueue(new TextEncoder().encode('{"choices":['));
+    controller.error(bodyTimeout());
+  });
+const headersTimeout = () =>
+  new TypeError("fetch failed", {
+    cause: Object.assign(new Error("Headers Timeout Error"), { code: "UND_ERR_HEADERS_TIMEOUT" }),
+  });
+
+describe("body idle budget — openrouter", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("re-dispatches once after the body idle budget expires and completes on the second attempt", async () => {
+    const fetch = sequenceFetch([
+      stalledResponse,
+      () => jsonResponse(openAiSuccessBody({ issues: [] })),
+    ]);
+
+    const { result, reportDiagnostic } = await dispatch("openrouter", fetch);
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const calls = vi.mocked(fetch).mock.calls;
+    expect(String(calls[1]?.[1]?.body)).toBe(String(calls[0]?.[1]?.body));
+    expect(result.receipt.attemptCount).toBe(2);
+    expect(reportDiagnostic).not.toHaveBeenCalled();
+    expect(warnLines("hosted_transport_timeout_retry")).toEqual([
+      expect.objectContaining({ productId: "openrouter", causeCode: "UND_ERR_BODY_TIMEOUT" }),
+    ]);
+  });
+
+  it("reports a second idle expiry as timed-out naming the idle budget, the wall, the elapsed time and the attempt", async () => {
+    const fetch = sequenceFetch([stalledResponse]);
+
+    const { result, reportDiagnostic } = await dispatch("openrouter", fetch);
+
+    expect(result.receipt.outcome).toBe("timed-out");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(reportDiagnostic).toHaveBeenCalledTimes(1);
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "timed-out",
+        retryable: true,
+        safeMessage: expect.stringContaining("sent no body bytes for 360s"),
+      }),
+    );
+    const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("120s wall"));
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("on attempt 2"));
+    expect(diagnostic.safeMessage).toEqual(expect.stringMatching(/after \d+s/));
+    expect(diagnostic.safeMessage).toEqual(expect.not.stringContaining("wall-time limit"));
+    expect(diagnostic.remediation).toEqual(expect.stringContaining("keeps billing"));
+    expect(diagnostic.remediation).toEqual(expect.not.stringContaining("wall-time budget"));
+    expect(warnLines("hosted_transport_timeout_retry")).toHaveLength(1);
+    expect(JSON.stringify(reportDiagnostic.mock.calls)).not.toContain(PLAIN_CREDENTIAL);
+    expect(JSON.stringify(vi.mocked(log).mock.calls)).not.toContain(PLAIN_CREDENTIAL);
+  });
+
+  it("reports a wall expiry on the re-dispatched attempt with the earlier idle history", async () => {
+    vi.useFakeTimers();
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockImplementationOnce(async () => stalledResponse())
+      .mockImplementationOnce(async (_url, init) =>
+        streamingResponse((controller) => {
+          init?.signal?.addEventListener("abort", () => controller.error(init.signal?.reason));
+        }),
+      );
+
+    const pending = dispatch("openrouter", fetch, {
+      limits: { ...limits, wallTimeMs: 100_000 },
+    });
+    await vi.advanceTimersByTimeAsync(100_000);
+    const { result, reportDiagnostic } = await pending;
+
+    expect(result.receipt.outcome).toBe("timed-out");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(reportDiagnostic).toHaveBeenCalledTimes(1);
+    const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("wall-time limit"));
+    expect(diagnostic.safeMessage).toEqual(
+      expect.stringContaining("accepted attempt 1 but sent no body bytes for 360s"),
+    );
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("re-dispatched attempt 2"));
+    expect(diagnostic.remediation).toEqual(expect.stringContaining("keeps billing"));
+    expect(JSON.stringify(reportDiagnostic.mock.calls)).not.toContain(PLAIN_CREDENTIAL);
+    expect(JSON.stringify(vi.mocked(log).mock.calls)).not.toContain(PLAIN_CREDENTIAL);
+  });
+
+  it("does not re-dispatch after an idle expiry when the remaining wall cannot fit a whole answer", async () => {
+    const fetch = sequenceFetch([stalledResponse]);
+
+    const { result, reportDiagnostic } = await dispatch("openrouter", fetch, {
+      limits: { ...limits, wallTimeMs: 30_000 },
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.receipt.outcome).toBe("timed-out");
+    expect(reportDiagnostic).toHaveBeenCalledTimes(1);
+    const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("on attempt 1"));
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("sent no body bytes for 360s"));
+    expect(warnLines("hosted_transport_timeout_retry")).toHaveLength(0);
+  });
+
+  it("shares the one shot between a headers timeout and an idle expiry in either order", async () => {
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockRejectedValueOnce(headersTimeout())
+      .mockImplementationOnce(async () => stalledResponse());
+
+    const { result, reportDiagnostic } = await dispatch("openrouter", fetch);
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.receipt.outcome).toBe("timed-out");
+    expect(reportDiagnostic).toHaveBeenCalledTimes(1);
+    const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("sent no body bytes for 360s"));
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("on attempt 2"));
+  });
+
+  it("shares the one shot between an idle expiry and a headers timeout in the reverse order", async () => {
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockImplementationOnce(async () => stalledResponse())
+      .mockRejectedValueOnce(headersTimeout());
+
+    const { result, reportDiagnostic } = await dispatch("openrouter", fetch);
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.receipt.outcome).toBe("timed-out");
+    expect(reportDiagnostic).toHaveBeenCalledTimes(1);
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        safeMessage: expect.stringContaining("UND_ERR_HEADERS_TIMEOUT"),
+      }),
+    );
+  });
+
+  it("discards partial bytes before an idle expiry without debiting the response budget", async () => {
+    // Had the partial `{"choices":[` been debited, the answer would no longer
+    // fit the envelope and the second read would be oversize.
+    const answer = openAiSuccessBody({ issues: [] });
+    const answerBytes = new TextEncoder().encode(JSON.stringify(answer)).byteLength;
+    const fetch = sequenceFetch([partialThenStalledResponse, () => jsonResponse(answer)]);
+
+    const { result } = await dispatch("openrouter", fetch, {
+      limits: { ...limits, maxResponseBytes: answerBytes + 10 },
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.receipt.attemptCount).toBe(2);
+  });
+
+  it("treats a body timeout on a product without an idle budget as the client's own timeout", async () => {
+    const fetch = sequenceFetch([stalledResponse]);
+
+    const { result, reportDiagnostic } = await dispatch("zai", fetch);
+
+    expect(result.receipt.outcome).toBe("timed-out");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(reportDiagnostic).toHaveBeenCalledTimes(1);
+    const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("UND_ERR_BODY_TIMEOUT"));
+    expect(diagnostic.safeMessage).toEqual(expect.not.stringContaining("idle budget"));
+  });
+});

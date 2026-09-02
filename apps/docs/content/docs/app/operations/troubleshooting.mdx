@@ -81,9 +81,9 @@ Open the model picker in **Configure Provider** and choose a listed exact ID.
 
 ## Timeout
 
-**Symptom.** A review ends with **Review Timed Out** and the message **The review exceeded the configured wall-time limit.**
+**Symptom.** A review ends with **Review Timed Out** and the message **The review exceeded a configured time limit.**
 
-**Cause.** The admitted execution plan exceeded its wall-time budget.
+**Cause.** A dispatch exceeded its wall-time budget, or the provider accepted a request and sent no body for longer than the product's idle budget.
 
 **Fix.** Review fewer files, choose a faster admitted model if one is ready, or adjust the execution limits for your workflow before retrying.
 

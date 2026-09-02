@@ -87,6 +87,8 @@ export function createResponseLimitingFetch(
 export type ResponseReadFailure = Readonly<{
   code: "oversize-response" | "read-failed";
   message: string;
+  /** The error that ended the read, for callers that classify by its code. */
+  cause?: unknown;
 }>;
 
 /**
@@ -133,6 +135,7 @@ export const readTextResponseWithLimit = async (
       return err({
         code: "read-failed",
         message: getErrorMessage(error, `Failed to read ${label} response`),
+        cause: error,
       });
     }
   }
@@ -166,6 +169,7 @@ export const readTextResponseWithLimit = async (
     return err({
       code: "read-failed",
       message: getErrorMessage(error, `Failed to read ${label} response`),
+      cause: error,
     });
   }
 

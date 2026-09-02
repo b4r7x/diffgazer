@@ -13,6 +13,7 @@ import {
 import {
   evidenceKeyFor,
   executeRequest,
+  type FetchFn,
   googleSuccessBody,
   hostedContext,
   mockFetchResponse,
@@ -27,6 +28,8 @@ import {
   executeHostedReview,
   HOSTED_ADAPTERS,
 } from "./transport.js";
+
+const OPENROUTER_ROUTING = { preferred_max_latency: { p99: 60 } };
 
 describe("hosted transport facade", () => {
   it("re-exports canonical endpoint helpers without changing identity or types", () => {
@@ -60,6 +63,16 @@ describe("openrouter structured-output capability at dispatch", () => {
     };
   }
 
+  function openAiResponse(content: string): Response {
+    return new Response(
+      JSON.stringify({
+        choices: [{ message: { content }, finish_reason: "stop" }],
+        usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  }
+
   afterEach(() => {
     readCachedLiveModelListMock.mockReset();
     vi.restoreAllMocks();
@@ -75,11 +88,30 @@ describe("openrouter structured-output capability at dispatch", () => {
 
     expect(result.receipt.outcome).toBe("completed");
     const body = requestBodyAt(fetch, 0);
-    expect(body.provider).toEqual({ require_parameters: true });
+    expect(body.provider).toEqual({ ...OPENROUTER_ROUTING, require_parameters: true });
     expect(body.response_format).toMatchObject({
       type: "json_schema",
       json_schema: { strict: true },
     });
+  });
+
+  it("sends the same provider object on the corrective retry", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(openAiResponse("not-json"))
+      .mockResolvedValueOnce(openAiResponse(JSON.stringify({ issues: [] }))) as unknown as FetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("openrouter"),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.receipt.attemptCount).toBe(2);
+    const firstProvider = requestBodyAt(fetch, 0).provider;
+    expect(requestBodyAt(fetch, 1).provider).toEqual(firstProvider);
+    expect(firstProvider).toEqual({ ...OPENROUTER_ROUTING, require_parameters: true });
   });
 
   it("degrades to JSON mode without require_parameters when the context mode says the route lacks structured outputs", async () => {
@@ -93,7 +125,7 @@ describe("openrouter structured-output capability at dispatch", () => {
     expect(result.receipt.outcome).toBe("completed");
     const body = requestBodyAt(fetch, 0);
     expect(body.response_format).toEqual({ type: "json_object" });
-    expect(body.provider).toBeUndefined();
+    expect(body.provider).toEqual(OPENROUTER_ROUTING);
   });
 
   it("degrades a dispatch whose live-list route does not declare structured_outputs", async () => {
@@ -113,7 +145,7 @@ describe("openrouter structured-output capability at dispatch", () => {
     });
     const body = requestBodyAt(fetch, 0);
     expect(body.response_format).toEqual({ type: "json_object" });
-    expect(body.provider).toBeUndefined();
+    expect(body.provider).toEqual(OPENROUTER_ROUTING);
   });
 
   it("keeps strict dispatch for a route the live list marks structured-output capable", async () => {
@@ -128,7 +160,7 @@ describe("openrouter structured-output capability at dispatch", () => {
 
     expect(result.receipt.outcome).toBe("completed");
     const body = requestBodyAt(fetch, 0);
-    expect(body.provider).toEqual({ require_parameters: true });
+    expect(body.provider).toEqual({ ...OPENROUTER_ROUTING, require_parameters: true });
     expect(body.response_format).toMatchObject({ type: "json_schema" });
   });
 
@@ -145,7 +177,7 @@ describe("openrouter structured-output capability at dispatch", () => {
     expect(result.receipt.outcome).toBe("completed");
     const body = requestBodyAt(fetch, 0);
     expect(body.response_format).toEqual({ type: "json_object" });
-    expect(body.provider).toBeUndefined();
+    expect(body.provider).toEqual(OPENROUTER_ROUTING);
   });
 
   it("bounds reasoning spend for a strict route that declares the reasoning control", async () => {
@@ -161,7 +193,7 @@ describe("openrouter structured-output capability at dispatch", () => {
     expect(result.receipt.outcome).toBe("completed");
     const body = requestBodyAt(fetch, 0);
     expect(body.reasoning).toEqual({ max_tokens: 2048 });
-    expect(body.provider).toEqual({ require_parameters: true });
+    expect(body.provider).toEqual({ ...OPENROUTER_ROUTING, require_parameters: true });
     expect(body.response_format).toMatchObject({ type: "json_schema" });
   });
 

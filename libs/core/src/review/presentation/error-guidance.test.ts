@@ -171,7 +171,7 @@ describe("review error-guidance presentation", () => {
     },
     "timed-out": {
       title: "Review Timed Out",
-      message: "The review exceeded the configured wall-time limit.",
+      message: "The review exceeded a configured time limit.",
     },
     "transport-failed": {
       title: "Transport Failed",

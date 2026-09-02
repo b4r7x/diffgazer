@@ -29,7 +29,23 @@ export const HOSTED_PROFILES = {
     // wait, an unbounded/bounded reasoning generation, and a corrective retry.
     // Field evidence 2026-08-26: a healthy free-route reasoning call alone ran
     // 180-300s, so the generic 300s budget wall timed out real work.
-    pacing: { perDispatchWallTimeMs: 600_000 },
+    // Non-streaming (wire.ts `stream: false`): the gateway commits 200 +
+    // headers on provider accept and the JSON body is the whole generation, so
+    // silence after the headers IS generation time. The idle budget must clear
+    // the slowest healthy answer on record — the 180-300s free-route reasoning
+    // call above — and still leave the one-shot re-dispatch room for a whole
+    // answer inside the 600s wall (execute.ts TIMEOUT_RETRY_MIN_REMAINING_MS,
+    // 60s): 360s = 300s × 1.2 leaves ≈240s, twelve times the ≈20s a healthy
+    // flash dispatch took in the 2026-09-02 live run whose stalled batch sat
+    // silent for the full 600s. Raise it only on a healthy call observed above it.
+    pacing: { perDispatchWallTimeMs: 600_000, bodyIdleTimeoutMs: 360_000 },
+    // Soft routing preference (openrouter.ai/docs/features/provider-routing,
+    // fetched 2026-09-02): providers whose p99 latency is under 60s are
+    // preferred; price-weighted load balancing continues among them, and a
+    // model served only by slower providers still routes ("should never prevent
+    // your request from being executed"). A stall is a tail event, hence p99;
+    // 60s is the floor a whole healthy answer needs (TIMEOUT_RETRY_MIN_REMAINING_MS).
+    routingPreferences: { preferred_max_latency: { p99: 60 } },
   },
   deepseek: {
     wireFamily: "openai-compatible",
