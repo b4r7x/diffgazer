@@ -1,9 +1,12 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   acceptProviderConsent,
   applySettingsPatch,
   DEFAULT_SETTINGS,
   EFFECTIVE_CALL_TOKEN_CAP,
+  PROVIDER_CONSENT_PRIVACY_URL,
   parseEffectiveCallTokenCap,
   parseSettingsRecord,
   REVIEW_WALL_TIME_CAP,
@@ -213,5 +216,21 @@ describe("parseEffectiveCallTokenCap", () => {
     expect(parseEffectiveCallTokenCap("")).toBeNull();
     expect(parseEffectiveCallTokenCap(String(EFFECTIVE_CALL_TOKEN_CAP.min - 1))).toBeNull();
     expect(parseEffectiveCallTokenCap(String(EFFECTIVE_CALL_TOKEN_CAP.max + 1))).toBeNull();
+  });
+});
+
+describe("PROVIDER_CONSENT_PRIVACY_URL", () => {
+  it("points at the README privacy section, which exists", () => {
+    expect(PROVIDER_CONSENT_PRIVACY_URL).toBe("https://github.com/b4r7x/diffgazer#privacy");
+
+    const readme = readFileSync(
+      resolve(import.meta.dirname, "../../../../..", "README.md"),
+      "utf8",
+    );
+    expect(readme).toContain("\n## Privacy\n");
+  });
+
+  it("fits one line of the 80-column TUI consent card", () => {
+    expect(`Privacy notes: ${PROVIDER_CONSENT_PRIVACY_URL}`.length).toBeLessThanOrEqual(58);
   });
 });

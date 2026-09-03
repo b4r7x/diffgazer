@@ -4,6 +4,7 @@ import { UNRECOGNIZED_CONFIGURATION_COPY } from "@diffgazer/core/providers";
 import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
 import {
   ClientConfigurationActionResponseSchema,
+  PROVIDER_CONSENT_PRIVACY_URL,
   PROVIDER_CONSENT_TEXT,
   type SettingsConfig,
 } from "@diffgazer/core/schemas/config";
@@ -200,7 +201,7 @@ describe("ProvidersPage", () => {
     expect(within(dialog).getByText(PROVIDER_CONSENT_TEXT)).toBeInTheDocument();
     expect(within(dialog).getByRole("link", { name: /Privacy notes/ })).toHaveAttribute(
       "href",
-      expect.stringContaining("/app/concepts/privacy"),
+      PROVIDER_CONSENT_PRIVACY_URL,
     );
     // Initial focus lands on the confirming action, so Enter accepts.
     const accept = within(dialog).getByRole("button", { name: "Accept and continue" });

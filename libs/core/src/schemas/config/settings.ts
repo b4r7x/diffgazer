@@ -57,8 +57,12 @@ const PROVIDER_CONSENT_VERSION = 1;
 export const PROVIDER_CONSENT_TEXT =
   "Diffgazer sends repository content (diffs, files you include) to the provider you configure, using your own credentials, and stores nothing remotely. Billing, rate limits, retention and training terms are that provider's — see each provider's notice.";
 
-/** Where the consent points for the full account of what leaves the machine. */
-export const PROVIDER_CONSENT_PRIVACY_URL = "https://docs.b4r7.dev/app/concepts/privacy";
+/**
+ * Where the consent points for the full account of what leaves the machine. The
+ * repository README's privacy section, until the hosted docs site is live; it
+ * has to fit one line of the 80-column TUI consent card.
+ */
+export const PROVIDER_CONSENT_PRIVACY_URL = "https://github.com/b4r7x/diffgazer#privacy";
 
 const ProviderConsentSchema = z.strictObject({
   version: z.literal(PROVIDER_CONSENT_VERSION),

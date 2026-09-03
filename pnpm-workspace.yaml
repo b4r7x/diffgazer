@@ -35,6 +35,7 @@ overrides:
   fast-uri: ">=3.1.2"
   express-rate-limit: ">=8.2.2"
   qs: ">=6.15.2"
+  browserslist: ">=4.28.7"
   nanoid: "^3.3.18"
   "js-yaml@4": "^4.3.0"
   sharp: "^0.35.0"

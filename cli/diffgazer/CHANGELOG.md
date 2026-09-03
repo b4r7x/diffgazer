@@ -4,9 +4,11 @@
 
 ### Patch Changes
 
-- 6416350: Documentation and release-tooling release. Installing, launching, and reviewing
-  behave exactly as in 0.1.3; the install and first-review guides were expanded and the
-  published package surface is now validated before every release.
+- 6416350: Documentation and release-tooling release. This version was never published to
+  npm; its changes — including the CLI flag surface (`--version`, `--help`, `--tui`,
+  `--theme`) that 0.1.3 did not have — ship with the next release. The install and
+  first-review guides were expanded and the published package surface is now validated
+  before every release.
 
 ## 0.1.3
 

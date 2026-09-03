@@ -35,6 +35,7 @@
   },
   "files": [
     "dist",
+    "!dist/metafile-esm.json",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",

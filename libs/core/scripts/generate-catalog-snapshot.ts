@@ -35,11 +35,16 @@ const wantedSourceIds = new Set<string>(
 
 // Emit biome-clean output: provider-derived's keys are valid identifiers, so the
 // raw JSON.stringify form (quoted keys, single-line Record type) is biome-dirty.
-// Format the emitted files in place so a regenerate leaves a `biome check`-clean
-// worktree; it's a byte-identical no-op for catalog-snapshot.ts. One process
-// handles every path — Biome startup dominates the cost of this step.
-function formatEmitted(...paths: string[]): void {
-  execFileSync("pnpm", ["exec", "biome", "format", "--write", ...paths], { stdio: "ignore" });
+// Format before touching the disk so a regenerate leaves a `biome check`-clean
+// worktree AND leaves an unchanged file's bytes and mtime alone, which keeps a
+// cached build of this package fresh across a no-op regenerate.
+function writeFormatted(path: string, text: string): void {
+  const formatted = execFileSync("pnpm", ["exec", "biome", "format", `--stdin-file-path=${path}`], {
+    input: text,
+    encoding: "utf-8",
+  });
+  if (existsSync(path) && readFileSync(path, "utf-8") === formatted) return;
+  writeFileSync(path, formatted, "utf-8");
 }
 
 // Offline-deterministic by default: with no MODELSDEV_SOURCE, re-derive from the
@@ -79,7 +84,7 @@ const header = [
   "",
 ].join("\n");
 
-writeFileSync(OUT, header, "utf-8");
+writeFormatted(OUT, header);
 
 // Both derived tables describe what a picker OFFERS, so they are built from the
 // offerable set, not every observed model: OpenRouter's zero-priced
@@ -123,7 +128,7 @@ const derivedHeader = [
   "",
 ].join("\n");
 
-writeFileSync(DERIVED_OUT, derivedHeader, "utf-8");
+writeFormatted(DERIVED_OUT, derivedHeader);
 
 // Per-model display name and pricing for the bounded catalog. The provider
 // panes read a persisted selection here without a network round trip, and a
@@ -149,9 +154,8 @@ const modelDerivedHeader = [
   "",
 ].join("\n");
 
-writeFileSync(MODEL_DERIVED_OUT, modelDerivedHeader, "utf-8");
+writeFormatted(MODEL_DERIVED_OUT, modelDerivedHeader);
 
-formatEmitted(OUT, DERIVED_OUT, MODEL_DERIVED_OUT);
 console.info(`[catalog-snapshot] wrote ${Object.keys(trimmed).length} providers to ${OUT}`);
 console.info(
   `[catalog-snapshot] wrote ${Object.keys(derived).length} derived providers to ${DERIVED_OUT}`,

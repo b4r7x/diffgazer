@@ -45,8 +45,9 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "dgadd-consumer-"));
   writeFixtureConfig(root);
   writeFileSync(join(root, "tsconfig.json"), JSON.stringify(CONSUMER_TSCONFIG, null, 2));
-  // react, react-dom, clsx, tailwind-merge, cva and vite/client all resolve from the
-  // library workspace, so the fixture type-checks offline against the versions we ship.
+  // react, react-dom, clsx, tailwind-merge, cva, vite/client and (for package mode) @diffgazer/keys --
+  // libs/ui's workspace link to libs/keys' built dist, the files the tarball ships -- all resolve from
+  // the library workspace, so the fixture type-checks offline against the versions we ship.
   symlinkSync(resolve(repoRoot, "libs/ui/node_modules"), join(root, "node_modules"), "dir");
 });
 
@@ -175,4 +176,25 @@ describe("copy-mode output builds in a stock Vite react-ts consumer", () => {
       expect(status, output).toBe(0);
     },
   );
+});
+
+describe("keys-package output builds in a stock Vite react-ts consumer", () => {
+  test("ui/select installed against @diffgazer/keys type-checks", { timeout: 180_000 }, () => {
+    runDgadd(
+      ["add", "ui/select", "--integration", "keys", "--cwd", root, "--yes", "--skip-install"],
+      { timeoutMs: ADD_TIMEOUT_MS },
+    );
+
+    // Package mode must leave the keys hooks in the package: no copied use-navigation, and the
+    // component reaching for the published entry point instead.
+    expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(false);
+    const packageImporters = copiedSourceFiles(join(root, "src")).filter((file) =>
+      readFileSync(file, "utf-8").includes('from "@diffgazer/keys"'),
+    );
+    expect(packageImporters.length).toBeGreaterThan(0);
+
+    const { status, output } = typeCheckFixture();
+
+    expect(status, output).toBe(0);
+  });
 });

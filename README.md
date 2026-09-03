@@ -20,11 +20,13 @@ Run one command, get a review. Only the diff and prompt content go to the provid
 
 - **Local-first review** - the CLI starts an embedded server and web UI on localhost.
 - **Review pipeline** - diff, context, review, enrich, and report steps run in order.
-- **Web and terminal modes** - the browser UI by default; the Ink terminal UI (`--tui`) is in beta and still catching up (see [terminal UI](https://docs.b4r7.dev/app/tui)).
+- **Web and terminal modes** - the browser UI by default; the Ink terminal UI (`--tui`) is in beta and still catching up (see [terminal UI](./apps/docs/content/docs/app/tui/index.mdx)).
 - **Issue details** - read findings inline against your diff with evidence and fix guidance.
-- **Provider choice** - nine selectable hosted API products (see [providers reference](https://docs.b4r7.dev/app/reference/providers)).
+- **Provider choice** - nine selectable hosted API products (see [providers reference](./apps/docs/content/docs/app/reference/providers.mdx)).
 - **Privacy controls** - localhost binding, host allowlist, CSRF protection, per-run token, explicit repo trust, and server-only secret/admission boundaries.
 - **Registry and packages** - `@diffgazer/ui`, `@diffgazer/keys`, and `dgadd` support copy-first and package consumption paths.
+
+The hosted docs site is not yet live; until then the documentation links here point at the docs source in this repository.
 
 ## Quick Start
 
@@ -38,9 +40,22 @@ First run walks you through product selection, endpoint binding, authentication,
 
 ### Free models
 
-Free tiers throttle. Z.AI's free Flash models allow one concurrent request (Diffgazer knows this and caps them to one dispatch at a time), and free OpenRouter models rate-limit under parallel load. Review agents run sequentially by default (`agentExecution: "sequential"`), and with a free model that's the setting to keep. Switch to `parallel` only on a paid tier that actually allows concurrent requests. See the [configuration reference](https://docs.b4r7.dev/app/reference/configuration).
+Free tiers throttle. Z.AI's free Flash models allow one concurrent request (Diffgazer knows this and caps them to one dispatch at a time), and free OpenRouter models rate-limit under parallel load. Review agents run sequentially by default (`agentExecution: "sequential"`), and with a free model that's the setting to keep. Switch to `parallel` only on a paid tier that actually allows concurrent requests. See the [configuration reference](./apps/docs/content/docs/app/reference/configuration.mdx).
 
 Diffgazer is also a pnpm monorepo for the CLI, docs app, shared registry tooling, keyboard hooks, and UI packages.
+
+## Privacy
+
+Diffgazer runs on your machine. Your source and your credentials never reach a Diffgazer-hosted relay.
+
+- **Your code leaves only when you ask for a review.** At that point the diff and the prompt built around it go straight to the product you configured, using your own credentials, under that product's terms. Diffgazer stores nothing remotely.
+- **Setup makes a few catalog requests that carry no code.** The public models.dev catalog and the public OpenRouter and Ollama Cloud model lists are read without a credential; a saved key is sent only to the product it belongs to, to read that product's model list (OpenCode Zen's one key also reads its second endpoint's list). `DIFFGAZER_OFFLINE` skips every live request.
+- **Secrets stay server-side.** Provider keys live in your OS keyring or in `0600` files under your Diffgazer home, and never appear in web, terminal, or CLI payloads. The one token the browser holds is the per-run shutdown token for the local API; it is not a provider credential.
+- **The local server is local.** It binds `127.0.0.1`, allowlists the `Host` header, rejects cross-origin writes, and requires the per-run token on every API route but `/api/health`.
+- **Reading the repository is explicit.** Routes that touch repository files require a trust grant for that exact repository root.
+- **The provider notice is asked once, before anything is sent.** Declining cancels only that action, and the accepted notice stays readable from Settings.
+
+Providers use what you send under their own terms; pick one whose notice you are comfortable with. The full account is in [the privacy and security doc](./apps/docs/content/docs/app/concepts/privacy.mdx).
 
 ## Workspace
 
@@ -151,17 +166,19 @@ single-lens review through a real provider over HTTP + SSE, and verifies the run
 persists. Off by default; skips honestly without the opt-in envs. Uses an isolated
 temp config home — your `~/.diffgazer` is never touched. Spends tokens on the
 selected model (the flash set below).
-The release gate is the full {openrouter, opencode-zen} × {small, medium, large}
-matrix; zai and ollama-cloud join automatically when credentialed.
+The release gate is the full {openrouter, opencode-zen, zai, ollama-cloud} ×
+{small, medium, large} matrix. A run reviews only the products named in
+`DIFFGAZER_LIVE_E2E_PRODUCT` (`openrouter` when it is unset), so the full matrix
+lists all four there.
 
 ```bash
 DIFFGAZER_SMOKE_ALLOW_NETWORK=1 DIFFGAZER_LIVE_E2E=1 OPENROUTER_API_KEY=sk-... pnpm run smoke:review
 ```
 
 ```bash
-# Release gate: full matrix (zai and ollama-cloud join when credentialed)
+# Release gate: the full 4 x 3 matrix, every product named
 DIFFGAZER_SMOKE_ALLOW_NETWORK=1 DIFFGAZER_LIVE_E2E=1 \
-DIFFGAZER_LIVE_E2E_PRODUCT=openrouter,opencode-zen \
+DIFFGAZER_LIVE_E2E_PRODUCT=openrouter,opencode-zen,zai,ollama-cloud \
 DIFFGAZER_LIVE_E2E_SCENARIO=small,medium,large \
 pnpm run smoke:review
 ```
@@ -178,10 +195,14 @@ priced incumbent, outside the flash set).
 400 (model unavailable), 5xx (outage), or a timed-out attempt (harness watchdog,
 dispatch wall, headers/answer-idle budget, review wall-clock) — one hop per
 timeout, so a logical cell never exceeds two watchdogs (worst case 2 × 600/900/1200 s).
-Each hop prints `WARN: live review e2e — <model> is down (<class>: <excerpt>); retrying
-the cell on fallback <next>` and boots a fresh cell whose header names the model and
-its chain position; a run without a WARN line ran its primary. A
-`DIFFGAZER_LIVE_E2E_MODEL` pin never falls back.
+In a multi-cell run each hop prints a WARN line labelled with its cell (a
+single-cell run prints it unlabelled), and boots a fresh cell whose header names
+the model and its chain position; a run without a WARN line
+ran its primary. A `DIFFGAZER_LIVE_E2E_MODEL` pin never falls back.
+
+```
+WARN: (ollama-cloud/small) live review e2e — glm-5.3-flash is down (entitlement: Ollama Cloud reported billing or quota exhausted (HTTP 402). Check the account balance or plan, or change the model.); retrying the cell on fallback deepseek-v4-flash:0731
+```
 
 ## Package Governance
 
@@ -192,3 +213,5 @@ See [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md) for:
 - Dependency management and lockfile strategy
 - Supported consumption contracts for each package
 - Breaking change policy
+
+Release notes live in each package's `CHANGELOG.md` (`cli/diffgazer`, `cli/add`, `libs/ui`, `libs/keys`).

@@ -50,7 +50,7 @@ describe("ProviderConsentDialog", () => {
     expect(within(alert).getByText(PROVIDER_CONSENT_TEXT)).toBeInTheDocument();
     expect(within(alert).getByRole("link", { name: /Privacy notes/ })).toHaveAttribute(
       "href",
-      "https://docs.b4r7.dev/app/concepts/privacy",
+      "https://github.com/b4r7x/diffgazer#privacy",
     );
     await waitFor(() =>
       expect(within(alert).getByRole("button", { name: "Accept and continue" })).toHaveFocus(),

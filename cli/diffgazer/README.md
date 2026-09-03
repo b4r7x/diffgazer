@@ -43,7 +43,7 @@ cd /path/to/your/repo
 diffgazer
 ```
 
-Run `diffgazer` from inside the git repository you want to review. The repository should contain changes to review. For the full installation and first-review guide, see https://docs.b4r7.dev/app/getting-started/first-review.
+Run `diffgazer` from inside the git repository you want to review. The repository should contain changes to review. For the full installation and first-review guide, see https://github.com/b4r7x/diffgazer/blob/main/apps/docs/content/docs/app/getting-started/first-review.mdx.
 
 You can also run it without a global install:
 
@@ -59,4 +59,4 @@ The beta TUI always exits with `Ctrl+C`. `q` exits only when no text input, over
 
 ## Architecture
 
-The CLI's place in the workspace is documented at https://docs.b4r7.dev/app/architecture; its source layout lives in the repository linked above.
+The CLI's place in the workspace is documented at https://github.com/b4r7x/diffgazer/blob/main/apps/docs/content/docs/app/architecture.mdx; its source layout lives in the repository linked above.
