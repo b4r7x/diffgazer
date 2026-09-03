@@ -1,12 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  E2E_LENS,
-  evaluateBatchingProof,
-  evaluateRun,
-  fallbackLine,
-  labelCellLines,
-} from "./verdicts.mjs";
+import { E2E_LENS, evaluateBatchingProof, evaluateRun, labelCellLines } from "./verdicts.mjs";
 
 const completeTerminal = { type: "complete", result: { issues: [] }, reviewId: "r-1" };
 const completeWithFinding = {
@@ -85,10 +79,113 @@ test("complete with failed lenses -> pass with WARN lines", () => {
     timedOut: false,
     persisted: true,
     listed: true,
-    failedLenses: ["detective: provider unavailable"],
+    lensStats: [
+      {
+        lensId: "correctness",
+        status: "failed",
+        errorCode: "PROVIDER_REJECTED",
+        errorMessage: "provider unavailable",
+        dispatches: [{ batchIndex: 0, outcome: "provider-rejected" }],
+      },
+    ],
   });
   assert.equal(verdict, "pass");
-  assert.match(lines[1], /^WARN: 1 lens\(es\) failed honestly: detective: provider unavailable/);
+  assert.match(
+    lines[1],
+    /^WARN: 1 lens\(es\) failed honestly: correctness \(provider-rejected\): provider unavailable$/,
+  );
+});
+
+test("a failed lens with no dispatch rows names its bridge errorCode", () => {
+  const { lines } = evaluateRun({
+    sawNonTerminalEvent: true,
+    terminal: completeTerminal,
+    timedOut: false,
+    persisted: true,
+    listed: true,
+    lensStats: [
+      {
+        lensId: "guardian",
+        status: "failed",
+        errorCode: "BUDGET_EXHAUSTED",
+        errorMessage: "Not dispatched — the review budget was exhausted.",
+      },
+    ],
+  });
+  assert.match(lines[1], /failed honestly: guardian \(BUDGET_EXHAUSTED\): Not dispatched/);
+});
+
+test("a lens that completed with a failed batch warns on its own line and passes", () => {
+  const { verdict, lines } = evaluateRun({
+    sawNonTerminalEvent: true,
+    terminal: completeWithFinding,
+    timedOut: false,
+    persisted: true,
+    listed: true,
+    lensStats: [
+      {
+        lensId: "correctness",
+        status: "success",
+        errorCode: "STREAM_ERROR",
+        errorMessage: "timed-out failure",
+        dispatches: [
+          { batchIndex: 0, outcome: "completed" },
+          { batchIndex: 1, outcome: "timed-out" },
+          { batchIndex: 1, outcome: "timed-out" },
+        ],
+      },
+    ],
+  });
+  assert.equal(verdict, "pass");
+  assert.equal(lines.length, 2);
+  assert.ok(!lines.some((line) => /failed honestly/.test(line)));
+  assert.match(
+    lines[1],
+    /^WARN: 1 lens\(es\) completed with a failed batch: correctness \(timed-out\): timed-out failure$/,
+  );
+});
+
+test("a re-queued batch that later completed prints no lens line", () => {
+  const { lines } = evaluateRun({
+    sawNonTerminalEvent: true,
+    terminal: completeWithFinding,
+    timedOut: false,
+    persisted: true,
+    listed: true,
+    lensStats: [
+      {
+        lensId: "correctness",
+        status: "success",
+        dispatches: [
+          { batchIndex: 0, outcome: "provider-rejected" },
+          { batchIndex: 1, outcome: "completed" },
+          { batchIndex: 0, outcome: "completed" },
+        ],
+      },
+    ],
+  });
+  assert.deepEqual(lines, ["OK: live review e2e — completed, 1 issue(s), lens correctness"]);
+});
+
+test("missing persistence fails before any lens line", () => {
+  const { verdict, lines } = evaluateRun({
+    sawNonTerminalEvent: true,
+    terminal: completeWithFinding,
+    timedOut: false,
+    persisted: false,
+    listed: true,
+    lensStats: [
+      {
+        lensId: "correctness",
+        status: "failed",
+        errorCode: "STREAM_ERROR",
+        errorMessage: "stream died",
+      },
+    ],
+  });
+  assert.equal(verdict, "fail");
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], /persistence is missing \(detail fetch\)/);
 });
 
 test("terminal error -> fail with code and message", () => {
@@ -217,7 +314,14 @@ test("cell labels prefix verdict lines only", () => {
 });
 
 const provenLensStats = [
-  { lensId: E2E_LENS, dispatches: [{ batchIndex: 0 }, { batchIndex: 1 }, { batchIndex: 2 }] },
+  {
+    lensId: E2E_LENS,
+    dispatches: [
+      { batchIndex: 0, outcome: "completed" },
+      { batchIndex: 1, outcome: "completed" },
+      { batchIndex: 2, outcome: "completed" },
+    ],
+  },
   { lensId: "synthesis", status: "success" },
 ];
 
@@ -255,7 +359,7 @@ test("batching proof fails when dispatches miss batchIndex 1", () => {
   const { verdict, lines } = evaluateBatchingProof({
     sizeWarnings: [{ batchCount: 2 }],
     lensStats: [
-      { lensId: E2E_LENS, dispatches: [{ batchIndex: 0 }] },
+      { lensId: E2E_LENS, dispatches: [{ batchIndex: 0, outcome: "completed" }] },
       { lensId: "synthesis", status: "success" },
     ],
     minBatchCount: 2,
@@ -278,7 +382,13 @@ test("batching proof passes on a failed synthesis, warning with its errorCode", 
   const { verdict, lines } = evaluateBatchingProof({
     sizeWarnings: [{ batchCount: 2 }],
     lensStats: [
-      { lensId: E2E_LENS, dispatches: [{ batchIndex: 0 }, { batchIndex: 1 }] },
+      {
+        lensId: E2E_LENS,
+        dispatches: [
+          { batchIndex: 0, outcome: "completed" },
+          { batchIndex: 1, outcome: "completed" },
+        ],
+      },
       { lensId: "synthesis", status: "failed", errorCode: "AI_ERROR" },
     ],
     minBatchCount: 2,
@@ -311,13 +421,80 @@ test("large family: batching proof fails when dispatches miss batchIndex 2 again
   const { verdict, lines } = evaluateBatchingProof({
     sizeWarnings: [{ batchCount: 3 }],
     lensStats: [
-      { lensId: E2E_LENS, dispatches: [{ batchIndex: 0 }, { batchIndex: 1 }] },
+      {
+        lensId: E2E_LENS,
+        dispatches: [
+          { batchIndex: 0, outcome: "completed" },
+          { batchIndex: 1, outcome: "completed" },
+        ],
+      },
       { lensId: "synthesis", status: "success" },
     ],
     minBatchCount: 3,
   });
   assert.equal(verdict, "fail");
   assert.match(lines[0], /dispatches do not cover batchIndex 0\.\.2/);
+});
+
+test("batching proof fails when a batchIndex has only non-completed dispatches", () => {
+  const { verdict, lines } = evaluateBatchingProof({
+    sizeWarnings: [{ batchCount: 2 }],
+    lensStats: [
+      {
+        lensId: E2E_LENS,
+        dispatches: [
+          { batchIndex: 0, outcome: "completed" },
+          { batchIndex: 1, outcome: "timed-out" },
+        ],
+      },
+      { lensId: "synthesis", status: "success" },
+    ],
+    minBatchCount: 2,
+  });
+  assert.equal(verdict, "fail");
+  assert.match(lines[0], /correctness lens completed dispatches do not cover batchIndex 0\.\.1/);
+});
+
+test("batching proof counts a re-queued batch that later completed", () => {
+  const { verdict } = evaluateBatchingProof({
+    sizeWarnings: [{ batchCount: 2 }],
+    lensStats: [
+      {
+        lensId: E2E_LENS,
+        dispatches: [
+          { batchIndex: 0, outcome: "provider-rejected" },
+          { batchIndex: 1, outcome: "completed" },
+          { batchIndex: 0, outcome: "completed" },
+        ],
+      },
+      { lensId: "synthesis", status: "success" },
+    ],
+    minBatchCount: 2,
+  });
+  assert.equal(verdict, "pass");
+});
+
+test("failed synthesis warns with its diagnostic cause code when a dispatch row carries one", () => {
+  const { lines } = evaluateBatchingProof({
+    sizeWarnings: [{ batchCount: 2 }],
+    lensStats: [
+      {
+        lensId: E2E_LENS,
+        dispatches: [
+          { batchIndex: 0, outcome: "completed" },
+          { batchIndex: 1, outcome: "completed" },
+        ],
+      },
+      {
+        lensId: "synthesis",
+        status: "failed",
+        errorCode: "STREAM_ERROR",
+        dispatches: [{ batchIndex: 0, outcome: "timed-out" }],
+      },
+    ],
+    minBatchCount: 2,
+  });
+  assert.match(lines[1], /^WARN: synthesis lens failed honestly \(timed-out\)/);
 });
 
 test("batching proof throws on a missing or sub-2 minBatchCount", () => {
@@ -334,25 +511,4 @@ test("batching proof throws on a missing or sub-2 minBatchCount", () => {
       }),
     /minBatchCount/,
   );
-});
-
-test("the fallback line names both models, the 402, and is labelled as a WARN", () => {
-  const line = fallbackLine(
-    { productId: "ollama-cloud", scenarioId: "small", modelId: "deepseek-v4-flash:0731" },
-    "gpt-oss:20b",
-  );
-  assert.match(line, /^WARN: /);
-  assert.match(line, /deepseek-v4-flash:0731 refused with HTTP 402 \(plan\/entitlement\)/);
-  assert.match(line, /retrying the cell on fallback gpt-oss:20b$/);
-});
-
-test("a labelled fallback line carries its cell", () => {
-  const cell = {
-    productId: "ollama-cloud",
-    scenarioId: "small",
-    modelId: "deepseek-v4-flash:0731",
-  };
-  assert.deepEqual(labelCellLines([fallbackLine(cell, "gpt-oss:20b")], cell), [
-    "WARN: (ollama-cloud/small) live review e2e — deepseek-v4-flash:0731 refused with HTTP 402 (plan/entitlement); retrying the cell on fallback gpt-oss:20b",
-  ]);
 });

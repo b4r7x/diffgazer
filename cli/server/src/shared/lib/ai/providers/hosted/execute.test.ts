@@ -576,6 +576,28 @@ describe("wall-time deadline diagnostic", () => {
       }),
     });
 
+  const connectTimeout = () =>
+    new TypeError("fetch failed", {
+      cause: Object.assign(new Error("Connect Timeout Error"), {
+        code: "UND_ERR_CONNECT_TIMEOUT",
+      }),
+    });
+
+  it("re-dispatches once after a connect timeout while the wall still fits an answer", async () => {
+    const fetch = vi
+      .fn()
+      .mockRejectedValueOnce(connectTimeout())
+      .mockResolvedValueOnce(contentResponse(VALID_REVIEW_CONTENT)) as unknown as FetchFn;
+    const reportDiagnostic = vi.fn();
+
+    const result = await executeHostedReview({ ...trapRequest("zai", fetch), reportDiagnostic });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.receipt.attemptCount).toBe(2);
+    expect(reportDiagnostic).not.toHaveBeenCalled();
+  });
+
   it("re-dispatches once after a client response timeout while the wall still fits an answer", async () => {
     const fetch = vi
       .fn()

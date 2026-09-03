@@ -35,7 +35,7 @@ const PLAIN_CREDENTIAL = "9f3c2a7e1b4d5c6a8e0f1a2b3c4d5e6f.Ab12Cd34Ef56Gh78";
 // as model incompatibility — although nothing about the model was proven;
 // live, the same model completed the same review minutes later.
 async function dispatch(
-  productId: "zai" | "openrouter" | "gemini",
+  productId: "zai" | "openrouter" | "gemini" | "opencode-zen",
   fetch: FetchFn,
   patch: Parameters<typeof executeRequest>[1] = {},
 ) {
@@ -378,6 +378,12 @@ const headersTimeout = () =>
   new TypeError("fetch failed", {
     cause: Object.assign(new Error("Headers Timeout Error"), { code: "UND_ERR_HEADERS_TIMEOUT" }),
   });
+// undici's `ConnectTimeoutError`: the connection never completed, so no
+// response phase ever started and no profile budget bounds it.
+const connectTimeout = () =>
+  new TypeError("fetch failed", {
+    cause: Object.assign(new Error("Connect Timeout Error"), { code: "UND_ERR_CONNECT_TIMEOUT" }),
+  });
 // The shape undici hands the reader when the pooled agent's body timeout fires
 // after the headers (fetch: `TypeError("terminated", { cause })`).
 const bodyTimeout = () =>
@@ -582,5 +588,176 @@ describe("answer-idle budget — openrouter", () => {
     const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
     expect(diagnostic.safeMessage).toEqual(expect.stringContaining("UND_ERR_BODY_TIMEOUT"));
     expect(diagnostic.safeMessage).toEqual(expect.not.stringContaining("keep-alive whitespace"));
+  });
+});
+
+// OpenCode Zen commits headers only when generation ends and sends no
+// keep-alive at all (probed 2026-09-03), so its profile budget bounds the
+// headers phase: `bodyIdleTimeoutMs: 120_000` against the 120s test wall.
+describe("headers budget — opencode-zen", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("re-dispatches once after the headers budget expires and completes on the second attempt", async () => {
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockRejectedValueOnce(headersTimeout())
+      .mockImplementationOnce(async () => jsonResponse(openAiSuccessBody({ issues: [] })));
+
+    const { result, reportDiagnostic } = await dispatch("opencode-zen", fetch, {
+      modelId: "qwen3.8-flash",
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const calls = vi.mocked(fetch).mock.calls;
+    expect(String(calls[1]?.[1]?.body)).toBe(String(calls[0]?.[1]?.body));
+    expect(JSON.parse(String(calls[0]?.[1]?.body)).reasoning_effort).toBe("none");
+    expect(result.receipt.attemptCount).toBe(2);
+    expect(reportDiagnostic).not.toHaveBeenCalled();
+    expect(warnLines("hosted_transport_timeout_retry")).toEqual([
+      expect.objectContaining({
+        productId: "opencode-zen",
+        causeCode: "UND_ERR_HEADERS_TIMEOUT",
+      }),
+    ]);
+  });
+
+  it("reports a second headers expiry as timed-out naming the budget, the phase, the attempt and the wall", async () => {
+    const fetch = vi.fn<FetchFn>().mockRejectedValue(headersTimeout());
+
+    const { result, reportDiagnostic } = await dispatch("opencode-zen", fetch, {
+      modelId: "qwen3.8-flash",
+    });
+
+    expect(result.receipt.outcome).toBe("timed-out");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(reportDiagnostic).toHaveBeenCalledTimes(1);
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "timed-out", retryable: true }),
+    );
+    const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
+    expect(diagnostic.safeMessage).toEqual(
+      expect.stringContaining(
+        "sent no response headers for 120s (UND_ERR_HEADERS_TIMEOUT; a non-streaming gateway commits headers only when generation ends) — attempt 2 of the 120s wall",
+      ),
+    );
+    expect(diagnostic.safeMessage).toEqual(expect.not.stringContaining("wall-time limit"));
+    expect(diagnostic.safeMessage).toEqual(expect.not.stringContaining("accepted"));
+    expect(diagnostic.safeMessage).toEqual(expect.not.stringContaining("keep-alive"));
+    expect(diagnostic.remediation).toEqual(expect.stringContaining("keeps billing"));
+    expect(warnLines("hosted_transport_timeout_retry")).toHaveLength(1);
+    expect(JSON.stringify(reportDiagnostic.mock.calls)).not.toContain(PLAIN_CREDENTIAL);
+    expect(JSON.stringify(vi.mocked(log).mock.calls)).not.toContain(PLAIN_CREDENTIAL);
+  });
+
+  it("reports a wall expiry on the re-dispatched attempt with the earlier headers history", async () => {
+    vi.useFakeTimers();
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockRejectedValueOnce(headersTimeout())
+      // The re-dispatch keeps trickling answer bytes, so only the wall ends it.
+      .mockImplementationOnce(async (_url, init) =>
+        streamingResponse((controller) => {
+          const trickle = setInterval(() => controller.enqueue(new TextEncoder().encode("{")), 100);
+          init?.signal?.addEventListener("abort", () => {
+            clearInterval(trickle);
+            controller.error(init.signal?.reason);
+          });
+        }),
+      );
+
+    const pending = dispatch("opencode-zen", fetch, {
+      modelId: "qwen3.8-flash",
+      limits: { ...limits, wallTimeMs: 100_000 },
+    });
+    await vi.advanceTimersByTimeAsync(100_000);
+    const { result, reportDiagnostic } = await pending;
+
+    expect(result.receipt.outcome).toBe("timed-out");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(reportDiagnostic).toHaveBeenCalledTimes(1);
+    const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
+    expect(diagnostic.safeMessage).toEqual(expect.stringContaining("wall-time limit"));
+    expect(diagnostic.safeMessage).toEqual(
+      expect.stringContaining(
+        "sent no response headers for 120s on attempt 1, and the re-dispatched attempt 2 did not finish either",
+      ),
+    );
+    expect(diagnostic.safeMessage).toEqual(expect.not.stringContaining("keep-alive"));
+    expect(diagnostic.remediation).toEqual(expect.stringContaining("keeps billing"));
+  });
+
+  it("keeps the client's own copy for a product without a budget", async () => {
+    const fetch = vi.fn<FetchFn>().mockRejectedValue(headersTimeout());
+
+    const { result, reportDiagnostic } = await dispatch("zai", fetch);
+
+    expect(result.receipt.outcome).toBe("timed-out");
+    const diagnostic = reportDiagnostic.mock.calls[0]?.[0];
+    expect(diagnostic.safeMessage).toEqual(
+      expect.stringContaining(
+        "sent no response before the HTTP client's own response timeout (UND_ERR_HEADERS_TIMEOUT)",
+      ),
+    );
+    expect(diagnostic.safeMessage).toEqual(
+      expect.not.stringContaining("sent no response headers for"),
+    );
+    expect(diagnostic.remediation).toEqual(expect.not.stringContaining("keeps billing"));
+  });
+});
+
+describe("connect timeout — zai", () => {
+  it("re-dispatches once after a connect timeout and names its cause", async () => {
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockRejectedValueOnce(connectTimeout())
+      .mockImplementationOnce(async () => jsonResponse(openAiSuccessBody({ issues: [] })));
+
+    const { result, reportDiagnostic } = await dispatch("zai", fetch);
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.receipt.attemptCount).toBe(2);
+    expect(warnLines("hosted_transport_timeout_retry")).toEqual([
+      expect.objectContaining({ causeCode: "UND_ERR_CONNECT_TIMEOUT" }),
+    ]);
+    expect(reportDiagnostic).not.toHaveBeenCalled();
+  });
+
+  it("files a second connect timeout as timed-out, not a transport failure", async () => {
+    const fetch = vi.fn<FetchFn>().mockRejectedValue(connectTimeout());
+
+    const { result, reportDiagnostic } = await dispatch("zai", fetch);
+
+    expect(result.receipt.outcome).toBe("timed-out");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(reportDiagnostic).toHaveBeenCalledTimes(1);
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "timed-out",
+        retryable: true,
+        safeMessage: expect.stringContaining("UND_ERR_CONNECT_TIMEOUT"),
+      }),
+    );
+    expect(warnLines("hosted_fetch_failed")).toHaveLength(0);
+  });
+
+  it("shares the one shot between a connect timeout and a headers timeout", async () => {
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockRejectedValueOnce(connectTimeout())
+      .mockRejectedValueOnce(headersTimeout());
+
+    const { result, reportDiagnostic } = await dispatch("zai", fetch);
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.receipt.outcome).toBe("timed-out");
+    expect(reportDiagnostic).toHaveBeenCalledTimes(1);
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        safeMessage: expect.stringContaining("UND_ERR_HEADERS_TIMEOUT"),
+      }),
+    );
   });
 });

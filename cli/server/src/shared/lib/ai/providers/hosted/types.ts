@@ -5,7 +5,7 @@ type HostedWireFamily = "google" | "openai-compatible" | "openrouter";
 
 export type DispatchPacing = Readonly<{
   perDispatchWallTimeMs?: number;
-  /** Answer-idle budget: keep-alive whitespace after the headers does not count as progress (probed 2026-09-02); unset = the wall bounds it. */
+  /** Idle budget: bounds the wait for answer bytes (keep-alive whitespace is not progress, probed 2026-09-02) and the headers phase of a gateway that commits headers only when generation ends (probed 2026-09-03); unset = the wall bounds both. */
   bodyIdleTimeoutMs?: number;
   maxParallelDispatches?: number;
   reasoning?: "may-reason";

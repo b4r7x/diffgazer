@@ -6,6 +6,7 @@ import { buildScopeKey } from "./scope-keys.js";
 import {
   addEvent,
   cancelSession,
+  cancelSessionForUser,
   cancelStaleSessionsForProjectMode,
   cleanupStaleSessions,
   createSession,
@@ -354,6 +355,29 @@ describe("partial persistence before termination", () => {
 
     expect(persisted).toEqual({ calls: 1, abortedAtPersist: false });
     expect(getSession("persist-evict")).toBeUndefined();
+  });
+
+  it("resolves a user cancel only once its partial write has landed", async () => {
+    // Real timers: the persist below settles on the genuine clock, which is what
+    // the DELETE response actually has to wait out.
+    vi.useRealTimers();
+    let persisted = false;
+    const received: FullReviewStreamEvent[] = [];
+    createTrackedSession("persist-user-cancel", {
+      persistPartial: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        persisted = true;
+      },
+    });
+    markReady("persist-user-cancel");
+    subscribe("persist-user-cancel", (event) => received.push(event));
+
+    const cancel = cancelSessionForUser("persist-user-cancel");
+
+    expect(received).toMatchObject([{ type: "error", error: { code: ReviewErrorCode.CANCELLED } }]);
+    expect(persisted).toBe(false);
+    await expect(cancel).resolves.toBe("cancelled");
+    expect(persisted).toBe(true);
   });
 });
 

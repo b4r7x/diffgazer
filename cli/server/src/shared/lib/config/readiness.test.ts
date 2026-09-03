@@ -239,6 +239,60 @@ describe("server V2 readiness calculation", () => {
     expect(failed).toMatchObject({ status: "acknowledgement-required", evidenceStatus: "failed" });
   });
 
+  it("asks a stale Ollama Cloud acknowledgement to accept the current notice", () => {
+    const record = hostedRecord({
+      configurationId: "ollama-primary",
+      productId: "ollama-cloud",
+      input: {
+        transportFamily: "hosted-api",
+        productId: "ollama-cloud",
+        endpoint: "https://ollama.com/v1",
+      },
+      selectedModelId: "gpt-oss:20b",
+      acknowledgement: {
+        noticeId: "ollama-cloud-hosted-api",
+        noticeVersion: 1,
+        acceptedAt: CHECKED_AT,
+      },
+      evidenceReference: "evidence-ollama-1",
+    });
+    const binding = createEnvironmentSecretBinding(
+      record.configurationId,
+      record.revision,
+      "GEMINI_KEY",
+    );
+
+    expect(
+      computeProviderReadiness({
+        configuration: record,
+        binding,
+        evidence: passedEvidence(hostedEvidenceKey(record)),
+        ...SERVER_OWNED_INPUTS,
+        now: NOW,
+      }),
+    ).toMatchObject({
+      status: "acknowledgement-required",
+      ready: false,
+      acknowledgement: { noticeId: "ollama-cloud-hosted-api", noticeVersion: 2 },
+    });
+
+    // The bump, not the product, is what blocks: the same record acknowledging
+    // version 2 reads ready.
+    const acknowledged = {
+      ...record,
+      acknowledgement: { ...record.acknowledgement, noticeVersion: 2 },
+    };
+    expect(
+      computeProviderReadiness({
+        configuration: acknowledged,
+        binding,
+        evidence: passedEvidence(hostedEvidenceKey(acknowledged)),
+        ...SERVER_OWNED_INPUTS,
+        now: NOW,
+      }).status,
+    ).toBe("ready");
+  });
+
   it("invalidates material tuple, model, runtime, schema, notice, and budget changes", () => {
     const record = hostedRecord();
     const key = hostedEvidenceKey(record);

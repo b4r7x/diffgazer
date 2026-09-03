@@ -66,21 +66,23 @@ function monotonicNowFor(session: ActiveSession): number {
   return (sessionClocks.get(session) ?? defaultMonotonicNow)();
 }
 
-// Partial writes started by a termination and still on their way to disk.
-// Nothing waits on them inline — the abort below must not wait on the disk — but
-// shutdown does, or `process.exit` beats the save the user is owed.
+// Partial writes started by a termination and still on their way to disk. The abort
+// itself never waits on the disk; a user cancel waits on its own session's write
+// before answering, and shutdown waits on all of them — both bounded, or a wedged
+// disk holds the response, or `process.exit` beats the save the user is owed.
 const pendingPartialPersists = new Set<Promise<void>>();
-const SHUTDOWN_PERSIST_TIMEOUT_MS = 3_000;
+const PARTIAL_PERSIST_TIMEOUT_MS = 3_000;
 
 function terminateSession(
   session: ActiveSession,
   options: { code: ReviewErrorCode; message: string; reason: string },
-): void {
-  const persisting = session.persistPartial?.();
-  if (persisting) {
-    const settled = persisting.catch((error) =>
+): Promise<void> | undefined {
+  const settled = session
+    .persistPartial?.()
+    .catch((error) =>
       log("warn", "session_partial_persist_failed", { reviewId: session.reviewId, error }),
     );
+  if (settled) {
     pendingPartialPersists.add(settled);
     void settled.finally(() => pendingPartialPersists.delete(settled));
   }
@@ -97,6 +99,7 @@ function terminateSession(
   notifySubscribers(session, event);
   session.subscribers.clear();
   notifyCompletion(session);
+  return settled;
 }
 
 function canEvictSession(session: ActiveSession): boolean {
@@ -172,19 +175,23 @@ export function startSessionMaintenance(): void {
 
 startSessionMaintenance();
 
+async function persistWithinBound(saves: Promise<unknown>): Promise<"saved" | "timeout"> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<"timeout">((resolve) => {
+    timer = setTimeout(() => resolve("timeout"), PARTIAL_PERSIST_TIMEOUT_MS);
+    timer.unref();
+  });
+  const outcome = await Promise.race([saves.then(() => "saved" as const), deadline]);
+  clearTimeout(timer);
+  return outcome;
+}
+
 // The partial writes the shutdown terminations just started are the last chance
 // to keep what those reviews produced, so shutdown waits for them — bounded, so
 // a wedged disk cannot hold the process open instead.
 async function drainPendingPartialPersists(): Promise<void> {
   if (pendingPartialPersists.size === 0) return;
-  const saves = Promise.allSettled([...pendingPartialPersists]).then(() => "saved" as const);
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<"timeout">((resolve) => {
-    timer = setTimeout(() => resolve("timeout"), SHUTDOWN_PERSIST_TIMEOUT_MS);
-    timer.unref();
-  });
-  const outcome = await Promise.race([saves, deadline]);
-  clearTimeout(timer);
+  const outcome = await persistWithinBound(Promise.allSettled([...pendingPartialPersists]));
   if (outcome === "timeout") {
     log("warn", "session_partial_persist_timeout", { pending: pendingPartialPersists.size });
   }
@@ -388,31 +395,34 @@ export function cancelSession(
   });
 }
 
-export function cancelSessionForUser(
+export async function cancelSessionForUser(
   reviewId: string,
-): "cancelled" | "not-found" | "already-complete" | "already-committed" {
+): Promise<"cancelled" | "not-found" | "already-complete" | "already-committed"> {
   const session = activeSessions.get(reviewId);
   if (!session) return "not-found";
   if (session.isComplete) return "already-complete";
   if (session.persistenceState !== "pending") {
     return "already-committed";
   }
-  cancelSessionWithError(reviewId, {
+  const persisting = cancelSessionWithError(reviewId, {
     code: ReviewErrorCode.CANCELLED,
     message: "Review session cancelled by user.",
     reason: "user_cancelled",
   });
+  if (persisting && (await persistWithinBound(persisting)) === "timeout") {
+    log("warn", "session_partial_persist_timeout", { reviewId });
+  }
   return "cancelled";
 }
 
 function cancelSessionWithError(
   reviewId: string,
   error: { code: ReviewErrorCode; message: string; reason: string },
-): void {
+): Promise<void> | undefined {
   const session = activeSessions.get(reviewId);
   if (!session || session.isComplete || session.persistenceState !== "pending") return;
 
-  terminateSession(session, error);
+  const persisting = terminateSession(session, error);
   setTimeout(
     () => {
       activeSessions.delete(reviewId);
@@ -420,6 +430,7 @@ function cancelSessionWithError(
     },
     2 * 60 * 1000,
   ).unref();
+  return persisting;
 }
 
 export function cancelStaleSessionsForProjectMode(

@@ -3,7 +3,12 @@ import type { EvidenceKey, NormalizedUsage } from "@diffgazer/core/schemas/revie
 import { NormalizedUsageSchema } from "@diffgazer/core/schemas/review";
 import { boundedFetchInit } from "../endpoints.js";
 import { responseTimeoutDispatcher } from "./dispatcher.js";
-import { HOSTED_PROFILES, USAGE_FIELDS } from "./profiles.js";
+import {
+  HOSTED_PROFILES,
+  resolveDispatchPacing,
+  resolveReasoningEffort,
+  USAGE_FIELDS,
+} from "./profiles.js";
 import type { HostedProductProfile } from "./types.js";
 
 /**
@@ -405,12 +410,14 @@ export function buildRequestInit(
     }
     case "openai-compatible": {
       headers.authorization = `Bearer ${input.credential}`;
+      const reasoningEffort = resolveReasoningEffort(input.productId, input.evidenceKey.modelId);
       body = {
         model: input.evidenceKey.modelId,
         messages: buildOpenAiMessages(input.prompt, input.systemPrompt, input.correction),
         temperature: 0,
         stream: false,
         response_format: buildOpenAiResponseFormat(structuredOutput, input.structuredOutputSchema),
+        ...(reasoningEffort === undefined ? {} : { reasoning_effort: reasoningEffort }),
       };
       break;
     }
@@ -423,9 +430,13 @@ export function buildRequestInit(
       body: JSON.stringify(body),
       signal: input.signal,
     }),
-    // The client's own response timeout must outlive the dispatch wall, or a
-    // silent provider dies at the runtime default instead of the declared bound.
-    dispatcher: responseTimeoutDispatcher(input.evidenceKey.limits.wallTimeMs),
+    // With a declared idle budget the client's headers timeout is that budget, so a
+    // gateway that commits headers only when generation ends is re-dispatched inside
+    // the wall; without one it outlives the wall, so the wall names the failure.
+    dispatcher: responseTimeoutDispatcher(
+      input.evidenceKey.limits.wallTimeMs,
+      resolveDispatchPacing(input.productId, input.evidenceKey.modelId).bodyIdleTimeoutMs,
+    ),
   };
 }
 

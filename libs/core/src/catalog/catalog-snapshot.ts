@@ -688,6 +688,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         release_date: "2026-06-02",
       },
+      "qwen3.8-flash": {
+        id: "qwen3.8-flash",
+        name: "Qwen3.8 Flash",
+        cost: {
+          input: 0.15,
+          output: 0.47,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-26",
+      },
       "qwen3.8-max": {
         id: "qwen3.8-max",
         name: "Qwen3.8 Max",
@@ -1150,6 +1164,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         structured_output: true,
         release_date: "2026-08-13",
       },
+      "gemini-3.8-flash": {
+        id: "gemini-3.8-flash",
+        name: "Gemini 3.8 Flash",
+        cost: {
+          input: 0.75,
+          output: 3.75,
+        },
+        limit: {
+          context: 1048576,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-09-02",
+      },
       "gemini-embedding-001": {
         id: "gemini-embedding-001",
         name: "Gemini Embedding 001",
@@ -1218,20 +1246,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         modalities: {
           output: ["video"],
         },
-      },
-      "gemini-robotics-er-1.6-preview": {
-        id: "gemini-robotics-er-1.6-preview",
-        name: "Gemini Robotics-ER 1.6 Preview",
-        cost: {
-          input: 1,
-          output: 5,
-        },
-        limit: {
-          context: 131072,
-          output: 65536,
-        },
-        structured_output: true,
-        release_date: "2026-04-14",
       },
       "gemma-4-26b-a4b-it": {
         id: "gemma-4-26b-a4b-it",
@@ -1334,8 +1348,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 1.2,
         },
         limit: {
-          context: 196608,
-          output: 128000,
+          context: 204800,
+          output: 131072,
         },
         release_date: "2025-10-27",
       },
@@ -1412,8 +1426,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 1.2,
         },
         limit: {
-          context: 1000000,
-          output: 128000,
+          context: 1048576,
+          output: 512000,
         },
         release_date: "2026-06-01",
       },
@@ -1623,6 +1637,26 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         structured_output: true,
         release_date: "2026-06-13",
       },
+      "glm-5.3": {
+        id: "glm-5.3",
+        name: "GLM-5.3",
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-14",
+      },
+      "glm-5.3-flash": {
+        id: "glm-5.3-flash",
+        name: "GLM-5.3-Flash",
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-26",
+      },
       "gpt-oss:120b": {
         id: "gpt-oss:120b",
         name: "gpt-oss:120b",
@@ -1798,6 +1832,19 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 128000,
         },
         release_date: "2026-06-09",
+      },
+      "claude-fable-5-1": {
+        id: "claude-fable-5-1",
+        name: "Claude Fable 5.1",
+        cost: {
+          input: 10,
+          output: 50,
+        },
+        limit: {
+          context: 1000000,
+          output: 128000,
+        },
+        release_date: "2026-09-01",
       },
       "claude-haiku-4-5": {
         id: "claude-haiku-4-5",
@@ -2081,6 +2128,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: true,
         release_date: "2026-08-13",
+      },
+      "gemini-3.8-flash": {
+        id: "gemini-3.8-flash",
+        name: "Gemini 3.8 Flash",
+        cost: {
+          input: 1.5,
+          output: 7.5,
+        },
+        limit: {
+          context: 1048576,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-09-02",
       },
       "glm-4.6": {
         id: "glm-4.6",
@@ -2656,6 +2717,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         release_date: "2026-04-21",
       },
+      "ling-3.0-flash-fin-free": {
+        id: "ling-3.0-flash-fin-free",
+        name: "Ling 3.0 Flash Fin Free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 262144,
+          output: 32768,
+        },
+        structured_output: false,
+        release_date: "2026-08-27",
+      },
       "ling-3.0-flash-free": {
         id: "ling-3.0-flash-free",
         name: "Ling-3.0-flash Free",
@@ -2867,6 +2942,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: true,
         release_date: "2026-08-05",
+      },
+      "muse-spark-1.3-contributor-free": {
+        id: "muse-spark-1.3-contributor-free",
+        name: "Muse Spark 1.3 Free",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-09-02",
       },
       "nemotron-3-super-free": {
         id: "nemotron-3-super-free",
@@ -3118,6 +3207,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         structured_output: true,
         release_date: "2026-08-14",
       },
+      "glm-5.3-flash": {
+        id: "glm-5.3-flash",
+        name: "GLM-5.3-Flash (2x usage)",
+        cost: {
+          input: 0.075,
+          output: 0.25,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-26",
+      },
       "gpt-5.6-luna": {
         id: "gpt-5.6-luna",
         name: "GPT-5.6 Luna",
@@ -3162,16 +3265,29 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       },
       hy3: {
         id: "hy3",
-        name: "Hy3 (8x usage)",
+        name: "Hy3",
         cost: {
-          input: 0.0175,
-          output: 0.0725,
+          input: 0.14,
+          output: 0.58,
         },
         limit: {
           context: 256000,
-          output: 64000,
+          output: 128000,
         },
         release_date: "2026-07-06",
+      },
+      "hy4-preview": {
+        id: "hy4-preview",
+        name: "Hy4 preview",
+        cost: {
+          input: 0.834,
+          output: 2.501,
+        },
+        limit: {
+          context: 1024000,
+          output: 64000,
+        },
+        release_date: "2026-08-28",
       },
       "kimi-k2.5": {
         id: "kimi-k2.5",
@@ -3345,6 +3461,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         structured_output: true,
         release_date: "2026-08-05",
       },
+      "muse-spark-1.3-contributor": {
+        id: "muse-spark-1.3-contributor",
+        name: "Muse Spark 1.3 Contributor",
+        cost: {
+          input: 0.1,
+          output: 0.2,
+        },
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-09-02",
+      },
       "ox-alpha-free": {
         id: "ox-alpha-free",
         name: "Ox Alpha Free (Unlimited)",
@@ -3410,6 +3540,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         release_date: "2026-06-02",
+      },
+      "qwen3.8-flash": {
+        id: "qwen3.8-flash",
+        name: "Qwen3.8 Flash",
+        cost: {
+          input: 0.15,
+          output: 0.47,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-26",
       },
       "qwen3.8-max": {
         id: "qwen3.8-max",
@@ -3489,20 +3633,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         structured_output: false,
         release_date: "2025-02-04",
       },
-      "allenai/olmo-3-32b-think": {
-        id: "allenai/olmo-3-32b-think",
-        name: "Olmo 3 32B Think",
-        cost: {
-          input: 0.15,
-          output: 0.5,
-        },
-        limit: {
-          context: 65536,
-          output: 58982,
-        },
-        structured_output: true,
-        release_date: "2025-11-21",
-      },
       "amazon/nova-2-lite-v1": {
         id: "amazon/nova-2-lite-v1",
         name: "Nova 2 Lite",
@@ -3577,7 +3707,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "anthracite-org/magnum-v4-72b",
         name: "Magnum v4 72B",
         cost: {
-          input: 3,
+          input: 2.5,
           output: 5,
         },
         limit: {
@@ -3614,6 +3744,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: true,
         release_date: "2026-06-09",
+      },
+      "anthropic/claude-fable-5.1": {
+        id: "anthropic/claude-fable-5.1",
+        name: "Claude Fable 5.1",
+        cost: {
+          input: 10,
+          output: 50,
+        },
+        limit: {
+          context: 1000000,
+          output: 128000,
+        },
+        structured_output: true,
+        release_date: "2026-09-01",
       },
       "anthropic/claude-haiku-4.5": {
         id: "anthropic/claude-haiku-4.5",
@@ -3699,20 +3843,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         structured_output: true,
         release_date: "2026-04-16",
       },
-      "anthropic/claude-opus-4.7-fast": {
-        id: "anthropic/claude-opus-4.7-fast",
-        name: "Claude Opus 4.7 (Fast)",
-        cost: {
-          input: 30,
-          output: 150,
-        },
-        limit: {
-          context: 1000000,
-          output: 128000,
-        },
-        structured_output: true,
-        release_date: "2026-04-16",
-      },
       "anthropic/claude-opus-4.8": {
         id: "anthropic/claude-opus-4.8",
         name: "Claude Opus 4.8",
@@ -3727,40 +3857,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         structured_output: true,
         release_date: "2026-05-28",
       },
-      "anthropic/claude-opus-4.8-fast": {
-        id: "anthropic/claude-opus-4.8-fast",
-        name: "Claude Opus 4.8 (Fast)",
-        cost: {
-          input: 10,
-          output: 50,
-        },
-        limit: {
-          context: 1000000,
-          output: 128000,
-        },
-        structured_output: true,
-        release_date: "2026-05-28",
-      },
       "anthropic/claude-opus-5": {
         id: "anthropic/claude-opus-5",
         name: "Claude Opus 5",
         cost: {
           input: 5,
           output: 25,
-        },
-        limit: {
-          context: 1000000,
-          output: 128000,
-        },
-        structured_output: true,
-        release_date: "2026-07-24",
-      },
-      "anthropic/claude-opus-5-fast": {
-        id: "anthropic/claude-opus-5-fast",
-        name: "Claude Opus 5 (Fast)",
-        cost: {
-          input: 10,
-          output: 50,
         },
         limit: {
           context: 1000000,
@@ -3829,29 +3931,15 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "arcee-ai/trinity-large-thinking",
         name: "Trinity Large Thinking",
         cost: {
-          input: 0.22,
-          output: 0.85,
+          input: 0.25,
+          output: 0.8,
         },
         limit: {
           context: 262144,
-          output: 235929,
-        },
-        structured_output: true,
-        release_date: "2026-04-01",
-      },
-      "arcee-ai/virtuoso-large": {
-        id: "arcee-ai/virtuoso-large",
-        name: "Virtuoso Large",
-        cost: {
-          input: 0.75,
-          output: 1.2,
-        },
-        limit: {
-          context: 131072,
-          output: 64000,
+          output: 80000,
         },
         structured_output: false,
-        release_date: "2025-05-05",
+        release_date: "2026-04-01",
       },
       "baidu/ernie-4.5-vl-424b-a47b": {
         id: "baidu/ernie-4.5-vl-424b-a47b",
@@ -4081,12 +4169,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "deepseek/deepseek-chat-v3.1",
         name: "DeepSeek V3.1",
         cost: {
-          input: 0.55,
-          output: 1.65,
+          input: 0.25,
+          output: 0.95,
         },
         limit: {
           context: 163840,
-          output: 144900,
+          output: 32768,
         },
         structured_output: true,
         release_date: "2025-08-21",
@@ -4151,12 +4239,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "deepseek/deepseek-v3.2",
         name: "DeepSeek V3.2",
         cost: {
-          input: 0.26,
-          output: 0.38,
+          input: 0.269,
+          output: 0.4,
         },
         limit: {
           context: 163840,
-          output: 147456,
+          output: 65536,
         },
         structured_output: true,
         release_date: "2025-12-01",
@@ -4193,8 +4281,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "deepseek/deepseek-v4-flash-0731",
         name: "DeepSeek V4 Flash 0731",
         cost: {
-          input: 0.06,
-          output: 0.12,
+          input: 0.065,
+          output: 0.18,
         },
         limit: {
           context: 1310720,
@@ -4214,15 +4302,15 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 1048576,
           output: 384000,
         },
-        structured_output: false,
+        structured_output: true,
         release_date: "2026-08-21",
       },
       "deepseek/deepseek-v4-pro": {
         id: "deepseek/deepseek-v4-pro",
         name: "DeepSeek V4 Pro",
         cost: {
-          input: 0.87,
-          output: 1.74,
+          input: 1.04226,
+          output: 2.08452,
         },
         limit: {
           context: 1048576,
@@ -4235,12 +4323,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "deepseek/deepseek-v4-pro-0813",
         name: "DeepSeek V4 Pro 0813",
         cost: {
-          input: 1.122,
-          output: 3.366,
+          input: 1.1154,
+          output: 3.3462,
         },
         limit: {
           context: 1048576,
-          output: 943717,
+          output: 384000,
         },
         structured_output: true,
         release_date: "2026-08-12",
@@ -4531,8 +4619,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "google/gemini-3.7-flash",
         name: "Gemini 3.7 Flash",
         cost: {
-          input: 0.375,
-          output: 1.875,
+          input: 0.75,
+          output: 3.75,
         },
         limit: {
           context: 1048576,
@@ -4540,6 +4628,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: true,
         release_date: "2026-08-13",
+      },
+      "google/gemini-3.8-flash": {
+        id: "google/gemini-3.8-flash",
+        name: "Gemini 3.8 Flash",
+        cost: {
+          input: 0.75,
+          output: 3.75,
+        },
+        limit: {
+          context: 1048576,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-09-02",
       },
       "google/gemma-2-27b-it": {
         id: "google/gemma-2-27b-it",
@@ -4577,7 +4679,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 0.45,
         },
         limit: {
-          context: 262144,
+          context: 131072,
           output: 117964,
         },
         structured_output: true,
@@ -4727,6 +4829,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         structured_output: true,
         release_date: "2026-04-30",
       },
+      "ibm-granite/granite-4.2-8b": {
+        id: "ibm-granite/granite-4.2-8b",
+        name: "Granite 4.2 8B",
+        cost: {
+          input: 0.1,
+          output: 0.15,
+        },
+        limit: {
+          context: 131072,
+          output: 117964,
+        },
+        structured_output: true,
+        release_date: "2026-08-31",
+      },
       "inception/mercury-2": {
         id: "inception/mercury-2",
         name: "Mercury 2",
@@ -4740,6 +4856,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: true,
         release_date: "2026-03-04",
+      },
+      "inception/mercury-2.5-preview": {
+        id: "inception/mercury-2.5-preview",
+        name: "Mercury 2.5 Preview",
+        cost: {
+          input: 0.04,
+          output: 0.15,
+        },
+        limit: {
+          context: 260000,
+          output: 65536,
+        },
+        structured_output: true,
+        release_date: "2026-08-31",
       },
       "inclusionai/ling-3.0-flash": {
         id: "inclusionai/ling-3.0-flash",
@@ -4755,19 +4885,19 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         structured_output: false,
         release_date: "2026-07-23",
       },
-      "kwaipilot/kat-coder-air-v2.5": {
-        id: "kwaipilot/kat-coder-air-v2.5",
-        name: "KAT-Coder-Air V2.5",
+      "inclusionai/ling-3.0-flash-fin:free": {
+        id: "inclusionai/ling-3.0-flash-fin:free",
+        name: "Ling 3.0 Flash Fin (free)",
         cost: {
-          input: 0.15,
-          output: 0.6,
+          input: 0,
+          output: 0,
         },
         limit: {
-          context: 256000,
-          output: 80000,
+          context: 262144,
+          output: 32768,
         },
-        structured_output: true,
-        release_date: "2026-07-10",
+        structured_output: false,
+        release_date: "2026-08-27",
       },
       "kwaipilot/kat-coder-pro-v2": {
         id: "kwaipilot/kat-coder-pro-v2",
@@ -4778,7 +4908,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 80000,
+          output: 144000,
         },
         structured_output: true,
         release_date: "2026-03-27",
@@ -4791,8 +4921,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 2.96,
         },
         limit: {
-          context: 256000,
-          output: 80000,
+          context: 262144,
+          output: 235929,
         },
         structured_output: true,
         release_date: "2026-07-10",
@@ -4815,7 +4945,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "mancer/weaver",
         name: "Weaver (alpha)",
         cost: {
-          input: 0.5,
+          input: 0.4,
           output: 0.75,
         },
         limit: {
@@ -4899,12 +5029,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "meta-llama/llama-3.3-70b-instruct",
         name: "Llama-3.3-70B-Instruct",
         cost: {
-          input: 0.71,
-          output: 0.71,
+          input: 0.1,
+          output: 0.32,
         },
         limit: {
           context: 131072,
-          output: 115200,
+          output: 16384,
         },
         structured_output: true,
         release_date: "2024-12-06",
@@ -4914,11 +5044,11 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Llama 4 Maverick",
         cost: {
           input: 0.2,
-          output: 0.8,
+          output: 0.696,
         },
         limit: {
           context: 1048576,
-          output: 16384,
+          output: 115200,
         },
         structured_output: true,
         release_date: "2025-04-05",
@@ -4927,12 +5057,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "meta-llama/llama-4-scout",
         name: "Llama 4 Scout",
         cost: {
-          input: 0.11,
-          output: 0.34,
+          input: 0.1,
+          output: 0.3,
         },
         limit: {
           context: 1310720,
-          output: 8192,
+          output: 16384,
         },
         structured_output: true,
         release_date: "2025-04-05",
@@ -4955,8 +5085,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "meta/muse-glimmer-30b",
         name: "Muse Glimmer 30B",
         cost: {
-          input: 0.35,
-          output: 1.5,
+          input: 0.3,
+          output: 1.1,
         },
         limit: {
           context: 131072,
@@ -5006,6 +5136,34 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: true,
         release_date: "2026-08-21",
+      },
+      "meta/muse-spark-1.3": {
+        id: "meta/muse-spark-1.3",
+        name: "Muse Spark 1.3",
+        cost: {
+          input: 1.25,
+          output: 4.25,
+        },
+        limit: {
+          context: 1048576,
+          output: 943718,
+        },
+        structured_output: true,
+        release_date: "2026-09-02",
+      },
+      "meta/muse-spark-1.3-contributor": {
+        id: "meta/muse-spark-1.3-contributor",
+        name: "Muse Spark 1.3 Contributor",
+        cost: {
+          input: 0.1,
+          output: 0.2,
+        },
+        limit: {
+          context: 1048576,
+          output: 943718,
+        },
+        structured_output: true,
+        release_date: "2026-09-02",
       },
       "microsoft/phi-4": {
         id: "microsoft/phi-4",
@@ -5193,8 +5351,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "mistralai/devstral-2512",
         name: "Devstral 2",
         cost: {
-          input: 0.44,
-          output: 2.2,
+          input: 0.4,
+          output: 2,
         },
         limit: {
           context: 262144,
@@ -5230,20 +5388,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: true,
         release_date: "2025-12-02",
-      },
-      "mistralai/ministral-8b": {
-        id: "mistralai/ministral-8b",
-        name: "Ministral 8B",
-        cost: {
-          input: 0.11,
-          output: 0.11,
-        },
-        limit: {
-          context: 128000,
-          output: 102400,
-        },
-        structured_output: true,
-        release_date: "2024-10-17",
       },
       "mistralai/ministral-8b-2512": {
         id: "mistralai/ministral-8b-2512",
@@ -5449,8 +5593,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 0.3,
         },
         limit: {
-          context: 32000,
-          output: 25600,
+          context: 32768,
+          output: 26214,
         },
         structured_output: true,
         release_date: "2025-10-30",
@@ -5501,8 +5645,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "moonshotai/kimi-k2.5",
         name: "Kimi K2.5",
         cost: {
-          input: 0.6,
-          output: 3,
+          input: 0.45,
+          output: 2.25,
         },
         limit: {
           context: 262144,
@@ -5528,7 +5672,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "moonshotai/kimi-k2.7-code",
         name: "Kimi K2.7 Code",
         cost: {
-          input: 0.67,
+          input: 0.66,
           output: 3.4,
         },
         limit: {
@@ -5725,11 +5869,11 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Nemotron 3 Ultra 550B A55B",
         cost: {
           input: 0.6,
-          output: 3.6,
+          output: 2.4,
         },
         limit: {
-          context: 512288,
-          output: 461059,
+          context: 262144,
+          output: 182520,
         },
         structured_output: true,
         release_date: "2026-06-04",
@@ -6911,12 +7055,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "qwen/qwen3-235b-a22b-2507",
         name: "Qwen3 235B A22B Instruct 2507",
         cost: {
-          input: 0.09,
-          output: 0.55,
+          input: 0.0875,
+          output: 0.35,
         },
         limit: {
           context: 262144,
-          output: 16384,
+          output: 235929,
         },
         structured_output: true,
         release_date: "2025-07-21",
@@ -7159,12 +7303,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "qwen/qwen3-vl-30b-a3b-instruct",
         name: "Qwen3 VL 30B A3B Instruct",
         cost: {
-          input: 0.13,
-          output: 0.52,
+          input: 0.15,
+          output: 0.6,
         },
         limit: {
           context: 262144,
-          output: 32768,
+          output: 16384,
         },
         structured_output: true,
         release_date: "2025-10-06",
@@ -7229,12 +7373,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "qwen/qwen3.5-122b-a10b",
         name: "Qwen3.5 122B-A10B",
         cost: {
-          input: 0.26,
-          output: 2.08,
+          input: 0.29,
+          output: 2.4,
         },
         limit: {
           context: 262144,
-          output: 235929,
+          output: 81920,
         },
         structured_output: true,
         release_date: "2026-02-23",
@@ -7271,12 +7415,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "qwen/qwen3.5-397b-a17b",
         name: "Qwen3.5 397B-A17B",
         cost: {
-          input: 0.39,
-          output: 2.34,
+          input: 0.55,
+          output: 3.5,
         },
         limit: {
           context: 262144,
-          output: 65536,
+          output: 235929,
         },
         structured_output: true,
         release_date: "2026-02-15",
@@ -7355,8 +7499,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "qwen/qwen3.6-35b-a3b",
         name: "Qwen3.6 35B-A3B",
         cost: {
-          input: 0.14,
-          output: 1,
+          input: 0.1,
+          output: 0.9,
         },
         limit: {
           context: 262144,
@@ -7458,7 +7602,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 1048576,
-          output: 131072,
+          output: 262144,
         },
         structured_output: true,
         release_date: "2026-08-12",
@@ -7476,6 +7620,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: true,
         release_date: "2026-08-14",
+      },
+      "qwen/qwen3.8-flash": {
+        id: "qwen/qwen3.8-flash",
+        name: "Qwen3.8 Flash",
+        cost: {
+          input: 0.15,
+          output: 0.47,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-26",
       },
       "qwen/qwen3.8-max": {
         id: "qwen/qwen3.8-max",
@@ -7617,20 +7775,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         structured_output: true,
         release_date: "2024-12-18",
       },
-      "stealth/ox-alpha": {
-        id: "stealth/ox-alpha",
-        name: "Ox Alpha",
-        cost: {
-          input: 0,
-          output: 0,
-        },
-        limit: {
-          context: 1048576,
-          output: 131072,
-        },
-        structured_output: false,
-        release_date: "2026-08-20",
-      },
       "stepfun/step-3.5-flash": {
         id: "stepfun/step-3.5-flash",
         name: "Step 3.5 Flash",
@@ -7743,6 +7887,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         structured_output: false,
         release_date: "2026-04-20",
       },
+      "tencent/hy4-preview": {
+        id: "tencent/hy4-preview",
+        name: "Hy4 preview",
+        cost: {
+          input: 0.834,
+          output: 2.501,
+        },
+        limit: {
+          context: 1048576,
+          output: 64000,
+        },
+        structured_output: true,
+        release_date: "2026-08-28",
+      },
       "thedrummer/cydonia-24b-v4.1": {
         id: "thedrummer/cydonia-24b-v4.1",
         name: "Cydonia 24B V4.1",
@@ -7756,20 +7914,6 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: true,
         release_date: "2025-09-27",
-      },
-      "thedrummer/rocinante-12b": {
-        id: "thedrummer/rocinante-12b",
-        name: "Rocinante 12B",
-        cost: {
-          input: 0.25,
-          output: 0.5,
-        },
-        limit: {
-          context: 65536,
-          output: 58982,
-        },
-        structured_output: true,
-        release_date: "2024-09-30",
       },
       "thedrummer/skyfall-36b-v2": {
         id: "thedrummer/skyfall-36b-v2",
@@ -7803,12 +7947,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "thinkingmachines/inkling",
         name: "Inkling",
         cost: {
-          input: 0.95,
+          input: 1,
           output: 4.05,
         },
         limit: {
           context: 1048576,
-          output: 262144,
+          output: 471859,
         },
         structured_output: false,
         release_date: "2026-07-15",
@@ -8069,8 +8213,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "z-ai/glm-4.6",
         name: "GLM-4.6",
         cost: {
-          input: 0.5,
-          output: 2,
+          input: 0.55,
+          output: 2.2,
         },
         limit: {
           context: 204800,
@@ -8153,12 +8297,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "z-ai/glm-5.1",
         name: "GLM-5.1",
         cost: {
-          input: 1.26,
-          output: 3.96,
+          input: 0.966,
+          output: 3.036,
         },
         limit: {
           context: 204800,
-          output: 182476,
+          output: 128000,
         },
         structured_output: true,
         release_date: "2026-04-07",
@@ -8167,12 +8311,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "z-ai/glm-5.2",
         name: "GLM-5.2",
         cost: {
-          input: 1.19,
-          output: 3.74,
+          input: 0.966,
+          output: 3.036,
         },
         limit: {
           context: 1048576,
-          output: 262144,
+          output: 131072,
         },
         structured_output: true,
         release_date: "2026-06-13",
@@ -8199,11 +8343,25 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 4.4,
         },
         limit: {
-          context: 1048576,
+          context: 1310720,
+          output: 262144,
+        },
+        structured_output: true,
+        release_date: "2026-08-14",
+      },
+      "z-ai/glm-5.3-flash": {
+        id: "z-ai/glm-5.3-flash",
+        name: "GLM-5.3-Flash",
+        cost: {
+          input: 0.075,
+          output: 0.25,
+        },
+        limit: {
+          context: 1310720,
           output: 131072,
         },
-        structured_output: false,
-        release_date: "2026-08-14",
+        structured_output: true,
+        release_date: "2026-08-26",
       },
       "z-ai/glm-5v-turbo": {
         id: "z-ai/glm-5v-turbo",
@@ -8279,12 +8437,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "~deepseek/deepseek-v4-flash-latest",
         name: "DeepSeek V4 Flash Latest",
         cost: {
-          input: 0.03,
-          output: 0.075,
+          input: 0.05,
+          output: 0.16,
         },
         limit: {
           context: 1310720,
-          output: 131072,
+          output: 393216,
         },
         structured_output: true,
         release_date: "2026-08-01",
@@ -8293,8 +8451,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         id: "~google/gemini-flash-latest",
         name: "Google Gemini Flash Latest",
         cost: {
-          input: 0.375,
-          output: 1.875,
+          input: 0.75,
+          output: 3.75,
         },
         limit: {
           context: 1048576,
@@ -8373,18 +8531,32 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         structured_output: true,
         release_date: "2026-07-08",
       },
+      "~z-ai/glm-flash-latest": {
+        id: "~z-ai/glm-flash-latest",
+        name: "GLM Flash Latest",
+        cost: {
+          input: 0.075,
+          output: 0.25,
+        },
+        limit: {
+          context: 1310720,
+          output: 943718,
+        },
+        structured_output: true,
+        release_date: "2026-08-27",
+      },
       "~z-ai/glm-latest": {
         id: "~z-ai/glm-latest",
         name: "GLM Latest",
         cost: {
-          input: 1.4,
-          output: 4.4,
+          input: 1.106,
+          output: 3.476,
         },
         limit: {
-          context: 1048576,
-          output: 131072,
+          context: 1310720,
+          output: 943718,
         },
-        structured_output: false,
+        structured_output: true,
         release_date: "2026-08-19",
       },
     },
@@ -8580,6 +8752,20 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: true,
         release_date: "2026-08-14",
+      },
+      "glm-5.3-flash": {
+        id: "glm-5.3-flash",
+        name: "GLM-5.3-Flash",
+        cost: {
+          input: 0.075,
+          output: 0.25,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+        release_date: "2026-08-26",
       },
       "glm-5v-turbo": {
         id: "glm-5v-turbo",

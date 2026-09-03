@@ -150,7 +150,7 @@ Boots the real embedded API server against a scratch git repo, runs one bounded
 single-lens review through a real provider over HTTP + SSE, and verifies the run
 persists. Off by default; skips honestly without the opt-in envs. Uses an isolated
 temp config home — your `~/.diffgazer` is never touched. Spends tokens on the
-selected model (defaults to a free OpenRouter route).
+selected model (the flash set below).
 The release gate is the full {openrouter, opencode-zen} × {small, medium, large}
 matrix; zai and ollama-cloud join automatically when credentialed.
 
@@ -166,8 +166,21 @@ DIFFGAZER_LIVE_E2E_SCENARIO=small,medium,large \
 pnpm run smoke:review
 ```
 
-ollama-cloud falls back to gpt-oss:20b when the plan refuses the default model
-(HTTP 402); zai runs glm-4.5-air for every scenario (the free glm-4.7-flash route is throttled).
+Every scenario of a provider runs one primary from the flash set — openrouter
+`qwen/qwen3.8-flash`, opencode-zen `qwen3.8-flash` on the OpenCode Go endpoint
+(`https://opencode.ai/zen/go/v1`, a subscription pool; `/zen/v1` does not serve the
+flash ids), zai `glm-5.3-flash`, ollama-cloud `glm-5.3-flash` — and walks an ordered
+fallback chain only when a member is down: openrouter `z-ai/glm-5.3-flash` →
+`deepseek/deepseek-v4-flash-0731`; opencode-zen `glm-5.3-flash` → `deepseek-v4-flash`;
+ollama-cloud `deepseek-v4-flash:0731` → `gpt-oss:20b`; zai `glm-4.5-air` (the proven
+priced incumbent, outside the flash set). "Down" is one of HTTP 402 (entitlement), 401/404 (not supported), 429
+(capacity), 400 (model unavailable), 5xx (outage), or a timed-out attempt (harness
+watchdog, dispatch wall, headers/answer-idle budget, review wall-clock) — one hop per
+timeout, so a logical cell never exceeds two watchdogs (worst case 2 × 600/900/1200 s).
+Each hop prints `WARN: live review e2e — <model> is down (<class>: <excerpt>); retrying
+the cell on fallback <next>` and boots a fresh cell whose header names the model and
+its chain position; a run without a WARN line ran its primary. A
+`DIFFGAZER_LIVE_E2E_MODEL` pin never falls back.
 
 ## Package Governance
 

@@ -22,15 +22,30 @@ function isRateLimitedError(error) {
 
 const REPORTED_SCHEMA_ERRORS = 3;
 
+// The cause a lens's rows name: the last non-completed dispatch's outcome is the diagnostic
+// cause code (analysis.ts dispatchOutcome); a lens that never dispatched has only its bridge errorCode.
+function lensFailureCause(stat) {
+  const failedDispatch = (stat.dispatches ?? [])
+    .filter((dispatch) => dispatch.outcome !== "completed")
+    .at(-1);
+  return failedDispatch?.outcome ?? stat.errorCode ?? "no errorCode";
+}
+
+function describeLensFailure(stat) {
+  return `${stat.lensId} (${lensFailureCause(stat)}): ${stat.errorMessage ?? "no errorMessage"}`;
+}
+
 /**
  * The honesty contract. PASS only on: real streaming observed, every frame
  * matching the published event schema, terminal `complete` inside the cap, and
  * the run fetchable + listed afterwards. A terminal `error` (the pipeline's
  * zero-successful-lenses outcome included), a timeout, a frame that does not
  * match the wire contract, or missing persistence is a FAIL with the honest
- * diagnostic. Per-lens failures and a finding-free run on a completed review
- * WARN but pass — free routes miss the planted bug often enough that model
- * quality must not decide an integration gate.
+ * diagnostic. Per-lens failures are read from the persisted review's `lensStats`
+ * (`status: "failed"` → failed honestly; `success` with an `errorCode` →
+ * completed with a failed batch) and, like a finding-free run on a completed
+ * review, WARN but pass — free routes miss the planted bug often enough that
+ * model quality must not decide an integration gate.
  */
 export function evaluateRun({
   sawNonTerminalEvent,
@@ -38,7 +53,7 @@ export function evaluateRun({
   timedOut,
   persisted,
   listed,
-  failedLenses = [],
+  lensStats = [],
   schemaErrors = [],
   timeoutMs = HARD_TIMEOUT_MS,
 }) {
@@ -93,8 +108,19 @@ export function evaluateRun({
   const lines = [
     `OK: live review e2e — completed, ${terminal.result.issues.length} issue(s), lens ${E2E_LENS}`,
   ];
-  if (failedLenses.length > 0) {
-    lines.push(`WARN: ${failedLenses.length} lens(es) failed honestly: ${failedLenses.join("; ")}`);
+  const failed = lensStats.filter((stat) => stat.status === "failed");
+  const survived = lensStats.filter(
+    (stat) => stat.status === "success" && stat.errorCode !== undefined,
+  );
+  if (failed.length > 0) {
+    lines.push(
+      `WARN: ${failed.length} lens(es) failed honestly: ${failed.map(describeLensFailure).join("; ")}`,
+    );
+  }
+  if (survived.length > 0) {
+    lines.push(
+      `WARN: ${survived.length} lens(es) completed with a failed batch: ${survived.map(describeLensFailure).join("; ")}`,
+    );
   }
   if (terminal.result.issues.length === 0) {
     lines.push("WARN: the planted bug produced no findings; the model missed it.");
@@ -105,8 +131,8 @@ export function evaluateRun({
 /**
  * REQ-006: batching is proven, not assumed. A fixture cell fails unless a
  * `review_size_warning` reported >= minBatchCount batches, the review lens
- * dispatched every batchIndex in 0..minBatchCount-1, and a synthesis row
- * exists. A synthesis row that failed honestly WARNs but passes — synthesis
+ * has a `completed` dispatch row for every batchIndex in 0..minBatchCount-1, and
+ * a synthesis row exists. A synthesis row that failed honestly WARNs but passes — synthesis
  * ran, which is what the proof needs. The OK line is grep-distinguishable from
  * evaluateRun's `— completed` line. minBatchCount is REQUIRED: an omitted
  * argument would make `batchCount < undefined` false and silently weaken the
@@ -119,7 +145,9 @@ export function evaluateBatchingProof({ sizeWarnings, lensStats, minBatchCount }
   const batchCount = Math.max(0, ...sizeWarnings.map((warning) => warning?.batchCount ?? 0));
   const reviewLens = lensStats.find((row) => row.lensId === E2E_LENS);
   const batchIndexes = new Set(
-    (reviewLens?.dispatches ?? []).map((dispatch) => dispatch.batchIndex),
+    (reviewLens?.dispatches ?? [])
+      .filter((dispatch) => dispatch.outcome === "completed")
+      .map((dispatch) => dispatch.batchIndex),
   );
   const synthesis = lensStats.find((row) => row.lensId === "synthesis");
 
@@ -129,7 +157,9 @@ export function evaluateBatchingProof({ sizeWarnings, lensStats, minBatchCount }
   }
   const requiredIndexes = Array.from({ length: minBatchCount }, (_, index) => index);
   if (!requiredIndexes.every((index) => batchIndexes.has(index))) {
-    missing.push(`${E2E_LENS} lens dispatches do not cover batchIndex 0..${minBatchCount - 1}`);
+    missing.push(
+      `${E2E_LENS} lens completed dispatches do not cover batchIndex 0..${minBatchCount - 1}`,
+    );
   }
   if (!synthesis) {
     missing.push('no lensId "synthesis" row in lensStats');
@@ -145,20 +175,10 @@ export function evaluateBatchingProof({ sizeWarnings, lensStats, minBatchCount }
   ];
   if (synthesis.status === "failed") {
     lines.push(
-      `WARN: synthesis lens failed honestly (${synthesis.errorCode ?? "no errorCode"}); batching itself is proven.`,
+      `WARN: synthesis lens failed honestly (${lensFailureCause(synthesis)}); batching itself is proven.`,
     );
   }
   return { verdict: "pass", lines };
-}
-
-/**
- * The superseded attempt's only line: this cell's model was refused on plan
- * grounds, so the run retries it on the product's fallback instead of reporting
- * a verdict on a model it is abandoning. `WARN:` so `labelCellLines` labels it,
- * and the wording is grep-distinguishable from every other WARN.
- */
-export function fallbackLine(cell, fallbackModelId) {
-  return `WARN: live review e2e — ${cell.modelId} refused with HTTP 402 (plan/entitlement); retrying the cell on fallback ${fallbackModelId}`;
 }
 
 const VERDICT_PREFIX_RE = /^(OK|WARN|FAIL): /;

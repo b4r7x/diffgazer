@@ -75,13 +75,22 @@ function isTimeoutError(error: unknown): boolean {
  * and reports it as a generic `TypeError: fetch failed` whose cause carries the
  * code — so without this check a dispatch that died of slowness would be filed
  * as an undiagnosed transport failure. The reader's answer-idle budget ends a
- * body that carries only keep-alive whitespace the same way.
+ * body that carries only keep-alive whitespace the same way, and a connection
+ * that never completes ends the dispatch before any response arrives at all.
  */
 const TRANSPORT_TIMEOUT_CAUSE_CODES = new Set([
   "UND_ERR_HEADERS_TIMEOUT",
   "UND_ERR_BODY_TIMEOUT",
+  "UND_ERR_CONNECT_TIMEOUT",
   ANSWER_IDLE_TIMEOUT_CAUSE,
 ]);
+
+// A declared idle budget bounds two phases; the cause code says which one
+// expired.
+const BUDGET_PHASE_BY_CAUSE: Record<string, "headers" | "body"> = {
+  UND_ERR_HEADERS_TIMEOUT: "headers",
+  [ANSWER_IDLE_TIMEOUT_CAUSE]: "body",
+};
 
 function errorCode(value: unknown): string | null {
   const code =
@@ -109,14 +118,12 @@ const SLOW_ANSWER_REMEDIATION =
  * A blind re-dispatch after a stalled response is worth its money only while
  * the wall still leaves room for a complete answer.
  *
- * The sized dispatcher holds the client's headers timeout above the dispatch
- * wall, so a pre-accept queue is ended by the wall and never by this retry. A
- * profile that declares a body idle budget sits the reader's answer-idle timer
- * below the wall, and that expiry is exactly what this retry serves. It is also the
- * fallback for the fetch paths that ignore the dispatcher — a non-undici
- * runtime, or an injected fetch — where the client's own response timeout is
- * the bound that fires. It also bounds the blind re-dispatch after a 2xx body
- * that is not JSON.
+ * A profile that declares an idle budget sits both the client's headers
+ * timeout and the reader's answer-idle timer below the wall, and either expiry
+ * is exactly what this retry serves. It is also the fallback for the fetch
+ * paths that ignore the dispatcher — a non-undici runtime, or an injected
+ * fetch — where the client's own response timeout is the bound that fires. It
+ * also bounds the blind re-dispatch after a 2xx body that is not JSON.
  */
 const TIMEOUT_RETRY_MIN_REMAINING_MS = 60_000;
 
@@ -180,10 +187,14 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
   // abandoned attempt at zero, so the diagnostic is where the user learns it.
   const abandonedCallCostNote = `${productName} keeps processing — and on a paid route keeps billing — a non-streaming call this client abandons, so a stalled attempt and its re-dispatch may both be invoiced.`;
 
-  const bodyIdleHistory = (): string =>
-    bodyIdleExpiredAttempt === null || bodyIdleTimeoutMs === undefined
-      ? ""
-      : ` ${productName} accepted attempt ${bodyIdleExpiredAttempt} but sent only keep-alive whitespace for ${Math.round(bodyIdleTimeoutMs / 1000)}s (no answer bytes), and the re-dispatched attempt ${attemptCount} did not finish either.`;
+  const budgetExpiryHistory = (): string => {
+    if (budgetExpiry === null || bodyIdleTimeoutMs === undefined) return "";
+    const budgetSeconds = Math.round(bodyIdleTimeoutMs / 1000);
+    if (budgetExpiry.phase === "headers") {
+      return ` ${productName} sent no response headers for ${budgetSeconds}s on attempt ${budgetExpiry.attempt}, and the re-dispatched attempt ${attemptCount} did not finish either.`;
+    }
+    return ` ${productName} accepted attempt ${budgetExpiry.attempt} but sent only keep-alive whitespace for ${budgetSeconds}s (no answer bytes), and the re-dispatched attempt ${attemptCount} did not finish either.`;
+  };
 
   /**
    * The wall deadline names its own numbers on expiry, so the lens error is
@@ -195,9 +206,9 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
       serializeFailureDiagnostic({
         code: "timed-out",
         retryable: true,
-        message: `The dispatch hit its ${Math.round(admittedLimits.wallTimeMs / 1000)}s wall-time limit after ${elapsedSeconds()}s without a complete answer.${bodyIdleHistory()}`,
+        message: `The dispatch hit its ${Math.round(admittedLimits.wallTimeMs / 1000)}s wall-time limit after ${elapsedSeconds()}s without a complete answer.${budgetExpiryHistory()}`,
         remediation:
-          bodyIdleExpiredAttempt === null
+          budgetExpiry === null
             ? slowAnswerRemediation
             : `${slowAnswerRemediation} ${abandonedCallCostNote}`,
         sensitive: { literalSecrets: [credential] },
@@ -210,22 +221,32 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
    * The HTTP client gave up before the wall deadline did: the runtime caps a
    * silent response well below a pinned per-dispatch wall, so name that as the
    * timeout instead of leaving an unexplained transport failure behind. Or the
-   * profile's answer-idle budget cut a body that carried no answer.
+   * profile's answer-idle budget cut a body that carried no answer, or the
+   * profile's idle budget ended the headers phase of a gateway that commits
+   * headers only when generation ends.
    */
   const transportTimedOut = (causeCode: string): ExecutionResult => {
-    // The answer-idle budget names itself; a headers or body timeout is the
-    // client's own default and says so.
-    const idleBudgetMs = causeCode === ANSWER_IDLE_TIMEOUT_CAUSE ? bodyIdleTimeoutMs : undefined;
+    // A declared budget names itself and the phase it bounded; without one the
+    // timeout is the client's own default and says so.
+    const phase = bodyIdleTimeoutMs === undefined ? undefined : BUDGET_PHASE_BY_CAUSE[causeCode];
+    const budgetExpiryMessage = (): string => {
+      if (phase === undefined || bodyIdleTimeoutMs === undefined) {
+        return `${productName} sent no response before the HTTP client's own response timeout (${causeCode}) after ${elapsedSeconds()}s.`;
+      }
+      const budgetSeconds = Math.round(bodyIdleTimeoutMs / 1000);
+      const wallSeconds = Math.round(admittedLimits.wallTimeMs / 1000);
+      if (phase === "headers") {
+        return `${productName} sent no response headers for ${budgetSeconds}s (UND_ERR_HEADERS_TIMEOUT; a non-streaming gateway commits headers only when generation ends) — attempt ${attemptCount} of the ${wallSeconds}s wall`;
+      }
+      return `${productName} accepted the request but sent only keep-alive whitespace for ${budgetSeconds}s (no answer bytes) — attempt ${attemptCount} of the ${wallSeconds}s wall`;
+    };
     request.reportDiagnostic?.(
       serializeFailureDiagnostic({
         code: "timed-out",
         retryable: true,
-        message:
-          idleBudgetMs === undefined
-            ? `${productName} sent no response before the HTTP client's own response timeout (${causeCode}) after ${elapsedSeconds()}s.`
-            : `${productName} accepted the request but sent only keep-alive whitespace for ${Math.round(idleBudgetMs / 1000)}s (no answer bytes) — attempt ${attemptCount} of the ${Math.round(admittedLimits.wallTimeMs / 1000)}s wall`,
+        message: budgetExpiryMessage(),
         remediation:
-          idleBudgetMs === undefined
+          phase === undefined
             ? SLOW_ANSWER_REMEDIATION
             : `${slowAnswerRemediation} ${abandonedCallCostNote}`,
         sensitive: { literalSecrets: [credential] },
@@ -272,7 +293,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
 
   let correction: OutputCorrection | null = null;
   let timeoutRetryUsed = false;
-  let bodyIdleExpiredAttempt: number | null = null;
+  let budgetExpiry: { phase: "headers" | "body"; attempt: number } | null = null;
 
   const canRetry = (extraInputTokens = 0): "retry" | "budget-exhausted" | "stop" => {
     if (!profile.malformedOutputRetry || attemptCount >= maxAttempts) return "stop";
@@ -360,6 +381,9 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
           // The stall is the client's, not the model's verdict: re-dispatch the
           // same request once while the wall still fits a whole answer.
           timeoutRetryUsed = true;
+          if (transportTimeout === "UND_ERR_HEADERS_TIMEOUT" && bodyIdleTimeoutMs !== undefined) {
+            budgetExpiry = { phase: "headers", attempt: attemptCount };
+          }
           attemptCount += 1;
           log("warn", "hosted_transport_timeout_retry", {
             productId: hostedProductId,
@@ -474,7 +498,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
             deadline.remainingMs() >= TIMEOUT_RETRY_MIN_REMAINING_MS
           ) {
             timeoutRetryUsed = true;
-            bodyIdleExpiredAttempt = attemptCount;
+            budgetExpiry = { phase: "body", attempt: attemptCount };
             log("warn", "hosted_transport_timeout_retry", {
               productId: hostedProductId,
               causeCode: idleTimeout,

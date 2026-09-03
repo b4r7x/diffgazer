@@ -1,7 +1,7 @@
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { ExecutionResultSchema } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { executeHostedReview } from "./execute.js";
 import {
   evidenceKeyFor,
@@ -69,6 +69,7 @@ describe("add-now PAYG tuple model and notice policies", () => {
     // Ollama Cloud ignores json_schema, so the wire asks for JSON mode and the
     // review is validated locally.
     expect(requestBodyAt(fetch, 0).response_format).toEqual({ type: "json_object" });
+    expect(requestBodyAt(fetch, 0)).not.toHaveProperty("reasoning_effort");
   });
 
   // One key and one endpoint serve both Zen credits and an OpenCode Go
@@ -78,7 +79,7 @@ describe("add-now PAYG tuple model and notice policies", () => {
     const fetch = mockFetchResponse(openAiSuccessBody({ issues: [makeIssue()] }));
 
     const result = await executeHostedReview({
-      ...executeRequest("opencode-zen"),
+      ...executeRequest("opencode-zen", { modelId: "qwen3.8-flash" }),
       context: hostedContext(fetch),
     });
 
@@ -92,6 +93,9 @@ describe("add-now PAYG tuple model and notice policies", () => {
       authorization: `Bearer ${TEST_CREDENTIAL}`,
     });
     expect(requestBodyAt(fetch, 0).response_format).toEqual({ type: "json_object" });
+    // The registry suggests no Zen model (product-registry.ts), so the case names
+    // the gate's primary itself — a reasoning table entry, so the control ships.
+    expect(requestBodyAt(fetch, 0).reasoning_effort).toBe("none");
   });
 
   it("carries the notice version the product registry pins", async () => {
@@ -233,5 +237,78 @@ describe("hosted trust boundary", () => {
     });
 
     expect(requestBody(fetch).messages).toEqual([{ role: "user", content: "review this diff" }]);
+  });
+});
+
+// The one-shot transport re-dispatch and the corrective retry both re-send the
+// request the wire built, so the reasoning control has to survive both.
+describe("openai-compatible reasoning control across re-dispatches", () => {
+  const headersTimeout = () =>
+    new TypeError("fetch failed", {
+      cause: Object.assign(new Error("Headers Timeout Error"), { code: "UND_ERR_HEADERS_TIMEOUT" }),
+    });
+  const jsonResponse = (body: unknown) =>
+    new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  it("re-sends the same bytes, control included, after a transport re-dispatch", async () => {
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockRejectedValueOnce(headersTimeout())
+      .mockImplementationOnce(async () => jsonResponse(openAiSuccessBody({ issues: [] })));
+
+    const result = await executeHostedReview({
+      ...executeRequest("opencode-zen", { modelId: "qwen3.8-flash" }),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.receipt.attemptCount).toBe(2);
+    expect(requestBodyAt(fetch, 0).reasoning_effort).toBe("none");
+    const calls = fetch.mock.calls;
+    expect(String(calls[1]?.[1]?.body)).toBe(String(calls[0]?.[1]?.body));
+  });
+
+  it("keeps the control on the corrective retry", async () => {
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockImplementationOnce(async () =>
+        jsonResponse({
+          choices: [{ message: { content: "not-json" }, finish_reason: "stop" }],
+          usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
+        }),
+      )
+      .mockImplementationOnce(async () => jsonResponse(openAiSuccessBody({ issues: [] })));
+
+    const result = await executeHostedReview({
+      ...executeRequest("opencode-zen", { modelId: "qwen3.8-flash" }),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.receipt.attemptCount).toBe(2);
+    expect(requestBodyAt(fetch, 1).reasoning_effort).toBe("none");
+    expect((requestBodyAt(fetch, 1).messages as unknown[]).length).toBe(3);
+    expect(requestBodyAt(fetch, 1).response_format).toEqual({ type: "json_object" });
+  });
+
+  it("sends no control on a re-dispatch for an out-of-table id", async () => {
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockRejectedValueOnce(headersTimeout())
+      .mockImplementationOnce(async () => jsonResponse(openAiSuccessBody({ issues: [] })));
+
+    const result = await executeHostedReview({
+      ...executeRequest("zai"),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    const calls = fetch.mock.calls;
+    expect(String(calls[1]?.[1]?.body)).toBe(String(calls[0]?.[1]?.body));
+    expect(requestBodyAt(fetch, 0)).not.toHaveProperty("reasoning_effort");
+    expect(requestBodyAt(fetch, 1)).not.toHaveProperty("reasoning_effort");
   });
 });

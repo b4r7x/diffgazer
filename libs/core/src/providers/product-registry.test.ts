@@ -23,10 +23,10 @@ const HOSTED_CHECKS = [
   "usage",
   "acknowledgement",
 ];
-function notice(id: string, billing: string[], privacy: string[]) {
+function notice(id: string, billing: string[], privacy: string[], noticeVersion = 1) {
   return {
     id,
-    noticeVersion: 1,
+    noticeVersion,
     acknowledgement: "required",
     acknowledgeBefore: "first-context-send",
     renewAcknowledgementOn: "material-notice-change",
@@ -154,12 +154,13 @@ describe("product registry authority", () => {
         notice: notice(
           "ollama-cloud-hosted-api",
           [
-            "Usage counts against the account's Ollama plan quota (Free, Pro, or Max) in 5-hour session and 7-day weekly windows; no per-token price is published.",
+            "Usage is measured in tokens at each model's published input, cached-input, and output rates; a Free account includes a starter amount of usage for a smaller set of starter models, and paid plans fund monthly usage credits that metered usage draws down.",
           ],
           [
             "Ollama states that cloud prompts and responses are not logged, stored, or trained on.",
             "Repository content is sent to ollama.com; this is not the loopback Ollama transport.",
           ],
+          2,
         ),
       },
       {

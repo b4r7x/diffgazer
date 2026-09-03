@@ -112,6 +112,16 @@ function allPaths(batches: readonly ParsedDiff[]): string[] {
   return batches.flatMap((batch) => batch.files.map((file) => file.filePath));
 }
 
+function notices(events: Array<AgentStreamEvent | StepEvent>): string[] {
+  return events.flatMap((event) =>
+    event.type === "agent_progress" &&
+    event.message !== undefined &&
+    (event.message.startsWith("Batch ") || event.message.startsWith("Dispatch "))
+      ? [event.message]
+      : [],
+  );
+}
+
 function runSingleBatchLens(
   client: AIClient,
   diff: ParsedDiff,
@@ -377,6 +387,25 @@ describe("runLensAnalysis", () => {
     const errorEvent = errorEvents[0] as Extract<AgentStreamEvent, { type: "agent_error" }>;
     expect(errorEvent.error).toContain(code);
     expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(0);
+  });
+
+  it("names the diagnostic cause code before the message in a terminal agent_error", async () => {
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runSingleBatchLens(
+      makeMockAIClient(dispatchFailure("timed-out", false)),
+      makeAnalysisDiff(1),
+      (event) => events.push(event),
+    );
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(false);
+    const errorEvents = events.filter((event) => event.type === "agent_error");
+    expect(errorEvents).toHaveLength(1);
+    const errorEvent = errorEvents[0] as Extract<AgentStreamEvent, { type: "agent_error" }>;
+    expect(errorEvent.error).toBe("timed-out: timed-out failure");
+    expect(notices(events)).toEqual([]);
   });
 
   it("streams diff-extracted evidence instead of malformed provider ranges", async () => {
@@ -867,7 +896,82 @@ describe("runLensAnalysis", () => {
     expect(client.calls()).toBe(3);
     expect(result.value.issues.map((issue) => issue.file)).toEqual(["src/one.ts"]);
     expect(result.value.batchError?.diagnostic?.code).toBe("provider-rejected");
-    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(0);
+    expect(notices(events)).toEqual([
+      "Batch 2/2 failed (provider-rejected) — retrying after the remaining batches",
+      "Batch 2/2 failed (provider-rejected) — giving up",
+    ]);
+    expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(1);
+  });
+
+  it("emits one terminal agent_error naming the last failure when no batch completed", async () => {
+    const batches = [makeBatchDiff("src/one.ts"), makeBatchDiff("src/two.ts")];
+    const client = makeSequencedAIClient([
+      dispatchFailure("provider-rejected", true),
+      dispatchFailure("provider-rejected", true),
+      dispatchFailure("provider-rejected", true),
+      dispatchFailure("provider-rejected", true),
+    ]);
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(client.calls()).toBe(4);
+    expect(result.ok).toBe(false);
+    expect(notices(events)).toEqual([
+      "Batch 1/2 failed (provider-rejected) — retrying after the remaining batches",
+      "Batch 2/2 failed (provider-rejected) — retrying after the remaining batches",
+      "Batch 1/2 failed (provider-rejected) — giving up",
+      "Batch 2/2 failed (provider-rejected) — giving up",
+    ]);
+    const errorEvents = events.filter((event) => event.type === "agent_error");
+    expect(errorEvents).toHaveLength(1);
+    expect(errorEvents[0]).toMatchObject({
+      error: "provider-rejected: provider-rejected failure",
+    });
+    expect(events.at(-1)).toBe(errorEvents[0]);
+  });
+
+  it("announces the re-queue it abandons after a non-retryable failure as not retried", async () => {
+    const batches = [
+      makeBatchDiff("src/one.ts"),
+      makeBatchDiff("src/two.ts"),
+      makeBatchDiff("src/three.ts"),
+    ];
+    const client = makeSequencedAIClient([
+      dispatchFailure("provider-rejected", true),
+      dispatchFailure("schema-failed", false),
+    ]);
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches,
+      allChangedFilePaths: allPaths(batches),
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(client.calls()).toBe(2);
+    expect(notices(events)).toEqual([
+      "Batch 1/3 failed (provider-rejected) — retrying after the remaining batches",
+      "Batch 2/3 failed (schema-failed) — giving up",
+      "Batch 1/3 failed (provider-rejected) — not retried",
+    ]);
+    expect(result.ok).toBe(false);
+    const errorEvents = events.filter((event) => event.type === "agent_error");
+    expect(errorEvents).toHaveLength(1);
+    expect(errorEvents[0]).toMatchObject({ error: "schema-failed: schema-failed failure" });
   });
 
   it("reports a lens whose completed batches found nothing as successful", async () => {
@@ -898,7 +1002,8 @@ describe("runLensAnalysis", () => {
     const completes = events.filter((event) => event.type === "agent_complete");
     expect(completes).toHaveLength(1);
     expect(completes[0]).toMatchObject({ issueCount: 0 });
-    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(0);
+    expect(notices(events)).toEqual(["Batch 2/2 failed (MODEL_ERROR) — giving up"]);
   });
 
   it.each<{ label: string; failure: MockGenerateResult }>([
@@ -971,6 +1076,107 @@ describe("runLensAnalysis", () => {
     expect(client.calls()).toBe(4);
   });
 
+  it("retries a single batch once on a retryable failure and completes when the retry answers", async () => {
+    const diff = makeAnalysisDiff(1);
+    const client = makeSequencedAIClient([
+      dispatchFailure("transport-failed", true),
+      ok({ issues: [makeLensIssue("one", "file-1")] }),
+    ]);
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches: [diff],
+      allChangedFilePaths: allPaths([diff]),
+      dispatchWallTimeMs: 600_000,
+      reviewClock: { remainingMs: () => 600_000 },
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(client.calls()).toBe(2);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(
+      result.value.dispatches.map(({ batchIndex, outcome }) => ({ batchIndex, outcome })),
+    ).toEqual([
+      { batchIndex: 0, outcome: "transport-failed" },
+      { batchIndex: 0, outcome: "completed" },
+    ]);
+    expect(result.value.batchError).toBeUndefined();
+    expect(result.value.issues.map((issue) => issue.file)).toEqual(["src/file-0.ts"]);
+    expect(notices(events)).toEqual(["Dispatch failed (transport-failed) — retrying once"]);
+    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "file_progress")).toHaveLength(1);
+  });
+
+  it("ends a single batch that fails its retry with one terminal agent_error", async () => {
+    const client = makeSequencedAIClient([
+      dispatchFailure("transport-failed", true),
+      dispatchFailure("provider-rejected", true),
+    ]);
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runSingleBatchLens(client.client, makeAnalysisDiff(1), (event) =>
+      events.push(event),
+    );
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(client.calls()).toBe(2);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.dispatches.map((dispatch) => dispatch.outcome)).toEqual([
+      "transport-failed",
+      "provider-rejected",
+    ]);
+    expect(result.error.dispatches.map((dispatch) => dispatch.batchIndex)).toEqual([0, 0]);
+    expect(result.error.diagnostic?.code).toBe("provider-rejected");
+    expect(notices(events)).toEqual(["Dispatch failed (transport-failed) — retrying once"]);
+    const errorEvents = events.filter((event) => event.type === "agent_error");
+    expect(errorEvents).toHaveLength(1);
+    expect(errorEvents[0]).toMatchObject({
+      error: "provider-rejected: provider-rejected failure",
+    });
+    expect(events.at(-1)).toBe(errorEvents[0]);
+    expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(0);
+  });
+
+  it("declines a single batch's retry when the review clock cannot fit one dispatch", async () => {
+    const diff = makeAnalysisDiff(1);
+    const client = makeSequencedAIClient([dispatchFailure("timed-out", true), ok({ issues: [] })]);
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runLensAnalysis({
+      client: client.client,
+      lens: CORRECTNESS_LENS,
+      batches: [diff],
+      allChangedFilePaths: allPaths([diff]),
+      dispatchWallTimeMs: 600_000,
+      reviewClock: { remainingMs: () => 599_999 },
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(client.calls()).toBe(1);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.dispatches).toHaveLength(1);
+    expect(result.error.dispatches[0]?.outcome).toBe("timed-out");
+    expect(notices(events)).toEqual([
+      "Dispatch failed (timed-out) — retrying once",
+      "Dispatch failed (timed-out) — not retried",
+    ]);
+    const errorEvents = events.filter((event) => event.type === "agent_error");
+    expect(errorEvents).toHaveLength(1);
+    expect(errorEvents[0]).toMatchObject({ error: "timed-out: timed-out failure" });
+    expect(events.at(-1)).toBe(errorEvents[0]);
+  });
+
   it("refuses the re-queue when the review clock cannot fit one dispatch", async () => {
     const { batches, client } = makeRequeueScenario();
     const events: Array<AgentStreamEvent | StepEvent> = [];
@@ -991,7 +1197,11 @@ describe("runLensAnalysis", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.dispatches.map((dispatch) => dispatch.batchIndex)).toEqual([0, 1, 2]);
-    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(0);
+    expect(notices(events)).toEqual([
+      "Batch 1/3 failed (provider-rejected) — retrying after the remaining batches",
+      "Batch 1/3 failed (provider-rejected) — not retried",
+    ]);
     expect(result.value.batchError).toBeDefined();
     expect(result.value.issues.map((issue) => issue.file).sort()).toEqual([
       "src/three.ts",
@@ -1188,6 +1398,43 @@ describe("runLensAnalysis", () => {
       await promise;
     });
 
+    it("marks a single batch's re-dispatch as a retry", async () => {
+      const response = createDeferred<Result<unknown, AIError>>();
+      const events: Array<AgentStreamEvent | StepEvent> = [];
+      let callCount = 0;
+      const promise = runWaitingLens(
+        (event) => events.push(event),
+        async (_prompt, schema) => {
+          callCount += 1;
+          if (callCount === 1) return dispatchFailure("transport-failed", true);
+          const result = await response.promise;
+          return result.ok ? ok({ data: schema.parse(result.value) }) : result;
+        },
+      );
+
+      await vi.advanceTimersByTimeAsync(4000);
+      expect(heartbeats(events)).toContain("Waiting for model response — 4s of up to 600s (retry)");
+      expect(heartbeats(events)).toContain("Waiting for model response (retry)");
+      expect(
+        heartbeats(events)
+          .filter((message) => message.startsWith("Waiting for model response —"))
+          .every((message) => message.endsWith(" (retry)")),
+      ).toBe(true);
+      expect(
+        events.flatMap((event) =>
+          event.type === "agent_progress" && event.message?.startsWith("Prompt includes")
+            ? [event.message]
+            : [],
+        ),
+      ).toEqual([
+        "Prompt includes 1 file and 3 diff lines",
+        "Prompt includes 1 file and 3 diff lines (retry)",
+      ]);
+
+      response.resolve(ok({ issues: [] }));
+      await promise;
+    });
+
     it("marks the re-queued attempt's heartbeat as a retry", async () => {
       const response = createDeferred<Result<unknown, AIError>>();
       const events: Array<AgentStreamEvent | StepEvent> = [];
@@ -1287,5 +1534,22 @@ describe("runSynthesisAnalysis", () => {
     ]);
     expect(events.some((event) => event.type === "agent_error")).toBe(true);
     expect(events.some((event) => event.type === "agent_complete")).toBe(false);
+  });
+
+  it("names the diagnostic cause code in the synthesis agent_error", async () => {
+    const events: Array<AgentStreamEvent | StepEvent> = [];
+
+    const promise = runSynthesisAnalysis({
+      client: makeMockAIClient(dispatchFailure("timed-out", false)),
+      diff: makeParsedDiff([makeAnalysisFile("src/one.ts")]),
+      collectedIssues: [],
+      onEvent: (event) => events.push(event),
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    await promise;
+
+    const errorEvents = events.filter((event) => event.type === "agent_error");
+    expect(errorEvents).toHaveLength(1);
+    expect(errorEvents[0]).toMatchObject({ error: "timed-out: timed-out failure" });
   });
 });

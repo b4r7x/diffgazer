@@ -113,16 +113,16 @@ export const PRODUCT_REGISTRY = {
     billing: {
       modes: ["free-tier", "subscription-credit"],
       posture:
-        "Usage draws on the account's plan quota (Free, Pro, or Max) in session and weekly windows; no per-token price is published.",
+        "Usage is metered per token at each model's published input, cached-input, and output rates; a Free account includes a starter usage allowance, and paid plans fund monthly usage credits.",
     },
     notice: {
       id: "ollama-cloud-hosted-api",
-      noticeVersion: 1,
+      noticeVersion: 2,
       acknowledgement: "required",
       acknowledgeBefore: "first-context-send",
       renewAcknowledgementOn: "material-notice-change",
       billing: [
-        "Usage counts against the account's Ollama plan quota (Free, Pro, or Max) in 5-hour session and 7-day weekly windows; no per-token price is published.",
+        "Usage is measured in tokens at each model's published input, cached-input, and output rates; a Free account includes a starter amount of usage for a smaller set of starter models, and paid plans fund monthly usage credits that metered usage draws down.",
       ],
       privacy: [
         "Ollama states that cloud prompts and responses are not logged, stored, or trained on.",

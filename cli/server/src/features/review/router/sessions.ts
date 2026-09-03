@@ -241,13 +241,13 @@ sessionsRouter.delete(
   "/sessions/:id",
   requireRepoAccess,
   zValidator("param", ReviewIdParamSchema, handleZodError),
-  (c): Response => {
+  async (c): Promise<Response> => {
     const { id } = c.req.valid("param");
     const session = getSession(id);
     if (!session || session.projectPath !== getProjectRoot(c)) {
       return c.json({ cancelled: true, reason: "not-found" });
     }
-    const reason = cancelSessionForUser(id);
+    const reason = await cancelSessionForUser(id);
     return c.json({ cancelled: true, reason });
   },
 );

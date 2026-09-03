@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { HOSTED_PROFILES, resolveDispatchPacing } from "./profiles.js";
+import {
+  HOSTED_PROFILES,
+  REASONING_EFFORT_OVERRIDES,
+  resolveDispatchPacing,
+  resolveReasoningEffort,
+} from "./profiles.js";
+import type { HostedProductProfile } from "./types.js";
 
 describe("resolveDispatchPacing", () => {
   it("clamps the documented free flash models to one concurrent request", () => {
@@ -34,14 +40,14 @@ describe("resolveDispatchPacing", () => {
     });
   });
 
-  it("gives opencode-zen an answer-idle budget inside its 300s wall", () => {
+  it("gives opencode-zen an idle budget inside its 300s wall that also bounds its headers phase", () => {
     expect(resolveDispatchPacing("opencode-zen", "deepseek-v4-flash")).toEqual({
       perDispatchWallTimeMs: 300_000,
       bodyIdleTimeoutMs: 120_000,
     });
   });
 
-  it("keeps every body idle budget clear of the wall by the re-dispatch floor", () => {
+  it("keeps every idle budget — answer-idle and headers phase — clear of the wall by the re-dispatch floor", () => {
     const REDISPATCH_FLOOR_MS = 60_000; // execute.ts TIMEOUT_RETRY_MIN_REMAINING_MS — not exported for a test
     const modelIds = [
       "",
@@ -51,6 +57,9 @@ describe("resolveDispatchPacing", () => {
       "glm-4.6",
       "nvidia/nemotron-3-super-120b-a12b:free",
       "openai/gpt-5.2",
+      "qwen3.8-flash",
+      "glm-5.3-flash",
+      "deepseek-v4-flash",
     ];
     let declared = 0;
     for (const productId of Object.keys(HOSTED_PROFILES)) {
@@ -75,5 +84,42 @@ describe("resolveDispatchPacing", () => {
 
   it("returns no pacing for a hosted product without a pacing block", () => {
     expect(resolveDispatchPacing("gemini", "gemini-2.5-pro")).toEqual({});
+  });
+});
+
+describe("resolveReasoningEffort", () => {
+  it("resolves the probe-backed value per product and exact id", () => {
+    expect(resolveReasoningEffort("opencode-zen", "qwen3.8-flash")).toBe("none");
+    expect(resolveReasoningEffort("opencode-zen", "glm-5.3-flash")).toBe("low");
+    expect(resolveReasoningEffort("opencode-zen", "deepseek-v4-flash")).toBe("none");
+    expect(resolveReasoningEffort("zai", "glm-5.3-flash")).toBe("low");
+  });
+
+  it("returns undefined outside the table, prefix or product notwithstanding", () => {
+    expect(resolveReasoningEffort("opencode-zen", "qwen3.8-flash-free")).toBeUndefined();
+    expect(resolveReasoningEffort("opencode-zen", "minimax-m2.5")).toBeUndefined();
+    expect(resolveReasoningEffort("zai", "glm-5.3")).toBeUndefined();
+    expect(resolveReasoningEffort("zai", "glm-4.5-air")).toBeUndefined();
+    expect(resolveReasoningEffort("ollama-cloud", "glm-5.3-flash")).toBeUndefined();
+    expect(resolveReasoningEffort("deepseek", "deepseek-v4-flash")).toBeUndefined();
+    expect(resolveReasoningEffort("openrouter", "z-ai/glm-5.3-flash")).toBeUndefined();
+  });
+
+  it("lists only openai-compatible products, exact unique ids, an allowed value and a probe reference", () => {
+    const profilesByProductId: Record<string, HostedProductProfile> = HOSTED_PROFILES;
+    for (const [productId, entries] of Object.entries(REASONING_EFFORT_OVERRIDES)) {
+      if (entries === undefined) {
+        throw new Error(`${productId} is listed with no reasoning entries`);
+      }
+      expect(profilesByProductId[productId]?.wireFamily).toBe("openai-compatible");
+      expect(entries.length).toBeGreaterThanOrEqual(1);
+      expect(new Set(entries.map((entry) => entry.modelId)).size).toBe(entries.length);
+      for (const entry of entries) {
+        expect(entry.modelId).toMatch(/^[a-z0-9.:/-]+$/);
+        expect(["none", "low"]).toContain(entry.reasoningEffort);
+        expect(entry.evidence.trim().length).toBeGreaterThan(0);
+      }
+    }
+    expect(Object.keys(REASONING_EFFORT_OVERRIDES)).toEqual(["opencode-zen", "zai"]);
   });
 });

@@ -29,14 +29,17 @@ import {
   SCENARIO_FIXTURES,
 } from "./lib/smoke-review/diff-fixtures.mjs";
 import {
+  cellHeaderLine,
   E2E_OPT_IN_ENV,
   E2E_SCENARIO_ENV,
-  entitlementFallback,
   expandScenarioCells,
+  fallbackAfter,
+  fallbackWarnLine,
   finalizeE2eDispositions,
   findActiveLocalBinding,
   modelOverrideNotice,
   parseScenarioIds,
+  resolveCellEndpoint,
   resolveE2eDispositions,
   reviewWallCapMs,
   runFailureLine,
@@ -48,7 +51,6 @@ import {
   E2E_LENS,
   evaluateBatchingProof,
   evaluateRun,
-  fallbackLine,
   HARD_TIMEOUT_MS,
   labelCellLines,
 } from "./lib/smoke-review/verdicts.mjs";
@@ -179,7 +181,6 @@ async function consumeStream(baseUrl, headers, reviewId, core, timeoutMs) {
     sawNonTerminalEvent: false,
     terminal: null,
     timedOut: false,
-    failedLenses: [],
     schemaErrors: [],
     sizeWarnings: [],
   };
@@ -209,9 +210,6 @@ async function consumeStream(baseUrl, headers, reviewId, core, timeoutMs) {
           state.terminal = event;
         } else {
           state.sawNonTerminalEvent = true;
-          if (event.type === "agent_error") {
-            state.failedLenses.push(`${event.agent}: ${event.error}`);
-          }
           if (event.type === "review_size_warning") {
             state.sizeWarnings.push(event.warning);
           }
@@ -323,6 +321,7 @@ async function loadServerRuntime() {
 async function runLiveE2e(cell, core, runtime, multiCell, modelOverride) {
   const { PRODUCT_REGISTRY, acceptNotice } = core;
   const product = PRODUCT_REGISTRY[cell.productId];
+  const profile = resolveCellEndpoint(product.configuration.endpoints, cell.productId);
 
   const fixture = SCENARIO_FIXTURES[cell.scenarioId] ?? null;
   const timeoutMs = fixture?.timeoutMs ?? HARD_TIMEOUT_MS;
@@ -375,7 +374,7 @@ async function runLiveE2e(cell, core, runtime, multiCell, modelOverride) {
       input: {
         transportFamily: "hosted-api",
         productId: cell.productId,
-        endpoint: product.configuration.endpoints[0].endpoint,
+        endpoint: profile.endpoint,
         credential: { kind: "literal", value: credentialValue },
       },
       acknowledgement: acceptNotice(product.notice),
@@ -387,6 +386,11 @@ async function runLiveE2e(cell, core, runtime, multiCell, modelOverride) {
       configurationId,
       modelId: cell.modelId,
     });
+    // The picker's own list request: `boundReasoning` and the strict/JSON degrade
+    // read the cached live list only this route writes, and a hermetic home is
+    // cold — without it every OpenRouter cell dispatches unbounded reasoning
+    // (probed 2026-09-03). Same order a UI-driven review follows.
+    await requestJson(baseUrl, headers, "GET", `/api/config/providers/${configurationId}/models`);
 
     const startedAt = Date.now();
     const createdReview = await requestJson(baseUrl, headers, "POST", "/api/review/reviews", {
@@ -395,20 +399,32 @@ async function runLiveE2e(cell, core, runtime, multiCell, modelOverride) {
     });
     const reviewId = createdReview?.reviewId;
     if (!reviewId) throw new Error("review create returned no reviewId");
-    console.log(`live review e2e: ${cell.productId}/${cell.modelId}, review ${reviewId}`);
+    console.log(`live review e2e: ${cellHeaderLine(cell, profile.id)}, review ${reviewId}`);
 
     const stream = await consumeStream(baseUrl, headers, reviewId, core, timeoutMs);
-    const fallbackModelId = entitlementFallback({ terminal: stream.terminal, cell, modelOverride });
+    const fallback = fallbackAfter({
+      terminal: stream.terminal,
+      timedOut: stream.timedOut,
+      cell,
+      modelOverride,
+    });
     const persistence =
       stream.terminal?.type === "complete"
         ? await pollPersistence(baseUrl, headers, reviewId)
         : { persisted: false, listed: false, review: null };
 
-    // A cell headed for its fallback prints why and nothing else: evaluateRun's
+    // A cell headed for its next chain member prints why and nothing else: evaluateRun's
     // FAIL and the batching proof would judge an attempt this run supersedes.
     const evaluations = [];
-    if (!fallbackModelId) {
-      evaluations.push(evaluateRun({ ...stream, ...persistence, timeoutMs }));
+    if (!fallback) {
+      evaluations.push(
+        evaluateRun({
+          ...stream,
+          ...persistence,
+          lensStats: persistence.review?.lensStats ?? [],
+          timeoutMs,
+        }),
+      );
       // A red run already prints its FAIL and has no lens stats for the proof to judge.
       if (fixture && evaluations[0].verdict === "pass") {
         evaluations.push(
@@ -420,8 +436,8 @@ async function runLiveE2e(cell, core, runtime, multiCell, modelOverride) {
         );
       }
     }
-    const lines = fallbackModelId
-      ? [fallbackLine(cell, fallbackModelId)]
+    const lines = fallback
+      ? [fallbackWarnLine(cell, fallback)]
       : evaluations.flatMap((evaluation) => evaluation.lines);
     for (const line of multiCell ? labelCellLines(lines, cell) : lines) {
       console.log(line);
@@ -431,7 +447,7 @@ async function runLiveE2e(cell, core, runtime, multiCell, modelOverride) {
     // the point: the retry cell, not this one, carries the verdict.
     return {
       failures: evaluations.every((evaluation) => evaluation.verdict === "pass") ? 0 : 1,
-      fallbackModelId,
+      fallback,
     };
   } finally {
     if (server) await new Promise((resolveClose) => server.close(() => resolveClose()));
@@ -513,19 +529,18 @@ async function run() {
       continue;
     }
     try {
-      const result = await runLiveE2e(cell, core, runtime, multiCell, modelOverride);
-      failures += result.failures;
-      // The retry boots fresh like any cell; its header line names the fallback
-      // model, so the record shows which model actually produced the verdict.
-      if (result.fallbackModelId) {
-        const retry = await runLiveE2e(
-          { ...cell, modelId: result.fallbackModelId, fallbackFrom: cell.modelId },
-          core,
-          runtime,
-          multiCell,
-          modelOverride,
-        );
-        failures += retry.failures;
+      let attempt = cell;
+      for (;;) {
+        const result = await runLiveE2e(attempt, core, runtime, multiCell, modelOverride);
+        failures += result.failures;
+        if (!result.fallback) break;
+        // A fresh cell — new home, scratch repo, server, its own watchdog — so the
+        // record names which model produced the verdict and nothing is swapped silently.
+        attempt = {
+          ...attempt,
+          modelId: result.fallback.modelId,
+          fallbackFrom: [...(attempt.fallbackFrom ?? []), attempt.modelId],
+        };
       }
     } catch (error) {
       const lines = [runFailureLine(cell.productId, errorMessage(error))];

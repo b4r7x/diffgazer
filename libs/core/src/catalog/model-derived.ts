@@ -32,6 +32,14 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "GLM-5.2",
       billing: "unknown",
     },
+    "glm-5.3": {
+      name: "GLM-5.3",
+      billing: "unknown",
+    },
+    "glm-5.3-flash": {
+      name: "GLM-5.3-Flash",
+      billing: "unknown",
+    },
     "gpt-oss:120b": {
       name: "gpt-oss:120b",
       billing: "unknown",
@@ -106,10 +114,6 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Aion-RP 1.0 (8B)",
       billing: "paid",
     },
-    "allenai/olmo-3-32b-think": {
-      name: "Olmo 3 32B Think",
-      billing: "paid",
-    },
     "amazon/nova-2-lite-v1": {
       name: "Nova 2 Lite",
       billing: "paid",
@@ -142,6 +146,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Claude Fable 5",
       billing: "paid",
     },
+    "anthropic/claude-fable-5.1": {
+      name: "Claude Fable 5.1",
+      billing: "paid",
+    },
     "anthropic/claude-haiku-4.5": {
       name: "Claude Haiku 4.5 (latest)",
       billing: "paid",
@@ -166,24 +174,12 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Claude Opus 4.7",
       billing: "paid",
     },
-    "anthropic/claude-opus-4.7-fast": {
-      name: "Claude Opus 4.7 (Fast)",
-      billing: "paid",
-    },
     "anthropic/claude-opus-4.8": {
       name: "Claude Opus 4.8",
       billing: "paid",
     },
-    "anthropic/claude-opus-4.8-fast": {
-      name: "Claude Opus 4.8 (Fast)",
-      billing: "paid",
-    },
     "anthropic/claude-opus-5": {
       name: "Claude Opus 5",
-      billing: "paid",
-    },
-    "anthropic/claude-opus-5-fast": {
-      name: "Claude Opus 5 (Fast)",
       billing: "paid",
     },
     "anthropic/claude-sonnet-4": {
@@ -204,10 +200,6 @@ export const CATALOG_MODEL_DERIVED: Partial<
     },
     "arcee-ai/trinity-large-thinking": {
       name: "Trinity Large Thinking",
-      billing: "paid",
-    },
-    "arcee-ai/virtuoso-large": {
-      name: "Virtuoso Large",
       billing: "paid",
     },
     "baidu/ernie-4.5-vl-424b-a47b": {
@@ -402,6 +394,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Gemini 3.7 Flash",
       billing: "paid",
     },
+    "google/gemini-3.8-flash": {
+      name: "Gemini 3.8 Flash",
+      billing: "paid",
+    },
     "google/gemma-2-27b-it": {
       name: "Gemma 2 27B",
       billing: "paid",
@@ -446,17 +442,25 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Granite 4.1 8B",
       billing: "paid",
     },
+    "ibm-granite/granite-4.2-8b": {
+      name: "Granite 4.2 8B",
+      billing: "paid",
+    },
     "inception/mercury-2": {
       name: "Mercury 2",
+      billing: "paid",
+    },
+    "inception/mercury-2.5-preview": {
+      name: "Mercury 2.5 Preview",
       billing: "paid",
     },
     "inclusionai/ling-3.0-flash": {
       name: "Ling-3.0-flash",
       billing: "paid",
     },
-    "kwaipilot/kat-coder-air-v2.5": {
-      name: "KAT-Coder-Air V2.5",
-      billing: "paid",
+    "inclusionai/ling-3.0-flash-fin:free": {
+      name: "Ling 3.0 Flash Fin (free)",
+      billing: "free",
     },
     "kwaipilot/kat-coder-pro-v2": {
       name: "KAT-Coder-Pro V2",
@@ -526,6 +530,14 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Muse Spark 1.2 Contributor",
       billing: "paid",
     },
+    "meta/muse-spark-1.3": {
+      name: "Muse Spark 1.3",
+      billing: "paid",
+    },
+    "meta/muse-spark-1.3-contributor": {
+      name: "Muse Spark 1.3 Contributor",
+      billing: "paid",
+    },
     "microsoft/phi-4": {
       name: "Phi 4",
       billing: "paid",
@@ -588,10 +600,6 @@ export const CATALOG_MODEL_DERIVED: Partial<
     },
     "mistralai/ministral-3b-2512": {
       name: "Ministral 3 3B 2512",
-      billing: "paid",
-    },
-    "mistralai/ministral-8b": {
-      name: "Ministral 8B",
       billing: "paid",
     },
     "mistralai/ministral-8b-2512": {
@@ -1214,6 +1222,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Qwen3.8 27B",
       billing: "paid",
     },
+    "qwen/qwen3.8-flash": {
+      name: "Qwen3.8 Flash",
+      billing: "paid",
+    },
     "qwen/qwen3.8-max": {
       name: "Qwen3.8 Max",
       billing: "paid",
@@ -1254,10 +1266,6 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Llama 3.3 Euryale 70B",
       billing: "paid",
     },
-    "stealth/ox-alpha": {
-      name: "Ox Alpha",
-      billing: "free",
-    },
     "stepfun/step-3.5-flash": {
       name: "Step 3.5 Flash",
       billing: "paid",
@@ -1290,12 +1298,12 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Hy3 preview",
       billing: "paid",
     },
-    "thedrummer/cydonia-24b-v4.1": {
-      name: "Cydonia 24B V4.1",
+    "tencent/hy4-preview": {
+      name: "Hy4 preview",
       billing: "paid",
     },
-    "thedrummer/rocinante-12b": {
-      name: "Rocinante 12B",
+    "thedrummer/cydonia-24b-v4.1": {
+      name: "Cydonia 24B V4.1",
       billing: "paid",
     },
     "thedrummer/skyfall-36b-v2": {
@@ -1422,6 +1430,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "GLM-5.3",
       billing: "paid",
     },
+    "z-ai/glm-5.3-flash": {
+      name: "GLM-5.3-Flash",
+      billing: "paid",
+    },
     "z-ai/glm-5v-turbo": {
       name: "GLM-5V-Turbo",
       billing: "paid",
@@ -1438,6 +1450,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
     },
     "claude-fable-5": {
       name: "Claude Fable 5",
+      billing: "paid",
+    },
+    "claude-fable-5-1": {
+      name: "Claude Fable 5.1",
       billing: "paid",
     },
     "claude-haiku-4-5": {
@@ -1528,6 +1544,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Gemini 3.7 Flash",
       billing: "paid",
     },
+    "gemini-3.8-flash": {
+      name: "Gemini 3.8 Flash",
+      billing: "paid",
+    },
     "glm-4.6": {
       name: "GLM-4.6",
       billing: "paid",
@@ -1558,6 +1578,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
     },
     "glm-5.3": {
       name: "GLM-5.3",
+      billing: "paid",
+    },
+    "glm-5.3-flash": {
+      name: "GLM-5.3-Flash (2x usage)",
       billing: "paid",
     },
     "gpt-5": {
@@ -1657,7 +1681,7 @@ export const CATALOG_MODEL_DERIVED: Partial<
       billing: "free",
     },
     hy3: {
-      name: "Hy3 (8x usage)",
+      name: "Hy3",
       billing: "paid",
     },
     "hy3-free": {
@@ -1667,6 +1691,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
     "hy3-preview-free": {
       name: "Hy3 preview Free",
       billing: "free",
+    },
+    "hy4-preview": {
+      name: "Hy4 preview",
+      billing: "paid",
     },
     "kimi-k2": {
       name: "Kimi K2",
@@ -1702,6 +1730,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
     },
     "ling-2.6-flash-free": {
       name: "Ling 2.6 Flash Free",
+      billing: "free",
+    },
+    "ling-3.0-flash-fin-free": {
+      name: "Ling 3.0 Flash Fin Free",
       billing: "free",
     },
     "ling-3.0-flash-free": {
@@ -1792,6 +1824,14 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Muse Spark 1.2 Free",
       billing: "free",
     },
+    "muse-spark-1.3-contributor": {
+      name: "Muse Spark 1.3 Contributor",
+      billing: "paid",
+    },
+    "muse-spark-1.3-contributor-free": {
+      name: "Muse Spark 1.3 Free",
+      billing: "free",
+    },
     "nemotron-3-super-free": {
       name: "Nemotron 3 Super Free",
       billing: "free",
@@ -1834,6 +1874,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
     },
     "qwen3.7-plus": {
       name: "Qwen3.7 Plus",
+      billing: "paid",
+    },
+    "qwen3.8-flash": {
+      name: "Qwen3.8 Flash",
       billing: "paid",
     },
     "qwen3.8-max": {
@@ -1922,6 +1966,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
     },
     "glm-5.3": {
       name: "GLM-5.3",
+      billing: "paid",
+    },
+    "glm-5.3-flash": {
+      name: "GLM-5.3-Flash",
       billing: "paid",
     },
     "glm-5v-turbo": {
@@ -2114,6 +2162,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Qwen3.7 Plus",
       billing: "paid",
     },
+    "qwen3.8-flash": {
+      name: "Qwen3.8 Flash",
+      billing: "paid",
+    },
     "qwen3.8-max": {
       name: "Qwen3.8 Max",
       billing: "paid",
@@ -2248,16 +2300,16 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Gemini 3.7 Flash",
       billing: "paid",
     },
+    "gemini-3.8-flash": {
+      name: "Gemini 3.8 Flash",
+      billing: "paid",
+    },
     "gemini-embedding-001": {
       name: "Gemini Embedding 001",
       billing: "paid",
     },
     "gemini-embedding-2": {
       name: "Gemini Embedding 2",
-      billing: "paid",
-    },
-    "gemini-robotics-er-1.6-preview": {
-      name: "Gemini Robotics-ER 1.6 Preview",
       billing: "paid",
     },
     "gemma-4-26b-a4b-it": {

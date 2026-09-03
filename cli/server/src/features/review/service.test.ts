@@ -851,7 +851,7 @@ describe("createReviewSession", () => {
     trackSessionWithRunner(result.value.reviewId);
     await vi.waitFor(() => expect(getStatusHash).toHaveBeenCalledOnce());
 
-    cancelSessionForUser(result.value.reviewId);
+    await cancelSessionForUser(result.value.reviewId);
     statusHash.resolve({ kind: "full", hash: "context-hash" });
     await vi.waitFor(() => {
       expect(existsSync(join(projectRoot, ".diffgazer/context.manifest.json"))).toBe(true);
@@ -988,6 +988,96 @@ describe("POST-to-stream integration", () => {
       ]);
     } finally {
       stalledLens.resolve();
+    }
+  });
+
+  it("reads a cancelled review back as soon as the user cancel resolves", async () => {
+    const stalledLens = createDeferred<void>();
+    let dispatches = 0;
+    const stalling: InitializedAIClient = {
+      ...makeAIClient(),
+      generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
+        dispatches += 1;
+        if (dispatches === 1) return ok({ data: schema.parse(DEFAULT_REVIEW_RESULT) });
+        await stalledLens.promise;
+        return ok({ data: schema.parse({ issues: [] }) });
+      },
+    };
+
+    try {
+      const created = await createReviewSession(stalling, {
+        mode: "unstaged",
+        projectPath: projectRoot,
+        lenses: ["correctness", "security"],
+      });
+
+      expect(created.ok).toBe(true);
+      if (!created.ok) return;
+      const reviewId = created.value.reviewId;
+      trackSessionWithRunner(reviewId);
+      const session = requireValue(getSession(reviewId), "review session");
+      await vi.waitFor(() => {
+        if (!session.events.some((event) => event.type === "issue_found")) {
+          throw new Error("no issue streamed yet");
+        }
+      });
+
+      await expect(cancelSessionForUser(reviewId)).resolves.toBe("cancelled");
+      const { getReviewDetail } = await import("./storage/reviews.js");
+      const detail = await getReviewDetail(reviewId);
+
+      expect(detail.ok).toBe(true);
+      if (!detail.ok) return;
+      expect(detail.value.review.metadata.terminalOutcome).toBe("cancelled");
+      expect(detail.value.review.result.issues).toContainEqual(
+        expect.objectContaining({ title: "Subtraction used in addition helper" }),
+      );
+
+      const { listReviewPage } = await import("./storage/list-page.js");
+      const page = await listReviewPage(projectRoot, { limit: 20 });
+      expect(page.ok).toBe(true);
+      if (!page.ok) return;
+      expect(page.value.items.map((item) => item.id)).toContain(reviewId);
+    } finally {
+      stalledLens.resolve();
+    }
+  });
+
+  it("leaves no record for a user cancel that streamed nothing", async () => {
+    const stalledDispatch = createDeferred<void>();
+    const stalling: InitializedAIClient = {
+      ...makeAIClient(),
+      generate: async <T extends z.ZodType>(_prompt: string, schema: T) => {
+        await stalledDispatch.promise;
+        return ok({ data: schema.parse({ issues: [] }) });
+      },
+    };
+
+    try {
+      const created = await createReviewSession(stalling, {
+        mode: "unstaged",
+        projectPath: projectRoot,
+        lenses: ["correctness"],
+      });
+
+      expect(created.ok).toBe(true);
+      if (!created.ok) return;
+      const reviewId = created.value.reviewId;
+      trackSessionWithRunner(reviewId);
+      const session = requireValue(getSession(reviewId), "review session");
+      await vi.waitFor(() => {
+        if (!session.events.some((event) => event.type === "agent_start")) {
+          throw new Error("no dispatch started yet");
+        }
+      });
+
+      await expect(cancelSessionForUser(reviewId)).resolves.toBe("cancelled");
+      const { getReviewDetail } = await import("./storage/reviews.js");
+      const detail = await getReviewDetail(reviewId);
+
+      expect(detail.ok).toBe(false);
+    } finally {
+      stalledDispatch.resolve();
     }
   });
 

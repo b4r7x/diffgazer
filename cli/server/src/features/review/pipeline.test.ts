@@ -920,14 +920,16 @@ describe("finalizeReview", () => {
 
   it("cancels before committing without saving a History entry", async () => {
     const events: FullReviewStreamEvent[] = [];
+    let cancel: Promise<string> | undefined;
 
     const finalizing = runFinalize(events, (event) => {
       if (event.type === "step_start" && event.step === "report") {
-        expect(cancelSessionForUser("review-1")).toBe("cancelled");
+        cancel = cancelSessionForUser("review-1");
       }
     });
 
     await expect(finalizing).rejects.toBe("user_cancelled");
+    await expect(cancel).resolves.toBe("cancelled");
     expect(saveReview).not.toHaveBeenCalled();
     expect(getSession("review-1")?.events).toMatchObject([
       { type: "step_start", step: "report" },
@@ -942,7 +944,7 @@ describe("finalizeReview", () => {
     const save = createDeferred<ReturnType<typeof ok<{ id: string }>>>();
     saveReview.mockReturnValue(save.promise);
     const events: FullReviewStreamEvent[] = [];
-    const cancellationResults: string[] = [];
+    const cancellationResults: Promise<string>[] = [];
 
     const finalizing = runFinalize(events, (event) => {
       if (event.type === "step_complete" && event.step === "report") {
@@ -952,7 +954,7 @@ describe("finalizeReview", () => {
     await vi.waitFor(() => expect(saveReview).toHaveBeenCalledTimes(1));
 
     expect(getSession("review-1")?.persistenceState).toBe("committing");
-    expect(cancelSessionForUser("review-1")).toBe("already-committed");
+    await expect(cancelSessionForUser("review-1")).resolves.toBe("already-committed");
     expect(getSession("review-1")?.events.filter((event) => event.type === "error")).toHaveLength(
       0,
     );
@@ -960,7 +962,7 @@ describe("finalizeReview", () => {
     save.resolve(ok({ id: "review-1" }));
     await expect(finalizing).resolves.toMatchObject({ ok: true });
 
-    expect(cancellationResults).toEqual(["already-committed"]);
+    await expect(Promise.all(cancellationResults)).resolves.toEqual(["already-committed"]);
     const terminalEvents = events.filter(
       (event) => event.type === "complete" || event.type === "error",
     );

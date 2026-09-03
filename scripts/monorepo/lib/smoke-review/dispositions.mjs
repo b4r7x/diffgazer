@@ -18,44 +18,62 @@ export const REVIEW_WALL_TIME_CAP_MIN_MS = 60_000;
 // Room for the terminal event and persistence to land before the harness
 // watchdog cancels the session.
 export const REVIEW_WALL_CAP_MARGIN_MS = 30_000;
-// A published free OpenRouter route proven to reach `completed` in the manual
-// live sessions; override with DIFFGAZER_LIVE_E2E_MODEL when it rots.
-export const DEFAULT_OPENROUTER_E2E_MODEL = "nvidia/nemotron-3-super-120b-a12b:free";
-// Every id here is pinned by the offline snapshot test: a committed catalog
-// snapshot row, priced or quota-billed (ollama-cloud's committed rows carry
-// no cost), and structured-output-compatible with the product's dispatch mode.
-// zai runs the priced glm-4.5-air everywhere: the free glm-4.7-flash route was
-// throttled (429) on every scenario across the live rounds of 2026-09-02.
+// 2026-09-03: the flash set (owner decision). qwen3.8-flash / glm-5.3-flash are
+// served by Zen only on the Go endpoint (401 "not supported" on /zen/v1);
+// deepseek-v4-flash stalls pre-headers unless the wire sends its reasoning
+// control (profiles.ts REASONING_EFFORT_OVERRIDES). One primary per product; the
+// other set members are an ordered fallback walked only when a member is down
+// (402, 401/404, 429, 400, 5xx, timed-out — see downClass). Every id here is
+// pinned by the offline snapshot test against the bound pool's models.dev source.
 export const DEFAULT_E2E_MODELS = {
   openrouter: {
-    small: DEFAULT_OPENROUTER_E2E_MODEL,
-    medium: "deepseek/deepseek-v4-flash-0731",
-    large: "deepseek/deepseek-v4-flash-0731",
+    small: "qwen/qwen3.8-flash",
+    medium: "qwen/qwen3.8-flash",
+    large: "qwen/qwen3.8-flash",
   },
   "opencode-zen": {
-    small: "deepseek-v4-flash",
-    medium: "deepseek-v4-flash",
-    large: "deepseek-v4-flash",
+    small: "qwen3.8-flash",
+    medium: "qwen3.8-flash",
+    large: "qwen3.8-flash",
   },
   zai: {
-    small: "glm-4.5-air",
-    medium: "glm-4.5-air",
-    large: "glm-4.5-air",
+    small: "glm-5.3-flash",
+    medium: "glm-5.3-flash",
+    large: "glm-5.3-flash",
   },
   "ollama-cloud": {
-    small: "deepseek-v4-flash:0731",
-    medium: "deepseek-v4-flash:0731",
-    large: "deepseek-v4-flash:0731",
+    small: "glm-5.3-flash",
+    medium: "glm-5.3-flash",
+    large: "glm-5.3-flash",
   },
 };
 
-// Used only when the default model is refused with HTTP 402 (plan/entitlement):
-// Ollama's Free plan serves starter models only; gpt-oss:20b completed a live
-// small cell on this account (probe 2026-09-01). Pinned by the same snapshot
-// test as the defaults.
+// Ordered: cheapest flash first, DeepSeek 0731 last, gpt-oss:20b as the Ollama
+// Free-plan terminal. Z.AI serves neither Qwen nor DeepSeek, so its chain ends on
+// the priced incumbent glm-4.5-air — outside the flash set, green in every
+// 2026-09-02 live round (owner ruling C2).
 export const FALLBACK_E2E_MODELS = {
-  "ollama-cloud": "gpt-oss:20b",
+  openrouter: ["z-ai/glm-5.3-flash", "deepseek/deepseek-v4-flash-0731"],
+  "opencode-zen": ["glm-5.3-flash", "deepseek-v4-flash"],
+  zai: ["glm-4.5-air"],
+  "ollama-cloud": ["deepseek-v4-flash:0731", "gpt-oss:20b"],
 };
+
+// The endpoint profile a product's cells bind; absent = the registry's
+// endpoints[0]. opencode-zen: qwen3.8-flash / glm-5.3-flash are served only by
+// the Go pool (HTTP 401 "not supported" on /zen/v1, probed 2026-09-03).
+export const E2E_ENDPOINT_PROFILES = { "opencode-zen": "go" };
+
+/** The registry endpoint profile a cell binds; a declared profile the registry lacks is a wiring error. */
+export function resolveCellEndpoint(endpoints, productId) {
+  const profileId = E2E_ENDPOINT_PROFILES[productId];
+  if (profileId === undefined) return endpoints[0];
+  const profile = endpoints.find((candidate) => candidate.id === profileId);
+  if (!profile) {
+    throw new Error(`${productId}: endpoint profile '${profileId}' is not in the registry`);
+  }
+  return profile;
+}
 
 function parseProductIds(raw) {
   const ids = (raw ?? "")
@@ -86,23 +104,70 @@ export function resolveCellModel({ productId, scenarioId, modelOverride, suggest
 // The stream's terminal error object is `{message, code}` only
 // (createDomainErrorSchema, libs/core/src/schemas/errors.ts:60) — no structured
 // HTTP status field reaches the harness, which sees the stream event and not
-// the adapter diagnostic — so the status is read out of the message.
-const ENTITLEMENT_REFUSED_RE = /\bHTTP 402\b/;
+// the adapter diagnostic — so every down class reads the status out of the message.
+
+// The engine's own timeout copy, verbatim from execute.ts (wall, headers budget,
+// answer-idle budget, client timeout) and generate.ts (review clock).
+const TIMED_OUT_RE =
+  /wall-time limit|sent no response headers for \d+s|keep-alive whitespace for \d+s|HTTP client's own response timeout|Review wall-clock budget exhausted/;
+
+// "Down" = the provider cannot serve this model right now; in evaluation order.
+const DOWN_CLASSES = [
+  [
+    "entitlement",
+    ({ code, message }) => code === "PROVIDER_REJECTED" && /\bHTTP 402\b/.test(message),
+  ],
+  [
+    "not-supported",
+    ({ code, message }) => code === "PROVIDER_REJECTED" && /\bHTTP (401|404)\b/.test(message),
+  ],
+  ["capacity", ({ code, message }) => code === "PROVIDER_REJECTED" && /\bHTTP 429\b/.test(message)],
+  ["model-unavailable", ({ message }) => /\bHTTP 400\b/.test(message)],
+  ["outage", ({ message }) => /\bHTTP 5\d\d\b/.test(message)],
+  ["timed-out", ({ message }) => TIMED_OUT_RE.test(message)],
+];
+
+/** The class that makes this attempt's model "down", else null (the verdict stands). */
+export function downClass({ terminal, timedOut }) {
+  if (timedOut) return "timed-out";
+  if (terminal?.type !== "error") return null;
+  const seen = { code: terminal.error?.code, message: String(terminal.error?.message ?? "") };
+  const match = DOWN_CLASSES.find(([, isClass]) => isClass(seen));
+  return match ? match[0] : null;
+}
 
 /**
- * The one refusal that earns a second attempt on another model: the plan does
- * not entitle this account to the default model (HTTP 402), as opposed to a
- * rate limit, a bad credential, or a model the run itself chose. A user's
- * DIFFGAZER_LIVE_E2E_MODEL pin is exempt — their choice is not overridden — and
- * a cell already running its fallback never falls back again. Returns the
- * fallback model id, else null.
+ * The next chain member to run, with why, or null when the verdict stands: a
+ * user's pin is never overridden, a not-down failure is never re-run, a
+ * timed-out attempt hops once (never from a fallback), and the last member
+ * fails honestly. The excerpt is the server-scrubbed message, nothing more.
  */
-export function entitlementFallback({ terminal, cell, modelOverride }) {
-  if (terminal?.type !== "error" || terminal.error?.code !== "PROVIDER_REJECTED") return null;
-  if (!ENTITLEMENT_REFUSED_RE.test(String(terminal.error.message ?? ""))) return null;
-  if (modelOverride || cell.fallbackFrom) return null;
-  const fallbackModelId = FALLBACK_E2E_MODELS[cell.productId];
-  return fallbackModelId && fallbackModelId !== cell.modelId ? fallbackModelId : null;
+export function fallbackAfter({ terminal, timedOut, cell, modelOverride }) {
+  if (modelOverride) return null;
+  const reason = downClass({ terminal, timedOut });
+  if (reason === null) return null;
+  if (reason === "timed-out" && cell.fallbackFrom) return null;
+  const chain = FALLBACK_E2E_MODELS[cell.productId] ?? [];
+  const next = chain[chain.indexOf(cell.modelId) + 1];
+  if (!next) return null;
+  const excerpt = timedOut
+    ? "harness watchdog fired"
+    : String(terminal.error.message ?? "").slice(0, 120);
+  return { modelId: next, downClass: reason, excerpt };
+}
+
+/** `WARN:` so labelCellLines labels it; grep-distinguishable from every other WARN. */
+export function fallbackWarnLine(cell, fallback) {
+  return `WARN: live review e2e — ${cell.modelId} is down (${fallback.downClass}: ${fallback.excerpt}); retrying the cell on fallback ${fallback.modelId}`;
+}
+
+/** The cell header the harness prints: model, endpoint profile, and chain position on a fallback. */
+export function cellHeaderLine(cell, profileId) {
+  const head = `${cell.productId}/${cell.modelId} @ ${profileId}`;
+  if (!cell.fallbackFrom) return head;
+  const chain = FALLBACK_E2E_MODELS[cell.productId] ?? [];
+  const walk = [...cell.fallbackFrom, cell.modelId].join(" → ");
+  return `${head} (fallback ${chain.indexOf(cell.modelId) + 1} of ${chain.length} after ${walk})`;
 }
 
 /**

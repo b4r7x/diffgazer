@@ -181,7 +181,31 @@ function emitDispatchError(
   onEvent({
     type: "agent_error",
     agent: agentId,
-    error: error.code ? `${error.code}: ${error.message}` : error.message,
+    error: `${dispatchOutcome(error)}: ${error.message}`,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+type BatchFailureDisposition =
+  | "retrying after the remaining batches"
+  | "retrying once"
+  | "giving up"
+  | "not retried";
+
+function emitBatchFailure(
+  onEvent: (event: AgentStreamEvent | StepEvent) => void,
+  agentId: AgentId,
+  batchIndex: number,
+  batchCount: number,
+  error: AIError,
+  disposition: BatchFailureDisposition,
+): void {
+  const subject = batchCount > 1 ? `Batch ${batchIndex + 1}/${batchCount}` : "Dispatch";
+  onEvent({
+    type: "agent_progress",
+    agent: agentId,
+    progress: 65,
+    message: `${subject} failed (${dispatchOutcome(error)}) — ${disposition}`,
     timestamp: new Date().toISOString(),
   });
 }
@@ -377,20 +401,23 @@ export async function runLensAnalysis({
 
   // The plan in dispatch order. A batch whose first attempt failed retryably
   // goes to the back of the queue once, so the rest of the plan runs first. A
-  // single-batch plan has nothing to run first: the adapter ladder stays its
-  // only retry.
+  // single-batch plan has nothing to run first, so its one re-queue is
+  // dispatched at once under the same clock gate. Batch failures are announced
+  // as `agent_progress` notices; only a lens with no completed batch files an
+  // `agent_error`.
   const queue: QueuedBatch[] = batches.map((batch, batchIndex) => ({ batchIndex, batch }));
 
   for (let queued = queue.shift(); queued !== undefined; queued = queue.shift()) {
     const { batchIndex, batch, retryOf } = queued;
     if (retryOf !== undefined && !canRequeue()) {
-      emitDispatchError(onEvent, agentId, retryOf);
+      emitBatchFailure(onEvent, agentId, batchIndex, batchCount, retryOf, "not retried");
       batchError = retryOf;
       continue;
     }
     const retrySuffix = retryOf === undefined ? "" : ", retry";
+    const singleBatchSuffix = retryOf === undefined ? "" : " (retry)";
     const batchSuffix =
-      batchCount > 1 ? ` (batch ${batchIndex + 1}/${batchCount}${retrySuffix})` : "";
+      batchCount > 1 ? ` (batch ${batchIndex + 1}/${batchCount}${retrySuffix})` : singleBatchSuffix;
     const {
       user: prompt,
       system,
@@ -447,25 +474,35 @@ export async function runLensAnalysis({
 
     if (!result.ok) {
       const retryable = isRetryableDispatchFailure(result.error);
-      if (retryable && retryOf === undefined && batchCount > 1) {
-        onEvent({
-          type: "agent_progress",
-          agent: agentId,
-          progress: 65,
-          message: `Batch ${batchIndex + 1}/${batchCount} failed (${dispatchOutcome(result.error)}) — retrying after the remaining batches`,
-          timestamp: new Date().toISOString(),
-        });
+      if (retryable && retryOf === undefined) {
+        emitBatchFailure(
+          onEvent,
+          agentId,
+          batchIndex,
+          batchCount,
+          result.error,
+          batchCount > 1 ? "retrying after the remaining batches" : "retrying once",
+        );
         queue.push({ batchIndex, batch, retryOf: result.error });
         continue;
       }
-      emitDispatchError(onEvent, agentId, result.error);
+      if (batchCount > 1)
+        emitBatchFailure(onEvent, agentId, batchIndex, batchCount, result.error, "giving up");
       batchError = result.error;
       if (retryable) continue;
-      // A non-retryable failure ends dispatching. Re-queued batches still
-      // waiting end with the failure that deferred them; batches never
-      // attempted leave no row, as before.
+      // A non-retryable failure ends dispatching. Re-queued batches still waiting are
+      // announced as not retried; batches never attempted leave no row, as before.
       for (const pending of queue) {
-        if (pending.retryOf !== undefined) emitDispatchError(onEvent, agentId, pending.retryOf);
+        if (pending.retryOf !== undefined) {
+          emitBatchFailure(
+            onEvent,
+            agentId,
+            pending.batchIndex,
+            batchCount,
+            pending.retryOf,
+            "not retried",
+          );
+        }
       }
       break;
     }
@@ -478,6 +515,7 @@ export async function runLensAnalysis({
   }
 
   if (batchError !== undefined && completedBatchCount === 0) {
+    emitDispatchError(onEvent, agentId, batchError);
     return err({ ...batchError, dispatches });
   }
 

@@ -41,6 +41,20 @@ function budgetExhaustedError(): Result<never, AIError> {
   });
 }
 
+function unparseableResponseError(): Result<never, AIError> {
+  return err({
+    code: "STREAM_ERROR",
+    message: "OpenRouter answered HTTP 200 with a text/html body that is not JSON.",
+    diagnostic: {
+      code: "unparseable-response",
+      safeMessage: "OpenRouter answered HTTP 200 with a text/html body that is not JSON.",
+      retryable: true,
+      remediation: "Retry.",
+      correlationId: "correlation-unparseable",
+    },
+  });
+}
+
 function makeClient(results: Array<Result<unknown, AIError>>): AIClient {
   const queue = [...results];
   return {
@@ -488,19 +502,8 @@ describe("orchestrateReview", () => {
   });
 
   it("does not count a provider-response diagnostic toward the structured-output verdict", async () => {
-    const client = makeClient([
-      err({
-        code: "STREAM_ERROR",
-        message: "OpenRouter answered HTTP 200 with a text/html body that is not JSON.",
-        diagnostic: {
-          code: "unparseable-response",
-          safeMessage: "OpenRouter answered HTTP 200 with a text/html body that is not JSON.",
-          retryable: true,
-          remediation: "Retry.",
-          correlationId: "correlation-unparseable",
-        },
-      }),
-    ]);
+    const client = makeClient([unparseableResponseError(), unparseableResponseError()]);
+    const generate = vi.spyOn(client, "generate");
 
     const result = await orchestrateReview(
       client,
@@ -510,11 +513,46 @@ describe("orchestrateReview", () => {
       { concurrency: 1 },
     );
 
+    expect(generate).toHaveBeenCalledTimes(2);
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.allLensesSchemaFailed).toBeUndefined();
     expect(result.error.code).toBe("STREAM_ERROR");
     expect(result.error.lensStats[0]).toMatchObject({ lensId: "correctness", status: "failed" });
+    expect(result.error.lensStats[0]?.dispatches?.map((dispatch) => dispatch.outcome)).toEqual([
+      "unparseable-response",
+      "unparseable-response",
+    ]);
+  });
+
+  it("retries a single-batch lens once and files it success when the retry answers", async () => {
+    const client = makeClient([unparseableResponseError()]);
+    const generate = vi.spyOn(client, "generate");
+    const events: Array<Record<string, unknown>> = [];
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts"]),
+      { lenses: ["correctness"] },
+      (event) => events.push(event as Record<string, unknown>),
+      { concurrency: 1 },
+    );
+
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.lensStats).toHaveLength(1);
+    expect(result.value.lensStats[0]).toMatchObject({
+      lensId: "correctness",
+      status: "success",
+      issueCount: 0,
+    });
+    expect(result.value.lensStats[0]?.errorCode).toBeUndefined();
+    expect(result.value.lensStats[0]?.dispatches?.map((dispatch) => dispatch.outcome)).toEqual([
+      "unparseable-response",
+      "completed",
+    ]);
+    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(0);
   });
 
   it("stops dispatching the remaining lenses after the first budget-exhausted settlement", async () => {
@@ -593,7 +631,7 @@ describe("orchestrateReview", () => {
     ).toEqual([
       {
         agent: "guardian",
-        error: "STREAM_ERROR: Review budget exhausted at maxInputTokens (10000).",
+        error: "budget-exhausted: Review budget exhausted at maxInputTokens (10000).",
       },
       { agent: "optimizer", error: skippedMessage },
       { agent: "simplifier", error: skippedMessage },
@@ -1020,6 +1058,7 @@ describe("orchestrateReview", () => {
       status: "success",
       errorCode: "MODEL_ERROR",
     });
+    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(0);
     expect(result.value.lensStats).toContainEqual(expect.objectContaining({ lensId: "synthesis" }));
   });
 

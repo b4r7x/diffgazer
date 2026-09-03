@@ -3,24 +3,28 @@ import { existsSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
+  cellHeaderLine,
   DEFAULT_E2E_MODELS,
   DEFAULT_E2E_PRODUCT,
   DEFAULT_E2E_SCENARIO,
-  DEFAULT_OPENROUTER_E2E_MODEL,
+  downClass,
+  E2E_ENDPOINT_PROFILES,
   E2E_MODEL_ENV,
   E2E_OPT_IN_ENV,
   E2E_PRODUCT_ENV,
   E2E_SCENARIO_ENV,
   E2E_SCENARIO_IDS,
-  entitlementFallback,
   expandScenarioCells,
   FALLBACK_E2E_MODELS,
+  fallbackAfter,
+  fallbackWarnLine,
   finalizeE2eDispositions,
   findActiveLocalBinding,
   modelOverrideNotice,
   parseScenarioIds,
   REVIEW_WALL_CAP_MARGIN_MS,
   REVIEW_WALL_TIME_CAP_MIN_MS,
+  resolveCellEndpoint,
   resolveCellModel,
   resolveCredentialSource,
   resolveE2eDispositions,
@@ -29,6 +33,7 @@ import {
   singleProductModelOverride,
   skipLine,
 } from "./dispositions.mjs";
+import { labelCellLines } from "./verdicts.mjs";
 
 const CREDENTIAL_ENVS = {
   openrouter: "OPENROUTER_API_KEY",
@@ -157,15 +162,16 @@ test("missing server dist -> unavailable (server-dist-missing)", () => {
   });
 });
 
-test("all set -> run with the openrouter default model constant", () => {
+test("all set -> run with the table's openrouter small primary", () => {
   const disposition = resolve({ env: { [E2E_OPT_IN_ENV]: "1", OPENROUTER_API_KEY: "k" } });
   assert.deepEqual(disposition, {
     kind: "run",
     productId: DEFAULT_E2E_PRODUCT,
-    modelId: DEFAULT_OPENROUTER_E2E_MODEL,
+    modelId: DEFAULT_E2E_MODELS.openrouter.small,
     credentialEnv: "OPENROUTER_API_KEY",
   });
   assert.equal(DEFAULT_E2E_PRODUCT, "openrouter");
+  assert.equal(DEFAULT_E2E_MODELS.openrouter.small, "qwen/qwen3.8-flash");
 });
 
 test("model env override wins over the suggested model", () => {
@@ -209,8 +215,8 @@ test("a comma list resolves one disposition per product, in order", () => {
       disposition.modelId,
     ]),
     [
-      ["run", "openrouter", DEFAULT_OPENROUTER_E2E_MODEL],
-      ["run", "zai", "glm-4.5-air"],
+      ["run", "openrouter", DEFAULT_E2E_MODELS.openrouter.small],
+      ["run", "zai", "glm-5.3-flash"],
       ["run", "deepseek", "deepseek-v4-flash"],
     ],
   );
@@ -226,7 +232,7 @@ test("the model override is ignored for a multi-product matrix", () => {
   };
   assert.deepEqual(
     resolveAll({ env }).map((disposition) => disposition.modelId),
-    ["gemini-2.5-flash", "glm-4.5-air"],
+    ["gemini-2.5-flash", "glm-5.3-flash"],
   );
   assert.match(modelOverrideNotice(env), /^NOTE: DIFFGAZER_LIVE_E2E_MODEL ignored/);
 });
@@ -467,7 +473,7 @@ test("three-product matrix with all credentials yields nine run cells, zai on it
   const zaiCells = cells.filter((cell) => cell.productId === "zai");
   assert.deepEqual(
     zaiCells.map((cell) => cell.modelId),
-    ["glm-4.5-air", "glm-4.5-air", "glm-4.5-air"],
+    ["glm-5.3-flash", "glm-5.3-flash", "glm-5.3-flash"],
   );
 });
 
@@ -794,7 +800,7 @@ test("env unset + file-0600 local binding admits the product as a run dispositio
     {
       kind: "run",
       productId: "openrouter",
-      modelId: DEFAULT_OPENROUTER_E2E_MODEL,
+      modelId: DEFAULT_E2E_MODELS.openrouter.small,
       credentialEnv: "OPENROUTER_API_KEY",
     },
   ]);
@@ -1021,21 +1027,17 @@ test("secret hygiene: no formatted line or descriptor carries the credential val
     JSON.stringify(
       expandAll({ env, scenarioIds: ["small", "large"], localBindingFor: localBinding }),
     ),
+    fallbackWarnLine(primary("ollama-cloud"), hop("ollama-cloud", ENTITLEMENT_REFUSAL)),
+    cellHeaderLine({ ...primary("ollama-cloud"), fallbackFrom: ["glm-5.3-flash"] }, "cloud"),
   ];
   for (const output of outputs) {
     assert.ok(!output.includes(SENTINEL), `credential value leaked into: ${output}`);
   }
 });
 
-const OVERLAY_SOURCES = {
-  openrouter: ["openrouter"],
-  "opencode-zen": ["opencode", "opencode-go"],
-  zai: ["zai"],
-  "ollama-cloud": ["ollama-cloud"],
-};
-// ollama-cloud bills plan quota — "no per-token price is published"
-// (libs/core/src/providers/product-registry.ts:113-117) — so its snapshot rows
-// carry no `cost`; the pin asserts that absence instead of a price.
+// ollama-cloud bills per token, but models.dev publishes no cost rows for it
+// (handoff §3.1 A1), so its snapshot rows carry no `cost`; the pin asserts that
+// absence until upstream adds prices.
 const UNPRICED_QUOTA_PRODUCTS = new Set(["ollama-cloud"]);
 // Only a genuinely absent build skips these pins: a dist that exists but throws
 // on import is a broken build, and the pin must fail loudly, not report green.
@@ -1052,25 +1054,30 @@ test("default and fallback e2e models are priced or quota-billed snapshot rows c
   const catalog = await importCoreDist(t, "catalog/catalog-snapshot.js");
   if (!catalog) return;
   const { CATALOG_SNAPSHOT } = catalog;
-  // Defaults are pinned per scenario; a fallback is one id for the whole
-  // product, labelled "fallback" in the diagnostics. Same rules for both.
+  const overlay = await importCoreDist(t, "catalog/provider-overlay.js");
+  if (!overlay) return;
+  const { PROVIDER_OVERLAY } = overlay;
+  // Defaults are pinned per scenario; a fallback chain is pinned member by
+  // member, labelled `fallback n`. A product whose cells bind an endpoint
+  // profile must have its row in THAT profile's models.dev source.
   const pinned = [
     ...Object.entries(DEFAULT_E2E_MODELS).flatMap(([productId, models]) =>
       Object.entries(models).map(([scenarioId, modelId]) => [productId, scenarioId, modelId]),
     ),
-    ...Object.entries(FALLBACK_E2E_MODELS).map(([productId, modelId]) => [
-      productId,
-      "fallback",
-      modelId,
-    ]),
+    ...Object.entries(FALLBACK_E2E_MODELS).flatMap(([productId, chain]) =>
+      chain.map((modelId, index) => [productId, `fallback ${index + 1}`, modelId]),
+    ),
   ];
   for (const [productId, scenarioId, modelId] of pinned) {
-    const sourceId = OVERLAY_SOURCES[productId].find(
-      (candidate) => CATALOG_SNAPSHOT[candidate]?.models?.[modelId],
-    );
+    const profileId = E2E_ENDPOINT_PROFILES[productId];
+    const sources =
+      profileId === undefined
+        ? PROVIDER_OVERLAY[productId].modelsDevIds
+        : [PROVIDER_OVERLAY[productId].endpointSources[profileId]];
+    const sourceId = sources.find((candidate) => CATALOG_SNAPSHOT[candidate]?.models?.[modelId]);
     assert.ok(
       sourceId,
-      `${productId}/${scenarioId}: '${modelId}' is in none of the snapshot sources ${OVERLAY_SOURCES[productId].join(", ")}`,
+      `${productId}/${scenarioId}: '${modelId}' is in none of the snapshot sources ${sources.join(", ")}`,
     );
     const row = CATALOG_SNAPSHOT[sourceId].models[modelId];
     if (UNPRICED_QUOTA_PRODUCTS.has(productId)) {
@@ -1107,15 +1114,30 @@ test("default and fallback e2e models are priced or quota-billed snapshot rows c
   }
 });
 
-test("the harness-sent opencode-zen endpoint is the Zen-first tuple", async (t) => {
+test("the Zen cell binds the Go pool profile; every other product binds its first endpoint", async (t) => {
   const providers = await importCoreDist(t, "providers/index.js");
   if (!providers) return;
-  assert.equal(
-    providers.PRODUCT_REGISTRY["opencode-zen"].configuration.endpoints[0].endpoint,
-    "https://opencode.ai/zen/v1",
+  const { PRODUCT_REGISTRY } = providers;
+  const zen = resolveCellEndpoint(
+    PRODUCT_REGISTRY["opencode-zen"].configuration.endpoints,
+    "opencode-zen",
   );
+  assert.equal(zen.id, "go");
+  assert.equal(zen.endpoint, "https://opencode.ai/zen/go/v1");
+  for (const productId of ["openrouter", "zai", "ollama-cloud"]) {
+    const endpoints = PRODUCT_REGISTRY[productId].configuration.endpoints;
+    assert.equal(resolveCellEndpoint(endpoints, productId), endpoints[0]);
+  }
+  assert.throws(
+    () =>
+      resolveCellEndpoint([{ id: "zen", endpoint: "https://opencode.ai/zen/v1" }], "opencode-zen"),
+    /endpoint profile 'go' is not in the registry/,
+  );
+  assert.deepEqual(E2E_ENDPOINT_PROFILES, { "opencode-zen": "go" });
 });
 
+// deepseek-v4-flash:0731 is chain member 1 of ollama-cloud, so this cell hops
+// to member 2.
 const REFUSED_CELL = {
   productId: "ollama-cloud",
   scenarioId: "small",
@@ -1127,23 +1149,45 @@ const ENTITLEMENT_REFUSAL = refusal(
   "provider rejected the request: HTTP 402 model requires a paid plan",
 );
 
+const primary = (productId) => ({
+  productId,
+  scenarioId: "small",
+  modelId: DEFAULT_E2E_MODELS[productId].small,
+});
+const hop = (productId, terminal, extra = {}) =>
+  fallbackAfter({
+    terminal,
+    timedOut: false,
+    cell: primary(productId),
+    modelOverride: null,
+    ...extra,
+  });
+
 test("a 402 provider refusal falls the cell back to the product's fallback model", () => {
-  assert.equal(
-    entitlementFallback({ terminal: ENTITLEMENT_REFUSAL, cell: REFUSED_CELL, modelOverride: null }),
-    "gpt-oss:20b",
+  assert.deepEqual(
+    fallbackAfter({
+      terminal: ENTITLEMENT_REFUSAL,
+      timedOut: false,
+      cell: REFUSED_CELL,
+      modelOverride: null,
+    }),
+    {
+      modelId: "gpt-oss:20b",
+      downClass: "entitlement",
+      excerpt: ENTITLEMENT_REFUSAL.error.message,
+    },
   );
 });
 
-test("only a 402 PROVIDER_REJECTED terminal falls back", () => {
+test("a complete terminal, a null terminal and a 402 under another code never hop", () => {
   const declined = [
-    refusal("PROVIDER_REJECTED", "upstream rate limit: HTTP 429 too many requests"),
     refusal("RATE_LIMITED", "HTTP 402 mentioned under another code"),
     { type: "complete", result: { issues: [] } },
     null,
   ];
   for (const terminal of declined) {
     assert.equal(
-      entitlementFallback({ terminal, cell: REFUSED_CELL, modelOverride: null }),
+      fallbackAfter({ terminal, timedOut: false, cell: REFUSED_CELL, modelOverride: null }),
       null,
       `expected no fallback for ${JSON.stringify(terminal)}`,
     );
@@ -1152,8 +1196,9 @@ test("only a 402 PROVIDER_REJECTED terminal falls back", () => {
 
 test("a user's model pin is never overridden by the fallback", () => {
   assert.equal(
-    entitlementFallback({
+    fallbackAfter({
       terminal: ENTITLEMENT_REFUSAL,
+      timedOut: false,
       cell: REFUSED_CELL,
       modelOverride: "deepseek-v4-flash:0731",
     }),
@@ -1161,38 +1206,309 @@ test("a user's model pin is never overridden by the fallback", () => {
   );
 });
 
-test("a cell already running its fallback does not fall back again", () => {
+test("a cell on the last chain member never hops", () => {
   assert.equal(
-    entitlementFallback({
+    fallbackAfter({
       terminal: ENTITLEMENT_REFUSAL,
-      cell: { ...REFUSED_CELL, modelId: "gpt-oss:20b", fallbackFrom: "deepseek-v4-flash:0731" },
+      timedOut: false,
+      cell: {
+        ...REFUSED_CELL,
+        modelId: "gpt-oss:20b",
+        fallbackFrom: ["glm-5.3-flash", "deepseek-v4-flash:0731"],
+      },
       modelOverride: null,
     }),
     null,
   );
 });
 
-test("a product without a fallback, and a cell already on the fallback id, decline", () => {
-  assert.equal(
-    entitlementFallback({
+test("a primary hops to its first member; the last member of a one-member chain never hops", () => {
+  // glm-4.5-air closes the zai chain: the priced incumbent, outside the flash set.
+  assert.deepEqual(
+    fallbackAfter({
       terminal: ENTITLEMENT_REFUSAL,
-      cell: { productId: "zai", scenarioId: "small", modelId: "glm-4.5-air" },
+      timedOut: false,
+      cell: { productId: "zai", scenarioId: "small", modelId: "glm-5.3-flash" },
+      modelOverride: null,
+    }),
+    {
+      modelId: "glm-4.5-air",
+      downClass: "entitlement",
+      excerpt: ENTITLEMENT_REFUSAL.error.message,
+    },
+  );
+  assert.equal(
+    fallbackAfter({
+      terminal: ENTITLEMENT_REFUSAL,
+      timedOut: false,
+      cell: {
+        productId: "zai",
+        scenarioId: "small",
+        modelId: "glm-4.5-air",
+        fallbackFrom: ["glm-5.3-flash"],
+      },
       modelOverride: null,
     }),
     null,
   );
   assert.equal(
-    entitlementFallback({
+    fallbackAfter({
       terminal: ENTITLEMENT_REFUSAL,
-      cell: { ...REFUSED_CELL, modelId: "gpt-oss:20b" },
+      timedOut: false,
+      cell: { ...REFUSED_CELL, modelId: "glm-5.3-flash" },
       modelOverride: null,
-    }),
-    null,
+    }).modelId,
+    "deepseek-v4-flash:0731",
   );
 });
 
-test("the fallback table maps product ids to single model ids", () => {
-  assert.deepEqual(FALLBACK_E2E_MODELS, { "ollama-cloud": "gpt-oss:20b" });
+test("the fallback table is an ordered chain per product, walked in order", () => {
+  assert.deepEqual(FALLBACK_E2E_MODELS, {
+    openrouter: ["z-ai/glm-5.3-flash", "deepseek/deepseek-v4-flash-0731"],
+    "opencode-zen": ["glm-5.3-flash", "deepseek-v4-flash"],
+    zai: ["glm-4.5-air"],
+    "ollama-cloud": ["deepseek-v4-flash:0731", "gpt-oss:20b"],
+  });
+});
+
+const TIMED_OUT_TERMINALS = [
+  "The dispatch hit its 300s wall-time limit after 300s without a complete answer.",
+  "OpenCode Zen sent no response headers for 120s (UND_ERR_HEADERS_TIMEOUT; …) — attempt 2 of the 300s wall",
+  "OpenRouter accepted the request but sent only keep-alive whitespace for 360s (no answer bytes) — attempt 2 of the 600s wall",
+  "Z.AI sent no response before the HTTP client's own response timeout (UND_ERR_BODY_TIMEOUT) after 305s.",
+  "Review wall-clock budget exhausted: 400s elapsed of 360s allowed.",
+];
+
+test("a 402 entitlement refusal is an entitlement down class", () => {
+  const fallback = hop("ollama-cloud", ENTITLEMENT_REFUSAL);
+  assert.equal(fallback.downClass, "entitlement");
+  assert.equal(fallback.modelId, "deepseek-v4-flash:0731");
+});
+
+test("a 401 or 404 refusal is a not-supported down class", () => {
+  for (const message of [
+    "provider rejected the request (HTTP 401): Model qwen3.8-flash is not supported",
+    "provider rejected the request (HTTP 404): Model qwen3.8-flash is not supported",
+  ]) {
+    const fallback = hop("opencode-zen", refusal("PROVIDER_REJECTED", message));
+    assert.equal(fallback.downClass, "not-supported", message);
+    assert.equal(fallback.modelId, "glm-5.3-flash", message);
+  }
+});
+
+test("a 429 refusal is a capacity down class", () => {
+  const fallback = hop(
+    "openrouter",
+    refusal("PROVIDER_REJECTED", "upstream rate limit: HTTP 429 too many requests"),
+  );
+  assert.equal(fallback.downClass, "capacity");
+  assert.equal(fallback.modelId, "z-ai/glm-5.3-flash");
+});
+
+test("a 400 under any code is a model-unavailable down class", () => {
+  const fallback = hop(
+    "opencode-zen",
+    refusal("AI_ERROR", "OpenCode Zen rejected the request as invalid (HTTP 400)."),
+  );
+  assert.equal(fallback.downClass, "model-unavailable");
+  assert.equal(fallback.modelId, "glm-5.3-flash");
+});
+
+test("a 5xx is an outage down class", () => {
+  const fallback = hop("opencode-zen", refusal("AI_ERROR", "OpenCode Zen returned HTTP 503."));
+  assert.equal(fallback.downClass, "outage");
+  assert.equal(fallback.modelId, "glm-5.3-flash");
+});
+
+for (const message of TIMED_OUT_TERMINALS) {
+  test(`the engine's own timeout copy is a timed-out down class: ${message.slice(0, 44)}`, () => {
+    const fallback = hop("opencode-zen", refusal("AI_ERROR", message));
+    assert.equal(fallback.downClass, "timed-out");
+    assert.equal(fallback.modelId, "glm-5.3-flash");
+  });
+}
+
+test("the harness watchdog is a timed-out down class with its own excerpt", () => {
+  assert.deepEqual(
+    fallbackAfter({
+      terminal: null,
+      timedOut: true,
+      cell: primary("opencode-zen"),
+      modelOverride: null,
+    }),
+    { modelId: "glm-5.3-flash", downClass: "timed-out", excerpt: "harness watchdog fired" },
+  );
+});
+
+test("the verdict stands on every other terminal", () => {
+  const standing = [
+    { type: "complete", result: { issues: [] } },
+    refusal("CANCELLED", "Review cancelled"),
+    refusal("PROVIDER_REJECTED", "provider rejected the request: HTTP 403 forbidden"),
+    refusal("PROVIDER_REJECTED", "provider rejected the request: HTTP 413 payload too large"),
+    refusal("BUDGET_EXHAUSTED", "This review needs 3 batches but the budget allows 1."),
+    refusal("RATE_LIMITED", "HTTP 402 mentioned under another code"),
+    null,
+  ];
+  for (const productId of Object.keys(DEFAULT_E2E_MODELS)) {
+    for (const terminal of standing) {
+      const seen = `${productId}: ${JSON.stringify(terminal)}`;
+      assert.equal(downClass({ terminal, timedOut: false }), null, seen);
+      assert.equal(hop(productId, terminal), null, seen);
+    }
+  }
+});
+
+test("a pin never hops", () => {
+  assert.equal(hop("zai", ENTITLEMENT_REFUSAL, { modelOverride: "glm-5.3-flash" }), null);
+});
+
+test("the last chain member never hops", () => {
+  assert.equal(
+    fallbackAfter({
+      terminal: ENTITLEMENT_REFUSAL,
+      timedOut: false,
+      cell: {
+        productId: "ollama-cloud",
+        scenarioId: "small",
+        modelId: "gpt-oss:20b",
+        fallbackFrom: ["glm-5.3-flash", "deepseek-v4-flash:0731"],
+      },
+      modelOverride: null,
+    }),
+    null,
+  );
+  assert.equal(
+    fallbackAfter({
+      terminal: ENTITLEMENT_REFUSAL,
+      timedOut: false,
+      cell: {
+        productId: "zai",
+        scenarioId: "small",
+        modelId: "glm-4.5-air",
+        fallbackFrom: ["glm-5.3-flash"],
+      },
+      modelOverride: null,
+    }),
+    null,
+  );
+  assert.deepEqual(hop("zai", ENTITLEMENT_REFUSAL), {
+    modelId: "glm-4.5-air",
+    downClass: "entitlement",
+    excerpt: ENTITLEMENT_REFUSAL.error.message,
+  });
+});
+
+test("a member hops to the next member, carrying the walk", () => {
+  assert.equal(
+    fallbackAfter({
+      terminal: ENTITLEMENT_REFUSAL,
+      timedOut: false,
+      cell: {
+        productId: "ollama-cloud",
+        scenarioId: "small",
+        modelId: "deepseek-v4-flash:0731",
+        fallbackFrom: ["glm-5.3-flash"],
+      },
+      modelOverride: null,
+    }).modelId,
+    "gpt-oss:20b",
+  );
+});
+
+test("a timed-out attempt hops once and a timed-out fallback ends the cell", () => {
+  const first = fallbackAfter({
+    terminal: null,
+    timedOut: true,
+    cell: primary("ollama-cloud"),
+    modelOverride: null,
+  });
+  assert.equal(first.modelId, "deepseek-v4-flash:0731");
+  assert.equal(first.downClass, "timed-out");
+  const member = {
+    productId: "ollama-cloud",
+    scenarioId: "small",
+    modelId: "deepseek-v4-flash:0731",
+    fallbackFrom: ["glm-5.3-flash"],
+  };
+  assert.equal(
+    fallbackAfter({ terminal: null, timedOut: true, cell: member, modelOverride: null }),
+    null,
+  );
+  assert.equal(
+    fallbackAfter({
+      terminal: ENTITLEMENT_REFUSAL,
+      timedOut: false,
+      cell: member,
+      modelOverride: null,
+    }).modelId,
+    "gpt-oss:20b",
+  );
+});
+
+test("the excerpt is bounded", () => {
+  const fallback = hop(
+    "ollama-cloud",
+    refusal(
+      "PROVIDER_REJECTED",
+      `provider rejected the request: HTTP 402 ${"model requires a paid plan ".repeat(20)}`,
+    ),
+  );
+  assert.equal(fallback.excerpt.length, 120);
+});
+
+test("the WARN line names both models and the class and is labelled as a WARN", () => {
+  const cell = primary("ollama-cloud");
+  const line = fallbackWarnLine(cell, hop("ollama-cloud", ENTITLEMENT_REFUSAL));
+  assert.match(
+    line,
+    /^WARN: live review e2e — glm-5\.3-flash is down \(entitlement: .*HTTP 402.*\); retrying the cell on fallback deepseek-v4-flash:0731$/,
+  );
+  assert.ok(
+    labelCellLines([line], cell)[0].startsWith("WARN: (ollama-cloud/small) live review e2e — "),
+    labelCellLines([line], cell)[0],
+  );
+});
+
+test("the cell header names the model, the profile and the chain position", () => {
+  assert.equal(
+    cellHeaderLine({ productId: "opencode-zen", modelId: "qwen3.8-flash" }, "go"),
+    "opencode-zen/qwen3.8-flash @ go",
+  );
+  assert.equal(
+    cellHeaderLine(
+      {
+        productId: "ollama-cloud",
+        modelId: "deepseek-v4-flash:0731",
+        fallbackFrom: ["glm-5.3-flash"],
+      },
+      "cloud",
+    ),
+    "ollama-cloud/deepseek-v4-flash:0731 @ cloud (fallback 1 of 2 after glm-5.3-flash → deepseek-v4-flash:0731)",
+  );
+  assert.ok(
+    cellHeaderLine(
+      {
+        productId: "ollama-cloud",
+        modelId: "gpt-oss:20b",
+        fallbackFrom: ["glm-5.3-flash", "deepseek-v4-flash:0731"],
+      },
+      "cloud",
+    ).endsWith("(fallback 2 of 2 after glm-5.3-flash → deepseek-v4-flash:0731 → gpt-oss:20b)"),
+  );
+});
+
+test("every chain is a list of distinct members that never repeats its product's primary", () => {
+  assert.deepEqual(Object.keys(FALLBACK_E2E_MODELS), Object.keys(DEFAULT_E2E_MODELS));
+  for (const [productId, chain] of Object.entries(FALLBACK_E2E_MODELS)) {
+    assert.ok(Array.isArray(chain), productId);
+    assert.ok(chain.length >= 1, productId);
+    assert.equal(new Set(chain).size, chain.length, productId);
+    assert.ok(productId in DEFAULT_E2E_MODELS, productId);
+    assert.ok(!chain.includes(DEFAULT_E2E_MODELS[productId].small), productId);
+  }
+  // outside the flash set — owner ruling C2, 2026-09-03
+  assert.deepEqual(FALLBACK_E2E_MODELS.zai, ["glm-4.5-air"]);
 });
 
 test("the review wall cap trails each scenario watchdog by the margin, never below the floor", () => {

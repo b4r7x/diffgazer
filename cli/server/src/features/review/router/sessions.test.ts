@@ -1093,6 +1093,37 @@ describe("DELETE /api/review/sessions/:id cancel contract", () => {
     await expect(response.json()).resolves.toEqual({ cancelled: true, reason: "cancelled" });
     expect(received).toMatchObject([{ type: "error", error: { code: ReviewErrorCode.CANCELLED } }]);
   });
+
+  it("answers cancelled only after the partial write the cancel started has landed", async () => {
+    await trustProject(harness.projectA);
+    const received: FullReviewStreamEvent[] = [];
+    let persisted = false;
+    const { createSession, markReady, subscribe } = await import("../stream/store.js");
+    createSession(REVIEW_A, {
+      projectPath: harness.projectA,
+      headCommit: "abc123",
+      statusHash: "status",
+      statusHashKind: "full" as const,
+      mode: "unstaged",
+      persistPartial: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        persisted = true;
+      },
+    });
+    markReady(REVIEW_A);
+    subscribe(REVIEW_A, (event) => received.push(event));
+    const app = await createReviewApp();
+
+    const response = await app.request(`/api/review/sessions/${REVIEW_A}`, {
+      ...requestOptions(harness.projectA),
+      method: "DELETE",
+    });
+
+    expect(persisted).toBe(true);
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ cancelled: true, reason: "cancelled" });
+    expect(received).toMatchObject([{ type: "error", error: { code: ReviewErrorCode.CANCELLED } }]);
+  });
 });
 
 describe("GET /api/review/reviews/:id/stream", () => {

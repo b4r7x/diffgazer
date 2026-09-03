@@ -83,7 +83,7 @@ Open the model picker in **Configure Provider** and choose a listed exact ID.
 
 **Symptom.** A review ends with **Review Timed Out** and the message **The review exceeded a configured time limit.**
 
-**Cause.** A dispatch exceeded its wall-time budget, or the provider accepted a request and sent only keep-alive whitespace (no answer bytes) for longer than the product's idle budget.
+**Cause.** A dispatch exceeded its wall-time budget, or the provider accepted a request and sent only keep-alive whitespace (no answer bytes) for longer than the product's idle budget, or sent no response headers for longer than that budget (a gateway that answers non-streaming calls only when generation ends).
 
 **Fix.** Review fewer files, choose a faster admitted model if one is ready, or adjust the execution limits for your workflow before retrying.
 

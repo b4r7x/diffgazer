@@ -75,4 +75,32 @@ describe("session maintenance interval", () => {
       vi.doUnmock("../../../shared/lib/log.js");
     }
   });
+
+  it("answers a user cancel within the bound and warns when its partial write never settles", async () => {
+    vi.useFakeTimers();
+    vi.resetModules();
+    const log = vi.fn();
+    vi.doMock("../../../shared/lib/log.js", () => ({ log }));
+    try {
+      const store = await import("./store.js");
+      const reviewId = "cancel-wedged";
+      store.createSession(reviewId, {
+        projectPath: "/tmp/project",
+        headCommit: "head",
+        statusHash: "status",
+        statusHashKind: "full",
+        mode: "staged",
+        persistPartial: () => new Promise<void>(() => {}),
+      });
+      store.markReady(reviewId);
+
+      const cancel = store.cancelSessionForUser(reviewId);
+      await vi.advanceTimersByTimeAsync(3_000);
+
+      await expect(cancel).resolves.toBe("cancelled");
+      expect(log).toHaveBeenCalledWith("warn", "session_partial_persist_timeout", { reviewId });
+    } finally {
+      vi.doUnmock("../../../shared/lib/log.js");
+    }
+  });
 });
