@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { log } from "../../../log.js";
 import { MALFORMED_AFTER_CORRECTION_DIAGNOSTIC_CODE } from "../../diagnostics.js";
 import { executeHostedReview } from "./execute.js";
+import { connectTimeout, headersTimeout } from "./execute.test-support.js";
 
 vi.mock("../../../log.js", () => ({ log: vi.fn() }));
 
@@ -569,20 +570,6 @@ describe("wall-time deadline diagnostic", () => {
     );
   });
 
-  const transportTimeout = () =>
-    new TypeError("fetch failed", {
-      cause: Object.assign(new Error("Headers Timeout Error"), {
-        code: "UND_ERR_HEADERS_TIMEOUT",
-      }),
-    });
-
-  const connectTimeout = () =>
-    new TypeError("fetch failed", {
-      cause: Object.assign(new Error("Connect Timeout Error"), {
-        code: "UND_ERR_CONNECT_TIMEOUT",
-      }),
-    });
-
   it("re-dispatches once after a connect timeout while the wall still fits an answer", async () => {
     const fetch = vi
       .fn()
@@ -601,7 +588,7 @@ describe("wall-time deadline diagnostic", () => {
   it("re-dispatches once after a client response timeout while the wall still fits an answer", async () => {
     const fetch = vi
       .fn()
-      .mockRejectedValueOnce(transportTimeout())
+      .mockRejectedValueOnce(headersTimeout())
       .mockResolvedValueOnce(contentResponse(VALID_REVIEW_CONTENT)) as unknown as FetchFn;
     const reportDiagnostic = vi.fn();
 
@@ -615,7 +602,7 @@ describe("wall-time deadline diagnostic", () => {
 
   it("re-dispatches at most once, then reports the timeout", async () => {
     const fetch = vi.fn(async () => {
-      throw transportTimeout();
+      throw headersTimeout();
     }) as unknown as FetchFn;
     const reportDiagnostic = vi.fn();
 
@@ -637,7 +624,7 @@ describe("wall-time deadline diagnostic", () => {
 
   it("does not re-dispatch when the remaining wall cannot fit a whole answer", async () => {
     const fetch = vi.fn(async () => {
-      throw transportTimeout();
+      throw headersTimeout();
     }) as unknown as FetchFn;
     const request = trapRequest("zai", fetch);
 

@@ -2,9 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { log } from "../../../log.js";
 import { executeHostedReview } from "./execute.js";
 import {
+  connectTimeout,
   executeRequest,
   type FetchFn,
+  headersTimeout,
   hostedContext,
+  jsonResponse,
   limits,
   mockFetchResponse,
   openAiSuccessBody,
@@ -52,13 +55,6 @@ function htmlResponse(): Response {
   return new Response(`<html>Bad gateway ${PLAIN_CREDENTIAL}</html>`, {
     status: 200,
     headers: { "content-type": "text/html" },
-  });
-}
-
-function jsonResponse(body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { "content-type": "application/json" },
   });
 }
 
@@ -374,16 +370,6 @@ function keepAliveResponse(
 }
 
 const stalledResponse = () => keepAliveResponse();
-const headersTimeout = () =>
-  new TypeError("fetch failed", {
-    cause: Object.assign(new Error("Headers Timeout Error"), { code: "UND_ERR_HEADERS_TIMEOUT" }),
-  });
-// undici's `ConnectTimeoutError`: the connection never completed, so no
-// response phase ever started and no profile budget bounds it.
-const connectTimeout = () =>
-  new TypeError("fetch failed", {
-    cause: Object.assign(new Error("Connect Timeout Error"), { code: "UND_ERR_CONNECT_TIMEOUT" }),
-  });
 // The shape undici hands the reader when the pooled agent's body timeout fires
 // after the headers (fetch: `TypeError("terminated", { cause })`).
 const bodyTimeout = () =>

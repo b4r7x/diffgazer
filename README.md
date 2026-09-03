@@ -173,9 +173,10 @@ flash ids), zai `glm-5.3-flash`, ollama-cloud `glm-5.3-flash` — and walks an o
 fallback chain only when a member is down: openrouter `z-ai/glm-5.3-flash` →
 `deepseek/deepseek-v4-flash-0731`; opencode-zen `glm-5.3-flash` → `deepseek-v4-flash`;
 ollama-cloud `deepseek-v4-flash:0731` → `gpt-oss:20b`; zai `glm-4.5-air` (the proven
-priced incumbent, outside the flash set). "Down" is one of HTTP 402 (entitlement), 401/404 (not supported), 429
-(capacity), 400 (model unavailable), 5xx (outage), or a timed-out attempt (harness
-watchdog, dispatch wall, headers/answer-idle budget, review wall-clock) — one hop per
+priced incumbent, outside the flash set).
+"Down" is one of HTTP 402 (entitlement), 401/404 (not supported), 429 (capacity),
+400 (model unavailable), 5xx (outage), or a timed-out attempt (harness watchdog,
+dispatch wall, headers/answer-idle budget, review wall-clock) — one hop per
 timeout, so a logical cell never exceeds two watchdogs (worst case 2 × 600/900/1200 s).
 Each hop prints `WARN: live review e2e — <model> is down (<class>: <excerpt>); retrying
 the cell on fallback <next>` and boots a fresh cell whose header names the model and

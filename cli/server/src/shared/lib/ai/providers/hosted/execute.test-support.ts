@@ -90,6 +90,27 @@ export function googleSuccessBody(content: unknown, usage?: Record<string, numbe
   };
 }
 
+export function jsonResponse(body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+export function headersTimeout(): TypeError {
+  return new TypeError("fetch failed", {
+    cause: Object.assign(new Error("Headers Timeout Error"), { code: "UND_ERR_HEADERS_TIMEOUT" }),
+  });
+}
+
+// undici's `ConnectTimeoutError`: the connection never completed, so no
+// response phase ever started and no profile budget bounds it.
+export function connectTimeout(): TypeError {
+  return new TypeError("fetch failed", {
+    cause: Object.assign(new Error("Connect Timeout Error"), { code: "UND_ERR_CONNECT_TIMEOUT" }),
+  });
+}
+
 export function mockFetchResponse(
   body: unknown,
   init: { status?: number; headers?: Record<string, string>; redirected?: boolean } = {},

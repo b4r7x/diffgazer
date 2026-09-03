@@ -22,12 +22,13 @@ function isRateLimitedError(error) {
 
 const REPORTED_SCHEMA_ERRORS = 3;
 
-// The cause a lens's rows name: the last non-completed dispatch's outcome is the diagnostic
-// cause code (analysis.ts dispatchOutcome); a lens that never dispatched has only its bridge errorCode.
+// The cause a lens's rows name: the last non-completed dispatch's outcome is the
+// diagnostic cause code (analysis.ts dispatchOutcome); a lens that never dispatched
+// has only its bridge errorCode.
 function lensFailureCause(stat) {
-  const failedDispatch = (stat.dispatches ?? [])
-    .filter((dispatch) => dispatch.outcome !== "completed")
-    .at(-1);
+  const failedDispatch = (stat.dispatches ?? []).findLast(
+    (dispatch) => dispatch.outcome !== "completed",
+  );
   return failedDispatch?.outcome ?? stat.errorCode ?? "no errorCode";
 }
 

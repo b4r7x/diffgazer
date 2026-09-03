@@ -8,7 +8,9 @@ import {
   executeRequest,
   type FetchFn,
   googleSuccessBody,
+  headersTimeout,
   hostedContext,
+  jsonResponse,
   type MockFetchFn,
   mockFetchResponse,
   openAiSuccessBody,
@@ -243,16 +245,6 @@ describe("hosted trust boundary", () => {
 // The one-shot transport re-dispatch and the corrective retry both re-send the
 // request the wire built, so the reasoning control has to survive both.
 describe("openai-compatible reasoning control across re-dispatches", () => {
-  const headersTimeout = () =>
-    new TypeError("fetch failed", {
-      cause: Object.assign(new Error("Headers Timeout Error"), { code: "UND_ERR_HEADERS_TIMEOUT" }),
-    });
-  const jsonResponse = (body: unknown) =>
-    new Response(JSON.stringify(body), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    });
-
   it("re-sends the same bytes, control included, after a transport re-dispatch", async () => {
     const fetch = vi
       .fn<FetchFn>()

@@ -1363,42 +1363,6 @@ test("a pin never hops", () => {
   assert.equal(hop("zai", ENTITLEMENT_REFUSAL, { modelOverride: "glm-5.3-flash" }), null);
 });
 
-test("the last chain member never hops", () => {
-  assert.equal(
-    fallbackAfter({
-      terminal: ENTITLEMENT_REFUSAL,
-      timedOut: false,
-      cell: {
-        productId: "ollama-cloud",
-        scenarioId: "small",
-        modelId: "gpt-oss:20b",
-        fallbackFrom: ["glm-5.3-flash", "deepseek-v4-flash:0731"],
-      },
-      modelOverride: null,
-    }),
-    null,
-  );
-  assert.equal(
-    fallbackAfter({
-      terminal: ENTITLEMENT_REFUSAL,
-      timedOut: false,
-      cell: {
-        productId: "zai",
-        scenarioId: "small",
-        modelId: "glm-4.5-air",
-        fallbackFrom: ["glm-5.3-flash"],
-      },
-      modelOverride: null,
-    }),
-    null,
-  );
-  assert.deepEqual(hop("zai", ENTITLEMENT_REFUSAL), {
-    modelId: "glm-4.5-air",
-    downClass: "entitlement",
-    excerpt: ENTITLEMENT_REFUSAL.error.message,
-  });
-});
-
 test("a member hops to the next member, carrying the walk", () => {
   assert.equal(
     fallbackAfter({

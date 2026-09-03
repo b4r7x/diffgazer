@@ -1103,7 +1103,7 @@ describe("DELETE /api/review/sessions/:id cancel contract", () => {
       projectPath: harness.projectA,
       headCommit: "abc123",
       statusHash: "status",
-      statusHashKind: "full" as const,
+      statusHashKind: "full",
       mode: "unstaged",
       persistPartial: async () => {
         await new Promise((resolve) => setTimeout(resolve, 20));

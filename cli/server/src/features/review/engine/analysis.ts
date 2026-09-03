@@ -486,8 +486,9 @@ export async function runLensAnalysis({
         queue.push({ batchIndex, batch, retryOf: result.error });
         continue;
       }
-      if (batchCount > 1)
+      if (batchCount > 1) {
         emitBatchFailure(onEvent, agentId, batchIndex, batchCount, result.error, "giving up");
+      }
       batchError = result.error;
       if (retryable) continue;
       // A non-retryable failure ends dispatching. Re-queued batches still waiting are

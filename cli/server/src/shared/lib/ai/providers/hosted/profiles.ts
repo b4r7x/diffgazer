@@ -40,7 +40,8 @@ export const HOSTED_PROFILES = {
     // 60s): 360s = 300s × 1.2 leaves ≈240s, twelve times the ≈20s a healthy
     // flash dispatch took in the 2026-09-02 live run whose stalled batch sat
     // silent for the full 600s. Raise it only on a healthy call observed above it.
-    // The same 360s budget now also bounds the pre-accept wait (headers commit on accept here): a queue past it is re-dispatched once inside the 600s wall.
+    // The same 360s budget also bounds the pre-accept wait (headers commit on accept
+    // here): a queue past it is re-dispatched once inside the 600s wall.
     pacing: { perDispatchWallTimeMs: 600_000, bodyIdleTimeoutMs: 360_000 },
     // Soft routing preference (openrouter.ai/docs/features/provider-routing,
     // fetched 2026-09-02): providers whose p99 latency is under 60s are
@@ -124,8 +125,9 @@ export type ReasoningEffort = "none" | "low";
  * only where it is known to be honoured. Not user-configurable.
  * Not listed on purpose: ollama-cloud glm-5.3-flash / deepseek-v4-flash:0731
  * (HTTP 402 on the probing account, so the field is unprobed there); gpt-oss:20b
- * (answers plain; 84s vs 7.9s at "low" is a follow-up, not this change); the
- * `deepseek` product (api.deepseek.com is unprobed and documents a different
+ * (answers plain; "low" measured 7.9s vs 84s and 18.8s at review size — deferred,
+ * it is the gate's last-resort fallback, not a primary); the `deepseek` product
+ * (api.deepseek.com is unprobed and documents a different
  * disable field); every `reasoning_effort:"none"` on a GLM route (HTTP 400
  * [1210] on Z.AI, HTTP 400 "Reasoning is mandatory" on OpenRouter).
  */
