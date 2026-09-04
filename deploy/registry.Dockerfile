@@ -15,7 +15,7 @@ RUN mkdir -p /etc/nginx/conf.d \
 #
 # libs/{ui,keys}/public/r are the reviewable handoff contract (AGENTS.md): they
 # are committed with the production REGISTRY_ORIGIN already baked in, and
-# release-readiness rebuilds them at the same SHA and fails its
+# the CI workflow rebuilds them at the same SHA and fails its
 # "Dirty-tree guard (post-build)" step when the committed bytes differ.
 # Rebuilding them here would only reproduce the identical bytes, so we COPY the
 # committed trees directly — no build stage.

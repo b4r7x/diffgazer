@@ -94,7 +94,7 @@ test("every CORS-enabled registry location answers the preflight it advertises",
   }
 });
 
-test("the registry image cites a release-readiness gate that still exists", () => {
+test("the registry image cites a CI gate that still exists", () => {
   // Shipping committed public/r bytes instead of rebuilding them is justified by
   // one named CI gate, so a renamed step must not leave that reason dangling.
   const citedGate = /"([^"]+)"/.exec(
@@ -109,13 +109,11 @@ test("the registry image cites a release-readiness gate that still exists", () =
     "registry.Dockerfile must name the gate that byte-verifies its COPYed trees",
   );
 
-  const readiness = parse(
-    readFileSync(join(root, ".github/workflows/release-readiness.yml"), "utf8"),
-  );
-  const stepNames = Object.values(readiness.jobs).flatMap((job) =>
+  const ci = parse(readFileSync(join(root, ".github/workflows/ci.yml"), "utf8"));
+  const stepNames = Object.values(ci.jobs).flatMap((job) =>
     (job.steps ?? []).map((step) => step.name),
   );
-  assert.ok(stepNames.includes(citedGate), `${citedGate} is not a release-readiness step`);
+  assert.ok(stepNames.includes(citedGate), `${citedGate} is not a CI step`);
 });
 
 test("every shipped nginx config is parsed at image build time", () => {
@@ -127,17 +125,9 @@ test("every shipped nginx config is parsed at image build time", () => {
   }
 });
 
-test("Docker Build triggers on the script the registry image builds with", () => {
-  // The registry image fails to build if this file moves, and nothing else runs
-  // that build before a production deploy.
+test("the registry image copies the script it builds with", () => {
+  // The registry image fails to build if this file moves.
   assert.match(registryDockerfile, /^COPY scripts\/\S+/m);
-
-  const dockerBuild = parse(
-    readFileSync(join(root, ".github/workflows/docker-build.yml"), "utf8"),
-  ).on;
-  for (const trigger of [dockerBuild.pull_request, dockerBuild.push]) {
-    assert.ok(trigger.paths.includes("scripts/**"), JSON.stringify(trigger.paths));
-  }
 });
 
 test("registry proxy configuration accepts only canonical exact peers", () => {

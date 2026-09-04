@@ -132,13 +132,7 @@ pnpm run depcruise                    # import-boundary rules (blocking in `pnpm
 ```
 
 Because `check` runs both commands in its `&&` chain, a Knip finding blocks `check` and every
-readiness command that invokes it: `test-ci`, `verify`, and `release-check`.
-
-CI-safe gate (`test-ci`):
-```
-pnpm run test-ci
-```
-Sets `DIFFGAZER_SMOKE_STRICT_SKIPS=1` and delegates to `verify`; it adds no step of its own. The `test:scripts` step of that chain picks up `provider-transport-legacy-allowlist.test.mjs` through its `scripts/monorepo/**/*.test.mjs` glob.
+readiness command that invokes it: `verify` and `release-check`.
 
 Full local readiness (`verify`):
 ```
@@ -150,11 +144,11 @@ Final release gate:
 ```
 pnpm run release-check
 ```
-`release-check` is an independent chain. It repeats the `test-ci` gate families rather than invoking `test-ci`, then adds the production audit, build, package checks, provider and embedded-production web E2E suites, docs build, live registry check, changeset check, four public-package pack dry-runs, and `git diff --check`. Its `test:scripts` step already runs the provider-transport legacy-allowlist test; a later direct invocation repeats that exact test before the whitespace check.
+`release-check` is an independent chain. It repeats the `verify` gate families rather than invoking `verify`, then adds the production audit, build, package checks, the package smoke (`smoke:packages`), the provider web E2E spec on chromium, docs build, changeset coverage, four public-package pack dry-runs, and `git diff --check`. It does not run the full smoke matrix, the benchmark SLOs, or the live registry check — those stay in `verify` and in the standalone `registry:live-check` script. Its `test:scripts` step already runs the provider-transport legacy-allowlist test; a later direct invocation repeats that exact test before the whitespace check.
 
-The GitHub Release Readiness workflow adds checks that `release-check` does not run: a separate event-range Gitleaks job (the action scans the commits selected by the current push or pull-request event; `fetch-depth: 0` only makes repository objects available), `DIFFGAZER_SMOKE_ALLOW_NETWORK=1` on the strict `verify` step, three `git status --short` dirty-tree guards after build, verify/smoke, and pack, plus the remaining docs, web, UI, and landing browser suites and Lighthouse budgets. Publish recovery therefore requires the Release Readiness run for the exact merged-main SHA to have all three of its jobs green before it repeats `release-check`; the procedure lives in `PACKAGE_GOVERNANCE.md` under "Recovery from publish failure".
+The GitHub CI workflow adds checks that `release-check` does not run: a separate event-range Gitleaks job (the action scans the commits selected by the current push or pull-request event; `fetch-depth: 0` only makes repository objects available), a `git status --short` dirty-tree guard after build, and the PR-only `changeset status --since=origin/main`. Publish recovery therefore requires the CI run for the exact merged-main SHA to have both of its jobs green before it repeats `release-check`; the procedure lives in `PACKAGE_GOVERNANCE.md` under "Recovery from publish failure".
 
-`turbo run test:types` is wired in `verify`, `test-ci`, and `release-check` as a required step for packages that define the script; the remaining packages cover test files through `type-check`.
+`turbo run test:types` is wired in `verify` and `release-check` as a required step for packages that define the script; the remaining packages cover test files through `type-check`.
 
 ### Catalog smoke: bundled snapshot (offline) + live models.dev (network)
 
@@ -169,10 +163,9 @@ snapshot regenerate is caught even with no network. This makes
 
 Adding `DIFFGAZER_SMOKE_ALLOW_NETWORK=1` additionally fetches the live
 `https://models.dev/api.json`, parses it with the shipped `parseModelsDevCatalog`,
-and runs the same assertions against the live data. The Release Readiness
-workflow's `Verify` step pairs both flags, so that workflow validates the offline
-snapshot and the live fetch. `test-ci` and `release-check` set only the strict-skip
-flag unless the caller supplies the network flag separately.
+and runs the same assertions against the live data. No workflow sets that flag:
+CI runs no network smoke, and `release-check` runs `smoke:packages` only. Pass the
+flag yourself when you want the live fetch validated.
 
 ## Anti-pattern reference
 

@@ -17,18 +17,9 @@ const turboTasks = (
     tasks: Record<string, { dependsOn?: string[]; cache?: boolean }>;
   }
 ).tasks;
-const workflow = readFileSync(join(repoRoot, ".github/workflows/release-readiness.yml"), "utf8");
 
-// The CI step order (build landing, then run its suite) is guarded by
-// scripts/monorepo/check-release-workflow-guards/readiness.mjs, which parses the
-// workflow instead of scanning it for substrings.
 describe("landing browser suite gate", () => {
-  it("uploads the landing report alongside the other browser reports", () => {
-    expect(workflow).toContain("apps/landing/playwright-report");
-    expect(workflow).toContain("apps/landing/test-results");
-  });
-
-  it("orders the build ahead of the suite in the task graph too", () => {
+  it("orders the build ahead of the suite in the task graph", () => {
     const task = turboTasks["@diffgazer/landing#test:e2e"];
 
     expect(task?.dependsOn).toContain("build");

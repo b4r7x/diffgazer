@@ -1,40 +1,27 @@
 import { parse } from "yaml";
 import { errorMessage } from "../lib/error-message.mjs";
 import {
+  CI_WORKFLOW_PATH,
   DEPLOY_WORKFLOW_PATH,
-  RELEASE_READINESS_WORKFLOW_PATH,
   RELEASE_WORKFLOW_PATH,
   stripExpressionDelimiters,
 } from "./workflow-source.mjs";
 
 const CHANGESET_STATUS_CONDITION = "github.event_name == 'pull_request'";
 
-export const REQUIRED_BROWSER_E2E_STEPS = [
-  { name: "Run Web Playwright tests", run: "pnpm --filter @diffgazer/web test:e2e" },
-  // The UI suite server-renders the gitignored dist through the package entry, so
-  // its build belongs to the browser gate: drop it and the suite silently asserts
-  // against whatever build is on disk.
-  { name: "Build UI", run: "pnpm --filter @diffgazer/ui build" },
-  { name: "Run UI Playwright tests", run: "pnpm --filter @diffgazer/ui test:e2e" },
-  // Landing's Playwright config serves the built tree with `vite preview`, so
-  // its build belongs to the browser gate for the same reason the UI build does.
-  { name: "Build landing", run: "pnpm --filter @diffgazer/landing build" },
-  { name: "Run Landing Playwright tests", run: "pnpm --filter @diffgazer/landing test:e2e" },
-];
-
-const REQUIRED_READINESS_JOB_IDS = ["history-secret-scan", "verify", "e2e"];
+const REQUIRED_READINESS_JOB_IDS = ["history-secret-scan", "ci"];
 
 // Both privileged workflows publish or deploy a caller-selected SHA, so both must
-// prove that exact SHA passed every release-readiness job. Each hard-codes the job
-// names it requires; parse that list back out so a renamed or dropped readiness job
+// prove that exact SHA passed every CI job. Each hard-codes the job
+// names it requires; parse that list back out so a renamed or dropped CI job
 // fails loudly instead of silently emptying the gate.
-export const RECOVERY_READINESS_GATE_STEP = "Require Release Readiness success for recovery SHA";
+export const RECOVERY_READINESS_GATE_STEP = "Require CI success for recovery SHA";
 
 export const READINESS_GATES = [
   {
     path: DEPLOY_WORKFLOW_PATH,
     jobId: "validate-request",
-    stepName: "Require Release Readiness success for target SHA",
+    stepName: "Require CI success for target SHA",
   },
   {
     path: RELEASE_WORKFLOW_PATH,
@@ -58,9 +45,7 @@ export function collectReadinessGateLinkFailures(gate, workflowSource, readiness
     (candidate) => candidate?.name === gate.stepName,
   );
   if (typeof gateStep?.run !== "string") {
-    return [
-      `${gate.path}: ${gate.jobId} must require a successful Release Readiness run for the selected SHA`,
-    ];
+    return [`${gate.path}: ${gate.jobId} must require a successful CI run for the selected SHA`];
   }
 
   const gateLines = gateStep.run.split("\n");
@@ -82,17 +67,15 @@ export function collectReadinessGateLinkFailures(gate, workflowSource, readiness
     readinessNames.some((name) => typeof name !== "string") ||
     expectedNames.some((name, index) => name !== readinessNames[index])
   ) {
-    return [
-      `${gate.path}: readiness job names must exactly match ${RELEASE_READINESS_WORKFLOW_PATH}`,
-    ];
+    return [`${gate.path}: CI job names must exactly match ${CI_WORKFLOW_PATH}`];
   }
 
   return [];
 }
 
-// A cancelled main readiness run still fires `workflow_run` with `completed`, but
+// A cancelled main CI run still fires `workflow_run` with `completed`, but
 // release.yml admits `conclusion == 'success'` only and deploy.yml refuses any SHA
-// without a successful readiness run — so cancelling one silently drops the
+// without a successful CI run — so cancelling one silently drops the
 // publication of the versions merged at that commit and strands the SHA. Push runs
 // therefore need a per-commit group that a later merge cannot supersede.
 const PUSH_EXCLUDED_FROM_CANCELLATION = /github\.event_name\s*!=\s*'push'/;
@@ -103,14 +86,14 @@ export function collectReadinessConcurrencyFailures(source) {
     workflow = parse(source);
   } catch (error) {
     const message = errorMessage(error);
-    return [`${RELEASE_READINESS_WORKFLOW_PATH}: failed to parse workflow YAML: ${message}`];
+    return [`${CI_WORKFLOW_PATH}: failed to parse workflow YAML: ${message}`];
   }
 
   const failures = [];
   const group = workflow?.concurrency?.group;
   if (typeof group !== "string" || !group.includes("github.sha")) {
     failures.push(
-      `${RELEASE_READINESS_WORKFLOW_PATH}: push runs must get a per-commit concurrency group keyed on github.sha`,
+      `${CI_WORKFLOW_PATH}: push runs must get a per-commit concurrency group keyed on github.sha`,
     );
   }
 
@@ -123,7 +106,7 @@ export function collectReadinessConcurrencyFailures(source) {
     );
   if (cancelsPushRuns) {
     failures.push(
-      `${RELEASE_READINESS_WORKFLOW_PATH}: cancel-in-progress must exclude push events so a release-gating readiness run is never cancelled`,
+      `${CI_WORKFLOW_PATH}: cancel-in-progress must exclude push events so a release-gating CI run is never cancelled`,
     );
   }
 
@@ -136,62 +119,27 @@ export function collectChangesetStatusGuardFailures(source) {
     workflow = parse(source);
   } catch (error) {
     const message = errorMessage(error);
-    return [`${RELEASE_READINESS_WORKFLOW_PATH}: failed to parse workflow YAML: ${message}`];
+    return [`${CI_WORKFLOW_PATH}: failed to parse workflow YAML: ${message}`];
   }
 
-  const step = workflow?.jobs?.verify?.steps?.find(
+  const step = workflow?.jobs?.ci?.steps?.find(
     (candidate) => candidate?.name === "Changeset status",
   );
   if (!step) {
-    return [`${RELEASE_READINESS_WORKFLOW_PATH}: Changeset status step is missing`];
+    return [`${CI_WORKFLOW_PATH}: Changeset status step is missing`];
   }
 
   const failures = [];
   const condition = typeof step.if === "string" ? stripExpressionDelimiters(step.if) : null;
   if (condition?.replace(/\s+/g, " ") !== CHANGESET_STATUS_CONDITION) {
     failures.push(
-      `${RELEASE_READINESS_WORKFLOW_PATH}: Changeset status step must use only the pull_request event guard`,
+      `${CI_WORKFLOW_PATH}: Changeset status step must use only the pull_request event guard`,
     );
   }
   if (step.run !== "pnpm changeset status --since=origin/main") {
     failures.push(
-      `${RELEASE_READINESS_WORKFLOW_PATH}: Changeset status step must run the repository status command`,
+      `${CI_WORKFLOW_PATH}: Changeset status step must run the repository status command`,
     );
-  }
-
-  return failures;
-}
-
-// Declaration order is load-bearing: each suite previews a built tree, so a
-// build listed after the suite it feeds leaves the suite asserting against
-// whatever happens to be on disk.
-export function collectBrowserSuiteFailures(source) {
-  let workflow;
-  try {
-    workflow = parse(source);
-  } catch (error) {
-    const message = errorMessage(error);
-    return [`${RELEASE_READINESS_WORKFLOW_PATH}: failed to parse workflow YAML: ${message}`];
-  }
-
-  const steps = Array.isArray(workflow?.jobs?.e2e?.steps) ? workflow.jobs.e2e.steps : [];
-  const failures = [];
-  let previous = null;
-
-  for (const requirement of REQUIRED_BROWSER_E2E_STEPS) {
-    const index = steps.findIndex((candidate) => candidate?.name === requirement.name);
-    if (steps[index]?.run !== requirement.run) {
-      failures.push(
-        `${RELEASE_READINESS_WORKFLOW_PATH}: ${requirement.name} must run ${requirement.run}`,
-      );
-      continue;
-    }
-    if (previous !== null && index < previous.index) {
-      failures.push(
-        `${RELEASE_READINESS_WORKFLOW_PATH}: ${requirement.name} must come after ${previous.name}`,
-      );
-    }
-    previous = { name: requirement.name, index };
   }
 
   return failures;

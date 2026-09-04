@@ -9,7 +9,7 @@ import {
 
 // The privileged release job must only run for trusted push provenance
 // from this repository's main branch. Dropping any of these guards would let a
-// pull_request-origin Release Readiness run reach the OIDC/npm-token release
+// pull_request-origin CI run reach the OIDC/npm-token release
 // job, so guard each condition against silent removal.
 export const REQUIRED_RELEASE_GUARDS = [
   "github.event.workflow_run.conclusion == 'success'",
@@ -194,7 +194,7 @@ export function collectReleaseRecoveryFailures(workflowSource, governanceSource)
   if (job?.permissions?.["id-token"] !== "write") {
     failures.push(`${RELEASE_WORKFLOW_PATH}: recovery job must retain id-token: write`);
   }
-  // Recovery reads the Release Readiness run for the selected SHA through the API;
+  // Recovery reads the CI run for the selected SHA through the API;
   // job-level permissions replace the workflow default, so this scope is required.
   if (job?.permissions?.actions !== "read") {
     failures.push(

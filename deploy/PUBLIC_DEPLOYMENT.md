@@ -112,6 +112,27 @@ DNS and firewall:
 
 ## Verification
 
+CI is deliberately short: on every pull request and every push to `main` it
+proves the tree builds, generates nothing uncommitted, type-checks, and passes
+the unit suites, plus the audit, secret-scan, published-package, and
+event-range Gitleaks gates that must never be deferred. One tier up,
+`pnpm run release-check` adds `pnpm run check` (Biome, deploy-runbook, Turbo,
+dependency-cruiser, and Knip checks), `validate:artifacts:check`,
+`test:scripts` and `test:types`, the package smoke (`smoke:packages`), the
+provider browser spec on chromium, the four pack dry-runs, `verify:monorepo`,
+and the provider transport legacy allowlist; the Release workflow runs it after
+a green CI run for a push to `main`, before anything is published, and any
+operator can run it locally. The longest proofs stay local and are not wired
+into any workflow: the full smoke matrix and the benchmark SLOs
+(`pnpm run verify`), the remaining browser suites (per-package `test:e2e`), and
+the Lighthouse budgets (`pnpm --filter @diffgazer/docs lighthouse`). The live
+registry check is neither: the deploy workflow runs it with
+`DIFFGAZER_LIVE_REGISTRY_REQUIRED=1` against the promoted image after a
+`docs-registry` or `all` promote and rolls back when it fails, and
+`DIFFGAZER_LIVE_REGISTRY_REQUIRED=1 pnpm run registry:live-check` repeats that
+proof locally. Deploying gates on a green CI run for the exact SHA, so the fast
+gate is the one that must stay fast.
+
 After `docs-registry` or `all`, run:
 
 ```sh
@@ -150,7 +171,7 @@ that SHA's deploy run scanned to `:prod`, triggers the selected Coolify webhooks
 and reruns the post-deploy verification — no local imagetools retagging and no
 out-of-band webhook access. Those digest records are requested for 90 days and
 capped by the repository's artifact-retention setting; once they expire the
-rollback fails and asks for a fresh build instead of promoting an unscanned tag. The rollback SHA is subject to the same Release Readiness CI-green
-guard as a fresh deploy: it passed Release Readiness when it first landed, and the
+rollback fails and asks for a fresh build instead of promoting an unscanned tag. The rollback SHA is subject to the same CI-green
+guard as a fresh deploy: it passed CI when it first landed, and the
 workflow re-checks it before promoting. Leaving `image_sha` empty deploys current
 `main` HEAD as before.

@@ -60,7 +60,6 @@ Root scripts used for readiness and release:
 pnpm run build
 pnpm run verify
 pnpm run smoke:packages
-pnpm run test-ci
 pnpm run release-check
 pnpm run changeset
 pnpm run version-packages
@@ -69,26 +68,26 @@ pnpm run release
 
 `pnpm run verify` runs monorepo invariants, type checks, tests, and smoke checks. `pnpm run smoke:packages` packs local workspace packages into temporary projects and verifies public imports/bins; it does not install from the public npm registry.
 
-`pnpm run test-ci` is a strict wrapper around `pnpm run verify`. The independent `verify` chain runs
-`verify:monorepo`, artifact validation, the secret scan, `check` (Biome, deploy-runbook,
-Turbo, dependency-cruiser, and Knip checks), `test:scripts`, Turbo type-check/test/test-types,
-smoke, and the benchmark. It does not invoke `release-check`.
+The `verify` chain runs `verify:monorepo`, artifact validation, the secret scan, `check` (Biome,
+deploy-runbook, Turbo, dependency-cruiser, and Knip checks), `test:scripts`, Turbo
+type-check/test/test-types, smoke, and the benchmark. It does not invoke `release-check`.
 
 `pnpm run release-check` is an independent no-publish chain. It runs the production audit, secret
 scan, build, package checks, artifact validation, `check`, `test:scripts`, Turbo type-check/test/
-test-types, strict smoke, provider and embedded-production web E2E suites, the docs build, strict
-benchmark, live-registry and changeset checks, all four public-package pack dry-runs,
-`verify:monorepo`, and `git diff --check`. The `test:scripts` glob already includes the
+test-types, the package smoke (`smoke:packages`), the provider web E2E spec on chromium, the docs
+build, the changeset coverage check, all four public-package pack dry-runs, `verify:monorepo`, and
+`git diff --check`. It does not run the full smoke matrix, the benchmark SLOs, the embedded-production
+web suite, or the live registry check. The `test:scripts` glob already includes the
 provider-transport legacy-allowlist test; `release-check` repeats that exact test directly near the
 end of the chain. The changeset check compares against the merge base with `main`, so it only
 examines a branch's own changes: it bites on a local pre-release run from a feature branch, and on
 the Release workflow's merged-main checkout the merge base is `HEAD`, so it passes without examining
-anything — the same reason release-readiness runs that step on pull requests only. It does not
-invoke `test-ci` or `changeset publish`.
+anything — the same reason CI runs that step on pull requests only. It does not invoke
+`changeset publish`.
 
 `smoke:packages` currently covers local tarball installs, all exported `@diffgazer/ui` subpaths, CSS export resolution, React SSR rendering, strict NodeNext type checking, and the shared React `>=19.2.0` floor. Public handoff also requires clean consumer checks in Vite and Next apps with npm, pnpm, yarn, and bun after the packages are actually published.
 
-The checked-in release-readiness workflow wires to the root scripts above and blocks public handoff when install, build, generated-file cleanliness, verify, changeset, smoke, or pack checks fail. It is verification-only; it must not call production webhooks, read Coolify secrets, or trigger production deploys.
+Of the root scripts above, the checked-in CI workflow runs only `pnpm run build`; `release-check` runs in the Release workflow before publishing, and `verify` and a standalone `smoke:packages` are local commands. CI blocks public handoff when the install, production audit, secret scan, build, generated-file cleanliness, package, changeset, type-check, test, or whitespace checks fail. It is verification-only; it must not call production webhooks, read Coolify secrets, or trigger production deploys.
 
 ## Release Process
 
@@ -160,9 +159,11 @@ The current `smoke:packages` script validates packed local packages, not freshly
 Public hosting is separate from package publishing. Production deploys are manual
 only through `.github/workflows/deploy.yml` and are limited to docs, registry,
 and landing. The workflow requires `confirm_production=deploy`, refuses
-non-`main` refs, pushes SHA-tagged GHCR images, scans those pushed images, runs
-promotion under the `production` environment, promotes the scanned SHA tags to
-`:prod`, and calls the selected Coolify webhooks.
+non-`main` refs, requires a green CI run for the deployed SHA, pushes SHA-tagged
+GHCR images, scans each pushed image by its manifest digest, runs promotion under
+the `production` environment, repoints `:prod` at the scanned digests, calls the
+selected Coolify webhooks, and rolls the promotion back when the post-deploy
+verification fails.
 
 Docs and registry deploy together from the same SHA. Landing may deploy
 separately. The `diffgazer` CLI, embedded server, and web app are not VPS public
@@ -188,7 +189,7 @@ Package lifecycle guards currently in the repo:
 - `@diffgazer/ui`: `prepublishOnly` runs build, type-check, test, and root artifact validation.
 - `@diffgazer/keys`: `prepublishOnly` runs build, type-check, test, and root artifact validation.
 
-The release-readiness workflow must also run pack dry-runs for all public packages: `diffgazer`, `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys`.
+`release-check`, which the Release workflow runs before publishing, must also run pack dry-runs for all public packages: `diffgazer`, `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys`.
 
 ## Publish Metadata
 
@@ -200,8 +201,8 @@ Public packages are published through the root `pnpm run release` script. Its ta
 
 Publishing runs from `.github/workflows/release.yml` via `changesets/action`:
 
-1. A contributor adds a changeset on their PR (`pnpm run changeset`); merging the PR to `main` triggers the release workflow, which opens (or updates) a `chore: version packages` PR that applies pending changesets, bumps versions, and updates CHANGELOGs.
-2. The Version PR is opened with `GITHUB_TOKEN`. GitHub does not trigger `pull_request` workflows for events created by that token, so the Version PR intentionally receives zero Release Readiness checks while open; no GitHub App or PAT is added. After it merges, the trusted push-to-main Release Readiness run verifies the merged commit and triggers the release workflow, which runs `pnpm run release-check` and then `pnpm run release` under GitHub OIDC so npm records provenance attestations. `pnpm run release` runs the targeted publisher in `scripts/monorepo/guard-publish.mjs`.
+1. A contributor adds a changeset on their PR (`pnpm run changeset`); merging the PR to `main` runs CI, and a green CI run on `main` triggers the release workflow, which opens (or updates) a `chore: version packages` PR that applies pending changesets, bumps versions, and updates CHANGELOGs.
+2. The Version PR is opened with `GITHUB_TOKEN`. GitHub does not trigger `pull_request` workflows for events created by that token, so the Version PR intentionally receives zero CI checks while open; no GitHub App or PAT is added. After it merges, the trusted push-to-main CI run verifies the merged commit, and its success triggers the release workflow, which runs `pnpm run release-check` and then `pnpm run release` under GitHub OIDC so npm records provenance attestations. `pnpm run release` runs the targeted publisher in `scripts/monorepo/guard-publish.mjs`.
 3. The workflow requires `secrets.NPM_TOKEN` until each public package is configured for npm Trusted Publishers; once trusted publishing is enabled per package on npmjs.com, the token becomes optional.
 
 #### First-publish gate
@@ -212,9 +213,9 @@ An unfiltered workspace publisher would publish every public package whose versi
 
 If the publish step fails after the Version PR is merged (network blip, npm registry error, transient runner issue), first re-run the failed `Release` workflow run from the GitHub Actions UI. Packages are published one at a time. A retry derives the same pending set from the checked-out Version PR commit, skips any exact versions already present on npm, and still emits one exact `New tag: <name>@<version>` line for every recovered or newly published version after the complete set succeeds. This lets `changesets/action` create the missing Git tag and GitHub Release metadata without attempting a duplicate npm publication.
 
-If that workflow run is wedged, use the same `Release` workflow's **Run workflow** action and provide the full 40-character merged-main Version PR commit as `release_sha`. The `Recover Publish from Merged Main SHA` job validates that the selected commit is already contained in `main`, requires the Release Readiness run for that exact commit to have completed with every required job green, binds the job to the `production` environment, and then runs `pnpm run release-check` followed by the first-publish-protected release chain on a GitHub-hosted runner with OIDC provenance. The checked-in workflow does not prove a protected `production` environment or required reviewer approval; those rules live in repository settings.
+If that workflow run is wedged, use the same `Release` workflow's **Run workflow** action and provide the full 40-character merged-main Version PR commit as `release_sha`. The `Recover Publish from Merged Main SHA` job validates that the selected commit is already contained in `main`, requires the CI run for that exact commit to have completed with every required job green, binds the job to the `production` environment, and then runs `pnpm run release-check` followed by the first-publish-protected release chain on a GitHub-hosted runner with OIDC provenance. The checked-in workflow does not prove a protected `production` environment or required reviewer approval; those rules live in repository settings.
 
-`release-check` is defence in depth, not a replacement for the exact-SHA readiness evidence. It does not repeat the event-range Gitleaks scan (the action scans the current push or pull-request commit range; `fetch-depth: 0` does not make that scan full-history), the live models.dev fetch enabled by `DIFFGAZER_SMOKE_ALLOW_NETWORK=1`, the three `git status --short` dirty-tree guards after build, verify/smoke, and pack, or the remaining browser matrix (the docs Playwright suite, the broader web suite, the UI and landing suites, and the Lighthouse budgets). It still runs the provider and embedded-production web E2E suites listed above. Do not run the publish command locally: local token authentication does not provide the supported CI identity required by the package provenance policy. For any failure, open an issue or contact a maintainer before starting recovery so the team can confirm registry state first.
+`release-check` is defence in depth, not a replacement for the exact-SHA CI evidence. It does not repeat the event-range Gitleaks scan (the action scans the current push or pull-request commit range; `fetch-depth: 0` does not make that scan full-history) or the `git status --short` dirty-tree guard after build. It does not run the full smoke matrix, the live models.dev fetch enabled by `DIFFGAZER_SMOKE_ALLOW_NETWORK=1`, the benchmark SLOs, or the remaining browser matrix (the docs Playwright suite, the broader web suite, the UI and landing suites, and the Lighthouse budgets) — those are local-only gates — nor the live registry check, which belongs to the deploy workflow: it runs after a `docs-registry` or `all` promote and rolls the promotion back when it fails. It still runs the provider web E2E spec listed above. Do not run the publish command locally: local token authentication does not provide the supported CI identity required by the package provenance policy. For any failure, open an issue or contact a maintainer before starting recovery so the team can confirm registry state first.
 
 ## Dependency Management
 
@@ -296,8 +297,8 @@ Workspace package manifests keep `@types/node` on the `^22.10.0` line. The monor
 - **Security advisories**: patch immediately. Run `pnpm audit --prod --audit-level=moderate` before every release and review new advisories. Bumps that resolve high/critical advisories may add or update an override line.
 - **Patch and minor drift**: bump opportunistically alongside related work. Re-run `pnpm dedupe --check` after a bump and update the override if a new duplicate appears.
 - **Major drift**: review quarterly. Each major bump (TypeScript, Vite, Vitest, React, Tailwind, Next, Hono, fumadocs, TanStack) requires its own task and changeset because of the public-API blast radius.
-- **CI audit gate**: the release-readiness workflow runs `pnpm audit --prod --audit-level=high` as a **hard gate**. HIGH and critical advisories block release. Moderate advisories surface in the audit output but do not fail the build; review them and patch where reasonable. Overrides for known-unfixable transitive advisories are listed in the Overrides section of this document; each override has a stated sunset condition.
-- **Secret scan gate**: release readiness runs `pnpm run secret-scan` as a hard gate before build. The scanner reports high-confidence findings with redacted values.
+- **CI audit gate**: the CI workflow runs `pnpm audit --prod --audit-level=high` as a **hard gate**. HIGH and critical advisories block release. Moderate advisories surface in the audit output but do not fail the build; review them and patch where reasonable. Overrides for known-unfixable transitive advisories are listed in the Overrides section of this document; each override has a stated sunset condition.
+- **Secret scan gate**: CI runs `pnpm run secret-scan` as a hard gate before build. The scanner reports high-confidence findings with redacted values.
 - **Update automation**: Dependabot covers GitHub Actions, Docker base images in `/` and `/deploy`, and npm/pnpm workspace dependencies. Review those PRs with extra attention to workflow, Dockerfile, and public package blast radius.
 - **Protected deploy files**: `.github/CODEOWNERS` requires owner review for workflows, deploy Dockerfiles, deploy runbooks, nginx deploy configs, `Dockerfile`, and this governance file.
 
@@ -371,11 +372,14 @@ Until the hosted registry endpoints serve `200 OK` for `/r/ui/registry.json`, `/
   `npx shadcn add ./<component>.registry.json`. The archive includes transitive UI and keys files
   with the same local-import rewrites as `dgadd --integration copy`.
 
-Release readiness runs `pnpm run registry:live-check`. That script reads the docs consumption metadata (`PUBLISH_GATED` in `apps/docs/src/lib/consumption-metadata.ts`) and **skips** while public hosted-registry install commands remain gated and `DIFFGAZER_LIVE_REGISTRY_REQUIRED` is unset.
+`pnpm run registry:live-check` is not part of CI or `pnpm run release-check`. The manual deploy
+workflow runs the same script with `DIFFGAZER_LIVE_REGISTRY_REQUIRED=1` against the promoted image
+after a `docs-registry` or `all` promote and rolls the promotion back when it fails; a `landing`
+deploy leaves the registry untouched and skips it. Run locally, the script reads the docs consumption metadata (`PUBLISH_GATED` in `apps/docs/src/lib/consumption-metadata.ts`) and **skips** while public hosted-registry install commands remain gated and `DIFFGAZER_LIVE_REGISTRY_REQUIRED` is unset.
 
-When the registry is ungated, the check is a hard gate for DNS resolution and `HEAD` reachability: `r.b4r7.dev` must resolve, and one long-lived sentinel endpoint per tree copied by `deploy/registry.Dockerfile` (`/r/ui/registry.json`, `/r/keys/registry.json`, `/schema/diffgazer.json`) must return `200`. Readiness proves the origin is serving, not that the change set under review is already deployed — sweeping every locally committed endpoint would fail any change that **adds** a registry file, which cannot be live until the deploy this readiness run gates. Ungated readiness also does **not** compare hosted bytes to the committed files.
+When the registry is ungated, a run without `DIFFGAZER_LIVE_REGISTRY_REQUIRED` is a hard gate for DNS resolution and `HEAD` reachability: `r.b4r7.dev` must resolve, and one long-lived sentinel endpoint per tree copied by `deploy/registry.Dockerfile` (`/r/ui/registry.json`, `/r/keys/registry.json`, `/schema/diffgazer.json`) must return `200`. That mode proves the origin is serving, not that the checkout is deployed — sweeping every locally committed endpoint would fail on any registry file the checkout **adds** until a deploy serves it — and it does **not** compare hosted bytes to the committed files.
 
-Set `DIFFGAZER_LIVE_REGISTRY_REQUIRED=1` for post-deploy verification. That mode runs the same DNS and `HEAD` checks, then fetches every endpoint and requires the raw response bytes to match the committed file exactly.
+`DIFFGAZER_LIVE_REGISTRY_REQUIRED=1` is the post-deploy verification mode the deploy workflow uses; set it locally to repeat that proof. It ignores the publish gate, resolves DNS, requires `200` from every served endpoint, then fetches each one and requires the raw response bytes to match the committed file exactly.
 
 Once those checks pass, un-gate the hosted-shadcn install snippets in `README.md`, `libs/ui/README.md`, `libs/keys/README.md`, and `apps/docs/content/docs/**/*.mdx`, and remove the "future" preambles added while the hosted registry was gated.
 

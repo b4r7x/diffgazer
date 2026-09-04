@@ -169,7 +169,7 @@ Source-verified against MDN, Docusaurus, fumadocs, shadcn/ui docs, and tanstack.
 - After UI primitive changes: run focused UI tests and `pnpm --filter @diffgazer/ui type-check`.
 - After web adoption changes: run focused web tests and `pnpm --filter @diffgazer/web type-check`.
 - After registry, CLI, docs, or public handoff changes: run `pnpm run prepare:artifacts` and `pnpm run validate:artifacts:check`.
-- Before declaring SOTA/ready: run `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run type-check`, `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run test`, `pnpm run test:scripts`, `DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke`, and `pnpm run verify:monorepo`. The catalog smoke validates the bundled offline snapshot on every run; add `DIFFGAZER_SMOKE_ALLOW_NETWORK=1` (as CI does) to also validate the live models.dev fetch.
+- Before declaring SOTA/ready: run `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run type-check`, `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run test`, `pnpm run test:scripts`, `DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke`, and `pnpm run verify:monorepo`. The catalog smoke validates the bundled offline snapshot on every run; add `DIFFGAZER_SMOKE_ALLOW_NETWORK=1` to also validate the live models.dev fetch (CI does not: it runs no network smoke).
 - Always run `git diff --check` before final response.
 
 ## Dependency Policy

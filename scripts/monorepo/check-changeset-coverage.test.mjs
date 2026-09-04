@@ -10,7 +10,7 @@ import {
   checkChangesetCoverage,
   collectChangesetCoverageFailures,
 } from "./check-changeset-coverage.mjs";
-import { RELEASE_READINESS_WORKFLOW_PATH } from "./check-release-workflow-guards/workflow-source.mjs";
+import { CI_WORKFLOW_PATH } from "./check-release-workflow-guards/workflow-source.mjs";
 
 const COVERAGE_SCRIPT = "check:changesets";
 const COVERAGE_COMMAND = `pnpm run ${COVERAGE_SCRIPT}`;
@@ -141,21 +141,21 @@ test("a deleted public registry item still needs a changeset", () => {
   assert.match(failures[0], /libs\/keys\/public\/r\/.+"@diffgazer\/keys"/);
 });
 
-test("release readiness runs the changeset coverage gate in its verify job", () => {
-  const workflow = parse(readFileSync(RELEASE_READINESS_WORKFLOW_PATH, "utf8"));
-  const verifyCommands = workflow.jobs.verify.steps.map((step) => step?.run);
+test("CI runs the changeset coverage gate in its ci job", () => {
+  const workflow = parse(readFileSync(CI_WORKFLOW_PATH, "utf8"));
+  const verifyCommands = workflow.jobs.ci.steps.map((step) => step?.run);
 
   assert.ok(
     verifyCommands.includes(COVERAGE_COMMAND),
-    `CI verify job missing changeset coverage step: ${COVERAGE_COMMAND}`,
+    `CI job missing changeset coverage step: ${COVERAGE_COMMAND}`,
   );
 });
 
 // On push-to-main the merge base against `origin/main` is HEAD itself, so the gate
 // examines nothing and always passes. Keep it scoped to the event where it can fail.
 test("the changeset coverage gate is scoped to pull requests", () => {
-  const workflow = parse(readFileSync(RELEASE_READINESS_WORKFLOW_PATH, "utf8"));
-  const step = workflow.jobs.verify.steps.find((candidate) => candidate?.run === COVERAGE_COMMAND);
+  const workflow = parse(readFileSync(CI_WORKFLOW_PATH, "utf8"));
+  const step = workflow.jobs.ci.steps.find((candidate) => candidate?.run === COVERAGE_COMMAND);
 
   assert.equal(step.if, "${{ github.event_name == 'pull_request' }}");
 });

@@ -112,7 +112,7 @@ jobs:
           node scripts/monorepo/validate-registry-proxy-cidr.mjs \
             "${REGISTRY_TRAEFIK_PROXY_CIDR}"
 
-      - name: Require Release Readiness success for target SHA
+      - name: Require CI success for target SHA
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET_SHA: ${{ steps.resolve.outputs.target_sha }}
@@ -120,16 +120,16 @@ jobs:
           set -euo pipefail
 
           run_info="$(gh api \
-            "repos/${{ github.repository }}/actions/workflows/release-readiness.yml/runs?head_sha=${TARGET_SHA}&per_page=20" \
+            "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${TARGET_SHA}&per_page=20" \
             --jq '[.workflow_runs[] | select(.event == "push" and .head_branch == "main" and .status == "completed")] | sort_by(.run_started_at // .created_at) | last | select(. != null) | [.id, .conclusion, .html_url] | @tsv')"
           if [ -z "${run_info}" ]; then
-            echo "::error::No completed Release Readiness run found on main for ${TARGET_SHA}."
+            echo "::error::No completed CI run found on main for ${TARGET_SHA}."
             exit 1
           fi
 
           IFS=$'\t' read -r run_id run_conclusion run_url <<< "${run_info}"
           if [ "${run_conclusion}" != "success" ]; then
-            echo "::error::Release Readiness for ${TARGET_SHA} concluded '${run_conclusion}', not success: ${run_url}"
+            echo "::error::CI for ${TARGET_SHA} concluded '${run_conclusion}', not success: ${run_url}"
             exit 1
           fi
 
@@ -138,21 +138,20 @@ jobs:
             --jq '.jobs[] | [.name, .conclusion] | @tsv')"
           expected_jobs=(
             "Gitleaks Event-Range Scan"
-            "Build, Verify, and Pack"
-            "Browser E2E (Playwright + axe + visual)"
+            "Build, Type-Check, and Test"
           )
           for expected_job in "${expected_jobs[@]}"; do
             conclusion="$(awk -F '\t' -v job="${expected_job}" '$1 == job { print $2 }' <<< "${jobs}" | tail -n 1)"
             if [ -z "${conclusion}" ]; then
-              echo "::error::Release Readiness job '${expected_job}' is missing for ${TARGET_SHA}: ${run_url}"
+              echo "::error::CI job '${expected_job}' is missing for ${TARGET_SHA}: ${run_url}"
               exit 1
             fi
             if [ "${conclusion}" != "success" ]; then
-              echo "::error::Release Readiness job '${expected_job}' concluded '${conclusion}', not success: ${run_url}"
+              echo "::error::CI job '${expected_job}' concluded '${conclusion}', not success: ${run_url}"
               exit 1
             fi
           done
-          echo "Release Readiness run ${run_id} is green for ${TARGET_SHA}."
+          echo "CI run ${run_id} is green for ${TARGET_SHA}."
 
   build-scan:
     name: Build and Scan ${{ matrix.service.name }}

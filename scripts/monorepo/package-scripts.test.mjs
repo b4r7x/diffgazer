@@ -16,12 +16,6 @@ const knipConfigSource = readFileSync(
   "utf-8",
 );
 
-// The benchmark only gates latency/throughput SLOs under strict mode, so the
-// CI/release chains must run `pnpm run bench` with the strict env var or
-// breaches silently pass. `release-check` pins the same segment through
-// RELEASE_CHECK_NON_OPTIONAL_SEGMENTS below.
-const STRICT_BENCH_COMMAND = "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench";
-
 // Turbo's default (`--continue=never`) cancels every remaining task on the first
 // failure, so one red package tears down the others mid-run and the log carries no
 // verdict for them at all — anyone sizing a fix wave from that run under-counts.
@@ -30,25 +24,13 @@ const STRICT_BENCH_COMMAND = "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench";
 // exits with the highest exit code, so the gate stays red.
 const TURBO_TEST_COMMAND = "turbo run test --continue=dependencies-successful";
 
-test("test-ci delegates verify under strict skip mode", () => {
-  assert.equal(
-    rootPackageJson.scripts["test-ci"],
-    "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run verify",
-  );
-});
-
-const RELEASE_READINESS_WORKFLOW_URL = new URL(
-  "../../.github/workflows/release-readiness.yml",
-  import.meta.url,
-);
+const CI_WORKFLOW_URL = new URL("../../.github/workflows/ci.yml", import.meta.url);
 
 const RELEASE_CHECK_MIRRORED_GATES = [
   "pnpm audit --prod --audit-level=high",
   "pnpm run secret-scan",
   "pnpm run build",
   "pnpm run check:packages",
-  "pnpm run registry:live-check",
-  "pnpm run check:changesets",
 ];
 
 const RELEASE_CHECK_PACK_COMMANDS = [
@@ -59,7 +41,7 @@ const RELEASE_CHECK_PACK_COMMANDS = [
 ].map((pkg) => `pnpm --filter ${pkg} pack --dry-run`);
 
 const T105_PROVIDER_PLAYWRIGHT_COMMAND =
-  "pnpm --filter @diffgazer/web exec playwright test testing/e2e/providers.e2e.ts --project=chromium --project=mobile-chromium";
+  "pnpm --filter @diffgazer/web exec playwright test testing/e2e/providers.e2e.ts --project=chromium";
 
 const DOCS_BUILD_COMMAND = "pnpm --filter @diffgazer/docs build";
 
@@ -76,27 +58,20 @@ const RELEASE_CHECK_NON_OPTIONAL_SEGMENTS = [
   "turbo run type-check",
   TURBO_TEST_COMMAND,
   "turbo run test:types",
-  "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke",
+  "pnpm run smoke:packages",
   T105_PROVIDER_PLAYWRIGHT_COMMAND,
   DOCS_BUILD_COMMAND,
-  STRICT_BENCH_COMMAND,
   "pnpm run check:changesets",
   "pnpm run verify:monorepo",
   LEGACY_ALLOWLIST_COMMAND,
   "git diff --check",
 ];
 
-// Active `run:` commands in jobs.verify.steps, in order — a commented-out or
+// Active `run:` commands in jobs.ci.steps, in order — a commented-out or
 // relocated command has no `run` key on that step and so is excluded here.
-function activeVerifyStepRunCommands(workflowSource) {
+function activeCiStepRunCommands(workflowSource) {
   const workflow = parseYaml(workflowSource);
-  const steps = workflow?.jobs?.verify?.steps ?? [];
-  return steps.map((step) => step?.run).filter((run) => typeof run === "string");
-}
-
-function activeE2eStepRunCommands(workflowSource) {
-  const workflow = parseYaml(workflowSource);
-  const steps = workflow?.jobs?.e2e?.steps ?? [];
+  const steps = workflow?.jobs?.ci?.steps ?? [];
   return steps.map((step) => step?.run).filter((run) => typeof run === "string");
 }
 
@@ -116,15 +91,13 @@ test("script segments split on `&&`, trim, and unwrap an `sh -c` chain", () => {
   assert.deepEqual(scriptSegments("run-with-artifacts.sh sh -c 'a && b'"), ["a", "b"]);
 });
 
-// CONTRIBUTING.md documents `pnpm run release-check` as the local mirror of the CI
-// no-publish readiness sequence (release-readiness.yml). Pin the gates the CI verify
-// job runs that were previously absent locally so a local pass cannot be a false
-// readiness signal. Intentionally CI-only, so NOT mirrored here:
-// the event-range Gitleaks scan (separate action job; fetch-depth does not make it
-// a full-history scan), the CI
-// dirty-tree `git status --short` guards (a local worktree is expected to be dirty;
-// release-check keeps `git diff --check` for whitespace), the PR-only `changeset
-// status --since=origin/main`, and the Docs E2E Playwright/Lighthouse job.
+// CONTRIBUTING.md documents `pnpm run release-check` as the local superset of the
+// per-PR CI job (ci.yml). Pin the gates that job runs so a local pass cannot be a
+// false readiness signal. Intentionally CI-only, so NOT mirrored here: the
+// event-range Gitleaks scan (separate action job; fetch-depth does not make it a
+// full-history scan), the dirty-tree `git status --short` guard (a local worktree
+// is expected to be dirty; release-check keeps `git diff --check` for whitespace),
+// and the PR-only `changeset status --since=origin/main`.
 test("release-check runs non-optional release gates in command order", () => {
   const releaseCheck = scriptSegments(rootPackageJson.scripts["release-check"]);
   let lastIndex = -1;
@@ -135,21 +108,18 @@ test("release-check runs non-optional release gates in command order", () => {
   }
 });
 
-test("release-check mirrors the CI no-publish readiness gates", () => {
-  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
-  const verifyRunCommands = activeVerifyStepRunCommands(workflowSource);
+test("release-check mirrors the CI no-publish gates", () => {
+  const ciRunCommands = activeCiStepRunCommands(readFileSync(CI_WORKFLOW_URL, "utf-8"));
   const releaseCheck = scriptSegments(rootPackageJson.scripts["release-check"]);
 
   for (const gate of RELEASE_CHECK_MIRRORED_GATES) {
-    assert.ok(verifyRunCommands.includes(gate), `CI verify job missing active step: ${gate}`);
+    assert.ok(ciRunCommands.includes(gate), `CI job missing active step: ${gate}`);
     assert.ok(releaseCheck.includes(gate), `release-check missing gate segment: ${gate}`);
   }
 
+  // The pack dry-runs are release-check-only: CI proves the build, the release
+  // chain proves the tarballs.
   for (const packCommand of RELEASE_CHECK_PACK_COMMANDS) {
-    assert.ok(
-      verifyRunCommands.includes(packCommand),
-      `CI verify job missing active pack step: ${packCommand}`,
-    );
     assert.ok(
       releaseCheck.includes(packCommand),
       `release-check missing pack dry-run segment: ${packCommand}`,
@@ -157,94 +127,24 @@ test("release-check mirrors the CI no-publish readiness gates", () => {
   }
 });
 
-test("a commented-out verify step is not treated as an active gate", () => {
-  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
+test("a commented-out CI step is not treated as an active gate", () => {
+  const workflowSource = readFileSync(CI_WORKFLOW_URL, "utf-8");
   const mutated = workflowSource.replace("run: pnpm run build", "# run: pnpm run build");
-  assert.ok(!activeVerifyStepRunCommands(mutated).includes("pnpm run build"));
+  assert.ok(!activeCiStepRunCommands(mutated).includes("pnpm run build"));
 });
 
-test("a gate command that only runs outside jobs.verify is not treated as an active gate", () => {
-  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
-  const workflow = parseYaml(workflowSource);
-  const buildStepIndex = workflow.jobs.verify.steps.findIndex(
-    (step) => step.run === "pnpm run build",
-  );
-  const [buildStep] = workflow.jobs.verify.steps.splice(buildStepIndex, 1);
-  workflow.jobs.e2e.steps.push(buildStep);
+test("a gate command that only runs outside jobs.ci is not treated as an active gate", () => {
+  const workflow = parseYaml(readFileSync(CI_WORKFLOW_URL, "utf-8"));
+  const buildStepIndex = workflow.jobs.ci.steps.findIndex((step) => step.run === "pnpm run build");
+  const [buildStep] = workflow.jobs.ci.steps.splice(buildStepIndex, 1);
+  workflow.jobs["history-secret-scan"].steps.push(buildStep);
   const mutated = stringifyYaml(workflow);
-  assert.ok(!activeVerifyStepRunCommands(mutated).includes("pnpm run build"));
+  assert.ok(!activeCiStepRunCommands(mutated).includes("pnpm run build"));
 });
 
-// `verify` is the local dev command and runs `bench`/`smoke` non-strict, so the
-// per-PR gate gets its bench/smoke strictness only from the workflow env prefix.
-// Pin that prefix on the active `run` of the real per-PR gate step so a workflow
-// refactor can't silently drop SLO gating: raw workflow text keeps matching when
-// the strictness moves into a comment or into another job.
-function verifyJobStepRun(workflowSource, stepName) {
-  const workflow = parseYaml(workflowSource);
-  const steps = workflow?.jobs?.verify?.steps ?? [];
-  return steps.find((step) => step?.name === stepName)?.run;
-}
-
-const STRICT_VERIFY_RUN = /(?:^|\s)DIFFGAZER_SMOKE_STRICT_SKIPS=1\s[^\n]*pnpm run verify$/;
-
-test("the release-readiness Verify step runs verify under strict skip mode", () => {
-  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
-  const verifyRun = verifyJobStepRun(workflowSource, "Verify");
-
-  assert.equal(typeof verifyRun, "string", "jobs.verify has no active Verify step");
-  assert.match(verifyRun, STRICT_VERIFY_RUN);
-});
-
-test("a strictness prefix left in a comment does not satisfy the Verify gate", () => {
-  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
-  const activeRun = verifyJobStepRun(workflowSource, "Verify");
-  const mutated = workflowSource.replace(
-    `run: ${activeRun}`,
-    `run: pnpm run verify\n        # run: ${activeRun}`,
-  );
-
-  assert.equal(verifyJobStepRun(mutated, "Verify"), "pnpm run verify");
-  assert.doesNotMatch(verifyJobStepRun(mutated, "Verify"), STRICT_VERIFY_RUN);
-  // The demoted command still carries the strict text as raw workflow bytes.
-  assert.match(mutated, /DIFFGAZER_SMOKE_STRICT_SKIPS=1[^\n]*pnpm run verify/);
-});
-
-test("a strict verify step relocated out of jobs.verify is not the active gate", () => {
-  const workflow = parseYaml(readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8"));
-  const verifyStepIndex = workflow.jobs.verify.steps.findIndex((step) => step.name === "Verify");
-  const [verifyStep] = workflow.jobs.verify.steps.splice(verifyStepIndex, 1);
-  workflow.jobs.e2e.steps.push(verifyStep);
-  const mutated = stringifyYaml(workflow);
-
-  assert.equal(verifyJobStepRun(mutated, "Verify"), undefined);
-  assert.equal(activeE2eStepRunCommands(mutated).includes(verifyStep.run), true);
-});
-
-test("release-readiness workflow runs legacy allowlist and git whitespace gates", () => {
-  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
-  const verifyRunCommands = activeVerifyStepRunCommands(workflowSource);
-  assert.ok(
-    verifyRunCommands.includes(LEGACY_ALLOWLIST_COMMAND),
-    "CI verify job missing legacy allowlist step",
-  );
-  assert.ok(
-    verifyRunCommands.includes("git diff --check"),
-    "CI verify job missing git diff --check step",
-  );
-});
-
-test("release-readiness e2e job runs provider Playwright and docs build gates", () => {
-  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
-  const e2eRunCommands = activeE2eStepRunCommands(workflowSource);
-  assert.ok(
-    e2eRunCommands.includes(T105_PROVIDER_PLAYWRIGHT_COMMAND),
-    "CI e2e job missing T-105 provider Playwright step",
-  );
-  assert.ok(e2eRunCommands.includes(DOCS_BUILD_COMMAND), "CI e2e job missing docs build step");
-  const providerIndex = e2eRunCommands.indexOf(T105_PROVIDER_PLAYWRIGHT_COMMAND);
-  const docsBuildIndex = e2eRunCommands.indexOf(DOCS_BUILD_COMMAND);
-  assert.ok(providerIndex > docsBuildIndex, "provider Playwright must run after docs build");
+test("the CI job runs the git whitespace gate", () => {
+  const ciRunCommands = activeCiStepRunCommands(readFileSync(CI_WORKFLOW_URL, "utf-8"));
+  assert.ok(ciRunCommands.includes("git diff --check"), "CI job missing git diff --check step");
 });
 
 // The dead review opt-in contract was removed; no script env name should
@@ -466,18 +366,6 @@ test("UI browser tests wait for the package entry they server-render", () => {
   // edge the suite asserts against whatever build happens to be on disk.
   assert.deepEqual(rootTurboJson.tasks["@diffgazer/ui#test:e2e"].dependsOn, ["build"]);
   assert.equal(rootTurboJson.tasks["@diffgazer/ui#test:e2e"].cache, false);
-});
-
-test("the CI e2e job builds UI before running its browser suite", () => {
-  // The CI step runs Playwright directly, so the task-graph edge above never
-  // applies there: the ordering in the job is what keeps the suite honest.
-  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
-  const e2eRunCommands = activeE2eStepRunCommands(workflowSource);
-  const buildIndex = e2eRunCommands.indexOf("pnpm --filter @diffgazer/ui build");
-  const suiteIndex = e2eRunCommands.indexOf("pnpm --filter @diffgazer/ui test:e2e");
-
-  assert.ok(buildIndex >= 0, "CI e2e job missing UI build step");
-  assert.ok(suiteIndex > buildIndex, "UI Playwright suite must run after the UI build");
 });
 
 test("smoke runs an active diffgazer build segment before product CLI validation", () => {
