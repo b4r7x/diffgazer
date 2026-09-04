@@ -12,4 +12,4 @@ review's total wall clock. A batch that fails on a timeout, a 5xx or a rate limi
 retried once while the review clock still fits a dispatch, and a re-queued batch no longer
 shows up as a failed lens. A cancelled review is readable as a saved run the moment the
 cancel returns, lens errors carry their diagnostic code, and Ollama Cloud's billing text
-matches its published rates.
+matches its published rates. Requests to OpenCode Zen and Go now identify this client and carry one session id per review, as OpenCode asks of every client.

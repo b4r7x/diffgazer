@@ -242,8 +242,100 @@ describe("hosted trust boundary", () => {
   });
 });
 
-// The one-shot transport re-dispatch and the corrective retry both re-send the
-// request the wire built, so the reasoning control has to survive both.
+// One dispatch is one conversation turn, so its session id has to survive
+// every attempt inside it.
+describe("OpenCode session across the attempts of one dispatch", () => {
+  const headerAt = (fetch: FetchFn, index: number, name: string): string | undefined => {
+    const init = (fetch as MockFetchFn).mock.calls[index]?.[1] as RequestInit | undefined;
+    return (init?.headers as Record<string, string> | undefined)?.[name];
+  };
+  const sessionHeaderAt = (fetch: FetchFn, index: number): string | undefined =>
+    headerAt(fetch, index, "x-opencode-session");
+  const requestIdsOf = (fetch: FetchFn): Array<string | undefined> =>
+    [0, 1].map((index) => headerAt(fetch, index, "x-opencode-request"));
+
+  it("sends the review's session id on every attempt, with a fresh request id each time", async () => {
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          choices: [{ message: { content: "not-json" }, finish_reason: "stop" }],
+          usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse(openAiSuccessBody({ issues: [makeIssue()] })));
+
+    const result = await executeHostedReview({
+      ...executeRequest("opencode-zen", { modelId: "qwen3.8-flash" }),
+      sessionId: "ses_review-42",
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.receipt.attemptCount).toBe(2);
+    expect(sessionHeaderAt(fetch, 0)).toBe("ses_review-42");
+    expect(sessionHeaderAt(fetch, 1)).toBe("ses_review-42");
+    const requestIds = requestIdsOf(fetch);
+    expect(requestIds[0]).not.toBe(requestIds[1]);
+  });
+
+  it("mints one session for a dispatch that arrives without one and keeps it across attempts", async () => {
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          choices: [{ message: { content: "not-json" }, finish_reason: "stop" }],
+          usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse(openAiSuccessBody({ issues: [makeIssue()] })));
+
+    await executeHostedReview({
+      ...executeRequest("opencode-zen", { modelId: "qwen3.8-flash" }),
+      context: hostedContext(fetch),
+    });
+
+    expect(sessionHeaderAt(fetch, 0)).toMatch(/^ses_/);
+    expect(sessionHeaderAt(fetch, 1)).toBe(sessionHeaderAt(fetch, 0));
+  });
+
+  it("mints a fresh request id when a transport stall re-dispatches the same request", async () => {
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockRejectedValueOnce(headersTimeout())
+      .mockResolvedValueOnce(jsonResponse(openAiSuccessBody({ issues: [makeIssue()] })));
+
+    await executeHostedReview({
+      ...executeRequest("opencode-zen", { modelId: "qwen3.8-flash" }),
+      sessionId: "ses_review-42",
+      context: hostedContext(fetch),
+    });
+
+    const requestIds = requestIdsOf(fetch);
+    expect(requestIds[0]).not.toBe(requestIds[1]);
+    expect(sessionHeaderAt(fetch, 1)).toBe("ses_review-42");
+  });
+
+  it("mints a fresh request id for the retry after a 429 backoff", async () => {
+    const fetch = vi
+      .fn<FetchFn>()
+      .mockResolvedValueOnce(new Response("{}", { status: 429, headers: { "retry-after": "0" } }))
+      .mockResolvedValueOnce(jsonResponse(openAiSuccessBody({ issues: [makeIssue()] })));
+
+    await executeHostedReview({
+      ...executeRequest("opencode-zen", { modelId: "qwen3.8-flash" }),
+      sessionId: "ses_review-42",
+      context: hostedContext(fetch),
+    });
+
+    const requestIds = requestIdsOf(fetch);
+    expect(requestIds[0]).not.toBe(requestIds[1]);
+    expect(sessionHeaderAt(fetch, 1)).toBe("ses_review-42");
+  });
+});
+
+// The one-shot re-dispatch and the corrective retry both re-send the request
+// the wire built, so the reasoning control has to survive both.
 describe("openai-compatible reasoning control across re-dispatches", () => {
   it("re-sends the same bytes, control included, after a transport re-dispatch", async () => {
     const fetch = vi

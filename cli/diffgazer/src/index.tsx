@@ -25,6 +25,7 @@ async function main(): Promise<void> {
   }
 
   process.env.DIFFGAZER_CLI_PID = String(process.pid);
+  process.env.DIFFGAZER_CLIENT_VERSION = VERSION;
   ensureShutdownToken();
 
   if (action.type === "web") {

@@ -84,6 +84,13 @@ export interface AdapterExecuteRequest {
   readonly evidenceKey: EvidenceKey;
   readonly prompt: string;
   readonly systemPrompt?: string;
+  /**
+   * The conversation this dispatch belongs to — one review — so a provider
+   * that routes by session (OpenCode Zen's `x-opencode-session`) sees every
+   * lens, batch, synthesis and corrective retry of a review as one session.
+   * Absent for a one-off dispatch such as the conformance probe.
+   */
+  readonly sessionId?: string;
   readonly signal?: AbortSignal;
   /**
    * Server-only credential channel supplied by the authorized execution. It is

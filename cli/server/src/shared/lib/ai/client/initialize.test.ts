@@ -290,6 +290,31 @@ describe("toInitializedAIClient", () => {
     expect(onFirstStructuredSuccess).toHaveBeenCalledOnce();
   });
 
+  it("gives every dispatch of one client the same session id, and another client its own", async () => {
+    const dependencies = createDependencies(readySnapshot());
+    const { toInitializedAIClient } = await loadInitialize();
+    const authorizationResult = await authorizeReviewExecution("gemini-primary", dependencies);
+
+    expect(authorizationResult.ok).toBe(true);
+    if (!authorizationResult.ok) return;
+
+    const authorization = authorizationResult.value;
+    const completed = clientTestExecutionResult(authorization.plan, "completed");
+    executeReviewGenerationMock.mockResolvedValue({ execution: completed, diagnostic: undefined });
+    const lensSchema = z.object({ issues: z.array(z.unknown()) });
+
+    const client = toInitializedAIClient(authorization);
+    await client.generate("lens one", lensSchema);
+    await client.generate("lens two", lensSchema);
+    const another = toInitializedAIClient(authorization);
+    await another.generate("lens one", lensSchema);
+
+    const sessionIds = executeReviewGenerationMock.mock.calls.map(([input]) => input.sessionId);
+    expect(sessionIds[0]).toMatch(/^ses_/);
+    expect(sessionIds[1]).toBe(sessionIds[0]);
+    expect(sessionIds[2]).not.toBe(sessionIds[0]);
+  });
+
   it("does not report a structured success for a dispatch that never completed", async () => {
     const dependencies = createDependencies(readySnapshot());
     const { toInitializedAIClient } = await loadInitialize();

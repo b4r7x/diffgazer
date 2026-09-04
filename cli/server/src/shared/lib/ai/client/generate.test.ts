@@ -1053,3 +1053,26 @@ describe("review generation redaction", () => {
     expect(JSON.stringify(result.diagnostic)).not.toContain(secret);
   });
 });
+
+describe("review generation session identity", () => {
+  beforeEach(setupClientTestHome);
+  afterEach(teardownClientTestHome);
+
+  it("hands the caller's session id to the adapter dispatch", async () => {
+    const plan = admittedPlan("opencode-zen");
+    let receivedSessionId: string | undefined;
+    const adapter = clientTestCreateMockAdapter("opencode-zen", async (request) => {
+      receivedSessionId = request.sessionId;
+      return clientTestExecutionResult(plan, "completed");
+    });
+    const { authorization } = authorize(plan, adapter);
+
+    await executeReviewGeneration({
+      authorization,
+      prompt: "review this diff",
+      sessionId: "ses_review-7",
+    });
+
+    expect(receivedSessionId).toBe("ses_review-7");
+  });
+});

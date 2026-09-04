@@ -1,5 +1,5 @@
 import type { HostedApiProductId } from "@diffgazer/core/schemas/config";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { responseTimeoutDispatcher } from "./dispatcher.js";
 import { evidenceKeyFor, TEST_CREDENTIAL } from "./execute.test-support.js";
 import type { ReasoningEffort } from "./profiles.js";
@@ -38,6 +38,7 @@ describe("buildRequestInit", () => {
           evidenceKey: evidenceKeyFor(productId, { modelId }),
           prompt: "review this diff",
           boundReasoning,
+          sessionId: "ses_test",
         }).body,
       ),
     );
@@ -50,6 +51,7 @@ describe("buildRequestInit", () => {
       credential: TEST_CREDENTIAL,
       evidenceKey,
       prompt: "review this diff",
+      sessionId: "ses_test",
     });
 
     // profiles.ts openrouter pacing: bodyIdleTimeoutMs: 360_000.
@@ -66,6 +68,7 @@ describe("buildRequestInit", () => {
       credential: TEST_CREDENTIAL,
       evidenceKey,
       prompt: "review this diff",
+      sessionId: "ses_test",
     });
 
     expect((init as { dispatcher?: unknown }).dispatcher).toBe(
@@ -81,6 +84,7 @@ describe("buildRequestInit", () => {
       credential: TEST_CREDENTIAL,
       evidenceKey,
       prompt: "review this diff",
+      sessionId: "ses_test",
     });
 
     expect((init as { dispatcher?: unknown }).dispatcher).toBe(
@@ -139,6 +143,69 @@ describe("buildRequestInit", () => {
       expect(serialized).not.toContain('"enable_thinking"');
       expect(serialized).not.toContain('"reasoning":{"enabled"');
     }
+  });
+});
+
+describe("buildRequestInit OpenCode identification", () => {
+  const headersOf = (productId: HostedApiProductId, sessionId: string): Record<string, string> =>
+    buildRequestInit({
+      productId,
+      credential: TEST_CREDENTIAL,
+      evidenceKey: evidenceKeyFor(productId),
+      prompt: "review this diff",
+      sessionId,
+    }).headers as Record<string, string>;
+
+  const BEARER_ONLY = {
+    "content-type": "application/json",
+    accept: "application/json",
+    authorization: `Bearer ${TEST_CREDENTIAL}`,
+  };
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("identifies this client and its conversation to OpenCode Zen", () => {
+    vi.stubEnv("DIFFGAZER_CLIENT_VERSION", "0.2.0");
+
+    const headers = headersOf("opencode-zen", "ses_review-1");
+
+    expect(headers).toMatchObject({
+      "user-agent": "diffgazer/0.2.0",
+      "x-opencode-client": "diffgazer",
+      "x-opencode-session": "ses_review-1",
+    });
+    expect(headers["x-opencode-request"]).toMatch(/^req_/);
+    expect(headers["x-opencode-request"]).not.toBe(
+      headersOf("opencode-zen", "ses_review-1")["x-opencode-request"],
+    );
+  });
+
+  it("reports the dev placeholder version when the binary did not export one", () => {
+    vi.stubEnv("DIFFGAZER_CLIENT_VERSION", "");
+
+    expect(headersOf("opencode-zen", "ses_review-1")["user-agent"]).toBe("diffgazer/0.0.0-dev");
+  });
+
+  it.each([
+    ["zai", BEARER_ONLY],
+    ["ollama-cloud", BEARER_ONLY],
+    ["deepseek", BEARER_ONLY],
+    [
+      "openrouter",
+      { ...BEARER_ONLY, "http-referer": "https://diffgazer.local", "x-title": "Diffgazer" },
+    ],
+    [
+      "gemini",
+      {
+        "content-type": "application/json",
+        accept: "application/json",
+        "x-goog-api-key": TEST_CREDENTIAL,
+      },
+    ],
+  ] as const)("does not identify itself to %s (no opencode headers, no user agent)", (productId, expected) => {
+    expect(headersOf(productId, "ses_review-1")).toEqual(expected);
   });
 });
 

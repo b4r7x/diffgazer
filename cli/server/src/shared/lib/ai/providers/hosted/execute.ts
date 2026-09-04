@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type {
@@ -292,6 +293,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
   };
 
   let correction: OutputCorrection | null = null;
+  const dispatchSessionId = request.sessionId ?? `ses_${randomUUID()}`;
   let timeoutRetryUsed = false;
   let budgetExpiry: { phase: "headers" | "body"; attempt: number } | null = null;
 
@@ -323,23 +325,26 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
       }
 
       const url = buildRequestUrl(hostedProductId, endpoint, evidenceKey.modelId);
-      const init = buildRequestInit({
-        productId: hostedProductId,
-        credential,
-        evidenceKey,
-        prompt: request.prompt,
-        systemPrompt: request.systemPrompt,
-        structuredOutputSchema: context.structuredOutputSchema,
-        structuredOutputMode,
-        ...(context.boundReasoning ? { boundReasoning: true } : {}),
-        ...(correction ? { correction } : {}),
-        signal: deadline.signal,
-      });
 
       let response: Response;
       let rateLimitCapture: string | null = null;
       let rateLimitAttempt = 0;
       for (;;) {
+        // Rebuilt per HTTP request: the bytes are deterministic, but the
+        // request id identifies the single request, not the attempt.
+        const init = buildRequestInit({
+          productId: hostedProductId,
+          credential,
+          evidenceKey,
+          prompt: request.prompt,
+          systemPrompt: request.systemPrompt,
+          structuredOutputSchema: context.structuredOutputSchema,
+          structuredOutputMode,
+          ...(context.boundReasoning ? { boundReasoning: true } : {}),
+          ...(correction ? { correction } : {}),
+          sessionId: dispatchSessionId,
+          signal: deadline.signal,
+        });
         try {
           response = await fetcher(url, init);
         } catch (error) {

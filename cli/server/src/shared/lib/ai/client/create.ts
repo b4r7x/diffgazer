@@ -17,6 +17,7 @@ import {
 export type ExecuteOptions = Readonly<{
   signal?: AbortSignal;
   systemPrompt?: string;
+  sessionId?: string;
   onProgress?: AdapterExecuteRequest["reportProgress"];
 }>;
 
@@ -72,6 +73,7 @@ function buildExecuteRequest(
     evidenceKey: plan.evidenceKey,
     prompt,
     ...(options?.systemPrompt ? { systemPrompt: options.systemPrompt } : {}),
+    ...(options?.sessionId ? { sessionId: options.sessionId } : {}),
     signal: options?.signal,
     resolveCredential: channel?.resolveCredential,
     reportDiagnostic: channel?.reportDiagnostic,

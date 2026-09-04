@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createError } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { ConfigurationId } from "@diffgazer/core/schemas/config";
@@ -165,6 +166,7 @@ export interface InitializedAIClientHooks {
 
 function createGenerateBridge(
   authorization: AuthorizedReviewExecution,
+  sessionId: string,
   recordExecution: (execution: ExecutionResult, diagnostic?: AIErrorDiagnostic) => void,
   onStructuredSuccess: () => void,
 ): AIClient["generate"] {
@@ -177,6 +179,7 @@ function createGenerateBridge(
       authorization,
       prompt,
       ...(options?.systemPrompt ? { systemPrompt: options.systemPrompt } : {}),
+      sessionId,
       signal: options?.signal,
       onProgress: options?.onProgress,
     });
@@ -220,6 +223,10 @@ export function toInitializedAIClient(
     terminalDiagnostics,
     generate: createGenerateBridge(
       authorization,
+      // One client serves one review, so this is the review's conversation id
+      // for providers that route by session — minted here because the client
+      // exists before the session (and its review id) does.
+      `ses_${randomUUID()}`,
       (execution, diagnostic) => {
         terminalExecutions.push(execution);
         if (diagnostic) {

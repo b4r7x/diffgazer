@@ -4,7 +4,11 @@ import {
   setupClientTestHome,
   teardownClientTestHome,
 } from "../../testing/ai-client-env.js";
-import { clientTestAdmittedPlan } from "../../testing/ai-client-fixtures.js";
+import {
+  clientTestAdmittedPlan,
+  clientTestCreateMockAdapter,
+  clientTestExecutionResult,
+} from "../../testing/ai-client-fixtures.js";
 
 describe("createFromAdmittedPlan", () => {
   beforeEach(setupClientTestHome);
@@ -33,5 +37,25 @@ describe("createFromAdmittedPlan", () => {
     const execution = await clientResult.value.execute("review this diff");
     expect(execution.receipt.outcome).not.toBe("completed");
     expect(execution.result.issues).toEqual([]);
+  });
+
+  it("forwards the caller's session id to the adapter", async () => {
+    const { createFromAdmittedPlan } = await loadCreate();
+    const plan = clientTestAdmittedPlan("opencode-zen");
+    let receivedSessionId: string | undefined;
+    const adapter = clientTestCreateMockAdapter("opencode-zen", async (request) => {
+      receivedSessionId = request.sessionId;
+      return clientTestExecutionResult(plan, "completed");
+    });
+    const clientResult = createFromAdmittedPlan(plan, {
+      adapter,
+      resolveCredential: async () => "credential",
+    });
+    expect(clientResult.ok).toBe(true);
+    if (!clientResult.ok) return;
+
+    await clientResult.value.execute("review this diff", { sessionId: "ses_review-7" });
+
+    expect(receivedSessionId).toBe("ses_review-7");
   });
 });

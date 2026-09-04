@@ -33,6 +33,7 @@ export type ExecuteReviewGenerationInput = Readonly<{
   authorization: AuthorizedReviewExecution;
   prompt: string;
   systemPrompt?: string;
+  sessionId?: string;
   signal?: AbortSignal;
   onProgress?: ExecuteOptions["onProgress"];
 }>;
@@ -278,7 +279,7 @@ const ADAPTER_THROW_DIAGNOSTIC_MESSAGE = "Adapter execution failed.";
 export async function executeReviewGeneration(
   input: ExecuteReviewGenerationInput,
 ): Promise<ExecuteReviewGenerationResult> {
-  const { authorization, prompt, systemPrompt, signal, onProgress } = input;
+  const { authorization, prompt, systemPrompt, sessionId, signal, onProgress } = input;
   const { plan, budgetLedger, budgetReservation } = authorization;
   const startedAt = new Date().toISOString();
 
@@ -325,7 +326,7 @@ export async function executeReviewGeneration(
   let execution: ExecutionResult;
   try {
     execution = zeroFindingsUnlessCompleted(
-      await clientResult.value.execute(prompt, { signal, systemPrompt, onProgress }),
+      await clientResult.value.execute(prompt, { signal, systemPrompt, sessionId, onProgress }),
     );
   } catch {
     // An adapter that throws — including one whose result breaks the bounded

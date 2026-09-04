@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { HostedApiProductId } from "@diffgazer/core/schemas/config";
 import type { EvidenceKey, NormalizedUsage } from "@diffgazer/core/schemas/review";
 import { NormalizedUsageSchema } from "@diffgazer/core/schemas/review";
@@ -316,6 +317,33 @@ export type OutputCorrection = Readonly<{
   instruction: string;
 }>;
 
+/**
+ * OpenCode asks every client to identify itself and to send one stable
+ * `x-opencode-session` per conversation "so we can optimize prompt caching"
+ * (opencode.ai/docs/go, 2026-09); unidentified clients get anonymous rate
+ * limits on Zen and, on some Go models, HTTP 400. Our conversation is one
+ * review, so its dispatches share the review's session id; a one-off dispatch
+ * (the conformance probe) gets a fresh one. The user agent names this client
+ * honestly — never the official CLI's.
+ */
+function opencodeIdentificationHeaders(sessionId: string): Record<string, string> {
+  return {
+    "user-agent": `diffgazer/${clientVersion()}`,
+    "x-opencode-client": "diffgazer",
+    "x-opencode-session": sessionId,
+    "x-opencode-request": `req_${randomUUID()}`,
+  };
+}
+
+/**
+ * The `diffgazer` binary knows its version (tsup `define`); the bundled server
+ * learns it the way it learns the packaged flag — through the environment set
+ * before the app is created. Source runs report the dev placeholder.
+ */
+function clientVersion(): string {
+  return process.env.DIFFGAZER_CLIENT_VERSION || "0.0.0-dev";
+}
+
 function buildOpenAiMessages(
   prompt: string,
   systemPrompt: string | undefined,
@@ -344,6 +372,7 @@ export function buildRequestInit(
     structuredOutputMode?: HostedProductProfile["structuredOutput"];
     boundReasoning?: boolean;
     correction?: OutputCorrection;
+    sessionId: string;
     signal?: AbortSignal;
   }>,
 ): RequestInit {
@@ -410,6 +439,9 @@ export function buildRequestInit(
     }
     case "openai-compatible": {
       headers.authorization = `Bearer ${input.credential}`;
+      if (input.productId === "opencode-zen") {
+        Object.assign(headers, opencodeIdentificationHeaders(input.sessionId));
+      }
       const reasoningEffort = resolveReasoningEffort(input.productId, input.evidenceKey.modelId);
       body = {
         model: input.evidenceKey.modelId,
