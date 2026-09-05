@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -220,14 +220,15 @@ describe("parseEffectiveCallTokenCap", () => {
 });
 
 describe("PROVIDER_CONSENT_PRIVACY_URL", () => {
-  it("points at the README privacy section, which exists", () => {
-    expect(PROVIDER_CONSENT_PRIVACY_URL).toBe("https://github.com/b4r7x/diffgazer#privacy");
+  it("points at the docs site privacy page, which exists", () => {
+    expect(PROVIDER_CONSENT_PRIVACY_URL).toBe("https://docs.diffgazer.b4r7.dev/privacy");
 
-    const readme = readFileSync(
-      resolve(import.meta.dirname, "../../../../..", "README.md"),
-      "utf8",
-    );
-    expect(readme).toContain("\n## Privacy\n");
+    // TanStack file routes: routes/privacy.tsx is what serves /privacy.
+    expect(
+      existsSync(
+        resolve(import.meta.dirname, "../../../../..", "apps/docs/src/routes/privacy.tsx"),
+      ),
+    ).toBe(true);
   });
 
   it("fits one line of the 80-column TUI consent card", () => {

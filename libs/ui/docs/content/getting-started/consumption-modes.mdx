@@ -5,11 +5,11 @@ description: Choose copy-first source you own or versioned runtime package impor
 
 `@diffgazer/ui` has two intended consumption modes.
 
-> **Before publication:** Diffgazer packages are not yet published to npm, so neither mode installs from the public registry yet. Pack the workspace packages from a checkout and install those tarballs in the target app — see the canonical [Consumption Paths](https://github.com/b4r7x/diffgazer#consumption-paths) section.
+> **npm packages:** `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys` are publish-gated and not on npm. Copy-first mode works without a checkout through the hosted registry (`npx shadcn add https://r.b4r7.dev/r/ui/<item>.json`) or through `dgadd` from a packed tarball; runtime package mode needs tarballs packed from a checkout — see the canonical [Consumption Paths](https://github.com/b4r7x/diffgazer#consumption-paths) section.
 
 ## Copy-first mode
 
-Use copy-first mode when the consuming app should own and customize component source. Before publication, the packed `@diffgazer/add` tarball installed in the target app is what puts `dgadd` on `pnpm exec` ([Copy-first mode procedure](https://github.com/b4r7x/diffgazer#copy-first-mode-dgadd)).
+Use copy-first mode when the consuming app should own and customize component source. The packed `@diffgazer/add` tarball installed in the target app is what puts `dgadd` on `pnpm exec` ([Copy-first mode procedure](https://github.com/b4r7x/diffgazer#copy-first-mode-dgadd)).
 
 ```bash
 pnpm exec dgadd init
@@ -36,7 +36,7 @@ Prerequisites:
 
 Use runtime package mode when you want versioned imports and do not need source customization.
 
-Install both packages when using this path. Before publication, pack them from a checkout of the repository and install the tarballs:
+Install both packages when using this path. They are not on npm, so pack them from a checkout of the repository and install the tarballs:
 
 ```bash
 pnpm --filter @diffgazer/keys pack --pack-destination /tmp/diffgazer-packs
@@ -47,7 +47,7 @@ pnpm --filter @diffgazer/ui pack --pack-destination /tmp/diffgazer-packs
 npm install /tmp/diffgazer-packs/diffgazer-ui-*.tgz /tmp/diffgazer-packs/diffgazer-keys-*.tgz
 ```
 
-After publication, this becomes:
+If the packages are published, this becomes:
 
 ```bash
 npm install @diffgazer/ui @diffgazer/keys

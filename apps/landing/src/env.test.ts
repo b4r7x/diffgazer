@@ -6,7 +6,7 @@ import { mountLanding } from "./testing/markup";
 describe("resolveLinks", () => {
   it("falls back to the public defaults when env is unset", () => {
     expect(resolveLinks({})).toEqual({
-      docs: "https://docs.b4r7.dev",
+      docs: "https://docs.diffgazer.b4r7.dev",
       github: "https://github.com/b4r7x/diffgazer",
     });
   });
@@ -29,7 +29,7 @@ describe("resolveLinks", () => {
         VITE_GITHUB_URL: "data:text/html,hello",
       }),
     ).toEqual({
-      docs: "https://docs.b4r7.dev",
+      docs: "https://docs.diffgazer.b4r7.dev",
       github: "https://github.com/b4r7x/diffgazer",
     });
   });

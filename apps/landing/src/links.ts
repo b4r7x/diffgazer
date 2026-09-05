@@ -8,7 +8,7 @@ interface LandingLinkEnvironment {
   VITE_GITHUB_URL?: string;
 }
 
-const DEFAULT_DOCS = "https://docs.b4r7.dev";
+const DEFAULT_DOCS = "https://docs.diffgazer.b4r7.dev";
 const DEFAULT_GITHUB = "https://github.com/b4r7x/diffgazer";
 
 function resolveHttpUrl(value: string | undefined, fallback: string): string {

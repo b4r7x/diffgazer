@@ -6,16 +6,20 @@ import { describe, expect, it } from "vitest";
 const ROOT = resolve(fileURLToPath(import.meta.url), "../..");
 
 const HOSTED_REGISTRY_HOST = "r.b4r7.dev";
+// Markers a section carries while the install path it documents is unavailable.
 const GATE_PHRASE = /future|not yet live|gated/i;
-// Host references that are not runnable install commands: the prose explaining
-// the host is not live and the line linking to the governance status doc.
-// They cannot be copy-pasted into a shell, so they are exempt from the gate.
-const ALLOWED_HOST_LINE = /hosted registry at|Hosted Registry Status/i;
+const HOSTED_REGISTRY_LIVE = /hosted registry at `https:\/\/r\.b4r7\.dev` is live/;
+const HOSTED_BUTTON_INSTALL =
+  /npx shadcn(?:@latest)? add https:\/\/r\.b4r7\.dev\/r\/ui\/button\.json/;
 
-// Handoff surfaces that advertise the hosted registry. Every runnable
-// r.b4r7.dev reference on these pages must sit under a future/gated marker so a
-// consumer cannot copy a command against the DNS-dead host.
-const GATED_SURFACES = ["README.md", "docs/content/utils/shadcn-namespace.mdx"] as const;
+// Handoff surfaces that advertise the hosted registry. The host serves its
+// registry trees, so each page must say the registry is live and hand the reader
+// a runnable install command that no future/gated marker holds back.
+const HOSTED_REGISTRY_SURFACES = [
+  "../../README.md",
+  "README.md",
+  "docs/content/utils/shadcn-namespace.mdx",
+] as const;
 
 function read(relativePath: string): string {
   return readFileSync(resolve(ROOT, relativePath), "utf-8");
@@ -57,14 +61,13 @@ function sectionIsGated(lines: string[], index: number): boolean {
   return lines.slice(sectionStart, index + 1).some((line) => GATE_PHRASE.test(line));
 }
 
-function ungatedHostReferences(source: string): string[] {
+function gatedHostReferences(source: string): string[] {
   const lines = source.split("\n");
   const offending: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (!line?.includes(HOSTED_REGISTRY_HOST)) continue;
-    if (ALLOWED_HOST_LINE.test(line)) continue;
-    if (!sectionIsGated(lines, i)) {
+    if (sectionIsGated(lines, i)) {
       offending.push(`line ${i + 1}: ${line.trim()}`);
     }
   }
@@ -94,23 +97,24 @@ function ungatedAddCommands(source: string): string[] {
   return offending;
 }
 
-describe("hosted-registry gating", () => {
-  it.each(
-    GATED_SURFACES,
-  )("keeps every runnable hosted-registry reference in %s under a future/gated marker", (surface) => {
-    const offending = ungatedHostReferences(read(surface));
+describe("registry handoff docs", () => {
+  it.each(HOSTED_REGISTRY_SURFACES)("%s installs from the live hosted registry", (surface) => {
+    const doc = read(surface);
+    expect(doc).toMatch(HOSTED_REGISTRY_LIVE);
+    expect(doc).toMatch(HOSTED_BUTTON_INSTALL);
+    const heldBack = gatedHostReferences(doc);
     expect(
-      offending,
-      `ungated hosted-registry references in ${surface}:\n${offending.join("\n")}`,
+      heldBack,
+      `hosted-registry references in ${surface} still sit under a future/gated marker:\n${heldBack.join("\n")}`,
     ).toEqual([]);
   });
 
   it.each(
-    GATED_SURFACES,
-  )("%s points consumers at a currently-available install path", (surface) => {
+    HOSTED_REGISTRY_SURFACES,
+  )("%s keeps dgadd on the packed tarball while the npm packages are unpublished", (surface) => {
     const doc = read(surface);
     expect(doc).toContain("pnpm exec dgadd add ui/button");
-    expect(doc).toMatch(/Until then/);
+    expect(doc).toMatch(/publish-gated|not yet published to npm/);
   });
 
   it("maps lowlight guidance to the exported highlight entry and its caller-owned dependency", () => {

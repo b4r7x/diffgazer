@@ -186,11 +186,11 @@ export async function assertRegistryContentFresh(fetchImpl = fetch) {
 export async function publicRegistryIsGated(metadataFilePath = metadataPath) {
   const source = await readFile(metadataFilePath, "utf8");
   const match = source.match(
-    /^export[ \t]+const[ \t]+PUBLISH_GATED[ \t]*=[ \t]*(true|false)[ \t]*;[ \t]*$/m,
+    /^export[ \t]+const[ \t]+HOSTED_REGISTRY_GATED[ \t]*=[ \t]*(true|false)[ \t]*;[ \t]*$/m,
   );
   if (!match) {
     throw new Error(
-      `Could not find a 'PUBLISH_GATED = true|false' assignment in ${metadataFilePath}. ` +
+      `Could not find a 'HOSTED_REGISTRY_GATED = true|false' assignment in ${metadataFilePath}. ` +
         "The live-check depends on this literal; update check-live-registry.mjs if it moved.",
     );
   }

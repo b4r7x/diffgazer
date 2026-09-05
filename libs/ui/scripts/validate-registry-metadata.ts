@@ -27,7 +27,10 @@ const ROOT = process.env.DIFFGAZER_UI_REGISTRY_ROOT
   : resolve(import.meta.dirname, "..");
 const REGISTRY_SCHEMA = "https://ui.shadcn.com/schema/registry.json";
 const KEYBOARD_NAVIGATION_INTEGRATION = "keyboard-navigation";
-const ALLOWED_REGISTRY_DEP_ORIGINS = ["https://docs.b4r7.dev", "https://r.b4r7.dev"] as const;
+const ALLOWED_REGISTRY_DEP_ORIGINS = [
+  "https://docs.diffgazer.b4r7.dev",
+  "https://r.b4r7.dev",
+] as const;
 const KEYS_PEER_NAME = "@diffgazer/keys";
 
 function readJson(relativePath: string): unknown {

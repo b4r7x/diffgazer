@@ -37,7 +37,7 @@ COPY scripts/ scripts/
 ARG REGISTRY_ORIGIN=https://r.b4r7.dev
 ENV REGISTRY_ORIGIN=${REGISTRY_ORIGIN}
 
-ARG VITE_PUBLIC_ORIGIN=https://docs.b4r7.dev
+ARG VITE_PUBLIC_ORIGIN=https://docs.diffgazer.b4r7.dev
 ENV VITE_PUBLIC_ORIGIN=${VITE_PUBLIC_ORIGIN}
 
 RUN pnpm --filter @diffgazer/registry build

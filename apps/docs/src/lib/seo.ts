@@ -87,13 +87,16 @@ export function buildRootHeadDefaults(): { meta: MetaTag[]; links: LinkTag[] } {
     { name: "twitter:card", content: "summary" },
     { name: "twitter:title", content: DEFAULT_SITE_NAME },
     { name: "twitter:description", content: DEFAULT_SITE_DESCRIPTION },
-    { property: "og:image", content: `${PUBLIC_ORIGIN}/logo512.png` },
+    { property: "og:image", content: `${PUBLIC_ORIGIN}/icon-512.png` },
   ];
 
   const links: LinkTag[] = [
     { rel: "manifest", href: "/manifest.json" },
-    { rel: "icon", href: "/favicon.ico" },
-    { rel: "apple-touch-icon", href: "/logo192.png" },
+    // The ICO declares its size so browsers that render SVG favicons prefer the
+    // SVG (it follows dark browser chrome); Safari ignores the SVG and takes the ICO.
+    { rel: "icon", href: "/favicon.ico", sizes: "32x32" },
+    { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+    { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
   ];
 
   return { meta, links };

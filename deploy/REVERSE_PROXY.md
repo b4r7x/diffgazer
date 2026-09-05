@@ -19,9 +19,9 @@ VPS firewall (UFW: allow 80, 443 only)
     v
 Traefik (managed by Coolify, auto-SSL via Let's Encrypt)
     |
-    +-- r.b4r7.dev          --> registry container (nginx, port 8080)
-    +-- docs.b4r7.dev       --> docs container (Node.js Nitro, port 3000)
-    +-- diffgazer.b4r7.dev  --> landing container (nginx, port 8080)
+    +-- r.b4r7.dev              --> registry container (nginx, port 8080)
+    +-- docs.diffgazer.b4r7.dev --> docs container (Node.js Nitro, port 3000)
+    +-- diffgazer.b4r7.dev      --> landing container (nginx, port 8080)
 ```
 
 Traefik runs as a Coolify-managed service. It:
@@ -47,7 +47,7 @@ only service with a public path contract under `/r/**`.
 | Subdomain | Container | Internal Port | Runtime artifact | Content |
 |---|---|---|---|---|
 | `r.b4r7.dev` | registry | 8080 | `ghcr.io/b4r7x/diffgazer-registry:prod` | Static JSON (shadcn registry) |
-| `docs.b4r7.dev` | docs | 3000 | `ghcr.io/b4r7x/diffgazer-docs:prod` | Node.js SSR (TanStack Start + Nitro) |
+| `docs.diffgazer.b4r7.dev` | docs | 3000 | `ghcr.io/b4r7x/diffgazer-docs:prod` | Node.js SSR (TanStack Start + Nitro) |
 | `diffgazer.b4r7.dev` | landing | 8080 | `ghcr.io/b4r7x/diffgazer-landing:prod` | Static site (Vite + vanilla TS) |
 
 ---
@@ -59,12 +59,20 @@ the manual GitHub Actions deploy promotes scanned SHA images to `:prod`, then
 calls the selected Coolify webhooks. See
 [`deploy/PUBLIC_DEPLOYMENT.md`](./PUBLIC_DEPLOYMENT.md) for the full runbook.
 
+Set the health check Host of every resource to `127.0.0.1`, not `localhost`.
+Coolify runs its HTTP health check inside the container with `wget`; on Alpine
+`localhost` resolves to `::1` first, and nginx listens on IPv4 only (the Node
+docs server refused `::1` on the VPS as well), so with `localhost` every deploy
+was marked unhealthy and rolled back until the Host was changed. `127.0.0.1` is
+the address the Dockerfiles' own `HEALTHCHECK` lines already use.
+
 ### Registry (`r.b4r7.dev`)
 
 - **Domain**: `r.b4r7.dev`
 - **Image**: `ghcr.io/b4r7x/diffgazer-registry:prod`
 - **Port**: `8080`
 - **Health Check Path**: `/r/ui/registry.json`
+- **Health Check Host**: `127.0.0.1`
 - **Auto Deploy**: off
 - **Build configuration**: set the repository variable
   `REGISTRY_TRAEFIK_PROXY_CIDR` to the exact Traefik container address with an
@@ -75,12 +83,13 @@ calls the selected Coolify webhooks. See
   peer is baked into the image at build time, so after changing it deploy a fresh
   registry build instead of rolling back to an image built with the old peer.
 
-### Docs (`docs.b4r7.dev`)
+### Docs (`docs.diffgazer.b4r7.dev`)
 
-- **Domain**: `docs.b4r7.dev`
+- **Domain**: `docs.diffgazer.b4r7.dev`
 - **Image**: `ghcr.io/b4r7x/diffgazer-docs:prod`
 - **Port**: `3000`
 - **Health Check Path**: `/`
+- **Health Check Host**: `127.0.0.1`
 - **Auto Deploy**: off
 - **Runtime env vars**:
   - `NODE_ENV=production`
@@ -92,6 +101,7 @@ calls the selected Coolify webhooks. See
 - **Image**: `ghcr.io/b4r7x/diffgazer-landing:prod`
 - **Port**: `8080`
 - **Health Check Path**: `/`
+- **Health Check Host**: `127.0.0.1`
 - **Auto Deploy**: off
 
 ---
@@ -117,7 +127,7 @@ labels:
 # Docs example
 labels:
   - "traefik.enable=true"
-  - "traefik.http.routers.docs.rule=Host(`docs.b4r7.dev`)"
+  - "traefik.http.routers.docs.rule=Host(`docs.diffgazer.b4r7.dev`)"
   - "traefik.http.routers.docs.entrypoints=https"
   - "traefik.http.routers.docs.tls=true"
   - "traefik.http.routers.docs.tls.certresolver=letsencrypt"
@@ -273,7 +283,7 @@ curl -sI https://r.b4r7.dev/r/ui/registry.json | head -5
 curl -sI https://r.b4r7.dev/r/keys/registry.json | head -5
 
 # Docs -- must return HTML with 200
-curl -sI https://docs.b4r7.dev | head -5
+curl -sI https://docs.diffgazer.b4r7.dev | head -5
 
 # Landing -- must return HTML with 200
 curl -sI https://diffgazer.b4r7.dev | head -5
@@ -284,7 +294,7 @@ curl -sI https://diffgazer.b4r7.dev | head -5
 ```sh
 # All must show valid Let's Encrypt certificates
 echo | openssl s_client -servername r.b4r7.dev -connect r.b4r7.dev:443 2>/dev/null | openssl x509 -noout -dates -issuer
-echo | openssl s_client -servername docs.b4r7.dev -connect docs.b4r7.dev:443 2>/dev/null | openssl x509 -noout -dates -issuer
+echo | openssl s_client -servername docs.diffgazer.b4r7.dev -connect docs.diffgazer.b4r7.dev:443 2>/dev/null | openssl x509 -noout -dates -issuer
 echo | openssl s_client -servername diffgazer.b4r7.dev -connect diffgazer.b4r7.dev:443 2>/dev/null | openssl x509 -noout -dates -issuer
 ```
 
@@ -293,7 +303,7 @@ echo | openssl s_client -servername diffgazer.b4r7.dev -connect diffgazer.b4r7.d
 ```sh
 # HTTP must redirect to HTTPS (301 or 308)
 curl -sI http://r.b4r7.dev/r/ui/registry.json | head -3
-curl -sI http://docs.b4r7.dev | head -3
+curl -sI http://docs.diffgazer.b4r7.dev | head -3
 curl -sI http://diffgazer.b4r7.dev | head -3
 ```
 
@@ -302,7 +312,7 @@ curl -sI http://diffgazer.b4r7.dev | head -3
 ```sh
 # Must include Strict-Transport-Security
 curl -sI https://r.b4r7.dev/r/ui/registry.json | grep -i strict-transport
-curl -sI https://docs.b4r7.dev | grep -i strict-transport
+curl -sI https://docs.diffgazer.b4r7.dev | grep -i strict-transport
 ```
 
 ### CORS (registry only)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ComponentPageData } from "@/components/docs-mdx/doc-data-context";
-import { PUBLISH_GATED } from "@/lib/consumption-metadata";
+import { HOSTED_REGISTRY_GATED } from "@/lib/consumption-metadata";
 import { prepareComponentScaffoldData } from "@/lib/scaffold-data";
 
 const componentData = {
@@ -32,13 +32,13 @@ describe("prepareInstallation", () => {
     });
   });
 
-  it("withholds the shadcn destination while the hosted registry is gated", () => {
+  it("states the shadcn destination only while the hosted registry is ungated", () => {
     const copiesTo = installationPath("shadcn CLI").details.find(
       (detail) => detail.label === "Copies to",
     );
 
     expect(copiesTo).toEqual(
-      PUBLISH_GATED ? undefined : { label: "Copies to", value: "src/components/ui/button" },
+      HOSTED_REGISTRY_GATED ? undefined : { label: "Copies to", value: "src/components/ui/button" },
     );
   });
 });

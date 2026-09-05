@@ -14,7 +14,7 @@ Artifact synchronization is workspace-only: the command reads prepared `dist/art
 | --- | --- |
 | `DOCS_PRERENDER=0` | Disables TanStack Start prerender in `vite.config.ts`. |
 | `REGISTRY_ORIGIN` | Overrides the hosted registry origin written into synced library install metadata. Defaults to `https://r.b4r7.dev`. |
-| `VITE_PUBLIC_ORIGIN` | Sets SEO canonical URLs and sitemap/robots/LLM output. Build scripts load `.env.production` when the process environment does not set it. Defaults to `https://docs.b4r7.dev`. |
+| `VITE_PUBLIC_ORIGIN` | Sets SEO canonical URLs and sitemap/robots/LLM output. Build scripts load `.env.production` when the process environment does not set it. Defaults to `https://docs.diffgazer.b4r7.dev`. |
 | `DIFFGAZER_DEV=1` | In dev server mode, watches library `dist/artifacts` directories and reruns `prepare:generated` after artifact changes. |
 | `PLAYWRIGHT_PORT` | Port used by the built-site Playwright server. Defaults to `4173`. |
 

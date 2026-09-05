@@ -16,31 +16,38 @@ const KEYS_PACKAGE_ONLY = new Set([
 ]);
 
 /**
- * Public package and hosted-registry paths are held behind the pre-release
- * availability switch. Flipping this to `false` enables those paths and drops
- * the pre-release notes below.
+ * Two gates. HOSTED_REGISTRY_GATED closes the shadcn tab; the registry at
+ * r.b4r7.dev is live, so it is `false`. PUBLISH_GATED annotates the npm paths
+ * (package install, the dgadd bin) and stays `true` while the packages stay
+ * unpublished (see PACKAGE_GOVERNANCE.md, First-Publish Gate and Hosted
+ * Registry Status).
  *
  * SOURCE-TEXT CONSUMER: scripts/monorepo/check-live-registry.mjs regex-matches
- * the literal `PUBLISH_GATED = true|false` assignment in THIS file to decide
- * whether CI skips the live host check. When ungated, readiness checks DNS and
- * HEAD reachability only; byte-for-byte comparison runs only when
+ * the literal `HOSTED_REGISTRY_GATED = true|false` assignment in THIS file to
+ * decide whether the live host check skips. When ungated, readiness checks DNS
+ * and HEAD reachability only; byte-for-byte comparison runs only when
  * DIFFGAZER_LIVE_REGISTRY_REQUIRED=1 (post-deploy verification). Do not rename,
  * move, or reformat this assignment without updating that script, which fails
  * loudly if the literal disappears.
  */
+export const HOSTED_REGISTRY_GATED = false;
+
 export const PUBLISH_GATED = true;
 
-const PUBLISH_GATE_NOTE =
-  "Diffgazer packages are not yet published to npm. Until the first release, pack @diffgazer/ui and @diffgazer/keys from the repository and install those tarballs.";
+/** Kept as a literal so the client bundle stays clear of the registry barrel; consumption-metadata.test.ts pins it to REGISTRY_ORIGIN. */
+const HOSTED_REGISTRY_ORIGIN = "https://r.b4r7.dev";
 
-export const HOSTED_REGISTRY_GATE_NOTE =
-  "The hosted registry is not public yet because r.b4r7.dev does not resolve. Use this source checkout or a local registry preview until the endpoint returns 200.";
+const PUBLISH_GATE_NOTE =
+  "@diffgazer/ui and @diffgazer/keys are not published to npm. Pack them from the repository and install those tarballs.";
+
+const HOSTED_REGISTRY_GATE_NOTE =
+  "The hosted registry at https://r.b4r7.dev is not serving yet. Copy the source from this page instead.";
 
 const LOCAL_DGADD_GATE_NOTE =
-  "dgadd is not public on npm yet. Until the first release, pack @diffgazer/add from the repository and install that tarball into this app, which is what puts dgadd on pnpm exec.";
+  "@diffgazer/add is not published to npm. Pack it from the repository and install that tarball into this app, which is what puts dgadd on pnpm exec.";
 
 const KEYS_PACKAGE_GATE_NOTE =
-  "Requires KeyboardProvider and the @diffgazer/keys package, which is not public on npm yet.";
+  "Requires KeyboardProvider and the @diffgazer/keys package, which is not published to npm.";
 
 function getKeysHookFileName(itemId: string): string {
   return itemId.startsWith("use-") ? itemId : `use-${itemId}`;
@@ -60,6 +67,17 @@ function getUiCopyPath(itemId: string, itemKind: ConsumptionItemKind): string {
   if (itemKind === "component") return `src/components/ui/${itemId}`;
   if (itemKind === "hook") return `src/hooks/use-${itemId}.ts`;
   return `src/lib/${itemId}.ts`;
+}
+
+function getHostedRegistryPath(
+  library: ConsumptionLibrary,
+  registryItemId: string,
+): ConsumptionMetadata["paths"]["copy"] {
+  if (HOSTED_REGISTRY_GATED) return { available: false, note: HOSTED_REGISTRY_GATE_NOTE };
+  return {
+    available: true,
+    command: `npx shadcn add ${HOSTED_REGISTRY_ORIGIN}/r/${library}/${registryItemId}.json`,
+  };
 }
 
 export function getConsumptionMetadata(
@@ -91,10 +109,7 @@ export function getConsumptionMetadata(
         // instructions on.
         copy: isKeysPackageOnly
           ? { available: false, note: KEYS_PACKAGE_GATE_NOTE }
-          : {
-              available: !PUBLISH_GATED,
-              note: PUBLISH_GATED ? HOSTED_REGISTRY_GATE_NOTE : undefined,
-            },
+          : getHostedRegistryPath(library, registryItemId),
         dgadd: isKeysPackageOnly
           ? { available: false, note: KEYS_PACKAGE_GATE_NOTE }
           : {
@@ -123,10 +138,7 @@ export function getConsumptionMetadata(
     dgaddName,
     publishGated: PUBLISH_GATED,
     paths: {
-      copy: {
-        available: !PUBLISH_GATED,
-        note: PUBLISH_GATED ? HOSTED_REGISTRY_GATE_NOTE : undefined,
-      },
+      copy: getHostedRegistryPath(library, itemId),
       dgadd: {
         available: true,
         command: getInstallCommand(library, dgaddName) ?? undefined,
@@ -138,6 +150,6 @@ export function getConsumptionMetadata(
       },
     },
     cssNote:
-      "UI components require Tailwind CSS v4. Local copy mode imports src/styles/styles.css; package mode uses @diffgazer/ui CSS once packages are available.",
+      "UI components require Tailwind CSS v4. Local copy mode imports src/styles/styles.css; package mode uses @diffgazer/ui CSS from the installed package.",
   };
 }

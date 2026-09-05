@@ -1,11 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { REGISTRY_ORIGIN } from "@diffgazer/registry";
 import { describe, expect, it } from "vitest";
-import {
-  getConsumptionMetadata,
-  HOSTED_REGISTRY_GATE_NOTE,
-  PUBLISH_GATED,
-} from "@/lib/consumption-metadata";
+import { getConsumptionMetadata, HOSTED_REGISTRY_GATED } from "@/lib/consumption-metadata";
 
 const repoRoot = resolve(import.meta.dirname, "../../../..");
 
@@ -20,8 +17,11 @@ describe("consumption metadata API", () => {
     expect(meta.packageImport).toBe("@diffgazer/ui/lib/compose-refs");
     expect(meta.copyPath).toBe("src/lib/compose-refs.ts");
     expect(meta.dgaddName).toBe("ui/compose-refs");
-    expect(meta.paths.copy.available).toBe(false);
-    expect(meta.paths.copy.note).toContain("r.b4r7.dev does not resolve");
+    expect(meta.paths.copy.available).toBe(true);
+    expect(meta.paths.copy.command).toBe(
+      `npx shadcn add ${REGISTRY_ORIGIN}/r/ui/compose-refs.json`,
+    );
+    expect(meta.paths.copy.note).toBeUndefined();
     expect(meta.paths.dgadd.command).toBe("pnpm exec dgadd add ui/compose-refs");
     expect(meta.paths.dgadd.note).toContain("install that tarball");
     expect(meta.paths.package.available).toBe(false);
@@ -32,8 +32,10 @@ describe("consumption metadata API", () => {
 
     expect(meta.copyPath).toBe("src/hooks/use-navigation.ts");
     expect(meta.dgaddName).toBe("keys/navigation");
-    expect(meta.paths.copy.available).toBe(false);
-    expect(meta.paths.copy.note).toContain("r.b4r7.dev does not resolve");
+    expect(meta.paths.copy.available).toBe(true);
+    expect(meta.paths.copy.command).toBe(
+      `npx shadcn add ${REGISTRY_ORIGIN}/r/keys/navigation.json`,
+    );
     expect(meta.paths.dgadd.command).toBe("pnpm exec dgadd add keys/navigation");
     expect(meta.paths.dgadd.note).toContain("install that tarball");
   });
@@ -46,7 +48,7 @@ describe("consumption metadata API", () => {
     expect(meta.paths.copy.available).toBe(false);
     expect(meta.paths.dgadd.available).toBe(false);
     expect(meta.paths.package.available).toBe(false);
-    expect(meta.paths.package.note).toContain("not yet published to npm");
+    expect(meta.paths.package.note).toContain("not published to npm");
   });
 
   it("closes the copy and dgadd paths for package-only keys hooks by classification, not the gate", () => {
@@ -64,31 +66,23 @@ describe("consumption metadata API", () => {
 });
 
 describe("consumption metadata publish gate", () => {
-  it("keeps the keys README hosted-registry command behind the publish gate", () => {
+  it("keys README and installation docs install from the live hosted registry", () => {
     const keysReadme = readRepoFile("libs/keys/README.md");
     const installation = readRepoFile("libs/keys/docs/content/getting-started/installation.mdx");
     const shadcnCommand = "npx shadcn add https://r.b4r7.dev/r/keys/navigation.json";
-
-    if (PUBLISH_GATED) {
-      expect(keysReadme).toContain(HOSTED_REGISTRY_GATE_NOTE);
-      expect(installation).toContain(HOSTED_REGISTRY_GATE_NOTE);
-      expect(keysReadme).not.toContain(shadcnCommand);
-      expect(installation).not.toContain(shadcnCommand);
-      return;
-    }
 
     expect(keysReadme).toContain(shadcnCommand);
     expect(installation).toContain(shadcnCommand);
   });
 
-  it("keeps the publish gate as one exported boolean declaration", () => {
+  it("keeps the hosted-registry gate as one exported boolean declaration", () => {
     const source = readRepoFile("apps/docs/src/lib/consumption-metadata.ts");
     const declarations = source.match(
-      /^export[ \t]+const[ \t]+PUBLISH_GATED[ \t]*=[ \t]*(true|false)[ \t]*;[ \t]*$/gm,
+      /^export[ \t]+const[ \t]+HOSTED_REGISTRY_GATED[ \t]*=[ \t]*(true|false)[ \t]*;[ \t]*$/gm,
     );
 
     expect(declarations?.map((declaration) => declaration.trim())).toEqual([
-      `export const PUBLISH_GATED = ${PUBLISH_GATED};`,
+      `export const HOSTED_REGISTRY_GATED = ${HOSTED_REGISTRY_GATED};`,
     ]);
   });
 });

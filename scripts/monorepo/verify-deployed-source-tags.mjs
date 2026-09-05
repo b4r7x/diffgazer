@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_ORIGINS = {
-  docs: "https://docs.b4r7.dev",
+  docs: "https://docs.diffgazer.b4r7.dev",
   landing: "https://diffgazer.b4r7.dev",
 };
 

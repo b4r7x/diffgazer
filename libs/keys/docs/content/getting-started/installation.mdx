@@ -7,7 +7,7 @@ description: Install `@diffgazer/keys` as a package, or copy standalone hooks in
 
 > **Installing via dgadd:** Only standalone hooks (`keys/navigation`, `keys/focus-trap`, `keys/focus-restore`, `keys/scroll-lock`) are copyable; provider-backed hooks are package-only. For the full command and flag reference — `init`, `add`, `list`, `diff`, `remove` — see the [dgadd CLI reference](/app/cli).
 
-> **Before publication:** Diffgazer packages are not yet published to npm, so `npm install @diffgazer/keys` and `pnpm exec dgadd` do not resolve yet. Pack the workspace packages from a checkout and install those tarballs in the target app — see the canonical [Consumption Paths](https://github.com/b4r7x/diffgazer#consumption-paths) section.
+> **npm packages:** `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys` are publish-gated and not on npm, so `npm install @diffgazer/keys` fails and there is no `dgadd` bin until you install tarballs. Pack the workspace packages from a checkout and install those tarballs in the target app — see the canonical [Consumption Paths](https://github.com/b4r7x/diffgazer#consumption-paths) section. Standalone hooks also install without a checkout from the hosted registry: `npx shadcn add https://r.b4r7.dev/r/keys/navigation.json`.
 
 ## Package install
 
@@ -17,7 +17,7 @@ Use the package when you need provider-backed hooks: `KeyboardProvider`, `useKey
 
 <Step title="Install the package">
 
-Before publication, pack `@diffgazer/keys` from a checkout of the repository:
+The package is not on npm, so pack `@diffgazer/keys` from a checkout of the repository:
 
 ```bash
 pnpm --filter @diffgazer/keys pack --pack-destination /tmp/diffgazer-packs
@@ -29,7 +29,7 @@ Then install that tarball in the target app:
 npm install /tmp/diffgazer-packs/diffgazer-keys-*.tgz
 ```
 
-After publication, this becomes:
+If `@diffgazer/keys` is published, this becomes:
 
 ```bash
 npm install @diffgazer/keys
@@ -80,9 +80,13 @@ For a single item you can drop the `add` keyword — `pnpm exec dgadd keys/navig
 
 ## Direct shadcn / manual copy
 
-The hosted registry is not public yet because r.b4r7.dev does not resolve. Use this source checkout or a local registry preview until the endpoint returns 200.
+The hosted registry at `https://r.b4r7.dev` is live, and installing from it needs no checkout:
 
-Use `pnpm exec dgadd add keys/navigation`, or copy the source from the hook source sections in these docs. Place each file at the path shown above its source block, such as `src/hooks/use-navigation.ts` and `src/hooks/utils/navigation-items.ts`.
+```bash
+npx shadcn add https://r.b4r7.dev/r/keys/navigation.json
+```
+
+Alternatively, use `pnpm exec dgadd add keys/navigation`, or copy the source from the hook source sections in these docs. Place each file at the path shown above its source block, such as `src/hooks/use-navigation.ts` and `src/hooks/utils/navigation-items.ts`.
 
 ## API availability by path
 

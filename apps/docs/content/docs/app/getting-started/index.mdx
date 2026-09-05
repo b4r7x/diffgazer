@@ -5,7 +5,7 @@ description: Local-first AI code review for your working changes, in the browser
 
 <DiffgazerPreview />
 
-Diffgazer is a local binary that reviews your uncommitted changes with AI. Run it inside any repository and it reads what you have changed, then hands back a structured review. Web mode is the default and opens in your browser; the terminal UI is opt-in and still in beta.
+Diffgazer is a local binary that reviews your uncommitted changes with AI. Run it inside any repository and it reads what you have changed, then hands back a structured review. Web mode is the default and opens in your browser; the terminal UI is opt-in and a beta.
 
 ## How review works
 
@@ -13,11 +13,15 @@ Diffgazer takes the diff of your working changes, gathers the surrounding code a
 
 ## Two ways to review
 
-By default `diffgazer` starts a local web environment and opens it in your browser. That is the path most people should use. The same review also runs in a keyboard-first terminal UI behind the `--tui` flag, but that mode is an incomplete beta and not recommended yet. See [web mode](/app/web) and the [terminal UI](/app/tui) for the details of each.
+By default `diffgazer` starts a local web environment and opens it in your browser. That is the path most people should use. The same review also runs in a keyboard-first terminal UI behind the `--tui` flag, but that mode is an incomplete beta and not recommended. See [web mode](/app/web) and the [terminal UI](/app/tui) for the details of each.
 
 ## Local and private
 
 Diffgazer runs on your machine. There is no remote Diffgazer service to deploy, and nothing about your diff is uploaded to a dashboard you do not control. Credentials are stored locally or read from your environment; when you start a review, the diff and prompt content go to the model provider you chose under that provider's policy. See [privacy](/app/concepts/privacy) for what is sent and what is not.
+
+## Project status
+
+Diffgazer is released and maintained, not in active development. If a bug is reported, it gets fixed; if an issue is opened, it gets an answer. There is no roadmap. See [Status](/app/status).
 
 ## Where to go next
 

@@ -5,7 +5,7 @@ description: Install `@diffgazer/ui`, wire up your app, and configure the theme.
 
 `@diffgazer/ui` components install as source. You own the files; `dgadd` copies them in and tracks updates. Work through the four steps below.
 
-> **Before publication:** Diffgazer packages are not yet published to npm, so there is no `dgadd` bin until you install one. Follow the canonical [Copy-first mode procedure](https://github.com/b4r7x/diffgazer#copy-first-mode-dgadd) to build and pack `@diffgazer/add`, then install that packed tarball in the target app. The target-app install is what puts `dgadd` on `pnpm exec`.
+> **npm packages:** `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys` are publish-gated and not on npm, so there is no `dgadd` bin until you install one. Follow the [Copy-first mode procedure](https://github.com/b4r7x/diffgazer#copy-first-mode-dgadd) to build and pack `@diffgazer/add` from a checkout, then install that tarball in the target app; that install is what puts `dgadd` on `pnpm exec`. Components also install without a checkout from the hosted registry: `npx shadcn add https://r.b4r7.dev/r/ui/<item>.json`.
 
 <Steps>
 

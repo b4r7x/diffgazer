@@ -24,6 +24,13 @@ const knipConfigSource = readFileSync(
 // exits with the highest exit code, so the gate stays red.
 const TURBO_TEST_COMMAND = "turbo run test --continue=dependencies-successful";
 
+// The Release workflow runs `release-check` on the same 4-vCPU runner as ci.yml,
+// where ten package suites started at once starve each other (ci.yml's Test
+// step documents the timeouts). Release-check throttles both workspace test
+// tasks the same way; the local `test` and `verify` chains stay unthrottled.
+const RELEASE_CHECK_TURBO_TEST_COMMAND = `${TURBO_TEST_COMMAND} --concurrency=2`;
+const RELEASE_CHECK_TURBO_TEST_TYPES_COMMAND = "turbo run test:types --concurrency=2";
+
 const CI_WORKFLOW_URL = new URL("../../.github/workflows/ci.yml", import.meta.url);
 
 const RELEASE_CHECK_MIRRORED_GATES = [
@@ -56,8 +63,8 @@ const RELEASE_CHECK_NON_OPTIONAL_SEGMENTS = [
   "pnpm run check",
   "pnpm run test:scripts",
   "turbo run type-check",
-  TURBO_TEST_COMMAND,
-  "turbo run test:types",
+  RELEASE_CHECK_TURBO_TEST_COMMAND,
+  RELEASE_CHECK_TURBO_TEST_TYPES_COMMAND,
   "pnpm run smoke:packages",
   T105_PROVIDER_PLAYWRIGHT_COMMAND,
   DOCS_BUILD_COMMAND,

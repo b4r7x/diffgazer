@@ -1,0 +1,21 @@
+---
+title: Status
+description: Where Diffgazer stands and what maintenance covers.
+---
+
+Diffgazer is released. It does what it was built for, and development stopped there. There is no roadmap and no list of planned features. Whether work resumes later is not decided.
+
+The project is maintained. If a bug or security problem is reported, it gets fixed; if an issue or pull request comes in, it gets an answer; the docs, registry, and landing page stay up. Report problems at [GitHub Issues](https://github.com/b4r7x/diffgazer/issues); security reports go through the [security policy](https://github.com/b4r7x/diffgazer/blob/main/SECURITY.md).
+
+## What that means per surface
+
+- The `diffgazer` CLI gets bug-fix releases when something needs fixing. Web mode is the finished review path.
+- The terminal UI (`--tui`) ships as a beta and stays one. Its gaps are listed on the [terminal UI](/app/tui) page.
+- The provider list is the nine selectable products in the [providers reference](/app/reference/providers). The experimental candidates listed there stay non-selectable.
+- `@diffgazer/ui` and `@diffgazer/keys` install from the hosted registry at `https://r.b4r7.dev`. The npm packages and `@diffgazer/add` are not published, and there is no date for that.
+
+## What stays true
+
+Diffgazer stays local-first: the review app runs on your machine, and the only network request carrying your code goes to the provider you configured. That is a property of the current release, not a plan.
+
+If a pull request fixes something, it gets reviewed and merged. For anything bigger, open an issue first so nobody builds a feature that will not be merged. Local checks are in [Contributing](/app/contributing).

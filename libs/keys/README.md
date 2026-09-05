@@ -4,23 +4,23 @@ Composable, scoped keyboard navigation hooks for React `>=19.2.0`.
 
 ## Consumption Paths Summary
 
-> **Before publication:** Diffgazer packages are not yet published to npm. Until the first release, pack the workspace packages from this repository and install those tarballs in the target app — see the canonical [Copy-first mode (`dgadd`)](https://github.com/b4r7x/diffgazer/blob/main/README.md#copy-first-mode-dgadd) and [local runtime package](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#local-runtime-package-installation-before-publication) procedures. The target-app install is what puts `dgadd` on `pnpm exec` and makes `@diffgazer/keys` resolve.
+> **npm packages:** `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys` are publish-gated and not on npm. Pack the workspace packages from this repository and install those tarballs in the target app — see the canonical [Copy-first mode (`dgadd`)](https://github.com/b4r7x/diffgazer/blob/main/README.md#copy-first-mode-dgadd) and [local runtime package](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#local-runtime-package-installation-from-tarballs) procedures. The target-app install is what puts `dgadd` on `pnpm exec` and makes `@diffgazer/keys` resolve.
 
 `@diffgazer/keys` requires no CSS or Tailwind setup.
 
 | Path | Standalone hooks | Provider-backed APIs |
 |------|-----------------|---------------------|
-| Manual copy / shadcn (future) | Gated until the hosted registry is live — copy the hook source from this checkout | Not available |
+| Manual copy / shadcn | `npx shadcn add https://r.b4r7.dev/r/keys/navigation.json` | Not available |
 | `dgadd` CLI | `pnpm exec dgadd add keys/navigation` | Not available |
 | npm package | `npm install @diffgazer/keys` | `npm install @diffgazer/keys` |
 
-The hosted registry is not public yet because r.b4r7.dev does not resolve. Use this source checkout or a local registry preview until the endpoint returns 200.
+The hosted registry at `https://r.b4r7.dev` is live, and installing from it needs no checkout.
 
 Provider-backed APIs (`KeyboardProvider`, `useKey`, `useScope`, `useScopedNavigation`, `useActionRowNavigation`, `useFocusZone`) require `KeyboardProvider` and are only available through the npm package.
 
 ## Install
 
-Install the package from npm after the first release:
+`@diffgazer/keys` is not on npm; install the tarball from the [local runtime package](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#local-runtime-package-installation-from-tarballs) procedure. If the package is published (`npm view @diffgazer/keys version` succeeds), the install is:
 
 ```bash
 npm install @diffgazer/keys

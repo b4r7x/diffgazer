@@ -106,7 +106,7 @@ test("governance records the registry live-check disposition", () => {
 
   assert.match(
     governance,
-    /\*\*skips\*\* while public hosted-registry install commands remain gated/i,
+    /\*\*skips\*\* while that flag is `true` and `DIFFGAZER_LIVE_REGISTRY_REQUIRED` is unset/i,
   );
   assert.match(governance, /DNS resolution and `HEAD` reachability/i);
   assert.match(governance, /does \*\*not\*\* compare hosted bytes/i);

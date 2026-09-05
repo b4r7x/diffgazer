@@ -13,7 +13,7 @@ Public package targets:
 
 All four published packages declare a single `engines.node: ">=22.0.0"` floor (ink 7's TUI runtime requires Node 22). The floor is a published contract and does not move with the toolchain: CI and the Docker base images run Node 24, the newest LTS major, while the bundled CLIs are emitted for the floor (`tsup` `target: "node22"`). The `check-invariants` script asserts the floor is uniform across the published surface, that every bundler target equals it, and that it never exceeds the CI major. CI has no Node 22 leg, so a green run proves the packages on Node 24 only; a runtime API that exists on 24 but not on 22 is not caught there. Run the CLI tests or `pnpm run smoke:packages` under Node 22 locally before shipping a change that reaches for a new Node API.
 
-**Publish status is per package.** Four packages are release-managed here — they take changesets, get versioned, and keep CHANGELOGs — but that is not the same as being publishable. Only `diffgazer` publishes today; it is live on npm (`npm view diffgazer version` returns a version). The scoped libraries (`@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`) are versioned locally but blocked from npm by the [first-publish gate](#first-publish-gate), and they remain gated until `npm view` succeeds for each:
+**Publish status is per package.** Four packages are release-managed here — they take changesets, get versioned, keep CHANGELOGs, and publish through the same release run. `diffgazer` is live on npm (`npm view diffgazer version` returns a version). The scoped libraries (`@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`) are on the [first-publish allowlist](#first-publish-gate) and first-publish in the upcoming release; until that run lands, `npm view` still 404s for each:
 
 ```bash
 npm view diffgazer version
@@ -22,7 +22,7 @@ npm view @diffgazer/ui version
 npm view @diffgazer/keys version
 ```
 
-A 404 on a scoped package means that install path is still gated — expected, not a release failure. A release run whose pending set is `diffgazer` alone is the normal shape; a run whose pending set includes a scoped package fails the preflight by design. See [Hosted Registry Status](#hosted-registry-status) for the registry-endpoint checks.
+A 404 on a scoped package means that install path is not there yet — expected until the first release that carries it, not a release failure. See [Hosted Registry Status](#hosted-registry-status) for the registry-endpoint checks.
 
 Workspace-only packages:
 
@@ -115,10 +115,10 @@ Of the root scripts above, the checked-in CI workflow runs only `pnpm run build`
 4. Publish updated packages:
 
    ```bash
-   pnpm run release diffgazer
+   pnpm run release
    ```
 
-   Name the packages explicitly while the scoped libraries are gated. `version-packages` bumps every package that had a changeset, so a bare `pnpm run release` derives a pending set containing `@diffgazer/ui`, `@diffgazer/keys`, and `@diffgazer/add`, and the [first-publish gate](#first-publish-gate) then rejects the whole run — `diffgazer` included. Passing the names selects the publishable subset; the same preflight still applies to it. Drop the argument once every name in the pending set is un-gated.
+   The bare command publishes the pending set: every package `version-packages` bumped in the checked-out commit. All four release-managed packages are on the [first-publish allowlist](#first-publish-gate), so the preflight passes for any pending set drawn from them. Package names may still be passed to select a subset, for example during recovery; the same preflight applies to it.
 
 5. Before publishing, verify tarball contents:
 
@@ -207,7 +207,7 @@ Publishing runs from `.github/workflows/release.yml` via `changesets/action`:
 
 #### First-publish gate
 
-An unfiltered workspace publisher would publish every public package whose version is absent from npm, including unrelated gated packages. To keep each npm gate mechanical, `pnpm run release` delegates publication to `scripts/monorepo/guard-publish.mjs`. The default invocation compares each non-private workspace package's current version with its version in `HEAD^`; only packages versioned by the commit are pending, so an older never-published workspace package is not mistaken for part of the current Version PR. The publisher reads registry versions for that pending set and rejects the whole run before `pnpm` starts if any pending, never-published package is absent from `FIRST_PUBLISH_ALLOWLIST`. Today the allowlist is `["diffgazer"]`, so un-gating one scoped package is an explicit reviewed PR adding only its name to the allowlist (alongside the `npm view` go-live checks above). Maintainers may pass explicit package names to select the recovery set manually; the same whole-set preflight applies.
+An unfiltered workspace publisher would publish every public package whose version is absent from npm, including unrelated gated packages. To keep each npm gate mechanical, `pnpm run release` delegates publication to `scripts/monorepo/guard-publish.mjs`. The default invocation compares each non-private workspace package's current version with its version in `HEAD^`; only packages versioned by the commit are pending, so an older never-published workspace package is not mistaken for part of the current Version PR. The publisher reads registry versions for that pending set and rejects the whole run before `pnpm` starts if any pending, never-published package is absent from `FIRST_PUBLISH_ALLOWLIST`. The allowlist names all four release-managed packages (`diffgazer`, `@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`), so the gate now protects against an unintended name only: a new public workspace package cannot reach npm until a reviewed PR adds it to the allowlist. Maintainers may pass explicit package names to select the recovery set manually; the same whole-set preflight applies.
 
 #### Recovery from publish failure
 
@@ -328,11 +328,11 @@ npx @diffgazer/add init
 npx @diffgazer/add add ui/button
 ```
 
-These commands are public only after `@diffgazer/add` is published. Before publication, run local package smoke tests or install a locally packed `@diffgazer/add` tarball into a fixture app.
+These commands work only if `@diffgazer/add` is published (`npm view @diffgazer/add version` succeeds). While it is not, run local package smoke tests or install a locally packed `@diffgazer/add` tarball into a fixture app.
 
 This copies source into the consuming app. The app must configure its own `@/*` TypeScript/bundler alias before `dgadd init` and import the copied CSS entrypoint.
 
-### Local runtime package installation before publication
+### Local runtime package installation from tarballs
 
 Until `npm view @diffgazer/ui version` and `npm view @diffgazer/keys version` both succeed, build and pack the packages from a clean local checkout:
 
@@ -353,17 +353,15 @@ Public registry installation examples may be added to package READMEs only after
 
 ### `@diffgazer/add`
 
-Use with `npx @diffgazer/add ...`, package-manager `dlx` equivalents, or a global install after publication. The binary name is `dgadd`.
+Not on npm today. If it is published, use `npx @diffgazer/add ...`, package-manager `dlx` equivalents, or a global install; until `npm view @diffgazer/add version` succeeds, install the packed tarball. The binary name is `dgadd`.
 
 ### `@diffgazer/keys`
 
-Use as a runtime package for `KeyboardProvider` and hooks after publication, or copy standalone hooks through `npx @diffgazer/add add keys/...`.
+Runtime package for `KeyboardProvider` and hooks, installed from a packed tarball while it stays unpublished. Standalone hooks also copy through `dgadd add keys/...` or `npx shadcn add https://r.b4r7.dev/r/keys/<hook>.json`.
 
 ## Hosted Registry Status
 
-The hosted shadcn-style registry at `https://r.b4r7.dev` is **not yet live**. DNS for `r.b4r7.dev` does not resolve to a serving registry yet, so every `npx shadcn add https://r.b4r7.dev/r/...` snippet in READMEs and docs is gated as future use until publication.
-
-Until the hosted registry endpoints serve `200 OK` for `/r/ui/registry.json`, `/r/ui/<item>.json`, and `/r/keys/<item>.json`, use one of the supported install paths:
+The hosted shadcn-style registry at `https://r.b4r7.dev` is **live**: `/r/ui/registry.json`, `/r/ui/<item>.json`, `/r/keys/registry.json`, `/r/keys/<item>.json`, and `/schema/diffgazer.json` serve `200 OK`, and every `npx shadcn add https://r.b4r7.dev/r/...` snippet in READMEs and docs installs as written. Installing from it needs no checkout; the npm packages are not on npm today, so the other paths are:
 
 - `dgadd` CLI from a locally packed `@diffgazer/add` tarball: `pnpm exec dgadd add ui/button`.
 - Runtime npm packages from locally packed tarballs: `npm install ./diffgazer-ui-*.tgz ./diffgazer-keys-*.tgz`.
@@ -375,20 +373,18 @@ Until the hosted registry endpoints serve `200 OK` for `/r/ui/registry.json`, `/
 `pnpm run registry:live-check` is not part of CI or `pnpm run release-check`. The manual deploy
 workflow runs the same script with `DIFFGAZER_LIVE_REGISTRY_REQUIRED=1` against the promoted image
 after a `docs-registry` or `all` promote and rolls the promotion back when it fails; a `landing`
-deploy leaves the registry untouched and skips it. Run locally, the script reads the docs consumption metadata (`PUBLISH_GATED` in `apps/docs/src/lib/consumption-metadata.ts`) and **skips** while public hosted-registry install commands remain gated and `DIFFGAZER_LIVE_REGISTRY_REQUIRED` is unset.
+deploy leaves the registry untouched and skips it. Run locally, the script reads `HOSTED_REGISTRY_GATED` from `apps/docs/src/lib/consumption-metadata.ts` and **skips** while that flag is `true` and `DIFFGAZER_LIVE_REGISTRY_REQUIRED` is unset. The flag has been `false` since the registry went live. The npm install paths on the component docs pages sit behind the separate `PUBLISH_GATED` flag in the same file, which stays `true` while the packages stay unpublished.
 
-When the registry is ungated, a run without `DIFFGAZER_LIVE_REGISTRY_REQUIRED` is a hard gate for DNS resolution and `HEAD` reachability: `r.b4r7.dev` must resolve, and one long-lived sentinel endpoint per tree copied by `deploy/registry.Dockerfile` (`/r/ui/registry.json`, `/r/keys/registry.json`, `/schema/diffgazer.json`) must return `200`. That mode proves the origin is serving, not that the checkout is deployed — sweeping every locally committed endpoint would fail on any registry file the checkout **adds** until a deploy serves it — and it does **not** compare hosted bytes to the committed files.
+With `HOSTED_REGISTRY_GATED` set to `false`, a run without `DIFFGAZER_LIVE_REGISTRY_REQUIRED` is a hard gate for DNS resolution and `HEAD` reachability: `r.b4r7.dev` must resolve, and one long-lived sentinel endpoint per tree copied by `deploy/registry.Dockerfile` (`/r/ui/registry.json`, `/r/keys/registry.json`, `/schema/diffgazer.json`) must return `200`. That mode proves the origin is serving, not that the checkout is deployed — sweeping every locally committed endpoint would fail on any registry file the checkout **adds** until a deploy serves it — and it does **not** compare hosted bytes to the committed files.
 
 `DIFFGAZER_LIVE_REGISTRY_REQUIRED=1` is the post-deploy verification mode the deploy workflow uses; set it locally to repeat that proof. It ignores the publish gate, resolves DNS, requires `200` from every served endpoint, then fetches each one and requires the raw response bytes to match the committed file exactly.
-
-Once those checks pass, un-gate the hosted-shadcn install snippets in `README.md`, `libs/ui/README.md`, `libs/keys/README.md`, and `apps/docs/content/docs/**/*.mdx`, and remove the "future" preambles added while the hosted registry was gated.
 
 The committed registry JSON under `libs/ui/public/r` and `libs/keys/public/r` uses the shadcn registry schemas from `https://ui.shadcn.com/schema/`. The Diffgazer config schema is `https://r.b4r7.dev/schema/diffgazer.json`; `dgadd init` writes that URL into consumer `diffgazer.json` files via `REGISTRY_ORIGIN`. The schema file is generated at `apps/docs/public/schema/diffgazer.json` from the `cli/add` config contract, not by the registry item build.
 
 ## Migration and Support
 
 - Runtime package consumers update with their package manager and follow changelog/migration notes.
-- Copy-first consumers update manually with `npx @diffgazer/add diff` and selective `npx @diffgazer/add add --overwrite` after publication, or the same `dgadd` commands from a locally packed CLI.
+- Copy-first consumers update manually with `dgadd diff` and selective `dgadd add --overwrite` from a locally packed CLI, or through `npx @diffgazer/add` if that package is published.
 - Bug reports go to GitHub Issues. Security reports should be sent privately to maintainers.
 
 ## Licensing

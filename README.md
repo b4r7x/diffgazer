@@ -16,17 +16,27 @@ Code review matters, especially now that we're all shipping AI-generated code fa
 
 Run one command, get a review. Only the diff and prompt content go to the provider you choose.
 
+## Project status
+
+Diffgazer does what I built it for, so I've stopped adding to it. There is no roadmap. I may pick it up again later, or not; I haven't decided.
+
+It is not abandoned. If issues or pull requests come in, I read them, answer questions, and fix bugs and security problems. If something breaks, [open an issue](https://github.com/b4r7x/diffgazer/issues). Security reports go through [SECURITY.md](./SECURITY.md).
+
+What that means in practice:
+
+- `diffgazer` on npm gets one release with what is already merged here, then bug-fix releases when something needs fixing, not new features.
+- The terminal UI (`--tui`) ships as a beta and stays one. Web mode is the finished path.
+- `@diffgazer/ui` and `@diffgazer/keys` install from the hosted registry at https://r.b4r7.dev. The npm packages, and `@diffgazer/add`, are not published, and I have no date for that.
+
 ## Features
 
 - **Local-first review** - the CLI starts an embedded server and web UI on localhost.
-- **Review pipeline** - diff, context, review, enrich, and report steps run in order.
-- **Web and terminal modes** - the browser UI by default; the Ink terminal UI (`--tui`) is in beta and still catching up (see [terminal UI](./apps/docs/content/docs/app/tui/index.mdx)).
+- **Review pipeline** - diff, context, review, and report steps run in order.
+- **Web and terminal modes** - the browser UI by default; the Ink terminal UI (`--tui`) is a beta and stays opt-in (see [terminal UI](https://docs.diffgazer.b4r7.dev/app/tui)).
 - **Issue details** - read findings inline against your diff with evidence and fix guidance.
-- **Provider choice** - nine selectable hosted API products (see [providers reference](./apps/docs/content/docs/app/reference/providers.mdx)).
+- **Provider choice** - nine selectable hosted API products (see [providers reference](https://docs.diffgazer.b4r7.dev/app/reference/providers)).
 - **Privacy controls** - localhost binding, host allowlist, CSRF protection, per-run token, explicit repo trust, and server-only secret/admission boundaries.
 - **Registry and packages** - `@diffgazer/ui`, `@diffgazer/keys`, and `dgadd` support copy-first and package consumption paths.
-
-The hosted docs site is not yet live; until then the documentation links here point at the docs source in this repository.
 
 ## Quick Start
 
@@ -40,9 +50,7 @@ First run walks you through product selection, endpoint binding, authentication,
 
 ### Free models
 
-Free tiers throttle. Z.AI's free Flash models allow one concurrent request (Diffgazer knows this and caps them to one dispatch at a time), and free OpenRouter models rate-limit under parallel load. Review agents run sequentially by default (`agentExecution: "sequential"`), and with a free model that's the setting to keep. Switch to `parallel` only on a paid tier that actually allows concurrent requests. See the [configuration reference](./apps/docs/content/docs/app/reference/configuration.mdx).
-
-Diffgazer is also a pnpm monorepo for the CLI, docs app, shared registry tooling, keyboard hooks, and UI packages.
+Free tiers throttle. Z.AI's free Flash models allow one concurrent request (Diffgazer knows this and caps them to one dispatch at a time), and free OpenRouter models rate-limit under parallel load. Review agents run sequentially by default (`agentExecution: "sequential"`), and with a free model that's the setting to keep. Switch to `parallel` only on a paid tier that actually allows concurrent requests. See the [configuration reference](https://docs.diffgazer.b4r7.dev/app/reference/configuration).
 
 ## Privacy
 
@@ -55,7 +63,7 @@ Diffgazer runs on your machine. Your source and your credentials never reach a D
 - **Reading the repository is explicit.** Routes that touch repository files require a trust grant for that exact repository root.
 - **The provider notice is asked once, before anything is sent.** Declining cancels only that action, and the accepted notice stays readable from Settings.
 
-Providers use what you send under their own terms; pick one whose notice you are comfortable with. The full account is in [the privacy and security doc](./apps/docs/content/docs/app/concepts/privacy.mdx).
+Providers use what you send under their own terms; pick one whose notice you are comfortable with. The full account is in [the privacy and security doc](https://docs.diffgazer.b4r7.dev/app/concepts/privacy).
 
 ## Workspace
 
@@ -100,7 +108,7 @@ This repository is one workspace with a single root install and lockfile.
 
 ## Consumption Paths
 
-`@diffgazer/ui`, `@diffgazer/keys`, and `@diffgazer/add` are publish-gated: public npm commands for these packages are valid only after `npm view` returns versions. Publish status is per package; see [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md) for the current matrix. Local tarballs are the package-mode validation path before publication.
+`@diffgazer/ui`, `@diffgazer/keys`, and `@diffgazer/add` are publish-gated: public npm commands for these packages are valid only after `npm view` returns versions. Publish status is per package; see [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md) for the current matrix. Local tarballs are the package-mode install path while they stay unpublished.
 
 | Path | @diffgazer/ui | @diffgazer/keys |
 |------|---------------|-----------------|
@@ -110,7 +118,7 @@ This repository is one workspace with a single root install and lockfile.
 
 ### Copy-first mode (`dgadd`)
 
-`dgadd` is publish-gated, so there is no `dgadd` bin at the workspace root. Before publication, pack the CLI and install the tarball into the target app, which is what puts `dgadd` on `pnpm exec`.
+`dgadd` is publish-gated, so there is no `dgadd` bin at the workspace root. Pack the CLI and install the tarball into the target app, which is what puts `dgadd` on `pnpm exec`.
 
 From this repository:
 
@@ -128,7 +136,7 @@ pnpm exec dgadd init
 pnpm exec dgadd add ui/button keys/navigation
 ```
 
-Copy mode installs source files the consuming app owns. UI components require Tailwind CSS v4 and the copied `src/styles/styles.css`. Keys standalone hooks require no CSS setup. After `@diffgazer/add` is published, use `npx @diffgazer/add` instead of the local tarball. `dgadd init` also supports the recovery-only `--reset-manifest` option, and `-s, --silent` is available globally to suppress non-error output. See [cli/add/README.md](./cli/add/README.md#before-publication) for the full command reference.
+Copy mode installs source files the consuming app owns. UI components require Tailwind CSS v4 and the copied `src/styles/styles.css`. Keys standalone hooks require no CSS setup. If `@diffgazer/add` is ever published, `npx @diffgazer/add` replaces the local tarball. `dgadd init` also supports the recovery-only `--reset-manifest` option, and `-s, --silent` is available globally to suppress non-error output. See [cli/add/README.md](./cli/add/README.md#install-from-a-packed-tarball) for the full command reference.
 
 ### Runtime package mode
 
@@ -138,16 +146,16 @@ npm install @diffgazer/ui @diffgazer/keys
 
 Package consumers import Tailwind CSS v4, `@diffgazer/ui/sources.css`, and `@diffgazer/ui/styles.css`. `@diffgazer/keys` is a required peer of `@diffgazer/ui` in package mode. Keys provider-backed APIs (`KeyboardProvider`, `useKey`, `useScope`, `useFocusZone`, `useScopedNavigation`) are package-only.
 
-### Direct shadcn / manual copy (future, after publication)
+### Direct shadcn / manual copy
 
-The hosted registry at `https://r.b4r7.dev` is not yet live. After publication (see [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md#hosted-registry-status)), these commands will be:
+The hosted registry at `https://r.b4r7.dev` is live (see [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md#hosted-registry-status)); install straight from it:
 
 ```bash
 npx shadcn add https://r.b4r7.dev/r/ui/button.json
 npx shadcn add https://r.b4r7.dev/r/keys/navigation.json
 ```
 
-Until then, install the locally packed `@diffgazer/add` tarball into the target app and run `pnpm exec dgadd add ui/button keys/navigation` (see [Copy-first mode](#copy-first-mode-dgadd)), or `npm install` against locally packed `@diffgazer/ui` and `@diffgazer/keys` tarballs.
+Installing from the hosted registry needs no checkout of this repository: while the npm packages stay unpublished, `dgadd` (`pnpm exec dgadd add ui/button keys/navigation`, see [Copy-first mode](#copy-first-mode-dgadd)) and the runtime packages still come from locally packed tarballs.
 
 Versioning, release gates, migration expectations, and artifact ownership are documented in [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md).
 

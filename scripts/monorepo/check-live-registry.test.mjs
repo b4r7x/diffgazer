@@ -145,15 +145,15 @@ test("assertHeadOk rejects non-200 responses", async () => {
   );
 });
 
-test("publicRegistryIsGated reads the PUBLISH_GATED literal", async () => {
+test("publicRegistryIsGated reads the HOSTED_REGISTRY_GATED literal", async () => {
   const dir = mkdtempSync(join(tmpdir(), "publish-gated-"));
   try {
     const gatedFile = join(dir, "gated.ts");
-    writeFileSync(gatedFile, "export const PUBLISH_GATED = true;\n");
+    writeFileSync(gatedFile, "export const HOSTED_REGISTRY_GATED = true;\n");
     assert.equal(await publicRegistryIsGated(gatedFile), true);
 
     const ungatedFile = join(dir, "ungated.ts");
-    writeFileSync(ungatedFile, "export const PUBLISH_GATED = false;\n");
+    writeFileSync(ungatedFile, "export const HOSTED_REGISTRY_GATED = false;\n");
     assert.equal(await publicRegistryIsGated(ungatedFile), false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -168,9 +168,9 @@ test("publicRegistryIsGated ignores documentation prose before the exported decl
       metadataFilePath,
       [
         "/**",
-        " * The release script reads the PUBLISH_GATED = true|false assignment below.",
+        " * The release script reads the HOSTED_REGISTRY_GATED = true|false assignment below.",
         " */",
-        "export const PUBLISH_GATED = false;",
+        "export const HOSTED_REGISTRY_GATED = false;",
         "",
       ].join("\n"),
     );
@@ -185,7 +185,7 @@ test("--print-disposition reports an ungated metadata file as a run", () => {
   const dir = mkdtempSync(join(tmpdir(), "live-registry-disposition-"));
   try {
     const metadataFilePath = join(dir, "metadata.ts");
-    writeFileSync(metadataFilePath, "export const PUBLISH_GATED = false;\n");
+    writeFileSync(metadataFilePath, "export const HOSTED_REGISTRY_GATED = false;\n");
 
     const child = spawnSync(
       process.execPath,
@@ -212,7 +212,7 @@ test("an ungated run accepts an origin whose bodies match the committed registry
   const dir = mkdtempSync(join(tmpdir(), "live-registry-fresh-"));
   try {
     const metadataFilePath = join(dir, "metadata.ts");
-    writeFileSync(metadataFilePath, "export const PUBLISH_GATED = false;\n");
+    writeFileSync(metadataFilePath, "export const HOSTED_REGISTRY_GATED = false;\n");
 
     let networkCalls = 0;
     const expectedBodies = new Map(
@@ -242,7 +242,7 @@ test("publicRegistryIsGated fails loudly when the literal is gone", async () => 
   try {
     const doctored = join(dir, "doctored.ts");
     writeFileSync(doctored, "export const SOMETHING_ELSE = true;\n");
-    await assert.rejects(() => publicRegistryIsGated(doctored), /PUBLISH_GATED/);
+    await assert.rejects(() => publicRegistryIsGated(doctored), /HOSTED_REGISTRY_GATED/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -270,7 +270,7 @@ test("ungated readiness passes against an origin still serving the previous depl
 
   try {
     const metadataFilePath = join(dir, "metadata.ts");
-    writeFileSync(metadataFilePath, "export const PUBLISH_GATED = false;\n");
+    writeFileSync(metadataFilePath, "export const HOSTED_REGISTRY_GATED = false;\n");
 
     await runLiveRegistryCheck({
       metadataFilePath,
@@ -307,7 +307,7 @@ test("entry flow skips a gated registry only when the hard gate is not requested
   const dir = mkdtempSync(join(tmpdir(), "live-registry-gated-"));
   try {
     const metadataFilePath = join(dir, "metadata.ts");
-    writeFileSync(metadataFilePath, "export const PUBLISH_GATED = true;\n");
+    writeFileSync(metadataFilePath, "export const HOSTED_REGISTRY_GATED = true;\n");
     let networkCalls = 0;
 
     await runLiveRegistryCheck({

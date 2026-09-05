@@ -1,4 +1,4 @@
-export const DEFAULT_PUBLIC_ORIGIN = "https://docs.b4r7.dev";
+export const DEFAULT_PUBLIC_ORIGIN = "https://docs.diffgazer.b4r7.dev";
 const INVALID_PUBLIC_ORIGIN = "VITE_PUBLIC_ORIGIN must be an absolute HTTP(S) origin";
 
 /** Resolves deployment configuration to a canonical HTTP(S) origin without a trailing slash. */

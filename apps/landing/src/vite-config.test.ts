@@ -57,9 +57,9 @@ describe("landing link build", () => {
       VITE_GITHUB_URL: "data:text/html,hello",
     });
 
-    expect(notFound.querySelector('a[href="https://docs.b4r7.dev"]')).not.toBeNull();
+    expect(notFound.querySelector('a[href="https://docs.diffgazer.b4r7.dev"]')).not.toBeNull();
     expect(notFound.querySelector('a[href="https://github.com/b4r7x/diffgazer"]')).not.toBeNull();
-    expect(index.querySelector('a[href="https://docs.b4r7.dev"]')).not.toBeNull();
+    expect(index.querySelector('a[href="https://docs.diffgazer.b4r7.dev"]')).not.toBeNull();
     expect(index.querySelector('a[href="https://github.com/b4r7x/diffgazer"]')).not.toBeNull();
   });
 });

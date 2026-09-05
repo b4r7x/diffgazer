@@ -4,7 +4,7 @@ Private static Vite landing page for the public Diffgazer marketing surface. It 
 
 ## Environment
 
-`VITE_DOCS_ORIGIN` sets the documentation link target. It defaults to `https://docs.b4r7.dev`.
+`VITE_DOCS_ORIGIN` sets the documentation link target. It defaults to `https://docs.diffgazer.b4r7.dev`.
 `VITE_GITHUB_URL` sets the GitHub and license link target. It defaults to `https://github.com/b4r7x/diffgazer`.
 
 ## Commands

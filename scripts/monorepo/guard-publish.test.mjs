@@ -135,7 +135,11 @@ function writePackage(directory, file, name, version, isPrivate = false) {
   writeFileSync(packageFile, `${JSON.stringify({ name, version, private: isPrivate })}\n`);
 }
 
-function createMainFixture({ versions, registryVersions = publishedVersionsByName }) {
+function createMainFixture({
+  versions,
+  registryVersions = publishedVersionsByName,
+  extraManifests = [],
+}) {
   const directory = mkdtempSync(path.join(tmpdir(), "diffgazer-publish-main-"));
   temporaryDirectories.push(directory);
   const binDirectory = path.join(directory, "bin");
@@ -147,6 +151,7 @@ function createMainFixture({ versions, registryVersions = publishedVersionsByNam
     ["cli/add/package.json", "@diffgazer/add", "0.1.0"],
     ["libs/ui/package.json", "@diffgazer/ui", "0.1.0"],
     ["libs/keys/package.json", "@diffgazer/keys", "0.1.0"],
+    ...extraManifests,
   ];
   writePackage(directory, "package.json", "fixture", "0.0.0", true);
   for (const [file, name, version] of manifests) {
@@ -236,13 +241,13 @@ main({ allowlist: ${JSON.stringify(allowlist)}, requestedNames: [] });`,
   return { child, invocations: readInvocations(publishLog) };
 }
 
-function runDirectScriptChild({ requestedNames, versions, registryVersions }) {
+function runDirectScriptChild({ requestedNames, versions, registryVersions, extraManifests }) {
   const {
     directory,
     binDirectory,
     publishLog,
     registryVersions: filteredRegistryVersions,
-  } = createMainFixture({ versions, registryVersions });
+  } = createMainFixture({ versions, registryVersions, extraManifests });
 
   const child = spawnSync(
     process.execPath,
@@ -343,15 +348,44 @@ test("child publisher supports the inverse UI and keys rollout without attemptin
   ]);
 });
 
-test("invoking the guard script directly refuses to first-publish an unpublished gated package", () => {
+// The shipped allowlist names every release-managed package, so the gate it
+// still enforces is against a public package nobody added to it.
+test("invoking the guard script directly refuses to first-publish a package outside the shipped allowlist", () => {
   const { child, invocations } = runDirectScriptChild({
-    requestedNames: ["@diffgazer/add"],
-    versions: { diffgazer: "0.1.4" },
+    requestedNames: ["@diffgazer/extra"],
+    versions: { "@diffgazer/extra": "0.1.1" },
+    extraManifests: [["libs/extra/package.json", "@diffgazer/extra", "0.1.0"]],
   });
 
   assert.notEqual(child.status, 0);
-  assert.match(child.stderr, /refusing to first-publish gated packages/);
+  assert.match(child.stderr, /refusing to first-publish gated packages: @diffgazer\/extra/);
   assert.deepEqual(invocations, []);
+});
+
+test("a bare run at the version commit publishes every release-managed package the commit bumped", () => {
+  const { child, invocations } = runDirectScriptChild({
+    requestedNames: [],
+    versions: {
+      diffgazer: "0.2.0",
+      "@diffgazer/add": "0.2.0",
+      "@diffgazer/ui": "0.2.0",
+      "@diffgazer/keys": "0.2.0",
+    },
+  });
+
+  assert.equal(child.status, 0, child.stderr);
+  assert.deepEqual(invocations.map((invocation) => invocation[1]).sort(), [
+    "@diffgazer/add",
+    "@diffgazer/keys",
+    "@diffgazer/ui",
+    "diffgazer",
+  ]);
+  assert.deepEqual(child.stdout.match(/^New tag: .+$/gm)?.sort(), [
+    "New tag: @diffgazer/add@0.2.0",
+    "New tag: @diffgazer/keys@0.2.0",
+    "New tag: @diffgazer/ui@0.2.0",
+    "New tag: diffgazer@0.2.0",
+  ]);
 });
 
 test("default pending set rejects a gated target without starting pnpm", () => {
@@ -450,9 +484,9 @@ test("recovers a partial publication without republishing the completed package"
 });
 
 // changesets/action turns every `New tag:` line into a pushed tag and a
-// GitHub Release. The release workflow names `diffgazer` explicitly, so it runs
-// this guard on every changeset-free push to main too; announcing the live
-// version there asks GitHub for a release that already exists.
+// GitHub Release. A package named explicitly on a changeset-free commit must
+// not be announced: its version is already live, and announcing it asks GitHub
+// for a release that already exists.
 test("a commit that versions nothing announces no tag for an already published version", () => {
   const { child, invocations } = runDirectScriptChild({
     requestedNames: ["diffgazer"],

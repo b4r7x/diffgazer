@@ -2,6 +2,8 @@
 
 Project rules and architectural boundaries live in [`AGENTS.md`](./AGENTS.md). Read it before opening a non-trivial change.
 
+Diffgazer is maintained but not in active development. If a fix or a small correction comes in, it gets merged; open an issue before starting a feature so the work is not wasted.
+
 User-facing changes to published packages require a [changeset](https://github.com/changesets/changesets). Run `pnpm changeset` and commit the generated file with your PR.
 
 ## Checklist

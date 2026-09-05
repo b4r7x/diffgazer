@@ -7,7 +7,7 @@ description: Initialize a project with dgadd and add `@diffgazer/ui` components 
 
 > **Installing via dgadd:** Components are namespaced (`ui/button`, `ui/dialog`). For the full command and flag reference — `init`, `add`, `list`, `diff`, `remove` — see the [dgadd CLI reference](/app/cli).
 
-> **Before publication:** Diffgazer packages are not yet published to npm, so there is no `dgadd` bin until you install one. Follow the canonical [Copy-first mode procedure](https://github.com/b4r7x/diffgazer#copy-first-mode-dgadd) to build and pack `@diffgazer/add`, then install that packed tarball in the target app. The target-app install is what puts `dgadd` on `pnpm exec`.
+> **npm packages:** `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys` are publish-gated and not on npm, so there is no `dgadd` bin until you install one. Follow the [Copy-first mode procedure](https://github.com/b4r7x/diffgazer#copy-first-mode-dgadd) to build and pack `@diffgazer/add` from a checkout, then install that tarball in the target app; that install is what puts `dgadd` on `pnpm exec`. Components also install without a checkout from the hosted registry: `npx shadcn add https://r.b4r7.dev/r/ui/<item>.json`.
 
 ## Install
 
@@ -18,7 +18,7 @@ pnpm exec dgadd init
 pnpm exec dgadd add ui/button
 ```
 
-The one-shot `pnpm dlx`/`npx @diffgazer/add` commands become available after the package is published — see [Package managers](#package-managers).
+The one-shot `pnpm dlx`/`npx @diffgazer/add` commands work only if `@diffgazer/add` is published — see [Package managers](#package-managers).
 
 ## Setup
 
@@ -125,9 +125,9 @@ pnpm exec dgadd add ui/menu --integration keys
 
 `copy` installs local hook source. `keys` imports hooks from `@diffgazer/keys`.
 
-## Package managers (future) [#package-managers]
+## Package managers [#package-managers]
 
-Use these one-shot commands only after `@diffgazer/add` is published:
+`@diffgazer/add` is publish-gated and not on npm, so these one-shot commands fail today. They work only if the package is published:
 
 ```bash
 pnpm dlx @diffgazer/add init

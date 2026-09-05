@@ -7,11 +7,12 @@ import { errorMessage } from "./lib/error-message.mjs";
 import { isPackageManifestPath, listRepoFiles } from "./lib/files.mjs";
 import { readJson } from "./lib/json.mjs";
 
-// First-publish allowlist. `diffgazer` is already live on npm; the scoped
-// packages (@diffgazer/ui, @diffgazer/keys, @diffgazer/add) stay gated per
-// PACKAGE_GOVERNANCE.md until each is intentionally un-gated by a reviewed PR
-// that adds it here.
-const FIRST_PUBLISH_ALLOWLIST = ["diffgazer"];
+// First-publish allowlist. `diffgazer` is live on npm; the scoped packages
+// (@diffgazer/ui, @diffgazer/keys, @diffgazer/add) first-publish in the upcoming
+// release. Every release-managed package is listed, so the gate now refuses only
+// a never-published name outside this set (PACKAGE_GOVERNANCE.md, First-publish
+// gate).
+const FIRST_PUBLISH_ALLOWLIST = ["diffgazer", "@diffgazer/add", "@diffgazer/ui", "@diffgazer/keys"];
 
 export function isPublicPackage(parsed) {
   return Boolean(parsed.name) && parsed.private !== true;
@@ -171,9 +172,9 @@ export function publishPendingPackages({
   // `New tag:` is what changesets/action turns into a pushed Git tag and a
   // GitHub Release, so a version already live on npm may only be announced when
   // the checked-out commit versioned it — the retry of a failed publish run for
-  // the same Version-PR commit. The release workflow names `diffgazer`
-  // explicitly on every changeset-free push to main; re-announcing its live
-  // version there would ask GitHub to create a release that already exists.
+  // the same Version-PR commit. A package named explicitly on a commit that did
+  // not version it is skipped here; re-announcing its live version would ask
+  // GitHub to create a release that already exists.
   const versioned = new Set(versionedNames);
   const released = plan.filter((pkg) => pkg.publication === "publish" || versioned.has(pkg.name));
   for (const pkg of released) {

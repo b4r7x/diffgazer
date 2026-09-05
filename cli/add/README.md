@@ -9,11 +9,11 @@ Installer CLI for adding Diffgazer UI components and keys hooks to your React pr
 | `@diffgazer/ui` | `ui/*` | Components, hooks, libs, theme CSS |
 | `@diffgazer/keys` | `keys/*` | Standalone keyboard hooks (no CSS needed) |
 
-`dgadd` is one of three planned consumption paths. The other two are direct shadcn/manual copy from the hosted registry, and npm package install.
+`dgadd` is one of three consumption paths. The other two are direct shadcn/manual copy from the hosted registry, and npm package install.
 
-> **Availability:** the hosted registry and every npm package name (`@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`) are publish-gated until the live registry returns 200 responses and `npm view` returns versions. Until then, a local tarball is the only working install path, and every command below is run from a target app that already has that tarball installed.
+> **Availability:** the hosted registry at `https://r.b4r7.dev` is live, so `npx shadcn add https://r.b4r7.dev/r/ui/<item>.json` installs components without a checkout. The npm package names (`@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`) are publish-gated until `npm view` returns versions, so a locally packed tarball is the only working `dgadd` install path, and every command below is run from a target app that already has that tarball installed.
 
-## Before Publication
+## Install from a packed tarball
 
 Pack the CLI from this workspace and install the tarball into the target app:
 
@@ -83,9 +83,9 @@ pnpm exec dgadd add ui/input keys/navigation
 pnpm exec dgadd list
 ```
 
-## After Publication
+## npm commands (publish-gated)
 
-Not usable yet — these public commands work only once `npm view @diffgazer/add version` succeeds:
+These commands work only if `@diffgazer/add` is published, which `npm view @diffgazer/add version` confirms:
 
 ```bash
 npx @diffgazer/add init
@@ -147,7 +147,7 @@ pnpm exec dgadd ui/button
 | `--keys-version <version>` | Version/range used by `@diffgazer/keys` package mode | caret range of the bundled `@diffgazer/keys` release |
 | `-y, --yes` | Skip confirmation prompts | `false` |
 
-`copy` mode installs bundled offline hook source. `keys` mode rewrites local hook imports to `@diffgazer/keys` and installs the package dependency, so use it only after `@diffgazer/keys` is published or available through a local tarball. `--yes` uses `copy` mode for components that require keyboard hooks; `none` is rejected for those components because it would leave unresolved local hook imports.
+`copy` mode installs bundled offline hook source. `keys` mode rewrites local hook imports to `@diffgazer/keys` and installs the package dependency, so use it only when `@diffgazer/keys` resolves: from a local tarball, or from npm if the package is published. `--yes` uses `copy` mode for components that require keyboard hooks; `none` is rejected for those components because it would leave unresolved local hook imports.
 
 When re-adding an installed keyboard component with a different integration mode, `dgadd` stops before writing and asks for `--overwrite`. With `--overwrite`, it rewrites the component files and migrates copied hook files and their ownership records to the requested mode.
 

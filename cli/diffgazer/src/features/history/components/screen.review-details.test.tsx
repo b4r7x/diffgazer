@@ -266,11 +266,18 @@ describe("HistoryScreen review details", () => {
 
     stdin.write("r");
     await waitUntil(() => getReview.mock.calls.length === 2);
-    await waitUntil(() => (lastFrame() ?? "").includes("Retried"));
+    // The footer publishes its shortcuts a render after the retried detail
+    // lands, so a frame can carry the issue before "Open Review" replaces
+    // "Retry Details"; the assertions below need the settled frame with both.
+    await waitUntil(() => {
+      const frame = lastFrame() ?? "";
+      return (
+        frame.includes("Retried") &&
+        frame.includes("Footer: Tab Switch Pane | Enter Open Review | / Search")
+      );
+    });
 
-    const recoveredFrame = lastFrame() ?? "";
-    expect(recoveredFrame).toContain("Footer: Tab Switch Pane | Enter Open Review | / Search");
-    expect(recoveredFrame).not.toContain("Retry Details");
+    expect(lastFrame()).not.toContain("Retry Details");
   });
 
   test("keeps the API-backed 50-target warning layout bounded at the 80 by 24 floor", async () => {

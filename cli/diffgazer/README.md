@@ -6,6 +6,10 @@ Source: https://github.com/b4r7x/diffgazer/tree/main/cli/diffgazer
 
 Requires Node.js >= 22 and a `git` binary on your PATH.
 
+## Status
+
+Released and maintained, not in active development. If a bug or security problem comes in, it gets fixed; new features are not planned. Report problems at https://github.com/b4r7x/diffgazer/issues.
+
 ## What it does
 
 - Dev: shows the Diffgazer ASCII banner, spawns API server and web frontend (HMR), and opens the browser
@@ -20,7 +24,7 @@ pnpm --filter diffgazer dev
 
 Set `PORT` to move the API server. In development that is the API child, and the launcher passes the matching API URL to the Vite child automatically; an explicit `VITE_API_URL` overrides that derived target. The packaged binary honors `PORT` too, so a `PORT` exported in your shell for other tooling also moves — or, when that port is taken, fails — the embedded server.
 
-The terminal UI is opt-in while it is in beta:
+The terminal UI is a beta and opt-in:
 
 ```bash
 pnpm --filter diffgazer dev --tui
@@ -43,7 +47,7 @@ cd /path/to/your/repo
 diffgazer
 ```
 
-Run `diffgazer` from inside the git repository you want to review. The repository should contain changes to review. For the full installation and first-review guide, see https://github.com/b4r7x/diffgazer/blob/main/apps/docs/content/docs/app/getting-started/first-review.mdx.
+Run `diffgazer` from inside the git repository you want to review. The repository should contain changes to review. For the full installation and first-review guide, see https://docs.diffgazer.b4r7.dev/app/getting-started/first-review.
 
 You can also run it without a global install:
 
@@ -59,4 +63,4 @@ The beta TUI always exits with `Ctrl+C`. `q` exits only when no text input, over
 
 ## Architecture
 
-The CLI's place in the workspace is documented at https://github.com/b4r7x/diffgazer/blob/main/apps/docs/content/docs/app/architecture.mdx; its source layout lives in the repository linked above.
+The CLI's place in the workspace is documented at https://docs.diffgazer.b4r7.dev/app/architecture; its source layout lives in the repository linked above.

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -45,5 +45,27 @@ describe("landing deployment 404 contract", () => {
     expect(page.querySelector('a[href="/"]')?.textContent).toMatch(/home/i);
     expect(page.querySelector('a[href="%VITE_DOCS_ORIGIN%"]')).not.toBeNull();
     expect(page.querySelector('a[href="%VITE_GITHUB_URL%"]')).not.toBeNull();
+  });
+
+  it("links the shared diffgazer icon set on both pages and ships every file it names", () => {
+    const hrefs = ["/favicon.ico", "/favicon.svg", "/apple-touch-icon.png"];
+
+    for (const html of [indexHtml, notFoundHtml]) {
+      const page = new DOMParser().parseFromString(html, "text/html");
+      const iconLinks = [
+        ...page.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]'),
+      ];
+      expect(iconLinks.map((link) => link.getAttribute("href"))).toEqual(hrefs);
+    }
+    for (const href of hrefs) {
+      expect(existsSync(join(landingRoot, "public", href)), href).toBe(true);
+    }
+
+    const favicon = readFileSync(join(landingRoot, "public/favicon.svg"), "utf8");
+    const sharedMark = readFileSync(
+      join(landingRoot, "../../libs/ui/brand/diffgazer-mark.svg"),
+      "utf8",
+    );
+    expect(favicon).toContain(`d="${sharedMark.match(/ d="([^"]+)"/)?.[1]}"`);
   });
 });

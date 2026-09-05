@@ -72,7 +72,7 @@ describe("ProviderConsentOverlay", () => {
 
     expect(frame()).toContain("Provider data notice");
     expect(frame()).toContain(PROVIDER_CONSENT_TEXT.slice(0, 32));
-    expect(frame()).toContain("https://github.com/b4r7x/diffgazer#privacy");
+    expect(frame()).toContain("https://docs.diffgazer.b4r7.dev/privacy");
     expect(frame()).toContain("[ Accept and continue ]");
     expect(frame()).toContain("FOOTER [←/→] Switch Action [Enter] Accept | [Esc] Not now");
 

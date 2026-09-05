@@ -78,8 +78,11 @@ GitHub:
 GHCR:
 
 - Create or let the workflow create the three image packages.
-- Choose public image visibility, or configure Coolify with read-only GHCR
-  credentials for private images.
+- Images the deploy workflow pushes from this public repository are public on
+  creation: anonymous pulls of `ghcr.io/b4r7x/diffgazer-{docs,registry,landing}`
+  returned 200 on the first production deploy before any manual step, so no
+  visibility change is needed. Configure Coolify with read-only GHCR credentials
+  only if a package is made private.
 - Keep SHA tags as the audit trail; treat `prod` as the mutable deployment
   pointer.
 
@@ -90,8 +93,8 @@ Coolify:
 - Set each resource image to the matching GHCR `:prod` tag from the table
   above.
 - Set Auto Deploy off.
-- Set domains and health paths as documented in
-  [`deploy/REVERSE_PROXY.md`](./REVERSE_PROXY.md).
+- Set domains, health paths, and the `127.0.0.1` health check host as
+  documented in [`deploy/REVERSE_PROXY.md`](./REVERSE_PROXY.md).
 - Add the repository variable `REGISTRY_TRAEFIK_PROXY_CIDR` with the exact
   Traefik container address and an unpadded `/32` (IPv4) or `/128` (IPv6)
   prefix. On a Coolify Docker network that is normally a private address such as
@@ -105,8 +108,8 @@ Coolify:
 
 DNS and firewall:
 
-- Point `docs.b4r7.dev`, `r.b4r7.dev`, and `diffgazer.b4r7.dev` at the Coolify
-  proxy/VPS.
+- Point `docs.diffgazer.b4r7.dev`, `r.b4r7.dev`, and `diffgazer.b4r7.dev` at
+  the Coolify proxy/VPS.
 - Allow public `80/tcp` and `443/tcp`; keep app container ports private.
 - Keep SSH restricted to management access.
 
@@ -136,7 +139,7 @@ gate is the one that must stay fast.
 After `docs-registry` or `all`, run:
 
 ```sh
-curl -fI https://docs.b4r7.dev
+curl -fI https://docs.diffgazer.b4r7.dev
 curl -fI https://r.b4r7.dev/r/ui/registry.json
 curl -fI https://r.b4r7.dev/r/ui/button.json
 ```

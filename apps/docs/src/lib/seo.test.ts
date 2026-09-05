@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { writeLlmsFiles } from "../../scripts/generate-llms/output";
 import { resolveOrigin, writeSitemap } from "../../scripts/generate-sitemap";
+import { THEME_COLORS } from "../hooks/theme-context";
 import { DEFAULT_PUBLIC_ORIGIN, resolvePublicOrigin } from "./public-origin";
 import {
   buildCanonicalUrl,
@@ -232,20 +233,23 @@ describe("buildRootHeadDefaults", () => {
     expect(manifest?.href).toBe("/manifest.json");
   });
 
-  it("includes favicon and apple-touch-icon links", () => {
+  it("links the ICO before the SVG favicon, then the apple-touch-icon", () => {
     const { links } = buildRootHeadDefaults();
 
-    const favicon = links.find((link) => link.rel === "icon");
-    expect(favicon?.href).toBe("/favicon.ico");
+    const icons = links.filter((link) => link.rel === "icon");
+    expect(icons.map((link) => [link.href, link.sizes ?? link.type])).toEqual([
+      ["/favicon.ico", "32x32"],
+      ["/favicon.svg", "image/svg+xml"],
+    ]);
 
     const appleTouchIcon = links.find((link) => link.rel === "apple-touch-icon");
-    expect(appleTouchIcon?.href).toBe("/logo192.png");
+    expect(appleTouchIcon?.href).toBe("/apple-touch-icon.png");
   });
 
   it("includes og:image meta tag", () => {
     const { meta } = buildRootHeadDefaults();
 
-    expect(findMeta(meta, "property", "og:image")?.content).toBe(`${PUBLIC_ORIGIN}/logo512.png`);
+    expect(findMeta(meta, "property", "og:image")?.content).toBe(`${PUBLIC_ORIGIN}/icon-512.png`);
   });
 
   it("does not include a root canonical link (pages set their own)", () => {
@@ -259,5 +263,62 @@ describe("buildRootHeadDefaults", () => {
     const { meta } = buildRootHeadDefaults();
 
     expect(findMeta(meta, "property", "og:url")?.content).toBe(PUBLIC_ORIGIN);
+  });
+});
+
+describe("icon assets", () => {
+  const publicDir = resolve(import.meta.dirname, "../../public");
+  const sharedMark = readFileSync(
+    resolve(import.meta.dirname, "../../../../libs/ui/brand/diffgazer-mark.svg"),
+    "utf8",
+  );
+
+  function pngSize(file: string): string {
+    const header = readFileSync(file);
+    return `${header.readUInt32BE(16)}x${header.readUInt32BE(20)}`;
+  }
+
+  it("ships every icon the root head links to", () => {
+    const { links } = buildRootHeadDefaults();
+    const hrefs = links
+      .filter((link) => link.rel === "icon" || link.rel === "apple-touch-icon")
+      .map((link) => link.href);
+
+    expect(hrefs).toEqual(["/favicon.ico", "/favicon.svg", "/apple-touch-icon.png"]);
+    for (const href of hrefs) {
+      expect(existsSync(join(publicDir, href ?? "")), href).toBe(true);
+    }
+    expect(existsSync(join(publicDir, "icon-512.png"))).toBe(true);
+  });
+
+  it("draws the SVG favicon from the shared mark and flips it white for dark chrome", () => {
+    const favicon = readFileSync(join(publicDir, "favicon.svg"), "utf8");
+    const markPath = sharedMark.match(/ d="([^"]+)"/)?.[1];
+
+    expect(markPath).toBeDefined();
+    expect(favicon).toContain(`d="${markPath}"`);
+    expect(favicon).toMatch(
+      /@media \(prefers-color-scheme:\s*dark\)\s*\{\s*path\s*\{\s*fill:\s*#fff/,
+    );
+  });
+
+  it("names the PWA after the product and colors it with the docs dark theme", () => {
+    const manifest = JSON.parse(readFileSync(join(publicDir, "manifest.json"), "utf8")) as {
+      name: string;
+      short_name: string;
+      theme_color: string;
+      background_color: string;
+      icons: { src: string; sizes: string; purpose?: string }[];
+    };
+
+    expect(manifest.name).toBe("Diffgazer");
+    expect(manifest.short_name).toBe("Diffgazer");
+    expect(manifest.theme_color).toBe(THEME_COLORS.dark);
+    expect(manifest.background_color).toBe(THEME_COLORS.dark);
+    expect(manifest.icons.map((icon) => icon.src)).toEqual(["icon-192.png", "icon-512.png"]);
+    for (const icon of manifest.icons) {
+      expect(pngSize(join(publicDir, icon.src)), icon.src).toBe(icon.sizes);
+      expect(icon.purpose).toBe("any maskable");
+    }
   });
 });

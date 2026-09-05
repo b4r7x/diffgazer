@@ -26,7 +26,7 @@ export const dialogDoc: ComponentDoc = {
     {
       title: "Requires @diffgazer/keys (package mode)",
       content:
-        "DialogContent's focus restore (returning focus to the trigger on close) imports from the required @diffgazer/keys peer. Package consumers need @diffgazer/keys installed alongside @diffgazer/ui. Diffgazer packages are not yet published to npm; until the first release, install both from locally packed tarballs. Importing @diffgazer/ui/components/dialog without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the focus-restore hook to local source.",
+        "DialogContent's focus restore (returning focus to the trigger on close) imports from the required @diffgazer/keys peer. Package consumers need @diffgazer/keys installed alongside @diffgazer/ui. The packages are not on npm; install both from packed tarballs, or take the component from the live registry instead (npx shadcn add https://r.b4r7.dev/r/ui/dialog.json). Importing @diffgazer/ui/components/dialog without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the focus-restore hook to local source.",
     },
     {
       title: "Compound Architecture",

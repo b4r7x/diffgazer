@@ -36,7 +36,7 @@ COPY scripts/ scripts/
 
 # Vite inlines VITE_-prefixed values at build time, so the docs origin override
 # must be present before the landing build runs.
-ARG VITE_DOCS_ORIGIN=https://docs.b4r7.dev
+ARG VITE_DOCS_ORIGIN=https://docs.diffgazer.b4r7.dev
 ARG VITE_GITHUB_URL=https://github.com/b4r7x/diffgazer
 ENV VITE_DOCS_ORIGIN=${VITE_DOCS_ORIGIN}
 ENV VITE_GITHUB_URL=${VITE_GITHUB_URL}
