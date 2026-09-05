@@ -251,6 +251,12 @@ describe("withFileLock", () => {
 
   it("re-prepares the project lock directory when the owner cleans it mid-wait", async () => {
     rmSync(dirname(lockPath), { recursive: true, force: true });
+    // Only the contender's poll sleep is faked, so the owner finishes its whole
+    // cleanup (real fs work) while the contender is parked and the contender
+    // wakes to a lock directory that is already gone — the case under test.
+    // Left to wall-clock timing, a loaded runner woke the contender mid-cleanup
+    // and it raced the directory swap instead.
+    vi.useFakeTimers({ toFake: ["setTimeout"] });
     let releaseOwner = () => {};
     let markAcquired = () => {};
     const acquired = new Promise<void>((resolve) => {
@@ -274,7 +280,11 @@ describe("withFileLock", () => {
 
     expect(contenderRan).toBe(false);
     releaseOwner();
-    await Promise.all([owner, contender]);
+    await owner;
+    expect(existsSync(dirname(lockPath))).toBe(false);
+
+    await vi.runAllTimersAsync();
+    await contender;
     expect(contenderRan).toBe(true);
     expect(existsSync(dirname(lockPath))).toBe(false);
   });
