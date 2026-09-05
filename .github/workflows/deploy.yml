@@ -197,7 +197,7 @@ jobs:
 
       - name: Set up Docker Buildx
         if: ${{ contains(matrix.service.targets, inputs.target) }}
-        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2e3ecddb7b43c4e34e7e # v3.10.0
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Stamp public source identity
         if: >-
@@ -217,7 +217,7 @@ jobs:
 
       - name: Log in to GHCR
         if: ${{ contains(matrix.service.targets, inputs.target) }}
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7a67f568d # v3.4.0
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
