@@ -159,6 +159,12 @@ describe("ReviewScreen", () => {
     // this harness re-renders the live container. Ink holds a bare Escape
     // briefly to tell it apart from the start of a control sequence, so this
     // waits on a timer, not a frame.
+    //
+    // The live container starts a review as it mounts. With the reset mock
+    // that start fails a tick later and replaces the progress frame with
+    // "Failed to Start Review", so keep the start in flight: the assertion is
+    // about which container Escape lands on, not about the start's outcome.
+    apiMocks.createReview.mockReturnValue(new Promise(() => {}));
     stdin.write(ESCAPE);
 
     await vi.waitFor(() => expect(lastFrame() ?? "").toMatch(/progress overview/i));

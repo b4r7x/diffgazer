@@ -290,9 +290,15 @@ describe("HistoryScreen review details", () => {
       </QueryWrapper>,
     );
 
-    await waitUntil(() =>
-      (view.lastFrame() ?? "").includes("Press w to view all affected run IDs."),
-    );
+    // The footer publishes its shortcuts a render after the list settles, so a
+    // frame can carry the warning before "Open Review" reaches the footer;
+    // the layout assertions below need the settled frame with both.
+    await waitUntil(() => {
+      const frame = view.lastFrame() ?? "";
+      return (
+        frame.includes("Press w to view all affected run IDs.") && frame.includes("Open Review")
+      );
+    });
 
     const collapsedFrame = stripAnsi(view.lastFrame() ?? "");
     const assertPaneBottomsBeforeFooter = (frame: string, footerLabel: string) => {
