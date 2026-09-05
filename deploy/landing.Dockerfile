@@ -1,5 +1,5 @@
 # Stage 1: Build landing page
-FROM node:24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf AS builder
+FROM node:26-alpine@sha256:2d984a15c9b54fd0aeb608b8e0d0d83529eb34d2966db27a1fb4f1edc3d298a3 AS builder
 
 RUN corepack enable && corepack prepare pnpm@11.13.0 --activate
 # python3/make/g++: the workspace lockfile carries node-pty (a root dev
@@ -55,7 +55,7 @@ RUN pnpm --filter @diffgazer/registry build \
 # Alpine had published the fixed util-linux for aarch64 but not x86_64, so
 # `apk upgrade` could not help on the CI runner. alpine-slim is nginx +
 # busybox only: nothing to patch there and less to attack.
-FROM nginx:1.30.4-alpine-slim@sha256:77da26c31397bf6694b4bf93275f5b40b0b120ba1b8f114264b603e592c561d6 AS runtime
+FROM nginx:1.31.5-alpine-slim@sha256:3b171d7224b669faa3cc2137fea0a65301791df1ec1f271ebd2a2b7461f7fade AS runtime
 
 # The pinned base lags Alpine's security releases and the deploy workflow
 # refuses to promote an image with HIGH/CRITICAL findings, so pull the fixed
