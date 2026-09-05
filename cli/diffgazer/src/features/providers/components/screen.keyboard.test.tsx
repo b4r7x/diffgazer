@@ -508,9 +508,12 @@ describe("ProvidersScreen keyboard zones", () => {
     stdin.write(ARROW_DOWN);
     await flushUntil(() => lastFrame()?.includes("Product       : opencode-zen") ?? false);
     stdin.write("m");
-    await flushUntil(() => lastFrame()?.includes("deepseek-v4-flash") ?? false);
+    // The details pane already names the saved model, so the overlay's own
+    // row is the frame `p` needs: keys sent before it mounts land on the
+    // screen, where Enter on the active row does nothing.
+    await flushUntil(() => lastFrame()?.includes("[*] deepseek-v4-flash") ?? false);
     stdin.write("p");
-    await flush();
+    await flushUntil(() => lastFrame()?.includes("Saving moves billing to OpenCode Go.") ?? false);
     stdin.write(ENTER);
     await flushUntil(() => selectConfiguration.mock.calls.length === 1);
 

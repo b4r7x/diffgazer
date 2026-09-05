@@ -17,6 +17,7 @@ import { useNavigation } from "../../../hooks/use-navigation";
 import { flush } from "../../../testing/flush";
 import { createTestQueryClient } from "../../../testing/query-client";
 import type { RootFrameView } from "../../../testing/render-root-frame";
+import { WAIT_TIMEOUT_MS, waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ProvidersScreen } from "../components/screen";
 
@@ -28,12 +29,8 @@ export const ARROW_LEFT = "\u001b[D";
 export const ARROW_DOWN = "\u001b[B";
 export const ARROW_UP = "\u001b[A";
 
-export async function flushUntil(predicate: () => boolean, attempts = 200): Promise<void> {
-  for (let i = 0; i < attempts; i += 1) {
-    if (predicate()) return;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-  throw new Error(`Timed out waiting for condition after ${attempts} attempts`);
+export function flushUntil(predicate: () => boolean): Promise<void> {
+  return waitUntil(predicate, { intervalMs: 0 });
 }
 
 export async function pressRoot(view: RootFrameView, input: string): Promise<void> {
@@ -41,12 +38,22 @@ export async function pressRoot(view: RootFrameView, input: string): Promise<voi
   await flush();
 }
 
-export async function flushUntilRoot(predicate: () => boolean, attempts = 500): Promise<void> {
-  for (let i = 0; i < attempts; i += 1) {
+// Yields on setImmediate like `flush`, so a root frame's pending ink commit
+// is observed on the same macrotask boundary; the ceiling is `waitUntil`'s.
+export async function flushUntilRoot(predicate: () => boolean): Promise<void> {
+  const startedAt = Date.now();
+  let attempts = 0;
+  for (;;) {
+    attempts += 1;
     if (predicate()) return;
+    const elapsedMs = Date.now() - startedAt;
+    if (elapsedMs >= WAIT_TIMEOUT_MS) {
+      throw new Error(
+        `Timed out waiting for root frame condition after ${elapsedMs}ms (attempts: ${attempts})`,
+      );
+    }
     await new Promise((resolve) => setImmediate(resolve));
   }
-  throw new Error(`Timed out waiting for root frame condition after ${attempts} attempts`);
 }
 
 function geminiCatalogModelsResponse(): ConfigurationModelsResponse {

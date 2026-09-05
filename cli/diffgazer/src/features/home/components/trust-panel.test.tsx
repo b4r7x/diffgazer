@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { Footer } from "../../../components/layout/footer";
 import { flush } from "../../../testing/flush";
+import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 import { TrustPanel } from "./trust-panel";
 
@@ -34,13 +35,6 @@ function makeInitResponse(): ConfigurationInitResponse {
       trust: null,
     },
   };
-}
-
-async function flushUntil(predicate: () => boolean, attempts = 200): Promise<void> {
-  for (let i = 0; i < attempts; i += 1) {
-    if (predicate()) return;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
 }
 
 function Wrapper({ children, api }: { children: ReactNode; api: BoundApi }) {
@@ -89,7 +83,7 @@ describe("TrustPanel", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => /currently unavailable/i.test(view.lastFrame() ?? ""));
+    await waitUntil(() => /currently unavailable/i.test(view.lastFrame() ?? ""), { intervalMs: 0 });
     expect(view.lastFrame()).toContain("[↓/Tab] Focus Actions");
 
     view.stdin.write(ARROW_DOWN);
@@ -138,7 +132,7 @@ describe("TrustPanel", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => /currently unavailable/i.test(view.lastFrame() ?? ""));
+    await waitUntil(() => /currently unavailable/i.test(view.lastFrame() ?? ""), { intervalMs: 0 });
 
     const frame = view.lastFrame() ?? "";
     expect(frame).toMatch(/currently unavailable/i);
@@ -151,19 +145,22 @@ describe("TrustPanel", () => {
     expect(view.lastFrame()).toContain("[Enter] Trust & Continue");
     expect(view.lastFrame()).toContain("[\u2191/Tab] Focus Permissions");
     view.stdin.write("\r");
-    await flushUntil(() => {
-      const pendingFrame = view.lastFrame() ?? "";
-      return (
-        pendingFrame.includes("Saving...") &&
-        !pendingFrame.includes("[\u2191/Tab] Focus Permissions")
-      );
-    });
+    await waitUntil(
+      () => {
+        const pendingFrame = view.lastFrame() ?? "";
+        return (
+          pendingFrame.includes("Saving...") &&
+          !pendingFrame.includes("[\u2191/Tab] Focus Permissions")
+        );
+      },
+      { intervalMs: 0 },
+    );
 
     expect(view.lastFrame()).not.toContain("[\u2191/Tab] Focus Permissions");
     expect(view.lastFrame()).not.toContain("[Enter] Saving...");
 
     resolveSaveTrust(saveResponse);
-    await flushUntil(() => onAccept.mock.calls.length > 0);
+    await waitUntil(() => onAccept.mock.calls.length > 0, { intervalMs: 0 });
 
     expect(saveTrust).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -193,14 +190,16 @@ describe("TrustPanel", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => /currently unavailable/i.test(view.lastFrame() ?? ""));
+    await waitUntil(() => /currently unavailable/i.test(view.lastFrame() ?? ""), { intervalMs: 0 });
 
     view.stdin.write("\t");
     await flush();
     expect(view.lastFrame()).toContain("[Enter] Trust & Continue");
 
     view.stdin.write("\r");
-    await flushUntil(() => (view.lastFrame() ?? "").includes("Trust save failed: disk full"));
+    await waitUntil(() => (view.lastFrame() ?? "").includes("Trust save failed: disk full"), {
+      intervalMs: 0,
+    });
 
     await flush();
     expect(view.lastFrame()).toContain("Trust save failed: disk full");
@@ -225,7 +224,7 @@ describe("TrustPanel", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => view.lastFrame()?.includes("[x]") ?? false);
+    await waitUntil(() => view.lastFrame()?.includes("[x]") ?? false, { intervalMs: 0 });
     expect(view.lastFrame()).toContain("[x]");
 
     view.stdin.write(input);

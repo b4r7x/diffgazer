@@ -14,6 +14,7 @@ import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { createTestQueryClient } from "../../../../testing/query-client";
+import { waitUntil } from "../../../../testing/wait-until";
 import { CliThemeProvider } from "../../../../theme/provider";
 import { ModelStep } from "./model-step";
 
@@ -46,13 +47,6 @@ function catalogModelsResponse(
 
 function catalogModel(modelId: string, overrides: Partial<ModelInfo> = {}): ModelInfo {
   return { id: modelId, name: modelId, description: "1M context", tier: "paid", ...overrides };
-}
-
-async function flushUntil(predicate: () => boolean, attempts = 200): Promise<void> {
-  for (let i = 0; i < attempts; i += 1) {
-    if (predicate()) return;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
 }
 
 function Wrapper({ children, api }: { children: ReactNode; api: BoundApi }) {
@@ -98,7 +92,7 @@ describe("ModelStep (TUI catalog)", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    await waitUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false, { intervalMs: 0 });
     expect(lastFrame() ?? "").toContain("gemini-2.5-flash");
     expect(getConfigurationModels).toHaveBeenCalledWith(
       DRAFT_CONFIGURATION.configurationId,
@@ -125,7 +119,7 @@ describe("ModelStep (TUI catalog)", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    await waitUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false, { intervalMs: 0 });
     expect(lastFrame() ?? "").toContain("gemini-2.5-flash");
     expect(getConfigurationModels).toHaveBeenCalledTimes(1);
   });
@@ -151,9 +145,9 @@ describe("ModelStep (TUI catalog)", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Press r to retry") ?? false);
+    await waitUntil(() => lastFrame()?.includes("Press r to retry") ?? false, { intervalMs: 0 });
     stdin.write("r");
-    await flushUntil(() => onRetry.mock.calls.length > 0);
+    await waitUntil(() => onRetry.mock.calls.length > 0, { intervalMs: 0 });
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
@@ -172,13 +166,13 @@ describe("ModelStep (TUI catalog)", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Retry") ?? false);
+    await waitUntil(() => lastFrame()?.includes("Retry") ?? false, { intervalMs: 0 });
     stdin.write("\r");
-    await flushUntil(() => onRetry.mock.calls.length > 0);
+    await waitUntil(() => onRetry.mock.calls.length > 0, { intervalMs: 0 });
     expect(onRetry).toHaveBeenCalledTimes(1);
 
     stdin.write("\u001b[B");
-    await flushUntil(() => onDownBoundary.mock.calls.length > 0);
+    await waitUntil(() => onDownBoundary.mock.calls.length > 0, { intervalMs: 0 });
     expect(onDownBoundary).toHaveBeenCalledTimes(1);
   });
 
@@ -201,10 +195,12 @@ describe("ModelStep (TUI catalog)", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Model discovery failed") ?? false);
+    await waitUntil(() => lastFrame()?.includes("Model discovery failed") ?? false, {
+      intervalMs: 0,
+    });
     expect(lastFrame()).toContain("Press r to retry");
     stdin.write("r");
-    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    await waitUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false, { intervalMs: 0 });
     expect(getConfigurationModels).toHaveBeenCalledTimes(2);
   });
 
@@ -231,7 +227,9 @@ describe("ModelStep (TUI catalog)", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("no model this product") ?? false);
+    await waitUntil(() => lastFrame()?.includes("no model this product") ?? false, {
+      intervalMs: 0,
+    });
     expect(lastFrame()).not.toMatch(/api key/i);
   });
 
@@ -258,7 +256,7 @@ describe("ModelStep (TUI catalog)", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Nano Banana Pro") ?? false);
+    await waitUntil(() => lastFrame()?.includes("Nano Banana Pro") ?? false, { intervalMs: 0 });
     const frame = lastFrame() ?? "";
     expect(frame).toContain("google/gemini-3-pro-image · 1M context");
     expect(frame).toContain("google/gemini-3-pro-image-preview · 1M context");
@@ -286,7 +284,7 @@ describe("ModelStep (TUI catalog)", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("bare-model-0") ?? false);
+    await waitUntil(() => lastFrame()?.includes("bare-model-0") ?? false, { intervalMs: 0 });
     expect(lastFrame() ?? "").toContain("bare-model-17");
   });
 
@@ -312,7 +310,7 @@ describe("ModelStep (TUI catalog)", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("unpriced-model") ?? false);
+    await waitUntil(() => lastFrame()?.includes("unpriced-model") ?? false, { intervalMs: 0 });
     const frame = lastFrame() ?? "";
     expect(frame).toContain("[PAID]");
     expect(frame).toContain("[FREE]");
@@ -343,7 +341,7 @@ describe("ModelStep (TUI catalog)", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("go-only-model") ?? false);
+    await waitUntil(() => lastFrame()?.includes("go-only-model") ?? false, { intervalMs: 0 });
     const frame = lastFrame() ?? "";
     // The shared row bills the bound pool; the Go-only row bills its own. The
     // step offers no pool control: the endpoint was chosen before it.
@@ -375,7 +373,7 @@ describe("ModelStep (TUI catalog)", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    await waitUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false, { intervalMs: 0 });
     expect(lastFrame() ?? "").not.toContain("[Zen]");
     expect(lastFrame() ?? "").not.toContain("[Go]");
   });

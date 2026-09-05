@@ -78,7 +78,7 @@ describe("ModelSelectOverlay layout", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Select Model") ?? false);
-    await flushUntil(() => lastFrame()?.includes("1 model") ?? false, 500);
+    await flushUntil(() => lastFrame()?.includes("1 model") ?? false);
     const frame = lastFrame() ?? "";
     const lines = frame.split("\n");
     expect(lines.every((line) => terminalCellWidth(line) <= 40)).toBe(true);

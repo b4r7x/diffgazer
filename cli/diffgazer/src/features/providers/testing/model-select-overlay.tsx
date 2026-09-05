@@ -17,6 +17,7 @@ import { type ReactNode, useState } from "react";
 import { vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { createTestQueryClient } from "../../../testing/query-client";
+import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 
 export const ARROW_DOWN = "\u001b[B";
@@ -73,12 +74,8 @@ export function geminiName(id: string): string {
 
 export { flush } from "../../../testing/flush";
 
-export async function flushUntil(predicate: () => boolean, attempts = 200): Promise<void> {
-  for (let i = 0; i < attempts; i += 1) {
-    if (predicate()) return;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-  throw new Error(`Timed out waiting for condition after ${attempts} attempts`);
+export function flushUntil(predicate: () => boolean): Promise<void> {
+  return waitUntil(predicate, { intervalMs: 0 });
 }
 
 export function makeGeminiApi(): BoundApi {
