@@ -3,10 +3,11 @@ import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 import { dgaddChildEnv } from "./commands/testing/child-env.js";
 
-const entry = resolve(import.meta.dirname, "index.ts");
+// Built once per vitest run by testing/global-setup.ts.
+const entry = resolve(import.meta.dirname, "../dist/index.js");
 
 function help(command: string): string {
-  return execFileSync(process.execPath, ["--import", "tsx", entry, command, "--help"], {
+  return execFileSync(process.execPath, [entry, command, "--help"], {
     encoding: "utf-8",
     env: dgaddChildEnv(),
   });

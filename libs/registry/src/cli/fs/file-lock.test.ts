@@ -1,4 +1,5 @@
 import {
+  constants,
   existsSync,
   promises as fs,
   mkdirSync,
@@ -287,6 +288,155 @@ describe("withFileLock", () => {
     await contender;
     expect(contenderRan).toBe(true);
     expect(existsSync(dirname(lockPath))).toBe(false);
+  });
+
+  it("leaves neither a lock nor a directory behind when a contender creates its lock while the owner removes the directory", async () => {
+    rmSync(dirname(lockPath), { recursive: true, force: true });
+    const projectLockDir = join(realpathSync(root), ".diffgazer");
+    const mutationLockPath = join(projectLockDir, "mutation.lock");
+    let releaseOwner = () => {};
+    let markAcquired = () => {};
+    const acquired = new Promise<void>((resolve) => {
+      markAcquired = resolve;
+    });
+    const release = new Promise<void>((resolve) => {
+      releaseOwner = resolve;
+    });
+    const owner = withProjectFileLock(root, ".diffgazer/mutation.lock", async () => {
+      markAcquired();
+      await release;
+    });
+    await acquired;
+
+    const parked = contenderParked();
+    let contenderRan = false;
+    const contender = withProjectFileLock(root, ".diffgazer/mutation.lock", async () => {
+      contenderRan = true;
+    });
+    await Promise.race([parked, contender]);
+    expect(contenderRan).toBe(false);
+
+    // Pin the interleaving that resurrected a stale lock: the contender's
+    // exclusive create lands after the owner released its lock but before the
+    // owner has removed the directory it created, and the owner's removal step
+    // completes while the contender is still between that create and its
+    // post-write validation.
+    let markContenderCreated = () => {};
+    const contenderCreated = new Promise<void>((resolve) => {
+      markContenderCreated = resolve;
+    });
+    let markOwnerRemoved = () => {};
+    const ownerRemoved = new Promise<void>((resolve) => {
+      markOwnerRemoved = resolve;
+    });
+    const open = fs.open.bind(fs);
+    vi.spyOn(fs, "open").mockImplementation(async (path, flags, mode) => {
+      const handle = await open(path, flags, mode);
+      if (typeof flags === "number" && (flags & constants.O_CREAT) !== 0) {
+        markContenderCreated();
+        await ownerRemoved;
+      }
+      return handle;
+    });
+    const rmdir = fs.rmdir.bind(fs);
+    vi.spyOn(fs, "rmdir").mockImplementationOnce(async (path, options) => {
+      await contenderCreated;
+      try {
+        await rmdir(path, options);
+      } finally {
+        markOwnerRemoved();
+      }
+    });
+    // The owner must never move its directory out from under a contender. If a
+    // quarantine rename of the created directory ever comes back, force it into
+    // the same window and let the contender finish first, so its rmdir fails on
+    // the stranded lock and the restore resurrects it — the defect this pins.
+    const rename = fs.rename.bind(fs);
+    let movedCreatedDirectory = false;
+    vi.spyOn(fs, "rename").mockImplementation(async (from, to) => {
+      if (String(from) !== projectLockDir || movedCreatedDirectory) return rename(from, to);
+      movedCreatedDirectory = true;
+      await contenderCreated;
+      await rename(from, to);
+      markOwnerRemoved();
+      await contender;
+    });
+
+    releaseOwner();
+    await Promise.all([owner, contender]);
+
+    expect(contenderRan).toBe(true);
+    expect(existsSync(mutationLockPath)).toBe(false);
+    expect(existsSync(projectLockDir)).toBe(false);
+    expect(readdirSync(root)).toEqual([]);
+  });
+
+  it("returns the owner's result when a contender re-creates the lock directory the owner just removed", async () => {
+    rmSync(dirname(lockPath), { recursive: true, force: true });
+    const projectLockDir = join(realpathSync(root), ".diffgazer");
+    // Only the contender's poll sleep is faked so it cannot wake before the
+    // owner's rmdir has actually landed: the owner wins the rmdir, the
+    // contender re-creates the directory under a new inode, and the owner's
+    // final empty-directory sweep then runs against a directory it did not
+    // create. Holding the contender inside its mkdir until the owner settles
+    // is what forces that sweep to see the replacement.
+    vi.useFakeTimers({ toFake: ["setTimeout"] });
+    let releaseOwner = () => {};
+    let markAcquired = () => {};
+    const acquired = new Promise<void>((resolve) => {
+      markAcquired = resolve;
+    });
+    const release = new Promise<void>((resolve) => {
+      releaseOwner = resolve;
+    });
+    const owner = withProjectFileLock(root, ".diffgazer/mutation.lock", async () => {
+      markAcquired();
+      await release;
+      return "owner result";
+    });
+    await acquired;
+
+    const parked = contenderParked();
+    let contenderRan = false;
+    const contender = withProjectFileLock(root, ".diffgazer/mutation.lock", async () => {
+      contenderRan = true;
+    });
+    await Promise.race([parked, contender]);
+    expect(contenderRan).toBe(false);
+
+    let markOwnerRemoved = () => {};
+    const ownerRemoved = new Promise<void>((resolve) => {
+      markOwnerRemoved = resolve;
+    });
+    let markContenderRecreated = () => {};
+    const contenderRecreated = new Promise<void>((resolve) => {
+      markContenderRecreated = resolve;
+    });
+    const ownerSettled = Promise.allSettled([owner]);
+    const mkdir = fs.mkdir.bind(fs);
+    vi.spyOn(fs, "mkdir").mockImplementation(async (path, options) => {
+      const result = await mkdir(path, options);
+      if (String(path) === projectLockDir) {
+        markContenderRecreated();
+        await ownerSettled;
+      }
+      return result;
+    });
+    const rmdir = fs.rmdir.bind(fs);
+    vi.spyOn(fs, "rmdir").mockImplementationOnce(async (path, options) => {
+      await rmdir(path, options);
+      markOwnerRemoved();
+      await contenderRecreated;
+    });
+
+    releaseOwner();
+    await ownerRemoved;
+    await vi.runAllTimersAsync();
+    await expect(owner).resolves.toBe("owner result");
+    await contender;
+
+    expect(contenderRan).toBe(true);
+    expect(readdirSync(root)).toEqual([]);
   });
 
   it("removes an empty lock directory after waiting on a creator that failed cleanup", async () => {

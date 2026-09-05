@@ -1,5 +1,5 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────
-FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS builder
+FROM node:24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf AS builder
 
 RUN corepack enable && corepack prepare pnpm@11.13.0 --activate
 # python3/make/g++: the workspace lockfile carries node-pty (a root dev
@@ -56,7 +56,7 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm --filter @diffgazer/docs build
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────
-FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS runtime
+FROM node:24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf AS runtime
 
 # The pinned base lags Alpine's security releases and the deploy workflow
 # refuses to promote an image with HIGH/CRITICAL findings, so pull the fixed

@@ -25,14 +25,11 @@ export interface DgaddRunOptions {
   timeoutMs?: number;
 }
 
+// Built once per vitest run by ../global-setup.ts.
+const dgaddEntry = resolve(repoRoot, "cli/add/dist/index.js");
+
 function dgaddArgv(args: string[], silent: boolean): string[] {
-  return [
-    "--import",
-    "tsx",
-    resolve(repoRoot, "cli/add/src/index.ts"),
-    ...(silent ? ["--silent"] : []),
-    ...args,
-  ];
+  return [dgaddEntry, ...(silent ? ["--silent"] : []), ...args];
 }
 
 function dgaddSpawnOptions(opts: DgaddRunOptions | undefined) {

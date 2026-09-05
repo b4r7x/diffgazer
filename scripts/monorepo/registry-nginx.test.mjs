@@ -60,7 +60,7 @@ test("the registry image pins its nginx digest and validates the proxy CIDR it b
   assert.match(registryDockerfile, /ARG REGISTRY_TRAEFIK_PROXY_CIDR=127\.0\.0\.1\/32/);
   assert.match(
     registryDockerfile,
-    /FROM nginx:1\.30\.4-alpine@sha256:97d490c12ba55b4946b01546d1c3ed324e8d41ab1c9fcb2a616aa470620e5b46 AS runtime/,
+    /FROM nginx:1\.30\.4-alpine-slim@sha256:77da26c31397bf6694b4bf93275f5b40b0b120ba1b8f114264b603e592c561d6 AS runtime/,
   );
   assert.match(registryDockerfile, /validate-registry-proxy-cidr\.mjs/);
 });

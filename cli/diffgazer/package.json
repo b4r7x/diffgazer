@@ -85,7 +85,7 @@
     "@diffgazer/web": "workspace:*",
     "@testing-library/react": "^16.3.2",
     "@types/figlet": "^1.7.0",
-    "@types/node": "^22.10.0",
+    "@types/node": "^24.0.0",
     "@types/react": "^19.2.13",
     "ink-testing-library": "^4.0.0",
     "strip-ansi": "^7.2.0",

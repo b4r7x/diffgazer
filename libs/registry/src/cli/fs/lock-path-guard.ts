@@ -1,13 +1,28 @@
-import { randomBytes } from "node:crypto";
 import { promises as fs } from "node:fs";
-import { basename, dirname, relative, resolve, sep } from "node:path";
+import { dirname, relative, resolve, sep } from "node:path";
 import { hasErrorCode, isEnoent } from "./path-safety.js";
 
 // Prepares (and rolls back) the directory chain a project lock file lives in.
 // Every component is pinned by dev/ino so a concurrent rename or symlink swap
 // between the mkdir and the lock write is detected instead of followed.
+//
+// A directory this guard created is removed with a bare rmdir on the validated
+// path, never moved to a quarantine name first the way the lock file is.
+// Quarantine matters for the file because unlink destroys content; rmdir only
+// ever removes an empty directory, so the most a lost race can cost is an
+// empty directory somebody swapped in during the same instant. Renaming the
+// directory strands a contender's freshly created lock under the quarantine
+// name, and restoring it after the ENOTEMPTY rmdir resurrects that lock — with
+// a live pid inside — at the lock path. A contender that creates its lock
+// before the rmdir makes it fail ENOTEMPTY and, having waited, removes the
+// directory itself through tryRemoveEmptyLockDirectory; one that wakes after
+// the rmdir re-creates the directory under a new inode, which the final
+// tryRemoveEmptyLockDirectory leaves alone as an identity mismatch rather than
+// failing a run whose operation already completed.
 
 export type ValidateLockPath = () => Promise<void>;
+
+const LOCK_PATH_CHANGED_CODE = "ERR_LOCK_PATH_CHANGED";
 
 interface PathIdentity {
   dev: number;
@@ -39,15 +54,9 @@ async function readDirectoryIdentity(path: string): Promise<PathIdentity> {
 async function assertDirectoryIdentity(path: string, expected: PathIdentity): Promise<void> {
   const current = await readDirectoryIdentity(path);
   if (!samePathIdentity(current, expected)) {
-    throw new Error(`Project lock path changed while in use: "${path}".`);
-  }
-}
-
-async function restoreMovedDirectory(from: string, to: string): Promise<void> {
-  try {
-    await fs.rename(from, to);
-  } catch (error) {
-    if (!hasErrorCode(error, "EEXIST") && !hasErrorCode(error, "ENOTEMPTY")) throw error;
+    throw Object.assign(new Error(`Project lock path changed while in use: "${path}".`), {
+      code: LOCK_PATH_CHANGED_CODE,
+    });
   }
 }
 
@@ -61,26 +70,11 @@ async function cleanupCreatedDirectory(
     const current = await readDirectoryIdentity(path);
     if (!samePathIdentity(current, expected)) return;
     await validateParent();
-
-    const quarantinePath = resolve(
-      dirname(path),
-      `.${basename(path)}.${randomBytes(12).toString("hex")}.cleanup`,
-    );
-    await fs.rename(path, quarantinePath);
-    const moved = await readDirectoryIdentity(quarantinePath);
-    if (!samePathIdentity(moved, expected)) {
-      await restoreMovedDirectory(quarantinePath, path);
+    await fs.rmdir(path);
+  } catch (error) {
+    if (isEnoent(error) || hasErrorCode(error, "ENOTEMPTY") || hasErrorCode(error, "EEXIST")) {
       return;
     }
-
-    try {
-      await fs.rmdir(quarantinePath);
-    } catch (error) {
-      await restoreMovedDirectory(quarantinePath, path);
-      if (!hasErrorCode(error, "ENOTEMPTY") && !hasErrorCode(error, "EEXIST")) throw error;
-    }
-  } catch (error) {
-    if (isEnoent(error)) return;
     throw error;
   }
 }
@@ -174,7 +168,12 @@ export async function tryRemoveEmptyLockDirectory(
     await validateLockPath?.();
     await fs.rmdir(lockDirectory);
   } catch (error) {
-    if (isEnoent(error) || hasErrorCode(error, "ENOTEMPTY") || hasErrorCode(error, "EEXIST")) {
+    if (
+      isEnoent(error) ||
+      hasErrorCode(error, "ENOTEMPTY") ||
+      hasErrorCode(error, "EEXIST") ||
+      hasErrorCode(error, LOCK_PATH_CHANGED_CODE)
+    ) {
       return;
     }
     throw error;

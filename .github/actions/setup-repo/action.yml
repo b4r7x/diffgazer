@@ -1,5 +1,5 @@
 name: Setup repo
-description: Install pnpm (version from root packageManager), Node 22 with pnpm cache, and frozen-lockfile dependencies.
+description: Install pnpm (version from root packageManager), Node 24 with pnpm cache, and frozen-lockfile dependencies.
 
 inputs:
   registry-url:
@@ -18,7 +18,7 @@ runs:
     - name: Setup Node
       uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
       with:
-        node-version: 22
+        node-version: 24
         cache: pnpm
         registry-url: ${{ inputs.registry-url }}
         scope: ${{ inputs.scope }}

@@ -11,7 +11,7 @@ Public package targets:
 - `@diffgazer/ui` - React `>=19.2.0` component package, Node >= 22.
 - `@diffgazer/keys` - React `>=19.2.0` keyboard hooks package, Node >= 22.
 
-All four published packages declare a single `engines.node: ">=22.0.0"` floor (ink 7's TUI runtime requires Node 22, and CI and Docker run Node 22). The `check-invariants` script asserts this floor is uniform across the published surface so it cannot drift.
+All four published packages declare a single `engines.node: ">=22.0.0"` floor (ink 7's TUI runtime requires Node 22). The floor is a published contract and does not move with the toolchain: CI and the Docker base images run Node 24, the newest LTS major, while the bundled CLIs are emitted for the floor (`tsup` `target: "node22"`). The `check-invariants` script asserts the floor is uniform across the published surface, that every bundler target equals it, and that it never exceeds the CI major. CI has no Node 22 leg, so a green run proves the packages on Node 24 only; a runtime API that exists on 24 but not on 22 is not caught there. Run the CLI tests or `pnpm run smoke:packages` under Node 22 locally before shipping a change that reaches for a new Node API.
 
 **Publish status is per package.** Four packages are release-managed here — they take changesets, get versioned, and keep CHANGELOGs — but that is not the same as being publishable. Only `diffgazer` publishes today; it is live on npm (`npm view diffgazer version` returns a version). The scoped libraries (`@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`) are versioned locally but blocked from npm by the [first-publish gate](#first-publish-gate), and they remain gated until `npm view` succeeds for each:
 
@@ -232,7 +232,7 @@ If that workflow run is wedged, use the same `Release` workflow's **Run workflow
 
 The root `pnpm-workspace.yaml` carries the `overrides` block to keep shared transitive packages on a single version across the workspace. The current pins collapse duplicates that otherwise drift across apps and tooling:
 
-- `@types/node` pinned to `^22.10.0` so workspace checks use the same Node major as CI and the repository's executable packages. Every Node-typed workspace declares that range, and every package with a Node engine declaration requires Node 22.
+- `@types/node` pinned to `^24.0.0` so workspace checks use the same Node major as CI and the Docker base images. Every Node-typed workspace declares that range. The types follow the runner, not the Node 22 engines floor (see [Package Set](#package-set)), so a Node 24-only API type-checks; the floor is held by the engines declarations and the `node22` bundler target, not by the type line.
 - `@types/react` pinned to `^19.2.13` and `@types/react-dom` pinned to `^19.2.3` so the whole workspace resolves to one React 19.2 type line, matching the shared React `>=19.2.0` runtime floor. Declared package ranges stay on the 19.2 line (`@diffgazer/core` declares `^19.2.13`, ui/keys/docs `^19.2.0`, web/landing/diffgazer `^19.2.13`); the override collapses them to a single resolution so a stray `^19.1` cannot reappear.
 - `tailwindcss` pinned to `^4.3.0` so `apps/web` and `apps/docs` resolve to one minor (no `4.2.x` / `4.3.x` split).
 - `postcss` pinned to `^8.5.18` so transitive Vite/Tailwind resolvers share one patch line, at or above the patched release for the high-severity advisory affecting `postcss <= 8.5.17`.

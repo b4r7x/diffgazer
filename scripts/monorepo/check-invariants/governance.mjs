@@ -1,6 +1,7 @@
 import { parse as parseYaml } from "yaml";
 import { existsInRoot, invariantResult, readJsonInRoot, readTextInRoot } from "./context.mjs";
 import { LICENSE_MARKERS } from "./licenses.mjs";
+import { PUBLISHABLE_PACKAGE_FILES } from "./packages.mjs";
 
 function sliceDocSection(text, heading) {
   const marker = `## ${heading}`;
@@ -58,21 +59,33 @@ function isWorkflowFile(repoPath) {
   return /^\.github\/(?:workflows|actions)\/.+\.ya?ml$/.test(repoPath);
 }
 
+// The published packages promise the engines floor; the sibling "share one
+// engines.node" check keeps it uniform, so any one of them names it.
+function readEnginesFloorMajor(context) {
+  const majors = new Set(
+    PUBLISHABLE_PACKAGE_FILES.map((file) =>
+      versionMajor(context.parsedPackages.get(file)?.engines?.node),
+    ).filter((major) => major !== null),
+  );
+  return majors.size === 1 ? [...majors][0] : null;
+}
+
 // The bundler target is a fourth Node declaration, and it is the one that ships:
-// emitting for an older major than the runtime downlevels syntax that runtime
-// already has. A config that declares no Node target inherits esbuild's default
-// and is not a competing declaration, so it is out of scope here.
-function collectBundlerTargetProblems(context, ciMajor) {
-  if (ciMajor === null) return [];
+// it has to emit for the oldest major the engines floor admits, not for the
+// runner, or a newer CI major would let syntax the floor cannot parse through.
+// A config that declares no Node target inherits esbuild's default and is not a
+// competing declaration, so it is out of scope here.
+function collectBundlerTargetProblems(context, floorMajor) {
+  if (floorMajor === null) return [];
 
   return context.repoFiles
     .filter((path) => /(^|\/)tsup\.config\.[cm]?ts$/.test(path))
     .flatMap((file) => {
       const declared = readTextInRoot(context, file).match(TSUP_NODE_TARGET)?.[1];
       const target = versionMajor(declared);
-      return target === null || target === ciMajor
+      return target === null || target === floorMajor
         ? []
-        : [`${file} targets Node ${target} != CI Node ${ciMajor}`];
+        : [`${file} targets Node ${target} != engines floor ${floorMajor}`];
     });
 }
 
@@ -87,6 +100,14 @@ function collectNodeVersionPins(context) {
   );
 }
 
+// Two majors are governed here. The engines floor is the oldest Node the
+// published packages run on and is a public contract; CI, the Docker bases, and
+// @types/node track the newest LTS major, which may be newer than the
+// floor. What must hold: every runner pin and type line agree with CI, every
+// engine declaration and bundler target agree with the floor, and the floor
+// never exceeds CI. CI does not run a floor leg, so a runtime API that exists
+// only on the CI major is not caught by a green run; PACKAGE_GOVERNANCE.md
+// states that gap.
 export function checkNodeDeclarationsMatchRuntime(context) {
   const name = "Node declarations match supported runtime majors";
   const problems = [];
@@ -101,7 +122,12 @@ export function checkNodeDeclarationsMatchRuntime(context) {
     }
   }
 
-  problems.push(...collectBundlerTargetProblems(context, ciMajor));
+  const floorMajor = readEnginesFloorMajor(context);
+  if (ciMajor !== null && floorMajor !== null && floorMajor > ciMajor) {
+    problems.push(`engines floor ${floorMajor} exceeds CI Node ${ciMajor}`);
+  }
+
+  problems.push(...collectBundlerTargetProblems(context, floorMajor));
 
   const workspace = readRootWorkspace(context);
   const overrideMajor = versionMajor(workspace?.overrides?.["@types/node"]);
@@ -138,8 +164,10 @@ export function checkNodeDeclarationsMatchRuntime(context) {
     }
 
     const engineMajor = versionMajor(pkg.engines?.node);
-    if (ciMajor !== null && engineMajor !== null && engineMajor !== ciMajor) {
-      problems.push(`${packageFile} engines.node major ${engineMajor} != CI Node ${ciMajor}`);
+    if (floorMajor !== null && engineMajor !== null && engineMajor !== floorMajor) {
+      problems.push(
+        `${packageFile} engines.node major ${engineMajor} != engines floor ${floorMajor}`,
+      );
     }
   }
 

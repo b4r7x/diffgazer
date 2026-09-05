@@ -27,17 +27,90 @@ function runWithBundlerTarget(root, target) {
   return result;
 }
 
-test("a bundler target matching the CI Node major is accepted", () => {
+// The real repo's shape: CI, the runner pins, and @types/node on one major,
+// the published engines floor one major older.
+function moveCiAboveFloor(root) {
+  writeText(
+    root,
+    ".github/actions/setup-repo/action.yml",
+    "runs:\n  using: composite\n  steps:\n    - uses: actions/setup-node@fixture\n      with:\n        node-version: 24\n",
+  );
+  writeText(
+    root,
+    "pnpm-workspace.yaml",
+    'packages:\n  - apps/*\noverrides:\n  "@types/node": ^24.0.0\n',
+  );
+  for (const packageFile of PACKAGE_FILES) {
+    updatePackage(root, packageFile, (pkg) => ({
+      ...pkg,
+      devDependencies: { ...pkg.devDependencies, "@types/node": "^24.0.0" },
+    }));
+  }
+  writeText(
+    root,
+    "pnpm-lock.yaml",
+    [
+      "lockfileVersion: '9.0'",
+      "importers:",
+      ...PACKAGE_FILES.flatMap((packageFile) => [
+        `  ${packageFile.replace(/\/package\.json$/, "")}:`,
+        "    devDependencies:",
+        "      '@types/node':",
+        "        specifier: ^24.0.0",
+        "        version: 24.13.3",
+      ]),
+      "packages:",
+      "  '@types/node@24.13.3': {}",
+      "",
+    ].join("\n"),
+  );
+  return root;
+}
+
+test("a bundler target matching the engines floor is accepted", () => {
   const result = runWithBundlerTarget(createConformingFixture(), "node22");
 
   assert.equal(result.ok, true);
 });
 
-test("a bundler emitting for an older Node major than CI is rejected", () => {
+test("a bundler emitting for an older Node major than the engines floor is rejected", () => {
   const result = runWithBundlerTarget(createConformingFixture(), "node20");
 
   assert.equal(result.ok, false);
-  assert.match(result.details, /cli\/diffgazer\/tsup\.config\.ts targets Node 20 != CI Node 22/);
+  assert.match(
+    result.details,
+    /cli\/diffgazer\/tsup\.config\.ts targets Node 20 != engines floor 22/,
+  );
+});
+
+test("CI may run a newer major than the engines floor when the bundler targets the floor", () => {
+  const result = runWithBundlerTarget(moveCiAboveFloor(createConformingFixture()), "node22");
+
+  assert.equal(result.ok, true);
+});
+
+test("a bundler emitting for the CI major above the engines floor is rejected", () => {
+  const result = runWithBundlerTarget(moveCiAboveFloor(createConformingFixture()), "node24");
+
+  assert.equal(result.ok, false);
+  assert.match(
+    result.details,
+    /cli\/diffgazer\/tsup\.config\.ts targets Node 24 != engines floor 22/,
+  );
+});
+
+test("an engines floor newer than CI is rejected", () => {
+  const root = createConformingFixture();
+  for (const packageFile of PACKAGE_FILES) {
+    updatePackage(root, packageFile, (pkg) =>
+      pkg.engines ? { ...pkg, engines: { node: ">=24.0.0" } } : pkg,
+    );
+  }
+
+  const [result] = runFixture(root, { checks: [checkNodeDeclarationsMatchRuntime] });
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /engines floor 24 exceeds CI Node 22/);
 });
 
 test("a bundler config declaring no Node target stays out of scope", () => {

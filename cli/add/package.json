@@ -70,7 +70,7 @@
     "@diffgazer/keys": "workspace:*",
     "@diffgazer/registry": "workspace:*",
     "@diffgazer/ui": "workspace:*",
-    "@types/node": "^22.10.0",
+    "@types/node": "^24.0.0",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",

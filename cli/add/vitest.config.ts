@@ -7,10 +7,11 @@ export default defineConfig({
     pool: "forks",
     fileParallelism: true,
     maxWorkers: 4,
-    // The e2e suites spawn the real CLI through tsx up to four times per test,
-    // roughly 8 s each on a two-core CI runner; 30 s timed out the four-run
-    // tests there while every run passed. Children keep their own shorter
-    // deadline (see testing/e2e/test-helpers.ts), so a hang still fails fast.
-    testTimeout: 90_000,
+    globalSetup: ["./testing/global-setup.ts"],
+    // The e2e suites spawn the CLI built by globalSetup up to four times per
+    // test, well under a second each. The floor is the child deadline in
+    // testing/e2e/test-helpers.ts (25 s): a wedged child must hit its own
+    // timeout before vitest's, so afterEach still removes the fixture.
+    testTimeout: 30_000,
   },
 });

@@ -1,5 +1,5 @@
 # Stage 1: Build landing page
-FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS builder
+FROM node:24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf AS builder
 
 RUN corepack enable && corepack prepare pnpm@11.13.0 --activate
 # python3/make/g++: the workspace lockfile carries node-pty (a root dev
@@ -48,12 +48,26 @@ RUN pnpm --filter @diffgazer/registry build \
  && pnpm --filter @diffgazer/landing build
 
 # Stage 2: Serve static SPA
-FROM nginx:1.30.4-alpine@sha256:97d490c12ba55b4946b01546d1c3ed324e8d41ab1c9fcb2a616aa470620e5b46 AS runtime
+# alpine-slim, not alpine: the full variant ships modules we never load
+# (image-filter, xslt, geoip, njs); image-filter's chain libgd -> libXpm ->
+# libXt -> libSM -> libuuid drags util-linux's libuuid into the image. A deploy was blocked by
+# seven util-linux HIGH CVEs (in mount/nsenter, not even present here) because
+# Alpine had published the fixed util-linux for aarch64 but not x86_64, so
+# `apk upgrade` could not help on the CI runner. alpine-slim is nginx +
+# busybox only: nothing to patch there and less to attack.
+FROM nginx:1.30.4-alpine-slim@sha256:77da26c31397bf6694b4bf93275f5b40b0b120ba1b8f114264b603e592c561d6 AS runtime
 
 # The pinned base lags Alpine's security releases and the deploy workflow
 # refuses to promote an image with HIGH/CRITICAL findings, so pull the fixed
 # OS packages before the scan sees this layer.
-RUN apk upgrade --no-cache
+#
+# --ignore nginx: Alpine's community repo carries an `nginx` package with the
+# same version string as the nginx.org build this image pins, and with no
+# nginx-module-* packages to hold it back apk "upgrades" to it. That swaps the
+# binary the digest promises for Alpine's and installs Alpine's nginx.conf,
+# which includes conf.d/*.conf at the root context (http-level config lives in
+# http.d/ there), so `nginx -t` below rejects our http-level directives.
+RUN apk upgrade --no-cache --ignore nginx
 
 COPY --from=builder /app/apps/landing/dist /usr/share/nginx/html
 COPY deploy/nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf

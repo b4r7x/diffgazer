@@ -36,7 +36,8 @@ interface InstalledManifest {
 function runDgadd(args: string[]): void {
   execFileSync(
     process.execPath,
-    ["--import", "tsx", resolve(repoRoot, "cli/add/src/index.ts"), "--silent", ...args],
+    // Built once per vitest run by testing/global-setup.ts.
+    [resolve(repoRoot, "cli/add/dist/index.js"), "--silent", ...args],
     { cwd: repoRoot },
   );
 }

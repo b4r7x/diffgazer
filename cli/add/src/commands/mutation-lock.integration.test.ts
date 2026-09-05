@@ -17,7 +17,8 @@ import { DiffgazerAddConfigSchema, type ManifestItem } from "../context.js";
 import { dgaddChildEnv } from "./testing/child-env.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
-const cliEntry = resolve(repoRoot, "cli/add/src/index.ts");
+// Built once per vitest run by testing/global-setup.ts.
+const cliEntry = resolve(repoRoot, "cli/add/dist/index.js");
 
 interface RunningCommand {
   child: ChildProcess;
@@ -26,7 +27,7 @@ interface RunningCommand {
 }
 
 function commandArgs(args: string[], silent = true): string[] {
-  return ["--import", "tsx", cliEntry, ...(silent ? ["--silent"] : []), ...args];
+  return [cliEntry, ...(silent ? ["--silent"] : []), ...args];
 }
 
 function runDgadd(args: string[]): void {

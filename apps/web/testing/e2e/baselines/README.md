@@ -8,7 +8,7 @@ pnpm --filter @diffgazer/web exec playwright test --grep @parity --update-snapsh
 ```
 
 Linux CI runs Playwright directly on an `ubuntu-latest` GitHub runner after the repository setup
-action installs pnpm, Node 22, and frozen-lockfile dependencies. Regenerate and commit its matching
+action installs pnpm, Node 24, and frozen-lockfile dependencies. Regenerate and commit its matching
 `*-linux.png` files on a Linux runner with:
 
 ```bash
