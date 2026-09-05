@@ -8,6 +8,7 @@ import {
   readFileSync,
   realpathSync,
   renameSync,
+  rmdirSync,
   rmSync,
   symlinkSync,
   unlinkSync,
@@ -188,6 +189,64 @@ describe("withFileLock", () => {
     });
 
     expect(readFileSync(sentinelPath, "utf8")).toBe("keep");
+  });
+
+  it("re-creates a lock directory component swept away between its mkdir and identity read", async () => {
+    rmSync(dirname(lockPath), { recursive: true, force: true });
+    const projectLockDir = join(realpathSync(root), ".diffgazer");
+    const mkdir = fs.mkdir.bind(fs);
+    // A sibling's empty-directory sweep lands right after the mkdir, the way a
+    // recycled inode number lets it through the sibling's identity pin.
+    vi.spyOn(fs, "mkdir").mockImplementationOnce(async (path, options) => {
+      const result = await mkdir(path, options);
+      rmdirSync(String(path));
+      return result;
+    });
+
+    let ran = false;
+    await withProjectFileLock(root, ".diffgazer/mutation.lock", async () => {
+      ran = true;
+    });
+
+    expect(ran).toBe(true);
+    expect(existsSync(projectLockDir)).toBe(false);
+  });
+
+  it("preserves a lock directory component a sibling re-created after sweeping ours", async () => {
+    rmSync(dirname(lockPath), { recursive: true, force: true });
+    const projectLockDir = join(realpathSync(root), ".diffgazer");
+    const mkdir = fs.mkdir.bind(fs);
+    // Our first mkdir is swept; the sibling then re-creates the component
+    // before our retry, so the retry loses with EEXIST and must not keep
+    // claiming ownership of a directory the sibling now owns.
+    vi.spyOn(fs, "mkdir")
+      .mockImplementationOnce(async (path, options) => {
+        const result = await mkdir(path, options);
+        rmdirSync(String(path));
+        return result;
+      })
+      .mockImplementationOnce(async (path, options) => {
+        mkdirSync(String(path));
+        return mkdir(path, options);
+      });
+
+    await withProjectFileLock(root, ".diffgazer/mutation.lock", async () => {});
+
+    expect(existsSync(projectLockDir)).toBe(true);
+  });
+
+  it("gives up on a lock directory component that keeps being swept away", async () => {
+    rmSync(dirname(lockPath), { recursive: true, force: true });
+    const mkdir = fs.mkdir.bind(fs);
+    vi.spyOn(fs, "mkdir").mockImplementation(async (path, options) => {
+      const result = await mkdir(path, options);
+      rmdirSync(String(path));
+      return result;
+    });
+
+    await expect(
+      withProjectFileLock(root, ".diffgazer/mutation.lock", async () => {}),
+    ).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("preserves a replacement for a project lock directory that it created", async () => {

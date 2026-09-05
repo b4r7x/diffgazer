@@ -15,10 +15,13 @@ import { hasErrorCode, isEnoent } from "./path-safety.js";
 // name, and restoring it after the ENOTEMPTY rmdir resurrects that lock — with
 // a live pid inside — at the lock path. A contender that creates its lock
 // before the rmdir makes it fail ENOTEMPTY and, having waited, removes the
-// directory itself through tryRemoveEmptyLockDirectory; one that wakes after
-// the rmdir re-creates the directory under a new inode, which the final
-// tryRemoveEmptyLockDirectory leaves alone as an identity mismatch rather than
-// failing a run whose operation already completed.
+// directory itself through tryRemoveEmptyLockDirectory. One that wakes after
+// the rmdir re-creates the directory, and the owner's final
+// tryRemoveEmptyLockDirectory then goes one of two ways: a new inode (APFS and
+// similar) is an identity mismatch and the sweep is skipped; a recycled inode
+// (Linux) matches the pin, so the sweep lands on the contender's still-empty
+// directory and the contender creates the component again through
+// findOrCreateDirectory. The owner's run completes either way.
 
 export type ValidateLockPath = () => Promise<void>;
 
@@ -79,6 +82,38 @@ async function cleanupCreatedDirectory(
   }
 }
 
+// A sibling run's empty-directory sweep can take a component between our
+// mkdir and the identity read: on Linux a freshly freed inode number is handed
+// straight back to the next mkdir, so the sibling's dev/ino pin matches the
+// directory we just made and its rmdir lands. rmdir only ever removes an empty
+// directory, so nothing is lost and the component is simply created again.
+// The bound guards against a pathological pile-up of concurrent runs sweeping
+// each other's fresh directories, so the failure is a bounded ENOENT rather
+// than a spin.
+const DIRECTORY_CREATE_ATTEMPTS = 3;
+
+async function findOrCreateDirectory(
+  path: string,
+  validateParent: ValidateLockPath,
+): Promise<{ didCreate: boolean; identity: PathIdentity }> {
+  let didCreate = false;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return { didCreate, identity: await readDirectoryIdentity(path) };
+    } catch (error) {
+      if (!isEnoent(error) || attempt >= DIRECTORY_CREATE_ATTEMPTS) throw error;
+    }
+    await validateParent();
+    try {
+      await fs.mkdir(path, { mode: 0o700 });
+      didCreate = true;
+    } catch (mkdirError) {
+      if (!hasErrorCode(mkdirError, "EEXIST")) throw mkdirError;
+      didCreate = false;
+    }
+  }
+}
+
 export async function prepareProjectLockPath(
   projectRoot: string,
   lockPath: string,
@@ -103,27 +138,15 @@ export async function prepareProjectLockPath(
     const path = resolve(parentPath, component);
     await validateParent();
 
-    let identity: PathIdentity;
-    try {
-      identity = await readDirectoryIdentity(path);
-    } catch (error) {
-      if (!isEnoent(error)) throw error;
-      await validateParent();
-      let didCreate = false;
-      try {
-        await fs.mkdir(path, { mode: 0o700 });
-        didCreate = true;
-      } catch (mkdirError) {
-        if (!hasErrorCode(mkdirError, "EEXIST")) throw mkdirError;
-      }
-      identity = await readDirectoryIdentity(path);
+    const { identity, didCreate } = await findOrCreateDirectory(path, validateParent);
+    if (didCreate) {
       try {
         await validateParent();
       } catch (error) {
-        if (didCreate) await cleanupCreatedDirectory(path, identity, async () => {});
+        await cleanupCreatedDirectory(path, identity, async () => {});
         throw error;
       }
-      if (didCreate) createdEntries.push({ identity, path });
+      createdEntries.push({ identity, path });
     }
     directoryEntries.push({ identity, path });
     parentPath = path;
