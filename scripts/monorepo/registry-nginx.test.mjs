@@ -283,10 +283,19 @@ test(
         network,
         "--ip",
         "172.30.0.3",
+        // The proxy config upstreams to `registry`; the container itself carries
+        // the run-unique name, so give it that alias on the test network.
+        "--network-alias",
+        "registry",
         "-p",
         "127.0.0.1::8080",
         "--mount",
         `type=bind,source=${join(tempRoot, "registry.conf")},target=/etc/nginx/conf.d/default.conf,readonly`,
+        // The rendered config includes the headers snippet the image build
+        // copies in; the bare base image has no such file and nginx refuses
+        // to start without it.
+        "--mount",
+        `type=bind,source=${join(root, "deploy/nginx-security-headers.conf")},target=/etc/nginx/snippets/security-headers.conf,readonly`,
         "--mount",
         `type=bind,source=${join(tempRoot, "html")},target=/usr/share/nginx/html,readonly`,
         nginxImage,

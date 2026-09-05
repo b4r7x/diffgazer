@@ -2,7 +2,10 @@
 FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS builder
 
 RUN corepack enable && corepack prepare pnpm@11.13.0 --activate
-RUN apk add --no-cache git
+# python3/make/g++: the workspace lockfile carries node-pty (a root dev
+# dependency with an allowed build), which node-gyp compiles from source on
+# Alpine during `pnpm fetch`.
+RUN apk add --no-cache git python3 make g++
 
 WORKDIR /app
 
@@ -54,6 +57,17 @@ RUN pnpm --filter @diffgazer/docs build
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────
 FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS runtime
+
+# The pinned base lags Alpine's security releases and the deploy workflow
+# refuses to promote an image with HIGH/CRITICAL findings, so pull the fixed
+# OS packages before the scan sees this layer.
+RUN apk upgrade --no-cache
+
+# This stage runs `node .output/server/index.mjs` and nothing else. npm, npx,
+# corepack, and yarn come with the base image unused, and npm's bundled
+# dependencies are what the scan flags, so they do not ship.
+RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \
+      /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
 
 WORKDIR /app
 

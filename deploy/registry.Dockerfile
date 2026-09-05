@@ -21,6 +21,11 @@ RUN mkdir -p /etc/nginx/conf.d \
 # committed trees directly — no build stage.
 FROM nginx:1.30.4-alpine@sha256:97d490c12ba55b4946b01546d1c3ed324e8d41ab1c9fcb2a616aa470620e5b46 AS runtime
 
+# The pinned base lags Alpine's security releases and the deploy workflow
+# refuses to promote an image with HIGH/CRITICAL findings, so pull the fixed
+# OS packages before the scan sees this layer.
+RUN apk upgrade --no-cache
+
 COPY libs/ui/public/r/ /usr/share/nginx/html/r/ui/
 COPY libs/keys/public/r/ /usr/share/nginx/html/r/keys/
 COPY apps/docs/public/schema/ /usr/share/nginx/html/schema/

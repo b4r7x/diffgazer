@@ -2,6 +2,10 @@
 FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS builder
 
 RUN corepack enable && corepack prepare pnpm@11.13.0 --activate
+# python3/make/g++: the workspace lockfile carries node-pty (a root dev
+# dependency with an allowed build), which node-gyp compiles from source on
+# Alpine during `pnpm fetch`.
+RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
 
@@ -45,6 +49,11 @@ RUN pnpm --filter @diffgazer/registry build \
 
 # Stage 2: Serve static SPA
 FROM nginx:1.30.4-alpine@sha256:97d490c12ba55b4946b01546d1c3ed324e8d41ab1c9fcb2a616aa470620e5b46 AS runtime
+
+# The pinned base lags Alpine's security releases and the deploy workflow
+# refuses to promote an image with HIGH/CRITICAL findings, so pull the fixed
+# OS packages before the scan sees this layer.
+RUN apk upgrade --no-cache
 
 COPY --from=builder /app/apps/landing/dist /usr/share/nginx/html
 COPY deploy/nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
