@@ -45,7 +45,9 @@ jobs:
   ci:
     name: Build, Type-Check, and Test
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Build, publint, and type-check take ~7 min; the test suites, two
+    # packages at a time, need the rest.
+    timeout-minutes: 35
     permissions:
       contents: read
     steps:
@@ -109,8 +111,13 @@ jobs:
       - name: Type-check
         run: DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run type-check
 
+      # Every workspace suite spawns its own vitest workers, so letting Turbo
+      # start all ten at once on a 4-vCPU runner starved each of them: jsdom
+      # environment setup alone took 100-400 s per package and a different
+      # package timed out on every run. Two at a time keeps the runner busy
+      # without that contention.
       - name: Test
-        run: DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run test
+        run: DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run test --concurrency=2
 
       - name: Git whitespace check
         run: git diff --check
