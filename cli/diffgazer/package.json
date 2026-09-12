@@ -1,6 +1,6 @@
 {
   "name": "diffgazer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local AI code review — embedded web UI and TUI",
   "keywords": [
     "ai",
