@@ -73,7 +73,7 @@ function hasForbiddenSerializedData(descriptor: unknown): boolean {
 }
 
 describe("product registry authority", () => {
-  it("enumerates exactly the 9 selectable products with add-now notices and gates", () => {
+  it("enumerates exactly the 10 selectable products with add-now notices and gates", () => {
     expect(SELECTABLE_PRODUCT_IDS).toEqual([
       "ollama-cloud",
       "openrouter",
@@ -83,6 +83,7 @@ describe("product registry authority", () => {
       "qwen",
       "minimax",
       "moonshot",
+      "commandcode",
       "gemini",
     ]);
 
@@ -353,6 +354,37 @@ describe("product registry authority", () => {
         ),
       },
       {
+        id: "commandcode",
+        endpoints: [
+          {
+            id: "provider",
+            label: "Provider API",
+            endpoint: "https://api.commandcode.ai/provider/v1",
+          },
+        ],
+        modelPolicy: {
+          kind: "discovered-exact",
+          excludedModelIdPrefixes: ["claude-"],
+          suggestedModelId: "deepseek/deepseek-v4-flash",
+          aliases: "forbidden",
+        },
+        checks: HOSTED_CHECKS,
+        structuredOutput: "strict-json-schema",
+        notice: notice(
+          "commandcode-provider-api",
+          [
+            "On a coding plan, usage is metered against the plan's included credits and per-model access in rolling 5-hour, weekly, and monthly windows; a model outside the plan is refused when a review is sent, not hidden from the list.",
+            "Pay-as-you-go credits bill at the model's regular rate with no usage windows, and are also drawn once a plan's limits are reached; without them, paid models pause until the window resets.",
+            "Allowances and rates can change at any time.",
+          ],
+          [
+            "Command Code retains request content for up to 30 days by default and states it does not train AI models on your source code or sell personal data.",
+            "Requests are forwarded through Command Code's gateways to the model's upstream inference provider, which processes them under its own terms.",
+            "Command Code is not presented as zero retention.",
+          ],
+        ),
+      },
+      {
         id: "gemini",
         endpoints: [
           {
@@ -475,12 +507,43 @@ describe("the registry-owned model policy predicate", () => {
     { productId: "openrouter", modelId: "openai/gpt-4.1-mini", allowed: true },
     { productId: "openrouter", modelId: "openrouter/auto", allowed: false },
     { productId: "gemini", modelId: "gemini-2.5-flash", allowed: true },
+    { productId: "commandcode", modelId: "claude-sonnet-5", allowed: false },
   ] as const)("decides $productId/$modelId as allowed=$allowed", ({
     productId,
     modelId,
     allowed,
   }) => {
     expect(isModelIdAllowedForProduct(productId, modelId)).toBe(allowed);
+  });
+
+  it("excludes only Anthropic-Messages-only ids from Command Code", () => {
+    for (const id of [
+      "claude-fable-5",
+      "claude-fable-5-1",
+      "claude-haiku-4-5-20251001",
+      "claude-opus-4-7",
+      "claude-opus-4-8",
+      "claude-opus-5",
+      "claude-sonnet-4-6",
+      "claude-sonnet-5",
+    ]) {
+      expect(isModelIdAllowedForProduct("commandcode", id)).toBe(false);
+    }
+    for (const id of [
+      "gpt-5.6-terra",
+      "google/gemini-3.6-flash",
+      "sakana/fugu-ultra",
+      "Qwen/Qwen3.8-Max-0902",
+      "MiniMaxAI/MiniMax-M3",
+    ]) {
+      expect(isModelIdAllowedForProduct("commandcode", id)).toBe(true);
+    }
+    expect(isModelIdAllowedForProduct("deepseek", "claude-sonnet-5")).toBe(true);
+  });
+
+  it("suggests a model its own policy admits", () => {
+    const policy = PRODUCT_REGISTRY.commandcode.modelPolicy;
+    expect(isModelIdAllowedForProduct("commandcode", policy.suggestedModelId)).toBe(true);
   });
 
   it("is the only interpretation every product policy kind is measured against", () => {

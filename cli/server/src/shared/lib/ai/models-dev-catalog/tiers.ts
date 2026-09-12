@@ -1,4 +1,4 @@
-import { CATALOG_SNAPSHOT, type ModelsDevCatalog } from "@diffgazer/core/catalog";
+import { CATALOG_SNAPSHOT, type ModelsDevCatalog, PROVIDER_OVERLAY } from "@diffgazer/core/catalog";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import type { Result } from "@diffgazer/core/result";
 import type { RunnableProductId } from "@diffgazer/core/schemas/config";
@@ -103,6 +103,9 @@ const resolveCatalogGeneration = async (options: {
 };
 
 export const resolveCatalogTier = async (productId: RunnableProductId): Promise<CatalogTier> => {
+  // No models.dev source: every catalog tier is empty for this product, so skip cache,
+  // quarantine, and fetch.
+  if (PROVIDER_OVERLAY[productId] === undefined) return snapshotTier();
   const path = getGlobalModelsDevCatalogPath();
   const loadedCache = loadCacheStateMemoized(path);
   const cacheState = loadedCache.state;

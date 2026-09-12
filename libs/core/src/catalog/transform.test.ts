@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { CANDIDATE_VERDICTS } from "../providers/candidate-verdicts.js";
-import { PRODUCT_REGISTRY } from "../providers/product-registry.js";
+import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "../providers/product-registry.js";
 import { RAW_CATALOG } from "./fixtures.js";
 import {
   CatalogSelectableModelIdSchema,
@@ -41,6 +41,9 @@ describe("transformCatalogObservation", () => {
       "moonshot",
       "gemini",
     ]);
+    // no models.dev source → no observation; the picker is live-only
+    expect(SELECTABLE_PRODUCT_IDS).toContain("commandcode");
+    expect(observations.some(({ productId }) => productId === "commandcode")).toBe(false);
 
     for (const observation of observations) {
       expect(observation.transportFamily).toBe(

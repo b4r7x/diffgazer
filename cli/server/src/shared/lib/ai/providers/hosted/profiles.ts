@@ -93,6 +93,20 @@ export const HOSTED_PROFILES = {
     // call observed above it.
     pacing: { perDispatchWallTimeMs: 300_000, bodyIdleTimeoutMs: 120_000 },
   },
+  commandcode: {
+    wireFamily: "openai-compatible",
+    // strict json_schema is accepted, but enforcement across the gateway's upstreams is
+    // unproven, so local validation stays the gate; retry once.
+    structuredOutput: "strict-json-schema",
+    malformedOutputRetry: true,
+    // Probed 2026-09-09 (P2/P4/P8, stream:false): the gateway buffers the whole upstream
+    // answer and commits headers together with the single body frame (P2 ttfb 6.93s =
+    // total; P4 ttfb 2.00s = total; no keep-alive whitespace), so — as for OpenCode Zen —
+    // this budget bounds the HEADERS phase; slowest observed answer 6.93s (free LongCat)
+    // leaves 120s = ×17, and the one-shot re-dispatch keeps 180s of the 300s wall. Raise
+    // only on a healthy call observed above it.
+    pacing: { perDispatchWallTimeMs: 300_000, bodyIdleTimeoutMs: 120_000 },
+  },
 } as const satisfies Record<HostedApiProductId, HostedProductProfile>;
 
 const MODEL_PACING_OVERRIDES: Partial<

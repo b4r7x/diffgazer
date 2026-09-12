@@ -84,6 +84,13 @@ export type ModelPolicy =
   | {
       readonly kind: "discovered-exact";
       readonly suggestedModelId?: string;
+      /**
+       * Id prefixes the product lists but cannot serve on the wire this repo speaks
+       * (e.g. models served only on a vendor's Anthropic Messages endpoint). A matching
+       * id is neither offered nor selectable. Wire capability only — never a plan or
+       * entitlement list.
+       */
+      readonly excludedModelIdPrefixes?: readonly string[];
       readonly aliases: "forbidden";
     }
   | {
@@ -105,7 +112,7 @@ export type ModelPolicy =
 export function matchesModelPolicy(modelId: string, policy: ModelPolicy): boolean {
   switch (policy.kind) {
     case "discovered-exact":
-      return true;
+      return !policy.excludedModelIdPrefixes?.some((prefix) => modelId.startsWith(prefix));
     case "pinned-downstream-route":
       return isPinnedDownstreamRouteModelId(modelId);
   }

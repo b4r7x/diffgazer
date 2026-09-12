@@ -94,6 +94,12 @@ describe("estimateWorstCaseCostUsd", () => {
   it("reserves nothing for a model the catalog does not price", () => {
     expect(estimateWorstCaseCostUsd("gemini", "unpriced", INPUT_CAP)).toBeNull();
   });
+
+  it("reserves nothing for a live-only Command Code model the catalog does not price", () => {
+    expect(
+      estimateWorstCaseCostUsd("commandcode", "deepseek/deepseek-v4-flash", INPUT_CAP),
+    ).toBeNull();
+  });
 });
 
 describe("estimateUsageCostUsd", () => {

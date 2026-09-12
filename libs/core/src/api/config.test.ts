@@ -430,6 +430,7 @@ const PinnedPrePoolPassedModelsSchema = z.strictObject({
     "minimax",
     "ollama-cloud",
     "opencode-zen",
+    "commandcode",
   ]),
   transportFamily: z.literal("hosted-api"),
   checkedAt: z.iso.datetime(),

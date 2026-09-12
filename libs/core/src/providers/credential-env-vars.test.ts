@@ -15,5 +15,6 @@ describe("credential environment variables", () => {
     expect(CREDENTIAL_ENV_VARS.gemini).toBe("GOOGLE_API_KEY");
     expect(CREDENTIAL_ENV_VARS["ollama-cloud"]).toBe("OLLAMA_API_KEY");
     expect(CREDENTIAL_ENV_VARS["opencode-zen"]).toBe("OPENCODE_API_KEY");
+    expect(CREDENTIAL_ENV_VARS.commandcode).toBe("COMMAND_CODE_API_KEY");
   });
 });

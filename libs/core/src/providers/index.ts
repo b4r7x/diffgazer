@@ -30,6 +30,8 @@ export {
 } from "./candidate-verdicts.js";
 export {
   CATALOG_EMPTY_MODELS_REASON,
+  LIVE_LIST_NO_ADMITTED_MODELS_REASON,
+  LIVE_LIST_UNAVAILABLE_REASON,
   LIVE_ONLY_MODEL_DESCRIPTION,
 } from "./catalog-discovery-reasons.js";
 export {

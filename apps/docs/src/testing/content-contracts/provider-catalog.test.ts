@@ -179,9 +179,9 @@ describe("Web Ink canonical terminology matches", () => {
   const providersAndModels = readConcept("providers-and-models");
   const providersReference = readDoc("reference", "providers.mdx");
 
-  it("describes exactly nine selectable products with registry names", () => {
-    expect(providersAndModels).toContain("nine selectable products");
-    expect(readConcept("how-it-works")).toContain("nine selectable products");
+  it("describes exactly ten selectable products with registry names", () => {
+    expect(providersAndModels).toContain("ten selectable products");
+    expect(readConcept("how-it-works")).toContain("ten selectable products");
     for (const productId of SELECTABLE_PRODUCT_IDS) {
       const name = PRODUCT_REGISTRY[productId].presentation.name;
       expect(providersAndModels).toContain(name);
@@ -230,6 +230,7 @@ const KEY_BEARING_LIST_PRODUCTS = [
   "moonshot",
   "minimax",
   "gemini",
+  "commandcode",
 ] as const;
 
 describe("provider catalog privacy copy", () => {
@@ -255,6 +256,7 @@ describe("provider catalog privacy copy", () => {
     for (const productId of sharedCatalogProducts) {
       expect(keylessCatalogBullet).toContain(PRODUCT_REGISTRY[productId].presentation.name);
     }
+    expect(keylessCatalogBullet).not.toContain(PRODUCT_REGISTRY.commandcode.presentation.name);
 
     for (const url of KEYLESS_MODEL_LIST_URLS) {
       expect(catalogSection).toContain(`\`${url}\``);

@@ -181,6 +181,51 @@ describe("server V2 readiness calculation", () => {
       }),
       "acknowledgement-required",
     ],
+    [
+      "a Command Code record selecting an Anthropic-Messages-only model",
+      () => ({
+        configuration: hostedRecord({
+          productId: "commandcode",
+          input: {
+            transportFamily: "hosted-api",
+            productId: "commandcode",
+            endpoint: "https://api.commandcode.ai/provider/v1",
+          },
+          selectedModelId: "claude-sonnet-5",
+          acknowledgement: {
+            noticeId: "commandcode-provider-api",
+            noticeVersion: 1,
+            acceptedAt: CHECKED_AT,
+          },
+        }),
+        binding: hostedBinding(),
+        evidence: null,
+      }),
+      "model-missing",
+    ],
+    [
+      "a Command Code record selecting a served model with the notice accepted",
+      () => ({
+        configuration: hostedRecord({
+          productId: "commandcode",
+          input: {
+            transportFamily: "hosted-api",
+            productId: "commandcode",
+            endpoint: "https://api.commandcode.ai/provider/v1",
+          },
+          selectedModelId: "gpt-5.5",
+          acknowledgement: {
+            noticeId: "commandcode-provider-api",
+            noticeVersion: 1,
+            acceptedAt: CHECKED_AT,
+          },
+        }),
+        binding: hostedBinding(),
+        evidence: null,
+        ...SERVER_OWNED_INPUTS,
+      }),
+      "conformance-pending",
+    ],
   ])("reads %s as %s", (_label, buildInput, expectedStatus) => {
     expect(computeProviderReadiness(buildInput()).status).toBe(expectedStatus);
   });

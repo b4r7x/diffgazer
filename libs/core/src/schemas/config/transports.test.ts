@@ -36,6 +36,7 @@ describe("transport family contract", () => {
       "qwen",
       "minimax",
       "moonshot",
+      "commandcode",
       "gemini",
     ]);
     expect(RUNNABLE_PRODUCT_IDS).toEqual(HOSTED_API_PRODUCT_IDS);

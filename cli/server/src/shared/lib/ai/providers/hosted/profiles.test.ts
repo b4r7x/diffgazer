@@ -47,6 +47,15 @@ describe("resolveDispatchPacing", () => {
     });
   });
 
+  it("bounds Command Code's headers phase like OpenCode Zen", () => {
+    expect(resolveDispatchPacing("commandcode", "deepseek/deepseek-v4-flash")).toEqual({
+      perDispatchWallTimeMs: 300_000,
+      bodyIdleTimeoutMs: 120_000,
+    });
+    expect(HOSTED_PROFILES.commandcode.structuredOutput).toBe("strict-json-schema");
+    expect(HOSTED_PROFILES.commandcode.malformedOutputRetry).toBe(true);
+  });
+
   it("keeps every idle budget — answer-idle and headers phase — clear of the wall by the re-dispatch floor", () => {
     const REDISPATCH_FLOOR_MS = 60_000; // execute.ts TIMEOUT_RETRY_MIN_REMAINING_MS — not exported for a test
     const modelIds = [

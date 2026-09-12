@@ -37,6 +37,7 @@ const ClientModelPolicySchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("discovered-exact"),
     suggestedModelId: z.string().min(1).optional(),
+    excludedModelIdPrefixes: z.array(z.string().min(1)).min(1).optional(),
     aliases: z.literal("forbidden"),
   }),
   z.strictObject({
@@ -232,6 +233,9 @@ function toClientModelPolicy(modelPolicy: ModelPolicy): ClientProductMetadata["m
       return {
         kind: modelPolicy.kind,
         suggestedModelId: modelPolicy.suggestedModelId,
+        ...(modelPolicy.excludedModelIdPrefixes === undefined
+          ? {}
+          : { excludedModelIdPrefixes: [...modelPolicy.excludedModelIdPrefixes] }),
         aliases: modelPolicy.aliases,
       };
     case "pinned-downstream-route":

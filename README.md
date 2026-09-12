@@ -34,7 +34,7 @@ What that means in practice:
 - **Review pipeline** - diff, context, review, and report steps run in order.
 - **Web and terminal modes** - the browser UI by default; the Ink terminal UI (`--tui`) is a beta and stays opt-in (see [terminal UI](https://docs.diffgazer.b4r7.dev/app/tui)).
 - **Issue details** - read findings inline against your diff with evidence and fix guidance.
-- **Provider choice** - nine selectable hosted API products (see [providers reference](https://docs.diffgazer.b4r7.dev/app/reference/providers)).
+- **Provider choice** - ten selectable hosted API products (see [providers reference](https://docs.diffgazer.b4r7.dev/app/reference/providers)).
 - **Privacy controls** - localhost binding, host allowlist, CSRF protection, per-run token, explicit repo trust, and server-only secret/admission boundaries.
 - **Registry and packages** - `@diffgazer/ui`, `@diffgazer/keys`, and `dgadd` support copy-first and package consumption paths.
 
@@ -166,19 +166,19 @@ single-lens review through a real provider over HTTP + SSE, and verifies the run
 persists. Off by default; skips honestly without the opt-in envs. Uses an isolated
 temp config home — your `~/.diffgazer` is never touched. Spends tokens on the
 selected model (the flash set below).
-The release gate is the full {openrouter, opencode-zen, zai, ollama-cloud} ×
+The release gate is the full {openrouter, opencode-zen, zai, ollama-cloud, commandcode} ×
 {small, medium, large} matrix. A run reviews only the products named in
 `DIFFGAZER_LIVE_E2E_PRODUCT` (`openrouter` when it is unset), so the full matrix
-lists all four there.
+lists all five there.
 
 ```bash
 DIFFGAZER_SMOKE_ALLOW_NETWORK=1 DIFFGAZER_LIVE_E2E=1 OPENROUTER_API_KEY=sk-... pnpm run smoke:review
 ```
 
 ```bash
-# Release gate: the full 4 x 3 matrix, every product named
+# Release gate: the full 5 x 3 matrix, every product named
 DIFFGAZER_SMOKE_ALLOW_NETWORK=1 DIFFGAZER_LIVE_E2E=1 \
-DIFFGAZER_LIVE_E2E_PRODUCT=openrouter,opencode-zen,zai,ollama-cloud \
+DIFFGAZER_LIVE_E2E_PRODUCT=openrouter,opencode-zen,zai,ollama-cloud,commandcode \
 DIFFGAZER_LIVE_E2E_SCENARIO=small,medium,large \
 pnpm run smoke:review
 ```
@@ -186,11 +186,12 @@ pnpm run smoke:review
 Every scenario of a provider runs one primary from the flash set — openrouter
 `qwen/qwen3.8-flash`, opencode-zen `qwen3.8-flash` on the OpenCode Go endpoint
 (`https://opencode.ai/zen/go/v1`, a subscription pool; `/zen/v1` does not serve the
-flash ids), zai `glm-5.3-flash`, ollama-cloud `glm-5.3-flash` — and walks an ordered
-fallback chain only when a member is down: openrouter `z-ai/glm-5.3-flash` →
-`deepseek/deepseek-v4-flash-0731`; opencode-zen `glm-5.3-flash` → `deepseek-v4-flash`;
-ollama-cloud `deepseek-v4-flash:0731` → `gpt-oss:20b`; zai `glm-4.5-air` (the proven
-priced incumbent, outside the flash set).
+flash ids), zai `glm-5.3-flash`, ollama-cloud `glm-5.3-flash`, commandcode
+`deepseek/deepseek-v4.1-flash` — and walks an ordered fallback chain only when a
+member is down: openrouter `z-ai/glm-5.3-flash` → `deepseek/deepseek-v4-flash-0731`;
+opencode-zen `glm-5.3-flash` → `deepseek-v4-flash`; ollama-cloud
+`deepseek-v4-flash:0731` → `gpt-oss:20b`; commandcode `deepseek/deepseek-v4-flash`;
+zai `glm-4.5-air` (the proven priced incumbent, outside the flash set).
 "Down" is one of HTTP 402 (entitlement), 401/404 (not supported), 429 (capacity),
 400 (model unavailable), 5xx (outage), or a timed-out attempt (harness watchdog,
 dispatch wall, headers/answer-idle budget, review wall-clock) — one hop per

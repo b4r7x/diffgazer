@@ -20,6 +20,7 @@ export const HOSTED_API_PRODUCT_IDS = [
   "qwen",
   "minimax",
   "moonshot",
+  "commandcode",
   "gemini",
 ] as const;
 export const HostedApiProductIdSchema = z.enum(HOSTED_API_PRODUCT_IDS);

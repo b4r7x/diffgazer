@@ -27,7 +27,11 @@ import {
   promptAttemptEstimate,
 } from "../execution-receipt.js";
 import { accountResponse } from "./accounting.js";
-import { describeExhaustedRateLimit, describeHttpFailure } from "./failure-classification.js";
+import {
+  describeExhaustedRateLimit,
+  describeHttpFailure,
+  readOpenAiErrorEnvelope,
+} from "./failure-classification.js";
 import {
   buildOutputCorrection,
   correctionInputEstimate,
@@ -459,6 +463,7 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
                 hostedProductId,
                 response.status,
                 describePoolFailure({ ...poolFailure, status: response.status }) ?? undefined,
+                captured?.ok ? readOpenAiErrorEnvelope(captured.value) : undefined,
               )
             : describeExhaustedRateLimit(
                 hostedProductId,

@@ -27,10 +27,13 @@ vi.mock("../fs.js", async (importOriginal) => {
 
 import {
   CATALOG_EMPTY_MODELS_REASON,
+  LIVE_LIST_NO_ADMITTED_MODELS_REASON,
+  LIVE_LIST_UNAVAILABLE_REASON,
   LIVE_ONLY_MODEL_DESCRIPTION,
 } from "@diffgazer/core/providers";
 import { CANDIDATE_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
+import { getStore } from "../config/store.js";
 import { MODELS_DEV_SAMPLE } from "../testing/models-dev-sample.js";
 import { assertTempHome } from "../testing/temp-home.js";
 import { LIVE_LIST_SHAPE_VERSION } from "./live-model-lists.js";
@@ -84,15 +87,19 @@ beforeEach(() => {
   writeJsonFileSyncFailPaths.clear();
   vi.restoreAllMocks();
 });
-// One test re-points DIFFGAZER_HOME at nested homes mid-test; both stay inside testHome,
-// and `catalogProviderModels.get` awaits its cache writes, so removing testHome before dropping the
-// variable is enough. `paths.ts` re-reads it per call, so the reverse order would aim any
-// still-pending work at the real ~/.diffgazer.
-afterEach(() => {
+// One test re-points DIFFGAZER_HOME at nested homes mid-test; both stay inside testHome.
+// Drain the store and catalog writes before removing testHome. `paths.ts` re-reads
+// DIFFGAZER_HOME per call, so the reverse order would aim any still-pending work at
+// the real ~/.diffgazer.
+afterEach(async () => {
   writeJsonFileSyncFailPaths.clear();
-  fs.rmSync(testHome, { recursive: true, force: true });
-  delete process.env.DIFFGAZER_HOME;
-  delete process.env.DIFFGAZER_OFFLINE;
+  try {
+    await getStore().ready();
+    fs.rmSync(testHome, { recursive: true, force: true });
+  } finally {
+    delete process.env.DIFFGAZER_HOME;
+    delete process.env.DIFFGAZER_OFFLINE;
+  }
 });
 
 describe("catalogProviderModels.get — three-tier fallback", () => {
@@ -1216,6 +1223,228 @@ describe("live provider model lists", () => {
     if (result.status !== "passed") return;
     expect(result.source).toBe("cache");
     expect(result.models.map((model) => model.id)).toEqual(["MiniMax-M2.7"]);
+  });
+
+  const COMMAND_CODE_ENDPOINT = "https://api.commandcode.ai/provider/v1";
+  const COMMAND_CODE_P1_LIST = {
+    object: "list",
+    data: [
+      {
+        id: "claude-sonnet-5",
+        object: "model",
+        created: 1755216000,
+        owned_by: "commandcode",
+        name: "Claude Sonnet 5",
+        context_length: 1000000,
+      },
+      {
+        id: "gpt-5.5",
+        object: "model",
+        created: 1755216000,
+        owned_by: "commandcode",
+        name: "GPT-5.5",
+        context_length: 400000,
+      },
+      {
+        id: "deepseek/deepseek-v4-flash",
+        object: "model",
+        created: 1755216000,
+        owned_by: "commandcode",
+        name: "DeepSeek V4 Flash (latest)",
+        context_length: 1000000,
+      },
+      {
+        id: "Qwen/Qwen3.8-Max-0902",
+        object: "model",
+        created: 1755216000,
+        owned_by: "commandcode",
+        name: "Qwen3.8 Max",
+        context_length: 262144,
+      },
+      {
+        id: "MiniMaxAI/MiniMax-M3",
+        object: "model",
+        created: 1755216000,
+        owned_by: "commandcode",
+        name: "MiniMax M3",
+        context_length: 200000,
+      },
+      {
+        id: "gpt-5.6-sol",
+        object: "model",
+        created: 1755216000,
+        owned_by: "commandcode",
+        name: "GPT-5.6 Sol",
+        context_length: 400000,
+      },
+      {
+        id: "meituan/LongCat-2.0:free",
+        object: "model",
+        created: 1755216000,
+        owned_by: "commandcode",
+        name: "LongCat 2.0",
+      },
+    ],
+  };
+  const COMMAND_CODE_OFFERED_MODELS = [
+    {
+      id: "gpt-5.5",
+      name: "GPT-5.5",
+      description: "400K context · pricing unknown",
+      tier: "unknown",
+    },
+    {
+      id: "deepseek/deepseek-v4-flash",
+      name: "DeepSeek V4 Flash (latest)",
+      description: "1M context · pricing unknown",
+      tier: "unknown",
+    },
+    {
+      id: "Qwen/Qwen3.8-Max-0902",
+      name: "Qwen3.8 Max",
+      description: "262K context · pricing unknown",
+      tier: "unknown",
+    },
+    {
+      id: "MiniMaxAI/MiniMax-M3",
+      name: "MiniMax M3",
+      description: "200K context · pricing unknown",
+      tier: "unknown",
+    },
+    {
+      id: "gpt-5.6-sol",
+      name: "GPT-5.6 Sol",
+      description: "400K context · pricing unknown",
+      tier: "unknown",
+    },
+    {
+      id: "meituan/LongCat-2.0:free",
+      name: "LongCat 2.0",
+      description: LIVE_ONLY_MODEL_DESCRIPTION,
+      tier: "unknown",
+    },
+  ];
+
+  async function seedCommandCodeConfiguration(credential: string | null): Promise<string> {
+    const created = await getStore().runConfigurationAction({
+      action: "create",
+      input: {
+        transportFamily: "hosted-api",
+        productId: "commandcode",
+        endpoint: COMMAND_CODE_ENDPOINT,
+        ...(credential === null ? {} : { credential: { kind: "literal", value: credential } }),
+      },
+    });
+    if (!created.ok)
+      throw new Error(`expected commandcode configuration: ${created.error.message}`);
+    return requireValue(created.value.configuration?.configurationId, "configurationId");
+  }
+
+  it("offers every non-Claude row from Command Code's live list, in list order, without touching models.dev", async () => {
+    writeModelListCache(
+      "configuration-cfg-commandcode-provider",
+      COMMAND_CODE_P1_LIST.data.map(({ id, name, context_length }) => ({
+        id,
+        name,
+        tier: "unknown",
+        ...(context_length === undefined ? {} : { contextTokens: context_length }),
+      })),
+    );
+    const spy = vi.spyOn(globalThis, "fetch");
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-commandcode",
+      productId: "commandcode",
+      endpoint: COMMAND_CODE_ENDPOINT,
+    });
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("provider-cache");
+    expect(result.models).toEqual(COMMAND_CODE_OFFERED_MODELS);
+  });
+
+  it("ingests Command Code's /models list and offers every non-Claude row in list order, without touching models.dev", async () => {
+    const configurationId = await seedCommandCodeConfiguration("commandcode-secret");
+    const spy = listFetch(`${COMMAND_CODE_ENDPOINT}/models`, COMMAND_CODE_P1_LIST);
+
+    const result = await discoverConfigurationCatalog({
+      configurationId,
+      productId: "commandcode",
+      endpoint: COMMAND_CODE_ENDPOINT,
+    });
+
+    expect(spy.mock.calls.map(([url]) => String(url))).toEqual([`${COMMAND_CODE_ENDPOINT}/models`]);
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("provider-live");
+    expect(result.models).toEqual(COMMAND_CODE_OFFERED_MODELS);
+  });
+
+  it("skips Command Code with the live-list reason when the list cannot be fetched", async () => {
+    const configurationId = await seedCommandCodeConfiguration("commandcode-secret");
+    const spy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("commandcode down"));
+
+    const result = await discoverConfigurationCatalog({
+      configurationId,
+      productId: "commandcode",
+      endpoint: COMMAND_CODE_ENDPOINT,
+    });
+
+    expect(result.status).toBe("skipped");
+    if (result.status !== "skipped") return;
+    expect(result.reason).toBe(LIVE_LIST_UNAVAILABLE_REASON);
+    expect(spy.mock.calls.map(([url]) => String(url))).toEqual([`${COMMAND_CODE_ENDPOINT}/models`]);
+  });
+
+  it("skips Command Code with the live-list reason when the credential is unbound", async () => {
+    const configurationId = await seedCommandCodeConfiguration(null);
+    const spy = vi.spyOn(globalThis, "fetch");
+
+    const result = await discoverConfigurationCatalog({
+      configurationId,
+      productId: "commandcode",
+      endpoint: COMMAND_CODE_ENDPOINT,
+    });
+
+    expect(result.status).toBe("skipped");
+    if (result.status !== "skipped") return;
+    expect(result.reason).toBe(LIVE_LIST_UNAVAILABLE_REASON);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("skips Command Code offline without any request", async () => {
+    process.env.DIFFGAZER_OFFLINE = "1";
+    const spy = vi.spyOn(globalThis, "fetch");
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-commandcode",
+      productId: "commandcode",
+      endpoint: "https://api.commandcode.ai/provider/v1",
+    });
+
+    expect(result.status).toBe("skipped");
+    if (result.status !== "skipped") return;
+    expect(result.reason).toBe(LIVE_LIST_UNAVAILABLE_REASON);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("skips Command Code when every listed model is Anthropic-Messages-only", async () => {
+    writeModelListCache("configuration-cfg-commandcode-provider", [
+      { id: "claude-sonnet-5", tier: "unknown" },
+      { id: "claude-opus-5", tier: "unknown" },
+    ]);
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-commandcode",
+      productId: "commandcode",
+      endpoint: "https://api.commandcode.ai/provider/v1",
+    });
+
+    expect(result.status).toBe("skipped");
+    if (result.status !== "skipped") return;
+    expect(result.reason).toBe(LIVE_LIST_NO_ADMITTED_MODELS_REASON);
   });
 
   it("merges Gemini's key-bearing list: live ids prune the catalog, live-only ids are excluded", async () => {

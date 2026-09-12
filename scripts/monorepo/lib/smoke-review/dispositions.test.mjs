@@ -42,6 +42,7 @@ const CREDENTIAL_ENVS = {
   zai: "ZAI_API_KEY",
   deepseek: "DEEPSEEK_API_KEY",
   "ollama-cloud": "OLLAMA_API_KEY",
+  commandcode: "COMMAND_CODE_API_KEY",
 };
 const SUGGESTED_MODELS = {
   openrouter: null,
@@ -50,6 +51,7 @@ const SUGGESTED_MODELS = {
   zai: "glm-5-turbo",
   deepseek: "deepseek-v4-flash",
   "ollama-cloud": "gpt-oss:20b",
+  commandcode: "deepseek/deepseek-v4-flash",
 };
 
 function resolveAll({
@@ -477,21 +479,22 @@ test("three-product matrix with all credentials yields nine run cells, zai on it
   );
 });
 
-const FOUR_PRODUCT_ENV = {
+const FIVE_PRODUCT_ENV = {
   [E2E_OPT_IN_ENV]: "1",
-  [E2E_PRODUCT_ENV]: "openrouter,opencode-zen,zai,ollama-cloud",
+  [E2E_PRODUCT_ENV]: "openrouter,opencode-zen,zai,ollama-cloud,commandcode",
   OPENROUTER_API_KEY: "k",
   OPENCODE_API_KEY: "k",
   ZAI_API_KEY: "k",
   OLLAMA_API_KEY: "k",
+  COMMAND_CODE_API_KEY: "k",
 };
 
-test("four-product matrix with all credentials yields twelve run cells, ollama-cloud on its table models", () => {
-  const cells = expandAll({ env: FOUR_PRODUCT_ENV, scenarioIds: ["small", "medium", "large"] });
-  assert.equal(cells.length, 12);
+test("five-product matrix with all credentials yields fifteen run cells, each product on its table models", () => {
+  const cells = expandAll({ env: FIVE_PRODUCT_ENV, scenarioIds: ["small", "medium", "large"] });
+  assert.equal(cells.length, 15);
   assert.deepEqual(
     cells.map((cell) => [cell.kind, cell.productId, cell.scenarioId, cell.modelId]),
-    ["openrouter", "opencode-zen", "zai", "ollama-cloud"].flatMap((productId) =>
+    ["openrouter", "opencode-zen", "zai", "ollama-cloud", "commandcode"].flatMap((productId) =>
       ["small", "medium", "large"].map((scenarioId) => [
         "run",
         productId,
@@ -506,8 +509,8 @@ test("four-product matrix with all credentials yields twelve run cells, ollama-c
   }
 });
 
-test("all four table products resolve to run dispositions on the default scenario, none model-unresolved", () => {
-  const dispositions = resolveAll({ env: FOUR_PRODUCT_ENV });
+test("all five table products resolve to run dispositions on the default scenario, none model-unresolved", () => {
+  const dispositions = resolveAll({ env: FIVE_PRODUCT_ENV });
   assert.deepEqual(
     dispositions.map((disposition) => [
       disposition.kind,
@@ -519,6 +522,7 @@ test("all four table products resolve to run dispositions on the default scenari
       ["run", "opencode-zen", DEFAULT_E2E_MODELS["opencode-zen"].small],
       ["run", "zai", DEFAULT_E2E_MODELS.zai.small],
       ["run", "ollama-cloud", DEFAULT_E2E_MODELS["ollama-cloud"].small],
+      ["run", "commandcode", DEFAULT_E2E_MODELS.commandcode.small],
     ],
   );
 });
@@ -985,11 +989,12 @@ test("credential binding status: removed bindings are skipped, absent status mea
 test("secret hygiene: no formatted line or descriptor carries the credential value", () => {
   const env = {
     [E2E_OPT_IN_ENV]: "1",
-    [E2E_PRODUCT_ENV]: "openrouter,opencode-zen,zai,ollama-cloud",
+    [E2E_PRODUCT_ENV]: "openrouter,opencode-zen,zai,ollama-cloud,commandcode",
     OPENROUTER_API_KEY: SENTINEL,
     OPENCODE_API_KEY: SENTINEL,
     ZAI_API_KEY: SENTINEL,
     OLLAMA_API_KEY: SENTINEL,
+    COMMAND_CODE_API_KEY: SENTINEL,
   };
   const ollamaMissing = resolve({
     env: { ...env, [E2E_PRODUCT_ENV]: "ollama-cloud", OLLAMA_API_KEY: "" },
@@ -1039,6 +1044,9 @@ test("secret hygiene: no formatted line or descriptor carries the credential val
 // (handoff §3.1 A1), so its snapshot rows carry no `cost`; the pin asserts that
 // absence until upstream adds prices.
 const UNPRICED_QUOTA_PRODUCTS = new Set(["ollama-cloud"]);
+// commandcode has no models.dev source (models.dev#3086), so there is no snapshot
+// row to pin; its ids are pinned by the product's own model policy instead.
+const LIVE_ONLY_E2E_PRODUCTS = new Set(["commandcode"]);
 // Only a genuinely absent build skips these pins: a dist that exists but throws
 // on import is a broken build, and the pin must fail loudly, not report green.
 async function importCoreDist(t, entry) {
@@ -1057,6 +1065,9 @@ test("default and fallback e2e models are priced or quota-billed snapshot rows c
   const overlay = await importCoreDist(t, "catalog/provider-overlay.js");
   if (!overlay) return;
   const { PROVIDER_OVERLAY } = overlay;
+  const providers = await importCoreDist(t, "providers/index.js");
+  if (!providers) return;
+  const { isModelIdAllowedForProduct } = providers;
   // Defaults are pinned per scenario; a fallback chain is pinned member by
   // member, labelled `fallback n`. A product whose cells bind an endpoint
   // profile must have its row in THAT profile's models.dev source.
@@ -1069,6 +1080,18 @@ test("default and fallback e2e models are priced or quota-billed snapshot rows c
     ),
   ];
   for (const [productId, scenarioId, modelId] of pinned) {
+    if (LIVE_ONLY_E2E_PRODUCTS.has(productId)) {
+      assert.equal(
+        PROVIDER_OVERLAY[productId],
+        undefined,
+        `${productId} has a models.dev source now; drop it from LIVE_ONLY_E2E_PRODUCTS`,
+      );
+      assert.ok(
+        isModelIdAllowedForProduct(productId, modelId),
+        `${productId}/${scenarioId}: '${modelId}' is not admitted by the product's model policy`,
+      );
+      continue;
+    }
     const profileId = E2E_ENDPOINT_PROFILES[productId];
     const sources =
       profileId === undefined
@@ -1124,7 +1147,7 @@ test("the Zen cell binds the Go pool profile; every other product binds its firs
   );
   assert.equal(zen.id, "go");
   assert.equal(zen.endpoint, "https://opencode.ai/zen/go/v1");
-  for (const productId of ["openrouter", "zai", "ollama-cloud"]) {
+  for (const productId of ["openrouter", "zai", "ollama-cloud", "commandcode"]) {
     const endpoints = PRODUCT_REGISTRY[productId].configuration.endpoints;
     assert.equal(resolveCellEndpoint(endpoints, productId), endpoints[0]);
   }
@@ -1268,6 +1291,7 @@ test("the fallback table is an ordered chain per product, walked in order", () =
     "opencode-zen": ["glm-5.3-flash", "deepseek-v4-flash"],
     zai: ["glm-4.5-air"],
     "ollama-cloud": ["deepseek-v4-flash:0731", "gpt-oss:20b"],
+    commandcode: ["deepseek/deepseek-v4-flash"],
   });
 });
 

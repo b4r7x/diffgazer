@@ -17,6 +17,7 @@ export const CREDENTIAL_ENV_VARS: Readonly<Record<RunnableProductId, string>> = 
   qwen: "QWEN_API_KEY",
   moonshot: "MOONSHOT_API_KEY",
   minimax: "MINIMAX_API_KEY",
+  commandcode: "COMMAND_CODE_API_KEY",
   "ollama-cloud": "OLLAMA_API_KEY",
   "opencode-zen": "OPENCODE_API_KEY",
 };

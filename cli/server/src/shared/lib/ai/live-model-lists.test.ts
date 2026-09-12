@@ -14,6 +14,7 @@ const loadLiveModelLists = () => import("./live-model-lists.js");
 const KEY_BEARING_INPUTS = {
   zai: { endpoint: "https://api.z.ai/api/paas/v4", profileId: "general-payg" },
   "opencode-zen": { endpoint: "https://opencode.ai/zen/v1", profileId: "zen" },
+  commandcode: { endpoint: "https://api.commandcode.ai/provider/v1", profileId: "provider" },
 } as const;
 
 async function seedConfiguration(
@@ -229,6 +230,7 @@ describe("resolveLiveModelList — key-bearing provider lists", () => {
       { endpoint: PRODUCT_REGISTRY.gemini.configuration.endpoints[0]?.endpoint ?? "" },
       404,
     ],
+    ["commandcode", KEY_BEARING_INPUTS.commandcode, 401],
   ] as [
     HostedApiProductId,
     { endpoint: string },

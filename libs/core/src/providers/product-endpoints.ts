@@ -41,6 +41,9 @@ export const PRODUCT_ENDPOINT_TUPLES = {
     { id: "mainland", label: "Mainland China", endpoint: "https://api.moonshot.cn/v1" },
   ],
   minimax: [{ id: "international", label: "International", endpoint: "https://api.minimax.io/v1" }],
+  commandcode: [
+    { id: "provider", label: "Provider API", endpoint: "https://api.commandcode.ai/provider/v1" },
+  ],
   "ollama-cloud": [{ id: "cloud", label: "Ollama Cloud", endpoint: "https://ollama.com/v1" }],
   // Zen first: the quick-setup default binds `endpoints[0]`, and pay-as-you-go
   // credits are the tier every key can bill; Go serves only subscribers.

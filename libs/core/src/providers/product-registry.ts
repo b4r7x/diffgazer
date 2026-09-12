@@ -447,6 +447,58 @@ export const PRODUCT_REGISTRY = {
       ],
     },
   },
+  commandcode: {
+    id: "commandcode",
+    kind: "runnable",
+    selectable: true,
+    transportFamily: "hosted-api",
+    presentation: {
+      name: "Command Code",
+      description:
+        "Command Code's Provider API, an OpenAI-compatible gateway billed through a coding plan or pay-as-you-go credits.",
+      setupLabel: "Configure Command Code",
+    },
+    configuration: {
+      credentialKind: "hosted-api-key-reference",
+      fields: ["credential"],
+      endpoints: PRODUCT_ENDPOINT_TUPLES.commandcode,
+    },
+    // claude-* ids are served only on the Anthropic Messages endpoint (400 on
+    // /chat/completions); plan exclusion is the provider's request-time 403, and the
+    // suggestion must be a non-Claude id verified to complete with strict json_schema.
+    modelPolicy: {
+      kind: "discovered-exact",
+      excludedModelIdPrefixes: ["claude-"],
+      suggestedModelId: "deepseek/deepseek-v4-flash",
+      aliases: "forbidden",
+    },
+    admission: {
+      requiredChecks: HOSTED_CHECKS,
+      structuredOutput: "strict-json-schema",
+    },
+    billing: {
+      modes: ["subscription-credit", "pay-as-you-go"],
+      posture:
+        "Coding-plan usage is metered against the plan's included credits in rolling 5-hour, weekly, and monthly windows; pay-as-you-go credits have no windows and are also drawn once plan limits are reached.",
+    },
+    notice: {
+      id: "commandcode-provider-api",
+      noticeVersion: 1,
+      acknowledgement: "required",
+      acknowledgeBefore: "first-context-send",
+      renewAcknowledgementOn: "material-notice-change",
+      billing: [
+        "On a coding plan, usage is metered against the plan's included credits and per-model access in rolling 5-hour, weekly, and monthly windows; a model outside the plan is refused when a review is sent, not hidden from the list.",
+        "Pay-as-you-go credits bill at the model's regular rate with no usage windows, and are also drawn once a plan's limits are reached; without them, paid models pause until the window resets.",
+        "Allowances and rates can change at any time.",
+      ],
+      privacy: [
+        "Command Code retains request content for up to 30 days by default and states it does not train AI models on your source code or sell personal data.",
+        "Requests are forwarded through Command Code's gateways to the model's upstream inference provider, which processes them under its own terms.",
+        "Command Code is not presented as zero retention.",
+      ],
+    },
+  },
   gemini: {
     id: "gemini",
     kind: "runnable",

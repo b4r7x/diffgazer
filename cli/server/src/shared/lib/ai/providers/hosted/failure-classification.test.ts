@@ -1,6 +1,10 @@
 import type { HostedApiProductId } from "@diffgazer/core/schemas/config";
 import { describe, expect, it } from "vitest";
-import { describeExhaustedRateLimit, describeHttpFailure } from "./failure-classification.js";
+import {
+  describeExhaustedRateLimit,
+  describeHttpFailure,
+  readOpenAiErrorEnvelope,
+} from "./failure-classification.js";
 
 const BOUND_TO_GO = { poolLabel: "OpenCode Go" } as const;
 const GO_WITH_ZEN_SIBLING = { poolLabel: "OpenCode Go", siblingLabel: "OpenCode Zen" } as const;
@@ -91,6 +95,7 @@ describe("copy without pool options", () => {
     ["moonshot", "Moonshot Open Platform"],
     ["minimax", "MiniMax International"],
     ["ollama-cloud", "Ollama Cloud"],
+    ["commandcode", "Command Code"],
   ];
 
   const EXPECTED_BY_STATUS: ReadonlyArray<[number, string, string | undefined]> = [
@@ -147,5 +152,179 @@ describe("copy without pool options", () => {
       `${name} reported the account's balance or quota is exhausted (HTTP 429).`,
     );
     expect(failure.remediation).toBe("Check the account balance or plan, or change the model.");
+  });
+});
+
+describe("body-aware copy", () => {
+  const P5_403_PLAN = {
+    error: {
+      message:
+        "MODEL_NOT_IN_PLAN: GPT-5.5 available in Pro and above plans or extra on demand usage",
+      type: "permission_error",
+      code: "FORBIDDEN",
+    },
+  };
+  const GO_PLAN_403 = {
+    error: {
+      message:
+        "Your Go plan doesn't include API access. Upgrade to Provider or higher at https://commandcode.ai/billing to use these endpoints.",
+      type: "permission_error",
+      code: "upgrade_required",
+    },
+  };
+  const P6_400_CLAUDE = {
+    error: {
+      message:
+        'Model "claude-sonnet-4-6" must be called via /provider/v1/messages (Anthropic Messages shape).',
+      type: "invalid_request_error",
+      param: "model",
+      code: "unsupported_model",
+    },
+  };
+  const P7_400_UNKNOWN = {
+    error: {
+      message: 'Model "does-not-exist/foo" is not supported on this endpoint.',
+      type: "invalid_request_error",
+      param: "model",
+      code: "unsupported_model",
+    },
+  };
+  const P10A_400_PARAM = {
+    error: {
+      message: 'Invalid option: expected one of "low"|"medium"|"high"|"xhigh"|"max"',
+      type: "invalid_request_error",
+      param: "reasoning_effort",
+    },
+  };
+  const P12_401 = {
+    error: {
+      message: "Invalid 'Authorization' header or token.",
+      type: "authentication_error",
+      code: "UNAUTHORIZED",
+    },
+  };
+  const ALT_401 = {
+    success: false,
+    error: {
+      code: "UNAUTHORIZED",
+      status: 401,
+      message: "Invalid 'Authorization' header or token.",
+      docs: "https://commandcode.ai/docs/reference/errors/unauthorized",
+    },
+  };
+  const P3_422_ZDR = {
+    error: {
+      message:
+        "This model has no zero-data-retention upstream. Remove the x-cmd-zdr header or choose a different model.",
+      type: "invalid_request_error",
+      code: "cmd_zdr_no_providers",
+    },
+  };
+
+  it("names the plan on a 403 FORBIDDEN / MODEL_NOT_IN_PLAN body", () => {
+    const failure = describeHttpFailure(
+      "commandcode",
+      403,
+      undefined,
+      readOpenAiErrorEnvelope(JSON.stringify(P5_403_PLAN)),
+    );
+
+    expect(failure.code).toBe("provider-rejected");
+    expect(failure.retryable).toBe(false);
+    expect(failure.message).toBe(
+      "Command Code reported the selected model is not included in the account's plan (HTTP 403).",
+    );
+    expect(failure.remediation).toBe(
+      "Select a different model, upgrade the plan, or add pay-as-you-go credits for this model.",
+    );
+  });
+
+  it("keeps the hedged 403 copy for the Go-plan upgrade_required body", () => {
+    const failure = describeHttpFailure(
+      "commandcode",
+      403,
+      undefined,
+      readOpenAiErrorEnvelope(JSON.stringify(GO_PLAN_403)),
+    );
+
+    expect(failure.message).toBe("Command Code refused access (HTTP 403).");
+    expect(failure.remediation).toBe(
+      "Check the API key and the account's access to the selected model.",
+    );
+  });
+
+  it("keeps the hedged 403 copy when only the code matches", () => {
+    const failure = describeHttpFailure(
+      "commandcode",
+      403,
+      undefined,
+      readOpenAiErrorEnvelope(JSON.stringify({ error: { code: "FORBIDDEN", message: "denied" } })),
+    );
+
+    expect(failure.message).toBe("Command Code refused access (HTTP 403).");
+    expect(failure.remediation).toBe(
+      "Check the API key and the account's access to the selected model.",
+    );
+  });
+
+  it.each([
+    P6_400_CLAUDE,
+    P7_400_UNKNOWN,
+  ])("names the endpoint on a 400 unsupported_model body", (fixture) => {
+    const failure = describeHttpFailure(
+      "commandcode",
+      400,
+      undefined,
+      readOpenAiErrorEnvelope(JSON.stringify(fixture)),
+    );
+
+    expect(failure.message).toBe(
+      "Command Code does not serve the selected model on this endpoint (HTTP 400).",
+    );
+    expect(failure.remediation).toBe("Select a different model.");
+  });
+
+  it("keeps the context-window copy for a 400 without a code", () => {
+    const failure = describeHttpFailure(
+      "commandcode",
+      400,
+      undefined,
+      readOpenAiErrorEnvelope(JSON.stringify(P10A_400_PARAM)),
+    );
+
+    expect(failure.message).toBe("Command Code rejected the request as invalid (HTTP 400).");
+    expect(failure.remediation).toBe(
+      "Often the diff is too large for the model's context window. Reduce the review scope, or choose a model with a larger context.",
+    );
+  });
+
+  it.each([
+    JSON.stringify(P12_401),
+    JSON.stringify(ALT_401),
+    "<html>gateway</html>",
+    "",
+  ])("reports the credential rejection for both 401 envelopes and a non-JSON body", (text) => {
+    const failure = describeHttpFailure(
+      "commandcode",
+      401,
+      undefined,
+      readOpenAiErrorEnvelope(text),
+    );
+
+    expect(failure.message).toBe("Command Code rejected the credential (HTTP 401).");
+    expect(failure.remediation).toBe("Update the configuration with a valid API key.");
+  });
+
+  it("leaves 422 on the default copy", () => {
+    const failure = describeHttpFailure(
+      "commandcode",
+      422,
+      undefined,
+      readOpenAiErrorEnvelope(JSON.stringify(P3_422_ZDR)),
+    );
+
+    expect(failure.message).toBe("Command Code returned HTTP 422.");
+    expect(failure.retryable).toBe(false);
+    expect(failure.remediation).toBeUndefined();
   });
 });

@@ -35,22 +35,58 @@ function remediationFor(
     : `${poolCopy}, or switch to ${siblingLabel} in Select Model.`;
 }
 
+export type ProviderErrorEnvelope = Readonly<{ code: string | null; message: string | null }>;
+
+/**
+ * The OpenAI error envelope (`error.type/code/message/param`) is the
+ * openai-compatible wire's own contract; the reader is wire-generic and
+ * extracts only `code` and `message`.
+ */
+export function readOpenAiErrorEnvelope(bodyText: string): ProviderErrorEnvelope {
+  try {
+    const parsed: unknown = JSON.parse(bodyText);
+    if (typeof parsed !== "object" || parsed === null || !("error" in parsed)) {
+      return { code: null, message: null };
+    }
+    const error = parsed.error;
+    if (typeof error !== "object" || error === null) {
+      return { code: null, message: null };
+    }
+    return {
+      code: "code" in error && typeof error.code === "string" ? error.code : null,
+      message: "message" in error && typeof error.message === "string" ? error.message : null,
+    };
+  } catch {
+    return { code: null, message: null };
+  }
+}
+
 /**
  * The bounded reason for a non-2xx provider response. The statuses a user can
  * fix on the providers screen name the fix; everything else is the provider's
  * own outage and stays a plain transport failure. 400 stays transport-failed
- * but names the likely context-window cause.
+ * but names the likely context-window cause. Two envelope signatures are
+ * classified: `unsupported_model` on 400 and `FORBIDDEN` /
+ * `MODEL_NOT_IN_PLAN:` on 403.
  */
 export function describeHttpFailure(
   productId: HostedApiProductId,
   status: number,
   options?: FailureCopyOptions,
+  envelope?: ProviderErrorEnvelope,
 ): Pick<FailureDiagnosticInput, "code" | "message" | "retryable" | "remediation"> {
   const pool = options?.poolLabel;
   const name = pool ?? PRODUCT_REGISTRY[productId].presentation.name;
   const rejected = { code: PROVIDER_REJECTED_DIAGNOSTIC_CODE, retryable: false };
   switch (status) {
     case 400:
+      if (envelope?.code === "unsupported_model") {
+        return {
+          ...rejected,
+          message: `${name} does not serve the selected model on this endpoint (HTTP 400).`,
+          remediation: "Select a different model.",
+        };
+      }
       return {
         code: "transport-failed",
         retryable: false,
@@ -67,6 +103,14 @@ export function describeHttpFailure(
         remediation: "Update the configuration with a valid API key.",
       };
     case 403:
+      if (envelope?.code === "FORBIDDEN" && envelope.message?.startsWith("MODEL_NOT_IN_PLAN:")) {
+        return {
+          ...rejected,
+          message: `${name} reported the selected model is not included in the account's plan (HTTP 403).`,
+          remediation:
+            "Select a different model, upgrade the plan, or add pay-as-you-go credits for this model.",
+        };
+      }
       return {
         ...rejected,
         message: `${name} refused access (HTTP 403).`,

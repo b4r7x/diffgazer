@@ -9,6 +9,7 @@ import {
   ClientMetadataPayloadSchema,
   type ClientMetadataSource,
   projectClientMetadata,
+  projectClientProduct,
 } from "./client-metadata.js";
 import { PRODUCT_REGISTRY, type ProductNotice } from "./product-registry.js";
 
@@ -645,5 +646,15 @@ describe("client metadata projection", () => {
         };
       }),
     );
+  });
+
+  it("round-trips Command Code's excluded prefixes on the discovered-exact policy", () => {
+    expect(projectClientProduct("commandcode").modelPolicy).toEqual({
+      kind: "discovered-exact",
+      excludedModelIdPrefixes: ["claude-"],
+      suggestedModelId: "deepseek/deepseek-v4-flash",
+      aliases: "forbidden",
+    });
+    expect("excludedModelIdPrefixes" in projectClientProduct("deepseek").modelPolicy).toBe(false);
   });
 });

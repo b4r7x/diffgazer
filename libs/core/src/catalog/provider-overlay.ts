@@ -17,6 +17,7 @@ export type ProviderOverlay = {
   readonly endpointSources?: Readonly<Record<string, string>>;
 };
 
+// commandcode has no models.dev source (models.dev#3086); its picker is live-only.
 export const PROVIDER_OVERLAY: Partial<Record<RunnableProductId, ProviderOverlay>> = {
   "ollama-cloud": { modelsDevIds: ["ollama-cloud"] },
   openrouter: { modelsDevIds: ["openrouter"] },

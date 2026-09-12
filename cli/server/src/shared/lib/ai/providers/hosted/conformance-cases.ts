@@ -408,6 +408,23 @@ export const HOSTED_REQ_085_CASES: readonly HostedMockConformanceCase[] = [
     expectedOutcome: "completed",
     expectedFindingsCount: 0,
   },
+  {
+    id: "REQ-085:commandcode-local-schema-validation",
+    requirement: "REQ-085",
+    productId: "commandcode",
+    fetch: successFetch("commandcode", { issues: [makeIssue()] }),
+    expectedOutcome: "completed",
+    expectedFindingsCount: 1,
+    expectedEndpoint: defaultEndpoint("commandcode"),
+  },
+  {
+    id: "REQ-085:commandcode-malformed-output-retry-limit",
+    requirement: "REQ-085",
+    productId: "commandcode",
+    fetch: malformedRetryFetch(),
+    expectedOutcome: "schema-failed",
+    expectedAttemptCount: 2,
+  },
 ];
 
 type DepthBehaviour = Readonly<{

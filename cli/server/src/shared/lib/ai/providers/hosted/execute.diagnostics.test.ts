@@ -372,6 +372,37 @@ describe("http error diagnostics", () => {
     );
   });
 
+  it("carries a Command Code plan refusal end to end and redacts the credential", async () => {
+    const fetch = mockFetchResponse(
+      {
+        error: {
+          type: "permission_error",
+          code: "FORBIDDEN",
+          message: `MODEL_NOT_IN_PLAN: GPT-5.5 available in Pro and above plans or extra on demand usage ${TEST_CREDENTIAL}`,
+        },
+      },
+      { status: 403 },
+    );
+    const reportDiagnostic = vi.fn();
+
+    const result = await executeHostedReview({
+      ...executeRequest("commandcode"),
+      reportDiagnostic,
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("transport-failed");
+    expect(reportDiagnostic).toHaveBeenCalledTimes(1);
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "provider-rejected",
+        safeMessage:
+          "Command Code reported the selected model is not included in the account's plan (HTTP 403).",
+      }),
+    );
+    expect(JSON.stringify(reportDiagnostic.mock.calls[0])).not.toContain(TEST_CREDENTIAL);
+  });
+
   it("redacts credentials echoed back in a 400 body", async () => {
     const fetch = mockFetchResponse(
       { error: { message: `key ${TEST_CREDENTIAL} rejected: sk-secret-abcdefghijklmnop` } },

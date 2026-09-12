@@ -4,7 +4,7 @@ import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "../providers/product-r
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";
 
 describe("catalog provider observations", () => {
-  it("leaves exact 9-product eligibility with the product registry", () => {
+  it("leaves exact 10-product eligibility with the product registry; every product but Command Code has a models.dev overlay", () => {
     expect(SELECTABLE_PRODUCT_IDS).toEqual([
       "ollama-cloud",
       "openrouter",
@@ -14,6 +14,7 @@ describe("catalog provider observations", () => {
       "qwen",
       "minimax",
       "moonshot",
+      "commandcode",
       "gemini",
     ]);
     expect(SELECTABLE_PRODUCT_IDS).toEqual(
@@ -31,6 +32,9 @@ describe("catalog provider observations", () => {
       "minimax",
       "moonshot",
       "gemini",
+    ]);
+    expect(SELECTABLE_PRODUCT_IDS.filter((id) => PROVIDER_OVERLAY[id] === undefined)).toEqual([
+      "commandcode",
     ]);
   });
 

@@ -135,13 +135,13 @@ describe("mapProviderList", () => {
     expect(row?.actions).toEqual(["inspect", "select", "test", "update", "delete"]);
   });
 
-  it("derives exactly the 9 selectable products from the product registry", () => {
+  it("derives exactly the 10 selectable products from the product registry", () => {
     const selectableRows = mapProviderList([]).filter(({ product }) => product.selectable);
 
     expect(selectableRows.map(({ product }) => product.productId)).toEqual(
       SELECTABLE_PRODUCTS.map(({ productId }) => productId),
     );
-    expect(selectableRows).toHaveLength(9);
+    expect(selectableRows).toHaveLength(10);
   });
 
   it("does not serialize the legacy key-presence field", () => {

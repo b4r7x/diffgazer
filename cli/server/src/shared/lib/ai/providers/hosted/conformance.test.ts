@@ -68,6 +68,7 @@ describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
       ["qwen", "QWEN_API_KEY"],
       ["minimax", "MINIMAX_API_KEY"],
       ["moonshot", "MOONSHOT_API_KEY"],
+      ["commandcode", "COMMAND_CODE_API_KEY"],
       ["gemini", "GOOGLE_API_KEY"],
     ]);
     expect(HOSTED_LIVE_PROBE_DESCRIPTORS).toHaveLength(HOSTED_API_PRODUCT_IDS.length);
@@ -117,6 +118,12 @@ describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
       (entry) => entry.productId === "opencode-zen",
     );
     expect(discovered?.modelId).toBeNull();
+  });
+
+  it("pins the probe-verified strict-schema model for Command Code", () => {
+    expect(HOSTED_LIVE_PROBE_DESCRIPTORS.find((d) => d.productId === "commandcode")?.modelId).toBe(
+      "deepseek/deepseek-v4-flash",
+    );
   });
 
   it("skips rather than probing a model it could not resolve", async () => {

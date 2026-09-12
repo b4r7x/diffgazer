@@ -40,6 +40,10 @@ export const PROVIDER_DERIVED: Record<
     displayName: "Moonshot Open Platform",
     billing: "paid",
   },
+  commandcode: {
+    displayName: "Command Code",
+    billing: "unknown",
+  },
   gemini: {
     displayName: "Google Gemini",
     billing: "paid",

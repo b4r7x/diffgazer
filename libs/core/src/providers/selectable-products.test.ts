@@ -11,11 +11,12 @@ const SELECTABLE_PRODUCT_IDS = [
   "qwen",
   "minimax",
   "moonshot",
+  "commandcode",
   "gemini",
 ];
 
 describe("selectable product presentation", () => {
-  it("exposes exactly the 9 selectable products from product authority", () => {
+  it("exposes exactly the 10 selectable products from product authority", () => {
     expect(selectableProducts.SELECTABLE_PRODUCTS.map((product) => product.productId)).toEqual(
       SELECTABLE_PRODUCT_IDS,
     );

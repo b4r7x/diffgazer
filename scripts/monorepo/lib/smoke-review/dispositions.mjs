@@ -24,7 +24,8 @@ export const REVIEW_WALL_CAP_MARGIN_MS = 30_000;
 // control (profiles.ts REASONING_EFFORT_OVERRIDES). One primary per product; the
 // other set members are an ordered fallback walked only when a member is down
 // (402, 401/404, 429, 400, 5xx, timed-out — see downClass). Every id here is
-// pinned by the offline snapshot test against the bound pool's models.dev source.
+// pinned by the offline snapshot test against the bound pool's models.dev source;
+// commandcode has no models.dev source, so its ids are pinned by its own policy.
 export const DEFAULT_E2E_MODELS = {
   openrouter: {
     small: "qwen/qwen3.8-flash",
@@ -46,6 +47,11 @@ export const DEFAULT_E2E_MODELS = {
     medium: "glm-5.3-flash",
     large: "glm-5.3-flash",
   },
+  commandcode: {
+    small: "deepseek/deepseek-v4.1-flash",
+    medium: "deepseek/deepseek-v4.1-flash",
+    large: "deepseek/deepseek-v4.1-flash",
+  },
 };
 
 // Ordered: cheapest flash first, DeepSeek 0731 last, gpt-oss:20b as the Ollama
@@ -57,6 +63,7 @@ export const FALLBACK_E2E_MODELS = {
   "opencode-zen": ["glm-5.3-flash", "deepseek-v4-flash"],
   zai: ["glm-4.5-air"],
   "ollama-cloud": ["deepseek-v4-flash:0731", "gpt-oss:20b"],
+  commandcode: ["deepseek/deepseek-v4-flash"],
 };
 
 // The endpoint profile a product's cells bind; absent = the registry's

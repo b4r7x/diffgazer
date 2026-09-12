@@ -1,4 +1,9 @@
-import { CATALOG_EMPTY_MODELS_REASON } from "@diffgazer/core/providers";
+import { PROVIDER_OVERLAY } from "@diffgazer/core/catalog";
+import {
+  CATALOG_EMPTY_MODELS_REASON,
+  LIVE_LIST_NO_ADMITTED_MODELS_REASON,
+  LIVE_LIST_UNAVAILABLE_REASON,
+} from "@diffgazer/core/providers";
 import type {
   ConfigurationId,
   ModelInfo,
@@ -42,6 +47,16 @@ export type ConfigurationCatalogDiscovery =
       readonly checkedAt: string;
     });
 
+const emptyDiscoveryReason = async (
+  productId: RunnableProductId,
+  liveList: Promise<LiveModelList | null> | null,
+): Promise<string> => {
+  if (PROVIDER_OVERLAY[productId] !== undefined) return CATALOG_EMPTY_MODELS_REASON;
+  return (await liveList) === null
+    ? LIVE_LIST_UNAVAILABLE_REASON
+    : LIVE_LIST_NO_ADMITTED_MODELS_REASON;
+};
+
 /**
  * Shared reader so discovery and picker paths stay aligned; tests may spy on
  * `.get`. The live list is awaited alongside the catalog tier: the two requests
@@ -74,12 +89,14 @@ export const discoverConfigurationCatalog = async (
   });
 
   const offline = isOffline();
+  const liveList = offline ? null : resolveLiveModelList(tuple);
   const response = await catalogProviderModels.get(
     tuple.productId,
-    offline ? null : resolveLiveModelList(tuple),
+    liveList,
     beginPoolMembership(tuple, { offline }),
   );
-  if (response.models.length === 0) return skipped(CATALOG_EMPTY_MODELS_REASON);
+  if (response.models.length === 0)
+    return skipped(await emptyDiscoveryReason(tuple.productId, liveList));
   return {
     ...tuple,
     status: "passed",

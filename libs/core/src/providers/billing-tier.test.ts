@@ -46,6 +46,16 @@ describe("getBillingTier", () => {
     expect(offersFreeModels(getBillingTier("opencode-zen"))).toBe(true);
   });
 
+  it("badges a live-only subscription product PAID, never a quota it does not publish", () => {
+    expect(PRODUCT_REGISTRY.commandcode.billing.modes).toEqual([
+      "subscription-credit",
+      "pay-as-you-go",
+    ]);
+    expect(PROVIDER_DERIVED.commandcode.billing).toBe("unknown");
+    expect(getBillingTier("commandcode")).toBe("paid");
+    expect(offersFreeModels(getBillingTier("commandcode"))).toBe(false);
+  });
+
   // The one safeguard that costs money if it slips: FREE is a claim about a
   // price, so only a real zero-priced catalog range may ever produce it. A
   // declared account tier can reach FREE QUOTA and no further.

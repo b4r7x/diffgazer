@@ -1,7 +1,11 @@
 import type { HostedApiProductId } from "@diffgazer/core/schemas/config";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { responseTimeoutDispatcher } from "./dispatcher.js";
-import { evidenceKeyFor, TEST_CREDENTIAL } from "./execute.test-support.js";
+import {
+  evidenceKeyFor,
+  STRUCTURED_OUTPUT_SCHEMA,
+  TEST_CREDENTIAL,
+} from "./execute.test-support.js";
 import type { ReasoningEffort } from "./profiles.js";
 import { buildRequestInit, parseProviderPayload } from "./wire.js";
 
@@ -90,6 +94,28 @@ describe("buildRequestInit", () => {
     expect((init as { dispatcher?: unknown }).dispatcher).toBe(
       responseTimeoutDispatcher(evidenceKey.limits.wallTimeMs, 120_000),
     );
+  });
+
+  it("sends Command Code only the openai-compatible defaults with the strict schema and no reasoning key", () => {
+    const init = buildRequestInit({
+      productId: "commandcode",
+      credential: TEST_CREDENTIAL,
+      evidenceKey: evidenceKeyFor("commandcode"),
+      prompt: "review this diff",
+      sessionId: "ses_test",
+      structuredOutputSchema: STRUCTURED_OUTPUT_SCHEMA,
+    });
+    const body = JSON.parse(String(init.body));
+
+    expect(Object.keys(body)).toEqual(BODY_KEYS.plain);
+    expect(body.stream).toBe(false);
+    expect(body.temperature).toBe(0);
+    expect(body.model).toBe("deepseek/deepseek-v4-flash");
+    expect(body.response_format).toEqual({
+      type: "json_schema",
+      json_schema: { name: "review_result", strict: true, schema: STRUCTURED_OUTPUT_SCHEMA },
+    });
+    expect(init.redirect).toBe("error");
   });
 
   it.each(
@@ -192,6 +218,7 @@ describe("buildRequestInit OpenCode identification", () => {
     ["zai", BEARER_ONLY],
     ["ollama-cloud", BEARER_ONLY],
     ["deepseek", BEARER_ONLY],
+    ["commandcode", BEARER_ONLY],
     [
       "openrouter",
       { ...BEARER_ONLY, "http-referer": "https://diffgazer.local", "x-title": "Diffgazer" },
@@ -236,5 +263,111 @@ describe("parseProviderPayload finishReason", () => {
       }).finishReason,
     ).toBeNull();
     expect(parseProviderPayload("gemini", { candidates: [] }).finishReason).toBeNull();
+  });
+});
+
+describe("parseProviderPayload usage from Command Code upstreams", () => {
+  const P2_BODY = {
+    id: "f057f1df9c23440ebf361470e9510285",
+    object: "chat.completion",
+    created: 1788971171,
+    model: "meituan/LongCat-2.0:free",
+    choices: [
+      {
+        delta: null,
+        index: 0,
+        finish_reason: "stop",
+        matched_stop: 2,
+        message: {
+          role: "assistant",
+          content: "OK",
+          reasoning_content:
+            '\nWe are asked: "Reply with the single word OK." So I need to output just "OK".',
+        },
+        logprobs: null,
+      },
+    ],
+    usage: {
+      completion_tokens: 26,
+      prompt_tokens: 14,
+      total_tokens: 40,
+      completion_tokens_details: { reasoning_tokens: 22 },
+      prompt_tokens_details: {
+        cached_tokens: 0,
+        audio_tokens: 0,
+        image_tokens: 0,
+        video_tokens: 0,
+        text_tokens: 0,
+        cache_write_tokens: 0,
+      },
+    },
+    lastOne: false,
+  };
+
+  const P4_BODY = {
+    id: "gen_01M23FWGYGEXJHSSSGD24P2VEZ",
+    object: "chat.completion",
+    created: 1788971207,
+    model: "deepseek/deepseek-v4-flash",
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: "assistant",
+          content: "OK",
+          reasoning: "We need to reply with single word OK.",
+          reasoning_details: [
+            {
+              type: "reasoning.text",
+              text: "We need to reply with single word OK.",
+              format: "unknown",
+              index: 0,
+            },
+          ],
+        },
+        logprobs: null,
+        finish_reason: "stop",
+      },
+    ],
+    usage: {
+      prompt_tokens: 90,
+      completion_tokens: 11,
+      total_tokens: 101,
+      prompt_tokens_details: { cached_tokens: 0, audio_tokens: 0, video_tokens: 0 },
+      completion_tokens_details: { reasoning_tokens: 9, image_tokens: 0 },
+      cache_creation_input_tokens: 0,
+    },
+    system_fingerprint: "fp_cw64mrvlvr",
+  };
+
+  it.each([
+    [
+      "LongCat",
+      P2_BODY,
+      {
+        inputTokens: 14,
+        outputTokens: 26,
+        totalTokens: 40,
+        cachedTokens: 0,
+        reasoningTokens: 22,
+      },
+    ],
+    [
+      "deepseek",
+      P4_BODY,
+      {
+        inputTokens: 90,
+        outputTokens: 11,
+        totalTokens: 101,
+        cachedTokens: 0,
+        reasoningTokens: 9,
+      },
+    ],
+  ])("maps %s usage and content", (_name, body, expected) => {
+    const parsed = parseProviderPayload("commandcode", body);
+    expect(parsed.content).toBe("OK");
+    expect(parsed.usage).toEqual(expected);
+    expect(parsed.finishReason).toBe("stop");
+    expect(parsed.choiceError).toBeNull();
   });
 });

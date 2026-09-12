@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ModelInfo } from "../schemas/config/models.js";
-import { CATALOG_EMPTY_MODELS_REASON } from "./catalog-discovery-reasons.js";
+import {
+  CATALOG_EMPTY_MODELS_REASON,
+  LIVE_LIST_NO_ADMITTED_MODELS_REASON,
+  LIVE_LIST_UNAVAILABLE_REASON,
+} from "./catalog-discovery-reasons.js";
 import {
   getRetainedModelNotice,
   MODEL_DISCOVERY_SKIPPED_FALLBACK,
@@ -23,6 +27,12 @@ describe("toClientSafeMessage", () => {
       MODEL_DISCOVERY_SKIPPED_FALLBACK,
     );
   });
+
+  it.each([
+    LIVE_LIST_UNAVAILABLE_REASON,
+    LIVE_LIST_NO_ADMITTED_MODELS_REASON,
+  ])("passes the live-only reason %s through verbatim", (reason) =>
+    expect(toClientSafeMessage(reason, MODEL_DISCOVERY_SKIPPED_FALLBACK)).toBe(reason));
 });
 
 describe("getRetainedModelNotice", () => {
