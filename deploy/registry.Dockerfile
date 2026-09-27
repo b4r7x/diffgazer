@@ -1,6 +1,6 @@
 # Render the committed nginx config with the deployment's exact Traefik peer
 # before assembling the runtime image.
-FROM node:24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf AS config
+FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS config
 
 ARG REGISTRY_TRAEFIK_PROXY_CIDR=127.0.0.1/32
 COPY deploy/registry-nginx.conf /tmp/registry-nginx.conf
@@ -27,7 +27,7 @@ RUN mkdir -p /etc/nginx/conf.d \
 # Alpine had published the fixed util-linux for aarch64 but not x86_64, so
 # `apk upgrade` could not help on the CI runner. alpine-slim is nginx +
 # busybox only: nothing to patch there and less to attack.
-FROM nginx:1.31.5-alpine-slim@sha256:3b171d7224b669faa3cc2137fea0a65301791df1ec1f271ebd2a2b7461f7fade AS runtime
+FROM nginx:1.31.6-alpine-slim@sha256:f761b94f2cb9e8e05e2943d5f773609596113ef69b54e2433a996d109a8f78b7 AS runtime
 
 # The pinned base lags Alpine's security releases and the deploy workflow
 # refuses to promote an image with HIGH/CRITICAL findings, so pull the fixed
