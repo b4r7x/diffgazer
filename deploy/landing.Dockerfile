@@ -55,7 +55,7 @@ RUN pnpm --filter @diffgazer/registry build \
 # Alpine had published the fixed util-linux for aarch64 but not x86_64, so
 # `apk upgrade` could not help on the CI runner. alpine-slim is nginx +
 # busybox only: nothing to patch there and less to attack.
-FROM nginx:1.31.5-alpine-slim@sha256:3b171d7224b669faa3cc2137fea0a65301791df1ec1f271ebd2a2b7461f7fade AS runtime
+FROM nginx:1.31.7-alpine-slim@sha256:ebd058041a732a2b2dc0b606e34572dd8e0034de6a4aa4d50d8c13a240ac6005 AS runtime
 
 # The pinned base lags Alpine's security releases and the deploy workflow
 # refuses to promote an image with HIGH/CRITICAL findings, so pull the fixed
